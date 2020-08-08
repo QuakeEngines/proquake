@@ -1161,6 +1161,7 @@ void IN_Move (usercmd_t *cmd) {
 	}
 }
 
+#ifdef WINDOWS_SCROLLWHEEL_PEEK
 // Baker: this is ONLY used to capture mouse input for console scrolling
 //        and ONLY if directinput is enabled
 void IN_MouseWheel (void) {
@@ -1209,8 +1210,8 @@ void IN_MouseWheel (void) {
 			break;
 		}
 	}
-
 }
+#endif
 
 
 void IN_Accumulate (void) {

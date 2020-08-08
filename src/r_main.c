@@ -109,13 +109,25 @@ void R_MarkLeaves (void);
 
 cvar_t	r_draworder = {"r_draworder","0"};
 cvar_t	r_speeds = {"r_speeds","0"};
+
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+//qbism fte stain cvars
+cvar_t r_stainfadeamount = {"r_stainfadeamount", "1"};
+cvar_t r_stainfadetime = {"r_stainfadetime", "1"};
+cvar_t r_stains = {"r_stains", "0.75"}; //zero to one
+#endif
+
 cvar_t	r_timegraph = {"r_timegraph","0"};
 cvar_t	r_graphheight = {"r_graphheight","10"};
 cvar_t	r_clearcolor = {"r_clearcolor","2"};
 cvar_t	r_waterwarp = {"r_waterwarp","0", true};
 cvar_t	r_fullbright = {"r_fullbright","0"};
 cvar_t	r_drawentities = {"r_drawentities","1"};
+cvar_t	r_novis = {"r_novis","0"};
 cvar_t	r_drawviewmodel = {"r_drawviewmodel","1", true};  // Baker 3.60 - Save to config
+#ifdef SUPPORTS_ENTITY_ALPHA
+cvar_t	r_ringalpha = {"r_ringalpha", "0.4", true}; // Baker 3.80x - gl_ringalpha
+#endif
 cvar_t	r_truegunangle = {"r_truegunangle","0", true};  // Baker 3.60 - Optional "true" gun positioning on viewmodel
 cvar_t	r_aliasstats = {"r_polymodelstats","0"};
 cvar_t	r_dspeeds = {"r_dspeeds","0"};
@@ -132,6 +144,9 @@ cvar_t	r_aliastransadj = {"r_aliastransadj", "100"};
 cvar_t	r_interpolate_animation = {"r_interpolate_animation", "0", true};
 cvar_t	r_interpolate_transform = {"r_interpolate_transform", "0", true};
 cvar_t	r_interpolate_weapon = {"r_interpolate_weapon", "0", true};
+#ifdef SUPPORTS_SW_WATERALPHA
+cvar_t	r_wateralpha = {"r_wateralpha","1", true}; // Manoel Kasimier - translucent water
+#endif
 
 extern cvar_t	scr_fov;
 
@@ -171,6 +186,10 @@ void	R_InitTextures (void)
 R_Init
 ===============
 */
+#ifdef SUPPORTS_SW_SKYBOX
+void R_LoadSky_f (void); // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#endif
+
 void R_Init (void)
 {
 #if !defined(FLASH)
@@ -185,6 +204,21 @@ void R_Init (void)
 	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);
 	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);
 
+	
+#ifdef SUPPORTS_SW_SKYBOX		
+	Cmd_AddCommand ("loadsky", R_LoadSky_f); // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+	Cvar_RegisterVariable (&r_skyname, NULL); // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#endif
+
+	Cvar_RegisterVariable (&r_wateralpha, NULL); // Manoel Kasimier - translucent water
+
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+	//qbism ftestain cvars
+	Cvar_RegisterVariable(&r_stains, NULL);
+	Cvar_RegisterVariable(&r_stainfadetime, NULL);
+	Cvar_RegisterVariable(&r_stainfadeamount, NULL);
+#endif
+
 	Cvar_RegisterVariable (&r_draworder, NULL);
 	Cvar_RegisterVariable (&r_speeds, NULL);
 	Cvar_RegisterVariable (&r_timegraph, NULL);
@@ -196,6 +230,10 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_fullbright, NULL);
 	Cvar_RegisterVariable (&r_drawentities, NULL);
 	Cvar_RegisterVariable (&r_drawviewmodel, NULL);
+	Cvar_RegisterVariable (&r_novis, NULL);
+#ifdef SUPPORTS_ENTITY_ALPHA
+	Cvar_RegisterVariable (&r_ringalpha, NULL);
+#endif
 	Cvar_RegisterVariable (&r_truegunangle, NULL);
 	Cvar_RegisterVariable (&r_aliasstats, NULL);
 	Cvar_RegisterVariable (&r_dspeeds, NULL);
@@ -234,6 +272,67 @@ void R_Init (void)
 	D_Init ();
 }
 
+#ifdef SUPPORTS_SW_SKYBOX
+// Manoel Kasimier - skyboxes - begin
+// Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+void CL_ParseEntityLump (char *entdata)
+{
+	char *data;
+	char key[128], value[4096];
+	extern cvar_t r_skyname;
+
+	data = entdata;
+
+	if (!data)
+		return;
+	data = COM_Parse (data);
+	if (!data || com_token[0] != '{')
+		return;							// error
+
+	while (1)
+	{
+		data = COM_Parse (data);
+		if (!data)
+			return;						// error
+		if (com_token[0] == '}')
+			break;						// end of worldspawn
+
+		if (com_token[0] == '_')
+			strcpy(key, com_token + 1);
+		else
+			strcpy(key, com_token);
+
+		while (key[strlen(key)-1] == ' ')
+			key[strlen(key)-1] = 0;		// remove trailing spaces
+
+		data = COM_Parse (data);
+		if (!data)
+			return;						// error
+		strcpy (value, com_token);
+
+		if (strcmp (key, "sky") == 0 || strcmp (key, "skyname") == 0 ||
+				strcmp (key, "qlsky") == 0)
+		//	Cvar_Set ("r_skyname", value);
+		// Manoel Kasimier - begin
+		{
+			Cbuf_AddText(va("wait;loadsky %s\n", value));
+		//	R_LoadSky(value);
+			return; // Manoel Kasimier
+		}
+		// Manoel Kasimier - end
+		// more checks here..
+	}
+	// Manoel Kasimier - begin
+	if (r_skyname.string[0])
+		Cbuf_AddText(va("wait;loadsky %s\n", r_skyname.string));
+	//	R_LoadSky(r_skyname.string); // crashes the engine if the r_skyname cvar is set before the game boots
+	else
+		R_LoadSky("");
+	// Manoel Kasimier - end
+}
+// Manoel Kasimier - skyboxes - end
+#endif
+
 /*
 ===============
 R_NewMap
@@ -248,8 +347,17 @@ void R_NewMap (void)
 	for (i=0 ; i<cl.worldmodel->numleafs ; i++)
 		cl.worldmodel->leafs[i].efrags = NULL;
 
+#ifdef SUPPORTS_SW_SKYBOX
+	CL_ParseEntityLump (cl.worldmodel->entities); // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#endif
 	r_viewleaf = NULL;
 	R_ClearParticles ();
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+	R_BuildLightmaps(); //qbism ftestain
+#endif
+#ifdef SUPPORTS_SW_SKYBOX
+	R_InitSkyBox (); // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#endif
 #ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
 	R_FinalizeAliasVerts ();
 #endif
@@ -487,7 +595,7 @@ R_MarkLeaves
 */
 void R_MarkLeaves (void)
 {
-	byte	*vis;
+	byte	*vis, solid[4096];
 	mnode_t	*node;
 	int		i;
 
@@ -497,7 +605,13 @@ void R_MarkLeaves (void)
 	r_visframecount++;
 	r_oldviewleaf = r_viewleaf;
 
-	vis = Mod_LeafPVS (r_viewleaf, cl.worldmodel);
+	if (r_novis.value && !pq_cheatfree)		// JPG 3.20 - cheat protection
+	{
+		vis = solid;
+		memset (solid, 0xff, (cl.worldmodel->numleafs+7)>>3);
+	} else {
+		vis = Mod_LeafPVS (r_viewleaf, cl.worldmodel);
+	}
 
 	for (i=0 ; i<cl.worldmodel->numleafs ; i++)
 	{
@@ -533,6 +647,8 @@ void R_DrawEntitiesOnList (void)
 	if (!r_drawentities.value)
 		return;
 
+//	SortEntitiesByTransparency ();
+
 	for (i=0 ; i<cl_numvisedicts ; i++)
 	{
 		currententity = cl_visedicts[i];
@@ -544,6 +660,7 @@ void R_DrawEntitiesOnList (void)
 			continue;	// don't draw the player
 			else
 				currententity->angles[0] *= 0.3;
+
 		}
 
 		switch (currententity->model->type)
@@ -625,9 +742,12 @@ void R_DrawViewModel (void)
 
 	if (!r_drawentities.value)
 		return;
-
+#ifdef SUPPORTS_ENTITY_ALPHA
+	if ((cl.items & IT_INVISIBILITY) && r_ringalpha.value >= 1.0f)
+#else
 	if (cl.items & IT_INVISIBILITY)
 		return;
+#endif
 
 	if (cl.stats[STAT_HEALTH] <= 0)
 		return;
@@ -636,6 +756,14 @@ void R_DrawViewModel (void)
 
 	if (!currententity->model)
 		return;
+
+#ifdef SUPPORTS_ENTITY_ALPHA
+	if ((cl.items & IT_INVISIBILITY) && r_ringalpha.value <= 1.0f) {
+		Con_Printf("Invisible with ring alpha\n");
+		currententity->transparency = 0.5f;
+	}
+#endif
+
 
 	VectorCopy (currententity->origin, r_entorigin);
 	VectorSubtract (r_origin, r_entorigin, modelorg);
@@ -974,6 +1102,9 @@ SetVisibilityByPassages ();
 		VID_LockBuffer ();
 	}
 
+#ifdef SUPPORTS_SW_WATERALPHA
+	r_foundwater = r_drawwater = false; // Manoel Kasimier - translucent water
+#endif
 	R_EdgeDrawing ();
 
 	if (!r_dspeeds.value)
@@ -985,30 +1116,51 @@ SetVisibilityByPassages ();
 
 	if (r_dspeeds.value)
 	{
-		se_time2 = Sys_DoubleTime ();
-		de_time1 = se_time2;
+		se_time2 = Sys_DoubleTime ();  // scan edges time
+		de_time1 = se_time2; // draw entities time
 	}
 
 	R_DrawEntitiesOnList ();
 
 	if (r_dspeeds.value)
 	{
-		de_time2 = Sys_DoubleTime ();
-		dv_time1 = de_time2;
+		de_time2 = Sys_DoubleTime ();  // draw entities time
+		dv_time1 = de_time2;  // draw viewmodel time
 	}
 
 	R_DrawViewModel ();
 
+
+#ifdef SUPPORTS_SW_WATERALPHA
 	if (r_dspeeds.value)
 	{
-		dv_time2 = Sys_DoubleTime ();
-		dp_time1 = Sys_DoubleTime ();
+		dv_time2 = Sys_DoubleTime (); 
+		dp_time1 = Sys_DoubleTime (); // stipple time
+	}
+
+	// Manoel Kasimier - translucent water - begin
+	if (r_foundwater)
+	{
+		r_drawwater = true;
+		R_EdgeDrawing ();
+	}
+	// Manoel Kasimier - translucent water - end
+
+#endif
+
+	if (r_dspeeds.value)
+	{
+		dv_time2 = Sys_DoubleTime (); 
+		dp_time1 = Sys_DoubleTime (); // particles time
 	}
 
 	R_DrawParticles ();
 
 	if (r_dspeeds.value)
-		dp_time2 = Sys_DoubleTime ();
+	{
+		dv_time2 = Sys_DoubleTime (); 
+		dp_time1 = Sys_DoubleTime (); // dowarp time
+	}
 
 	if (r_dowarp)
 		D_WarpScreen ();

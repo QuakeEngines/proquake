@@ -76,7 +76,7 @@ cvar_t	cl_bobbing		= {"cl_bobbing", "0"};
 client_static_t	cls;
 client_state_t	cl;
 // FIXME: put these on hunk?
-static efrag_t			cl_efrags[MAX_EFRAGS];
+ efrag_t		cl_efrags[MAX_EFRAGS];
 entity_t		cl_entities[MAX_EDICTS];
 entity_t		cl_static_entities[MAX_STATIC_ENTITIES];
 lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
@@ -986,6 +986,35 @@ void CL_Viewpos_f (void)
 		(int)cl.viewangles[ROLL]);
 #endif
 }
+
+#ifdef SUPPORTS_ENTITY_ALPHA
+void SortEntitiesByTransparency (void)
+{
+	int		i, j;
+	entity_t	*tmp;
+
+	for (i = 0 ; i < cl_numvisedicts ; i++)
+	{
+		if (cl_visedicts[i]->istransparent)
+		{
+			for (j = cl_numvisedicts - 1 ; j > i ; j--)
+			{
+				// if not transparent, exchange with transparent
+				if (!(cl_visedicts[j]->istransparent))
+				{
+					tmp = cl_visedicts[i];
+					cl_visedicts[i] = cl_visedicts[j];
+					cl_visedicts[j] = tmp;
+					break;
+				}
+			}
+			if (j == i)
+				return;
+		}
+	}
+}
+#endif
+
 
 /*
 =================

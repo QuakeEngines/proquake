@@ -203,7 +203,12 @@ void D_DrawSurfaces (void)
 				continue;
 
 			r_drawnpolycount++;
-
+#ifdef SUPPORTS_SW_WATERALPHA
+			// Manoel Kasimier - translucent water - begin
+			if (r_drawwater && (!(s->flags & SURF_DRAWTRANSLUCENT)))
+				continue;
+			// Manoel Kasimier - translucent water - end
+#endif
 			d_zistepu = s->d_zistepu;
 			d_zistepv = s->d_zistepv;
 			d_ziorigin = s->d_ziorigin;
@@ -249,6 +254,9 @@ void D_DrawSurfaces (void)
 
 				D_CalcGradients (pface);
 				Turbulent8 (s->spans);
+#ifdef SUPPORTS_SW_WATERALPHA
+				if (!r_drawwater) // Manoel Kasimier - translucent water
+#endif
 				D_DrawZSpans (s->spans);
 
 				if (s->insubmodel)
@@ -265,6 +273,36 @@ void D_DrawSurfaces (void)
 					R_TransformFrustum ();
 				}
 			}
+#ifdef SUPPORTS_SW_SKYBOX
+			// Manoel Kasimier - skyboxes - begin
+			// Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+			else if (s->flags & SURF_DRAWSKYBOX)
+			{
+				extern byte	r_skypixels[6][512*512]; // Manoel Kasimier - hi-res skyboxes - edited
+
+				pface = s->data;
+				miplevel = 0;
+				cacheblock = (byte *)(r_skypixels[pface->texinfo->texture->offsets[0]]);
+				cachewidth = pface->texinfo->texture->width; // Manoel Kasimier - hi-res skyboxes - edited
+
+				d_zistepu = s->d_zistepu;
+				d_zistepv = s->d_zistepv;
+				d_ziorigin = s->d_ziorigin;
+
+				D_CalcGradients (pface);
+
+				(*d_drawspans) (s->spans);
+			
+				// set up a gradient for the background surface that places it
+				// effectively at infinity distance from the viewpoint
+				d_zistepu = 0;
+				d_zistepv = 0;
+				d_ziorigin = -0.9;
+
+				D_DrawZSpans (s->spans);
+			}
+			// Manoel Kasimier - skyboxes - end
+#endif
 			else
 			{
 				if (s->insubmodel)

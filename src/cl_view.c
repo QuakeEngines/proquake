@@ -33,6 +33,10 @@ when crossing a water boudnary.
 
 */
 
+#ifdef MACOSX
+qboolean	qMinimized;
+#endif
+
 cvar_t		lcd_x = {"lcd_x","0"};
 cvar_t		lcd_yaw = {"lcd_yaw","0"};
 
@@ -296,7 +300,7 @@ void BuildGammaTable (float g)
 #endif
 
 #if !defined(GLQUAKE) || defined(D3DQ_CONTRAST)
-static void BuildGammaTable2 (float g, float c)
+void BuildGammaTable2 (float g, float c)
 {
 	int	i, inf;
 
@@ -515,24 +519,36 @@ Underwater, lava, etc each has a color shift
 */
 void V_SetContentsColor (int contents)
 {
-	if (!pq_waterblend.value)
-	{
-		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
-#ifdef GLQUAKE
-		cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
-#endif
-		return;
-	}
+#ifdef SUPPORTS_ENHANCED_GAMMA
+	// Baker: scenarios
+	//        glpro with gl_hwblend 1
+	//		  glpro with gl_hwblend 0
+	//		  glpro with -gamma
+	//        d3dpro
+	//        wqpro
 
+	// Baker: I'm thinking this should 
+	if (using_hwgamma /*&& vid_hwgamma_enabled && gl_hwblend.value*/) {
+		// Baker begin hwgamma support
+		if (!pq_waterblend.value)
+		{
+			cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
+	
+			cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
+	
+			return;
+		}
+	}
+#endif
 	switch (contents)
 	{
 	case CONTENTS_EMPTY:
+	case CONTENTS_SOLID:
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
 		break;
 	case CONTENTS_LAVA:
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_lava;
 		break;
-	case CONTENTS_SOLID:
 	case CONTENTS_SLIME:
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_slime;
 		break;
@@ -540,21 +556,28 @@ void V_SetContentsColor (int contents)
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_water;
 	}
 
-	if (pq_waterblend.value > 0 && pq_waterblend.value < 1
-		&& contents != CONTENTS_EMPTY)
-		cl.cshifts[CSHIFT_CONTENTS].percent *= pq_waterblend.value;
+#ifdef SUPPORTS_ENHANCED_GAMMA
+	if (using_hwgamma /* && vid_hwgamma_enabled && gl_hwblend.value*/) 
+		// Baker begin hwgamma support
+		if (pq_waterblend.value > 0 && pq_waterblend.value < 1 && contents != CONTENTS_EMPTY)
+#endif
+			cl.cshifts[CSHIFT_CONTENTS].percent *= pq_waterblend.value;
 
-#ifdef GLQUAKE
-	if (contents != CONTENTS_EMPTY)
-	{
-		if (!gl_polyblend.value)
-			cl.cshifts[CSHIFT_CONTENTS].percent = 0;
+#ifdef SUPPORTS_ENHANCED_GAMMA
+	
+	if (using_hwgamma /*&& vid_hwgamma_enabled && gl_hwblend.value*/) {
+		// Baker begin hwgamma support
+		if (contents != CONTENTS_EMPTY)
+		{
+			if (!gl_polyblend.value)
+				cl.cshifts[CSHIFT_CONTENTS].percent = 0;
+			else
+				cl.cshifts[CSHIFT_CONTENTS].percent *= gl_cshiftpercent.value;
+		}
 		else
-			cl.cshifts[CSHIFT_CONTENTS].percent *= gl_cshiftpercent.value;
-	}
-	else
-	{
-		cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
+		{
+			cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
+		}
 	}
 #endif
 }
@@ -617,51 +640,51 @@ void V_CalcBlend (void)
 	// Baker hwgamma support
 #ifdef SUPPORTS_ENHANCED_GAMMA
 	if (using_hwgamma) {
-		if (cls.state != ca_connected)
-		{
-			cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
-			cl.cshifts[CSHIFT_POWERUP].percent = 0;
-		}
-		else
-		{
-			V_CalcPowerupCshift ();
-		}
-
-		// drop the damage value
-		cl.cshifts[CSHIFT_DAMAGE].percent -= host_frametime * 150;
-		if (cl.cshifts[CSHIFT_DAMAGE].percent <= 0)
-			cl.cshifts[CSHIFT_DAMAGE].percent = 0;
-
-		// drop the bonus value
-		cl.cshifts[CSHIFT_BONUS].percent -= host_frametime * 100;
-		if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
-			cl.cshifts[CSHIFT_BONUS].percent = 0;
-
-		for (j=0 ; j<NUM_CSHIFTS ; j++)
-		{
-			if ((!gl_cshiftpercent.value || !gl_polyblend.value) && j != CSHIFT_CONTENTS)
-				continue;
-
-			if (j == CSHIFT_CONTENTS)
-				a2 = cl.cshifts[j].percent / 100.0 / 255.0;
-			else
-			a2 = ((cl.cshifts[j].percent * gl_cshiftpercent.value) / 100.0) / 255.0;
-
-			if (!a2)
-				continue;
-			a = a + a2*(1-a);
-
-			a2 /= a;
-			r = r*(1-a2) + cl.cshifts[j].destcolor[0]*a2;
-			g = g*(1-a2) + cl.cshifts[j].destcolor[1]*a2;
-			b = b*(1-a2) + cl.cshifts[j].destcolor[2]*a2;
-		}
-
-		v_blend[0] = r/255.0;
-		v_blend[1] = g/255.0;
-		v_blend[2] = b/255.0;
-		v_blend[3] = bound(0, a, 1);
+	if (cls.state != ca_connected)
+	{
+		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
+		cl.cshifts[CSHIFT_POWERUP].percent = 0;
 	}
+	else
+	{
+		V_CalcPowerupCshift ();
+	}
+
+	// drop the damage value
+	cl.cshifts[CSHIFT_DAMAGE].percent -= host_frametime * 150;
+	if (cl.cshifts[CSHIFT_DAMAGE].percent <= 0)
+		cl.cshifts[CSHIFT_DAMAGE].percent = 0;
+
+	// drop the bonus value
+	cl.cshifts[CSHIFT_BONUS].percent -= host_frametime * 100;
+	if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
+		cl.cshifts[CSHIFT_BONUS].percent = 0;
+
+	for (j=0 ; j<NUM_CSHIFTS ; j++)
+	{
+		if ((!gl_cshiftpercent.value || !gl_polyblend.value) && j != CSHIFT_CONTENTS)
+			continue;
+
+		if (j == CSHIFT_CONTENTS)
+			a2 = cl.cshifts[j].percent / 100.0 / 255.0;
+		else
+		a2 = ((cl.cshifts[j].percent * gl_cshiftpercent.value) / 100.0) / 255.0;
+
+		if (!a2)
+			continue;
+		a = a + a2*(1-a);
+
+		a2 /= a;
+		r = r*(1-a2) + cl.cshifts[j].destcolor[0]*a2;
+		g = g*(1-a2) + cl.cshifts[j].destcolor[1]*a2;
+		b = b*(1-a2) + cl.cshifts[j].destcolor[2]*a2;
+	}
+
+	v_blend[0] = r/255.0;
+	v_blend[1] = g/255.0;
+	v_blend[2] = b/255.0;
+	v_blend[3] = bound(0, a, 1);
+}
 	else
 #endif
 	{  // Baker end hwgamma support
@@ -716,7 +739,7 @@ qboolean V_UpdatePalette_Hardware (void)
 
 	new = false;
 
-	// Determine 
+	// Determine
 	for (i=0 ; i<4 ; i++)
 	{
 		if (v_blend[i] != prev_blend[i])
@@ -748,10 +771,10 @@ qboolean V_UpdatePalette_Hardware (void)
 	if (gl_hwblend.value != old_hwblend)
 	{
 		new = true;
-		
+
 		if (!gl_hwblend.value)
 			hardware_blend_set_off = true;
-		
+
 		old_hwblend = gl_hwblend.value;
 	}
 
@@ -860,7 +883,7 @@ void V_UpdatePalette_Static (qboolean forced)
 	V_CalcBlend ();
 	Con_Printf("Above line ... This is suspicious ...\n");
 #endif
-	
+
 
 	a = v_blend[3];
 	r = 255*v_blend[0]*a;
@@ -1372,12 +1395,12 @@ void R_DrawNameTags(void)
 
 //		if (R_CullSphere(state->origin, 0))
 //			continue;
-		
+
 		VectorCopy (r_refdef.vieworg, OurViewPoint);
 		VectorCopy (state->origin, ThisClientPoint);
 
 		TraceLine (OurViewPoint, ThisClientPoint, stop);
-		
+
 		if (stop[0] != 0 || stop[1] != 0 || stop[2] != 0)  // Quick and dirty traceline
 			continue;
 
@@ -1389,7 +1412,7 @@ void R_DrawNameTags(void)
 			continue;
 		//Con_Printf("Center is x, y, z %f %f %f\n", center[0], center[1], center[2]);
 		Draw_String(center[0]*r_refdef.vrect.width+r_refdef.vrect.x, (1-center[1])*r_refdef.vrect.height+r_refdef.vrect.y, cl.scores[i].name);
-		//Con_Printf("Drawing tag for number %i = %s\n", i, cl.scores[i].name); 
+		//Con_Printf("Drawing tag for number %i = %s\n", i, cl.scores[i].name);
 		//Con_Printf("Drawing at x %i,y i% \n", center[0]*r_refdef.vrect.width+r_refdef.vrect.x, (1-center[1])*r_refdef.vrect.height+r_refdef.vrect.y);
 		//Con_Printf("Our screen %i %i with center0/1 %f %f\n",  r_refdef.vrect.width, r_refdef.vrect.height, center[0], center[1]);
 	}
@@ -1424,6 +1447,10 @@ void V_RenderView (void)
 	if (con_forcedup)
 		return;
 
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+	R_LessenStains();  //qbism ftestain
+#endif
+	
 // don't allow cheats in multiplayer
 	if (cl.maxclients > 1)
 	{

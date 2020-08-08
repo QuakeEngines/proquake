@@ -1938,15 +1938,13 @@ setup:
 	return glt->texnum;
 }
 
-#ifdef SUPPORTS_HLBSP
+#if 0 //SUPPORTS_HLBSP
 byte		vid_gamma_table[256];
 
-void Build_Gamma_Table (void) {
+void HalfLife_Gamma_Table (void) {
 
 	int		i;
-
 	float		inf;
-
 	float   in_gamma;
 
 
@@ -1994,11 +1992,10 @@ void Build_Gamma_Table (void) {
 
 
 }
+#endif
 
 
-
-
-
+#ifdef SUPPORTS_HLBSP
 /*
 
 ================
@@ -2072,7 +2069,7 @@ int GL_LoadTexture32 (char *identifier, int width, int height, byte *data, int m
 
 
 
-#if 1
+#if 0
 
 	if (1 /*gamma*/ ) {
 

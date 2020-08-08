@@ -83,27 +83,24 @@ float		scr_con_current;
 float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
-cvar_t		vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
+
 cvar_t		scr_viewsize = {"viewsize","100", true};
-cvar_t		scr_fov = {"fov","90", true};	// 10 - 170  // Baker 3.60 - Save to config
-cvar_t		default_fov = {"default_fov","0", true, 7};	// Baker 3.85 - Default_fov from FuhQuake
+cvar_t		scr_fov = {"fov","90", true};	// 10 - 170
+cvar_t		default_fov = {"default_fov","0", true};	// Default_fov from FuhQuake
 cvar_t		scr_conspeed = {"scr_conspeed","99999", true};  // Baker 3.60 - Save to config
 cvar_t		scr_centertime = {"scr_centertime","2"};
 cvar_t		scr_showram = {"showram","1"};
 cvar_t		scr_showturtle = {"showturtle","0"};
 cvar_t		scr_showpause = {"showpause","1"};
 cvar_t		scr_printspeed = {"scr_printspeed","8"};
+
+#ifdef SUPPORTS_CONSOLE_SIZING
+cvar_t		vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
+#endif
 cvar_t		gl_triplebuffer = {"gl_triplebuffer", "1", true };
 
 cvar_t      pq_drawfps = {"pq_drawfps", "0", true}; // JPG - draw frames per second
 cvar_t      show_speed = {"show_speed", "0", false}; // JPG - draw frames per second
-
-extern	cvar_t	crosshair;
-extern  cvar_t	cl_crosshaircentered; // Baker 3.60 - centered crosshair
-//extern  cvar_t  cl_colorshow; // Baker 3.99n - show color @ top/left of screen
-extern	cvar_t	cl_crossx;	// JPG - added this
-extern	cvar_t	cl_crossy;  // JPG - added this
-extern  cvar_t  cl_sbar;
 
 qboolean	scr_initialized;		// ready to draw
 
@@ -123,6 +120,7 @@ vrect_t		scr_vrect;
 qboolean	scr_disabled_for_loading;
 qboolean	scr_drawloading;
 float		scr_disabled_time;
+qboolean	scr_skipupdate;
 
 qboolean	block_drawing;
 
@@ -408,7 +406,10 @@ void SCR_Init (void)
 	Cvar_RegisterVariable (&scr_showpause, NULL);
 	Cvar_RegisterVariable (&scr_centertime, NULL);
 	Cvar_RegisterVariable (&scr_printspeed, NULL);
+
+#ifdef GLQUAKE
 	Cvar_RegisterVariable (&gl_triplebuffer, NULL);
+#endif
 
 	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
 	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
@@ -524,6 +525,37 @@ void SCR_DrawFPS (void)
 		ch++;
 	}
 }
+
+#ifdef HTTP_DOWNLOAD
+
+/*
+==============
+SCR_DrawWebPercent
+==============
+*/
+void SCR_DrawWebPercent (void)
+{
+	int x;
+	char buff[20];
+	char *ch;
+
+	snprintf (buff, sizeof(buff), "download: %2.1f%%", (float)(cls.download.percent*100));
+	x = vid.width - (16*8); //64; // 16 x 3 = 48 ... we need 16 x 4 = 64
+
+	Draw_Fill (0, 20, vid.width, 2, 0);
+	Draw_Fill (0, 0, vid.width, 20, 98);
+	Draw_Fill (0, 8, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
+
+	ch = buff;
+
+	while (*ch)
+	{
+		Draw_Character(x, 8, (*ch)+128);
+		x += 8;
+		ch++;
+	}
+}
+#endif
 
 /*
 ==============
@@ -668,10 +700,18 @@ void SCR_SetUpToDrawConsole (void)
 
 	if (clearconsole++ < vid.numpages)
 	{
+#ifndef GLQUAKE
+		scr_copytop = 1;
+		Draw_TileClear (0,(int)scr_con_current,vid.width, vid.height - (int)scr_con_current);
+#endif
 		Sbar_Changed ();
 	}
 	else if (clearnotify++ < vid.numpages)
 	{
+#ifndef GLQUAKE
+		scr_copytop = 1;
+		Draw_TileClear (0,0,vid.width, con_notifylines);
+#endif
 	}
 	else
 	{
@@ -699,6 +739,140 @@ void SCR_DrawConsole (void)
 	}
 }
 
+#ifdef SUPPORTS_AUTOID_HARDWARE
+//=============================================================================
+
+int qglProject (float objx, float objy, float objz, float *model, float *proj, int *view, float* winx, float* winy, float* winz)
+{
+	int	i;
+	float	in[4], out[4];
+
+	in[0] = objx, in[1] = objy, in[2] = objz, in[3] = 1.0;
+
+	for (i=0 ; i<4 ; i++)
+		out[i] = in[0] * model[0*4+i] + in[1] * model[1*4+i] + in[2] * model[2*4+i] + in[3] * model[3*4+i];
+
+	for (i=0 ; i<4 ; i++)
+		in[i]  = out[0] * proj[0*4+i] + out[1] * proj[1*4+i] + out[2] * proj[2*4+i] + out[3] * proj[3*4+i];
+
+	if (!in[3])
+		return 0;
+
+	VectorScale (in, 1 / in[3], in);
+
+	*winx = view[0] + (1 + in[0]) * view[2] / 2;
+	*winy = view[1] + (1 + in[1]) * view[3] / 2;
+	*winz = (1 + in[2]) / 2;
+
+	return 1;
+}
+
+typedef struct player_autoid_s
+{
+	float		x, y;
+	scoreboard_t	*player;
+} autoid_player_t;
+
+static	autoid_player_t	autoids[MAX_SCOREBOARDNAME];
+static	int		autoid_count;
+
+extern cvar_t scr_autoid;
+void SCR_SetupAutoID (void)
+{
+	int		i, view[4];
+	float		model[16], project[16], winz, *origin;
+	entity_t	*state;
+	autoid_player_t	*id;
+	vec3_t	OurViewPoint;
+	vec3_t  ThisClientPoint;
+	vec3_t	stop;
+	vec3_t	edist;
+	void TraceLine (vec3_t start, vec3_t end, vec3_t impact);
+
+	autoid_count = 0;
+
+	if (!scr_autoid.value || cls.state != ca_connected || !cls.demoplayback)
+		return;
+
+	glGetFloatv (GL_MODELVIEW_MATRIX, model);
+	glGetFloatv (GL_PROJECTION_MATRIX, project);
+
+	glGetIntegerv (GL_VIEWPORT, view);
+
+	for (i = 0 ; i < cl.maxclients ; i++)
+	{
+		state = &cl_entities[1+i];
+
+		if (!state->model->name)		// NULL model
+			continue;
+
+		if (!(state->modelindex == cl_modelindex[mi_player]))	// Not a player model
+			continue;
+
+		if (ISDEAD(state->frame)) // Dead
+			continue;
+
+//		if (strcmp(state->model->name, "progs/player.mdl"))
+//			continue;
+
+
+		if (R_CullSphere(state->origin, 0))
+			continue;
+
+		// Logic
+		// Fill in one value with our viewpoint and the next value with target
+		// Do traceline
+
+		
+		VectorCopy (r_refdef.vieworg, OurViewPoint);
+		VectorCopy (state->origin, ThisClientPoint);
+
+		TraceLine (OurViewPoint, ThisClientPoint, stop);
+		if (stop[0] != 0 || stop[1] != 0 || stop[2] != 0)  // Quick and dirty traceline
+			continue;
+
+#if 1
+		if (!CL_Visible_To_Client(OurViewPoint, ThisClientPoint)) {
+			// We can't see it
+			//Con_Printf("Cannot see it\n");
+			continue;
+			
+		}
+#endif
+
+		id = &autoids[autoid_count];
+		id->player = &cl.scores[i];
+
+#if 0
+		Con_Printf("Player %s\n", id->player->name); // Print name of seen player
+		Con_Printf("Client num %i\n", i);
+		Con_Printf("modelname is %s\n", state->model->name);
+		Con_Printf("modelindex is %i\n", state->modelindex);
+		//Con_Printf("modelname char one is %i\n", state->model->name[0]);
+		Con_Printf("playermodel index is %i\n", cl_modelindex[mi_player]);
+#endif
+
+		origin = state->origin;
+		if (qglProject(origin[0], origin[1], origin[2] + 28, model, project, view, &id->x, &id->y, &winz))
+			autoid_count++;
+	}
+}
+
+void SCR_DrawAutoID (void)
+{
+	int	i, x, y;
+
+	if (!scr_autoid.value || cls.state != ca_connected || !cls.demoplayback)
+		return;
+
+	for (i = 0 ; i < autoid_count ; i++)
+	{
+		x = autoids[i].x * vid.width / glwidth;
+		y = (glheight - autoids[i].y) * vid.height / glheight;
+		Draw_String (x - strlen(autoids[i].player->name) * 4, y - 8, autoids[i].player->name);
+	}
+}
+#endif
 
 /*
 ==============================================================================
@@ -881,9 +1055,15 @@ Displays a text string in the center of the screen and waits for a Y or N
 keypress.
 ==================
 */
+// Baker Note: Because this loop gets control a connection to a server can die here
 int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
 	double time1, time2; //johnfitz -- timeout
+
+#ifdef FLASH
+	return true;	//For Flash we receive key messages via the Main.as file, between calls to the Alchemy C source.
+					//We therefore cant check what the user response was, so we just assume that it was 'yes'.
+#endif
 
 	if (cls.state == ca_dedicated)
 		return true;
@@ -891,12 +1071,12 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 	scr_notifystring = text;
 
 // draw a fresh screen
+#ifndef GLQUAKE // Baker: find out why
 	scr_fullupdate = 0;
+#endif
+
 	scr_drawdialog = true;
 	SCR_UpdateScreen ();
-#if !defined(MACOSX)
-        scr_drawdialog = false;
-#endif /* !MACOSX  */
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
@@ -909,11 +1089,13 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 		if (timeout) time2 = Sys_DoubleTime (); //johnfitz -- zero timeout means wait forever.
 	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE  && time2 <= time1);
 
-#ifdef MACOSX_UNKNOWN_DIFFERENCE
-        scr_drawdialog = false;
-#endif /* MACOSX */
+	scr_drawdialog = false;
+	
+#ifndef GLQUAKE // Baker: find out why?
+	// Baker: maybe because only dialog is being drawn
 	scr_fullupdate = 0;
-	SCR_UpdateScreen ();
+#endif
+	
 
 	//johnfitz -- timeout
 	if (time2 > time1)
@@ -922,7 +1104,6 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 
 	return key_lastpress == 'y';
 }
-
 
 //=============================================================================
 
@@ -979,7 +1160,7 @@ void SCR_UpdateScreen (void)
 	if (cls.state == ca_dedicated)
 		return;				// stdout only
 
-	if (block_drawing)
+	if (/*scr_skipupdate ||*/ block_drawing) // Baker: mirrored WinQuake for glpro in -dedicated mode -- wait ... test!
 		return;
 
 	if (scr_disabled_for_loading)
@@ -1002,6 +1183,12 @@ void SCR_UpdateScreen (void)
 	}
 #endif
 
+#ifdef MACOSX
+	if (qMinimized)
+			return;
+#endif
+
+
 	vid.numpages = 2 + (gl_triplebuffer.value ? 1 : 0); //johnfitz -- in case gl_triplebuffer is not 0 or 1
 	scr_copytop = 0;
 	scr_copyeverything = 0;
@@ -1009,7 +1196,6 @@ void SCR_UpdateScreen (void)
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 
 	// determine size of refresh window
-
 	if (oldfov != scr_fov.value)
 	{
 		oldfov = scr_fov.value;
@@ -1033,12 +1219,16 @@ void SCR_UpdateScreen (void)
 
 	V_RenderView ();
 
+#ifdef SUPPORTS_AUTOID_HARDWARE
+	SCR_SetupAutoID ();
+#endif
+
 	GL_Set2D ();
 
 // added by joe - IMPORTANT: this _must_ be here so that
 //			     palette flashes take effect in windowed mode too.
 #ifdef SUPPORTS_ENHANCED_GAMMA
-	if (using_hwgamma) // Baker begin hwgamma support
+	if (using_hwgamma && vid_hwgamma_enabled && gl_hwblend.value) // Baker begin hwgamma support
 		R_PolyBlend (); // Baker end hwgamma support
 #endif
 
@@ -1068,7 +1258,10 @@ void SCR_UpdateScreen (void)
 	{
 		Sbar_FinaleOverlay ();
 		SCR_CheckDrawCenterString ();
-		SCR_DrawVolume (); // Baker 3.60 - Draw volume
+	}
+	else if (cl.intermission == 3 && key_dest == key_game) //cut-scene
+	{
+		SCR_CheckDrawCenterString ();
 	}
 	else
 	{
@@ -1078,6 +1271,12 @@ void SCR_UpdateScreen (void)
 		SCR_DrawPause ();
 
 		if (cls.state == ca_connected) {
+#ifdef SUPPORTS_AUTOID_HARDWARE
+			SCR_DrawAutoID ();
+#endif
+#ifdef SUPPORTS_AUTOID_SOFTWARE
+			R_DrawNameTags(); 
+#endif
 			Draw_Crosshair ();
 		SCR_DrawFPS (); // JPG - draw FPS
 			SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
@@ -1089,19 +1288,44 @@ void SCR_UpdateScreen (void)
 		if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
 			SCR_DrawConsole ();
 
+#ifdef HTTP_DOWNLOAD
+		if (cls.download.web)
+			SCR_DrawWebPercent ();
+#endif
+
 		M_Draw ();
 		Mat_Update ();	// JPG
 	}
 
+#if 0
+	// Baker: maybe make a developer mode thing?
+	Draw_String(1,1, key_dest == 0 ? "key_game" : (key_dest == 1 ? "key_console" : (key_dest == 2 ? "key_message" : "key_menu")));
+	Draw_String(16,16, va("console forced: %i", con_forcedup ));
+#endif
+
 	// Baker hwgamma support
 #ifdef SUPPORTS_ENHANCED_GAMMA
 	if (using_hwgamma) {
+		static qboolean hwblend_already_off=false;
 		R_BrightenScreen ();
-		V_UpdatePaletteNew ();
+
+		if (gl_hwblend.value !=0 || hwblend_already_off==false)  // We must do hardware palette once to turn it off!
+		{
+			if(V_UpdatePalette_Hardware ())
+				V_UpdatePalette_Static (true);
+		}
+		else 
+		{
+//			Con_DPrintf("Doing static ...\n");
+			V_UpdatePalette_Static (false);
+		}
+
+		hwblend_already_off = (!gl_hwblend.value && !hwblend_already_off);
 	} else
 #endif
 	{
-	V_UpdatePaletteOld ();
+//		R_BrightenScreen2 ();
+		V_UpdatePalette_Static (false);
 	}
 	// Baker end hwgamma support
 

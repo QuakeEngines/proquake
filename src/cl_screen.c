@@ -72,6 +72,7 @@ console is:
 
 */
 
+
 int			glx, gly, glwidth, glheight;
 
 // only the refresh window will be updated unless these variables are flagged
@@ -82,24 +83,28 @@ float		scr_con_current;
 float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
-
+cvar_t		vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
 cvar_t		scr_viewsize = {"viewsize","100", true};
-cvar_t		scr_fov = {"fov","90", true};	// 10 - 170
-cvar_t		default_fov = {"default_fov","0", true};	// Default_fov from FuhQuake
+cvar_t		scr_fov = {"fov","90", true};	// 10 - 170  // Baker 3.60 - Save to config
+cvar_t		default_fov = {"default_fov","0", true, 7};	// Baker 3.85 - Default_fov from FuhQuake
 cvar_t		scr_conspeed = {"scr_conspeed","99999", true};  // Baker 3.60 - Save to config
 cvar_t		scr_centertime = {"scr_centertime","2"};
 cvar_t		scr_showram = {"showram","1"};
 cvar_t		scr_showturtle = {"showturtle","0"};
 cvar_t		scr_showpause = {"showpause","1"};
 cvar_t		scr_printspeed = {"scr_printspeed","8"};
-
-#ifdef SUPPORTS_CONSOLE_SIZING
-cvar_t		vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
-#endif
 cvar_t		gl_triplebuffer = {"gl_triplebuffer", "1", true };
 
 cvar_t      pq_drawfps = {"pq_drawfps", "0", true}; // JPG - draw frames per second
 cvar_t      show_speed = {"show_speed", "0", false}; // JPG - draw frames per second
+
+
+extern	cvar_t	crosshair;
+extern  cvar_t	cl_crosshaircentered; // Baker 3.60 - centered crosshair
+//extern  cvar_t  cl_colorshow; // Baker 3.99n - show color @ top/left of screen
+extern	cvar_t	cl_crossx;	// JPG - added this
+extern	cvar_t	cl_crossy;  // JPG - added this
+extern  cvar_t  cl_sbar;
 
 qboolean	scr_initialized;		// ready to draw
 
@@ -119,7 +124,6 @@ vrect_t		scr_vrect;
 qboolean	scr_disabled_for_loading;
 qboolean	scr_drawloading;
 float		scr_disabled_time;
-qboolean	scr_skipupdate;
 
 qboolean	block_drawing;
 
@@ -164,26 +168,6 @@ void SCR_CenterPrint (char *str)
 	}
 }
 
-#ifndef GLQUAKE // Baker: software to erase the center string in small viewsizes
-void SCR_EraseCenterString (void)
-{
-	int		y;
-
-	if (scr_erase_center++ > vid.numpages)
-	{
-		scr_erase_lines = 0;
-		return;
-	}
-
-	if (scr_center_lines <= 4)
-		y = vid.height*0.35;
-	else
-		y = 48;
-
-	scr_copytop = 1;
-	Draw_TileClear (0, y,vid.width, 8*scr_erase_lines);
-}
-#endif
 
 void SCR_DrawCenterString (void)
 {
@@ -253,6 +237,7 @@ void SCR_CheckDrawCenterString (void)
 
 //=============================================================================
 
+
 /*
 ====================
 CalcFov
@@ -281,9 +266,10 @@ Internal use only
 */
 static void SCR_CalcRefdef (void)
 {
-	int				h;
-	float			size;
+	int		h;
+	float		size;
 	qboolean		full = false;
+
 
 	scr_fullupdate = 0;		// force a background redraw
 	vid.recalc_refdef = 0;
@@ -304,7 +290,6 @@ static void SCR_CalcRefdef (void)
 		Cvar_Set ("fov","10");
 	if (scr_fov.value > 170)
 		Cvar_Set ("fov","170");
-
 
 // intermission is always full screen
 	if (cl.intermission)
@@ -376,6 +361,7 @@ static void SCR_CalcRefdef (void)
 	scr_vrect = r_refdef.vrect;
 }
 
+
 /*
 =================
 SCR_SizeUp_f
@@ -388,6 +374,7 @@ void SCR_SizeUp_f (void)
 	Cvar_SetValue ("viewsize",scr_viewsize.value+10);
 	vid.recalc_refdef = 1;
 }
+
 
 /*
 =================
@@ -423,10 +410,7 @@ void SCR_Init (void)
 	Cvar_RegisterVariable (&scr_showpause, NULL);
 	Cvar_RegisterVariable (&scr_centertime, NULL);
 	Cvar_RegisterVariable (&scr_printspeed, NULL);
-
-#ifdef GLQUAKE
 	Cvar_RegisterVariable (&gl_triplebuffer, NULL);
-#endif
 
 	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
 	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
@@ -667,6 +651,7 @@ void SCR_DrawLoading (void)
 
 //=============================================================================
 
+
 /*
 ==================
 SCR_SetUpToDrawConsole
@@ -715,18 +700,10 @@ void SCR_SetUpToDrawConsole (void)
 
 	if (clearconsole++ < vid.numpages)
 	{
-#ifndef GLQUAKE
-		scr_copytop = 1;
-		Draw_TileClear (0,(int)scr_con_current,vid.width, vid.height - (int)scr_con_current);
-#endif
 		Sbar_Changed ();
 	}
 	else if (clearnotify++ < vid.numpages)
 	{
-#ifndef GLQUAKE
-		scr_copytop = 1;
-		Draw_TileClear (0,0,vid.width, con_notifylines);
-#endif
 	}
 	else
 	{
@@ -1050,15 +1027,9 @@ Displays a text string in the center of the screen and waits for a Y or N
 keypress.
 ==================
 */
-// Baker Note: Because this loop gets control a connection to a server can die here
 int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
 	double time1, time2; //johnfitz -- timeout
-
-#ifdef FLASH
-	return true;	//For Flash we receive key messages via the Main.as file, between calls to the Alchemy C source.
-					//We therefore cant check what the user response was, so we just assume that it was 'yes'.
-#endif
 
 	if (cls.state == ca_dedicated)
 		return true;
@@ -1066,12 +1037,10 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 	scr_notifystring = text;
 
 // draw a fresh screen
-#ifndef GLQUAKE // Baker: find out why
-	scr_fullupdate = 0;
-#endif
-
+//	scr_fullupdate = 0;
 	scr_drawdialog = true;
 	SCR_UpdateScreen ();
+	scr_drawdialog = false;
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
@@ -1084,10 +1053,7 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 		if (timeout) time2 = Sys_DoubleTime (); //johnfitz -- zero timeout means wait forever.
 	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE && time2 <= time1);
 
-	scr_drawdialog = false;
-	
-	// Baker: gl doesn't use scr_fullupdate, but has it defined
-	scr_fullupdate = 0;
+//	SCR_UpdateScreen (); //johnfitz -- commented out
 
 	//johnfitz -- timeout
 	if (time2 > time1)
@@ -1096,6 +1062,7 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 
 	return key_lastpress == 'y';
 }
+
 
 //=============================================================================
 
@@ -1149,14 +1116,10 @@ needs almost the entire 256k of stack space!
 */
 void SCR_UpdateScreen (void)
 {
-#ifdef SUPPORTS_3D_CVARS
-	static float	oldlcd_x;
-#endif
-
 	if (cls.state == ca_dedicated)
 		return;				// stdout only
 
-	if (/*scr_skipupdate ||*/ block_drawing) // Baker: mirrored WinQuake for glpro in -dedicated mode -- wait ... test!
+	if (block_drawing)
 		return;
 
 	if (scr_disabled_for_loading)
@@ -1179,32 +1142,19 @@ void SCR_UpdateScreen (void)
 	}
 #endif
 
-#ifdef MACOSX
-	if (qMinimized)
-			return;
-#endif
-
-
 	vid.numpages = 2 + (gl_triplebuffer.value ? 1 : 0); //johnfitz -- in case gl_triplebuffer is not 0 or 1
 	scr_copytop = 0;
 	scr_copyeverything = 0;
 
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 
-// determine size of refresh window
+	// determine size of refresh window
+
 	if (oldfov != scr_fov.value)
 	{
 		oldfov = scr_fov.value;
 		vid.recalc_refdef = true;
 	}
-
-#ifdef SUPPORTS_3D_CVARS
-	if (oldlcd_x != lcd_x.value)
-	{
-		oldlcd_x = lcd_x.value;
-		vid.recalc_refdef = true;
-	}
-#endif
 
 	if (oldscreensize != scr_viewsize.value)
 	{
@@ -1219,50 +1169,15 @@ void SCR_UpdateScreen (void)
 	}
 
 // do 3D refresh drawing, and then update the screen
-#ifndef GLQUAKE
-	// Software clears the tile before the 3D
-	D_EnableBackBufferAccess ();	// of all overlay stuff if drawing directly
-
-
-	if (scr_fullupdate++ < vid.numpages)
-	{	// clear the entire screen
-		scr_copyeverything = 1;
-		Draw_TileClear (0,0,vid.width,vid.height);
-		Sbar_Changed ();
-	}
-
-	pconupdate = NULL;
-#endif
-
 	SCR_SetUpToDrawConsole ();
 
-#ifndef GLQUAKE
-	SCR_EraseCenterString ();	// Software needs this for small viewsize 10 windows to tileclear it
-#endif
-
-#ifndef GLQUAKE
-	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in for linear writes all the time
-#endif
-
-#ifndef GLQUAKE // Although it wouldn't hurt to remove this ifdef
-	VID_LockBuffer ();
-#endif
 	V_RenderView ();
-#ifndef GLQUAKE // Although it wouldn't hurt to remove this ifdef	
-	VID_UnlockBuffer ();
-#endif
 
 #ifdef SUPPORTS_AUTOID_HARDWARE
 	SCR_SetupAutoID ();
 #endif
 
-#ifdef GLQUAKE
 	GL_Set2D ();
-#endif
-
-#ifndef GLQUAKE
-	D_EnableBackBufferAccess ();	// of all overlay stuff if drawing directly
-#endif
 
 // added by joe - IMPORTANT: this _must_ be here so that
 //			     palette flashes take effect in windowed mode too.
@@ -1275,6 +1190,7 @@ void SCR_UpdateScreen (void)
 
 	if (cl_sbar.value >=1.0 || scr_viewsize.value < 100.0)
 		SCR_TileClear ();
+
 
 	if (scr_drawdialog) //new game confirm
 	{
@@ -1296,10 +1212,7 @@ void SCR_UpdateScreen (void)
 	{
 		Sbar_FinaleOverlay ();
 		SCR_CheckDrawCenterString ();
-	}
-	else if (cl.intermission == 3 && key_dest == key_game) //cut-scene
-	{
-		SCR_CheckDrawCenterString ();
+		SCR_DrawVolume (); // Baker 3.60 - Draw volume
 	}
 	else
 	{
@@ -1308,6 +1221,7 @@ void SCR_UpdateScreen (void)
 		SCR_DrawTurtle ();
 		SCR_DrawPause ();
 		
+
 		if (cls.state == ca_connected) {
 #ifdef SUPPORTS_AUTOID_HARDWARE
 			SCR_DrawAutoID ();
@@ -1334,10 +1248,6 @@ void SCR_UpdateScreen (void)
 		M_Draw ();
 		Mat_Update ();	// JPG
 	}
-
-#ifndef GLQUAKE
-	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in for linear writes all the time
-#endif
 
 #if 0
 	// Baker: maybe make a developer mode thing?
@@ -1377,4 +1287,3 @@ void SCR_UpdateScreen (void)
 
 	GL_EndRendering ();
 }
-

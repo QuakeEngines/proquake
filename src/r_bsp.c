@@ -631,6 +631,10 @@ void R_RecursiveWorldNode (mnode_t *node, int clipflags)
 R_RenderWorld
 ================
 */
+#ifdef SUPPORTS_SW_SKYBOX
+extern qboolean r_drawskybox; // Manoel Kasimier - skyboxes
+extern void R_EmitSkyBox (void); // Manoel Kasimier - skyboxes
+#endif
 void R_RenderWorld (void)
 {
 	int			i;
@@ -645,6 +649,11 @@ void R_RenderWorld (void)
 	r_pcurrentvertbase = clmodel->vertexes;
 
 	R_RecursiveWorldNode (clmodel->nodes, 15);
+
+#ifdef SUPPORTS_SW_SKYBOX	
+	if (r_drawskybox) // Manoel Kasimier - skyboxes
+		R_EmitSkyBox (); // Manoel Kasimier - skyboxes
+#endif
 
 // if the driver wants the polygons back to front, play the visible ones back
 // in that order

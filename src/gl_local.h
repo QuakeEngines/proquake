@@ -152,9 +152,8 @@ extern	cvar_t	gl_flashblend;
 extern	cvar_t	gl_nocolors;
 extern	cvar_t	gl_doubleeyes;
 extern	cvar_t	gl_playermip;
-extern	cvar_t	gl_ringalpha;
 extern	cvar_t	gl_fullbright;
-
+extern	cvar_t	r_ringalpha;
 
 
 
@@ -228,7 +227,6 @@ void DrawGLWaterPoly (glpoly_t *p);
 void DrawGLWaterPolyLightmap (glpoly_t *p);
 void GL_BuildLightmaps (void);
 texture_t *R_TextureAnimation (texture_t *base);
-#define ISTRANSPARENT(ent)	((ent)->istransparent && (ent)->transparency > 0 && (ent)->transparency < 1)
 
 // gl_rmisc.c
 void R_TimeRefresh_f (void);

@@ -29,9 +29,12 @@ key up events are sent even if in console mode
 
 */
 
+#define		HISTORY_FILE_NAME	"id1/proquake_history.txt"
 
-#define		MAXCMDLINE	256
-char		key_lines[32][MAXCMDLINE];
+#define      MAXCMDLINE   256
+#define		CMDLINES	64
+
+char   key_lines[CMDLINES][MAXCMDLINE];
 int		key_linepos;
 int		shift_down=false;
 int		key_lastpress;
@@ -49,6 +52,36 @@ qboolean	menubound[256];		// if true, can't be rebound while in menu
 int		keyshift[256];		// key to map to if shift held down in console
 int		key_repeats[256];	// if > 1, it is autorepeating
 qboolean	keydown[256];
+qboolean	keygamedown[256];  // Baker: to prevent -aliases from triggering
+
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
+cvar_t		cl_key_altenter = {"cl_key_altenter", "1", true}; // Baker 3.99q: allows user to disable new ALT-ENTER behavior
+#endif
+
+#ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
+static qboolean key_international = true;
+cvar_t		in_keymap = {"in_keymap", "1", true};
+#else
+static qboolean key_international = false;
+#endif
+
+cvar_t	    cl_bindprotect = {"cl_bindprotect","2", true};
+
+
+#ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
+void KEY_Keymap_f (void) {
+	// called when in_keymap changes
+	Key_ClearAllStates();
+
+	if (in_keymap.value) {
+		key_international = true;
+		Con_Printf("International Keyboard is ON\n");
+	} else {
+		key_international = false;
+		Con_Printf("International Keyboard is OFF\n");
+	}
+}
+#endif
 
 typedef struct
 {
@@ -97,6 +130,10 @@ keyname_t keynames[] =
 	{"HOME", K_HOME},
 	{"END", K_END},
 
+	{"PAUSE", K_PAUSE},
+
+	{"MWHEELUP", K_MWHEELUP},
+	{"MWHEELDOWN", K_MWHEELDOWN},
 	{"MOUSE1", K_MOUSE1},
 	{"MOUSE2", K_MOUSE2},
 	{"MOUSE3", K_MOUSE3},
@@ -172,13 +209,12 @@ keyname_t keynames[] =
 	{"AUX31", K_AUX31},
 	{"AUX32", K_AUX32},
 
-	{"PAUSE", K_PAUSE},
-
-	{"MWHEELUP", K_MWHEELUP},
-	{"MWHEELDOWN", K_MWHEELDOWN},
 
 	{"SEMICOLON", ';'},	// because a raw semicolon seperates commands
-
+	{"TILDE", '~'},
+	{"BACKQUOTE", '`'},
+	{"QUOTE", '"'},
+	{"APOSTROPHE", '\''},
 	{NULL,0}
 };
 
@@ -189,6 +225,7 @@ keyname_t keynames[] =
 
 ==============================================================================
 */
+
 
 /*
 ====================
@@ -293,7 +330,7 @@ void Key_Console (int key)
 		Cbuf_AddText (key_lines[edit_line]+1);	// skip the >
 		Cbuf_AddText ("\n");
 		Con_Printf ("%s\n",key_lines[edit_line]);
-		edit_line = (edit_line + 1) & 31;
+		edit_line = (edit_line + 1) & (CMDLINES-1);
 		history_line = edit_line;
 		key_lines[edit_line][0] = ']';
 		key_linepos = 1;
@@ -341,7 +378,7 @@ void Key_Console (int key)
 				best = least;
 		}
 
-		sprintf(key_lines[edit_line], "]%s ", best);
+		snprintf(key_lines[edit_line], sizeof(key_lines[edit_line]), "]%s ", best);
 		key_linepos = strlen(key_lines[edit_line]);
 		return;
 	}
@@ -357,7 +394,7 @@ void Key_Console (int key)
 	{
 		do
 		{
-			history_line = (history_line - 1) & 31;
+			history_line = (history_line - 1) & (CMDLINES-1);
 		} while (history_line != edit_line
 				&& !key_lines[history_line][1]);
 		if (history_line == edit_line)
@@ -373,7 +410,7 @@ void Key_Console (int key)
 			return;
 		do
 		{
-			history_line = (history_line + 1) & 31;
+			history_line = (history_line + 1) & (CMDLINES-1);
 		}
 		while (history_line != edit_line && !key_lines[history_line][1]);
 
@@ -563,6 +600,7 @@ char *Key_KeynumToString (int keynum)
 	return "<UNKNOWN KEYNUM>";
 }
 
+
 /*
 ===================
 Key_SetBinding
@@ -609,7 +647,7 @@ void Key_Unbind_f (void)
 
 	if (Cmd_Argc() != 2)
 	{
-		Con_Printf ("unbind <key> : remove commands from a key\n");
+		Con_Printf ("Usage: %s <key> : remove commands from a key\n", Cmd_Argv(0));
 		return;
 	}
 
@@ -623,9 +661,27 @@ void Key_Unbind_f (void)
 	Key_SetBinding (b, "");
 }
 
+
+extern  keydest_t		key_dest;
+extern  qboolean com_modified;
 void Key_Unbindall_f (void)
 {
 	int		i;
+	// Baker 3.99n: unbind all protection only works for base gamedir for mod compatibility
+	if (cls.state == ca_connected && !com_modified && (cl_bindprotect.value!=0) && (key_dest!=key_menu)) {
+
+		if (cl_bindprotect.value==2) {
+			// Prompt
+			if (!SCR_ModalMessage("Unbindall keys entered, allow? y/n\n",0.0f))
+				return;
+		} else {
+			// Deny And Notify
+			Con_Printf("unbindall keys command entered and denied by cl_bindprotect.\n");
+			return;
+		}
+	}
+
+
 
 	for (i=0 ; i<256 ; i++)
 		if (keybindings[i])
@@ -716,6 +772,66 @@ void Key_WriteBindings (FILE *f)
 }
 
 
+
+// Added by VVD {
+void History_Init (void)
+{
+   int i, c;
+   FILE *hf;
+
+   for (i = 0; i < CMDLINES; i++) {
+      key_lines[i][0] = ']';
+      key_lines[i][1] = 0;
+   }
+   key_linepos = 1;
+
+//   if (cl_savehistory.value)
+      if ((hf = fopen(HISTORY_FILE_NAME, "rt")))
+      {
+         do
+         {
+            i = 1;
+            do
+            {
+               c = fgetc(hf);
+               key_lines[edit_line][i++] = c;
+            } while (c != '\n' && c != EOF && i < MAXCMDLINE);
+            key_lines[edit_line][i - 1] = 0;
+            edit_line = (edit_line + 1) & (CMDLINES - 1);
+         } while (c != EOF && edit_line < CMDLINES);
+         fclose(hf);
+
+         history_line = edit_line = (edit_line - 1) & (CMDLINES - 1);
+         key_lines[edit_line][0] = ']';
+         key_lines[edit_line][1] = 0;
+      }
+}
+
+void History_Shutdown (void)
+{
+   int i;
+   FILE *hf;
+
+//   if (cl_savehistory.value)
+      if ((hf = fopen(HISTORY_FILE_NAME, "wt")))
+      {
+         i = edit_line;
+         do
+         {
+            i = (i + 1) & (CMDLINES - 1);
+         } while (i != edit_line && !key_lines[i][1]);
+
+         do
+         {
+				// fprintf(hf, "%s\n", wcs2str(key_lines[i] + 1));
+            fprintf(hf, "%s\n", key_lines[i] + 1);
+            i = (i + 1) & (CMDLINES - 1);
+         } while (i != edit_line && key_lines[i][1]);
+         fclose(hf);
+      }
+}
+// } Added by VVD	
+
 /*
 ===================
 Key_Init
@@ -725,12 +841,16 @@ void Key_Init (void)
 {
 	int		i;
 
+	History_Init ();
+
+#if 0
 	for (i=0 ; i<32 ; i++)
 	{
 		key_lines[i][0] = ']';
 		key_lines[i][1] = 0;
 	}
 	key_linepos = 1;
+#endif
 
 // init ascii characters in console mode
 	for (i=32 ; i<128 ; i++)
@@ -742,10 +862,13 @@ void Key_Init (void)
 	consolekeys[K_UPARROW] = true;
 	consolekeys[K_DOWNARROW] = true;
 	consolekeys[K_BACKSPACE] = true;
+	consolekeys[K_INS] = true;
+	consolekeys[K_DEL] = true;
+	consolekeys[K_HOME] = true;
+	consolekeys[K_END] = true;
 	consolekeys[K_PGUP] = true;
 	consolekeys[K_PGDN] = true;
-	consolekeys[K_HOME] = true;  // JPG - they forgot this!!!
-	consolekeys[K_END] = true;   // JPG - they forgot this too!!!
+
 	consolekeys[K_SHIFT] = true;
 	consolekeys[K_MWHEELUP] = true;
 	consolekeys[K_MWHEELDOWN] = true;
@@ -754,8 +877,8 @@ void Key_Init (void)
 
 #ifdef MACOSX
 
-        consolekeys[K_EQUAL_PAD] = true;
-        consolekeys[K_SLASH_PAD] = true;
+    consolekeys[K_EQUAL_PAD] = true;
+    consolekeys[K_SLASH_PAD] = true;
 	consolekeys[K_ASTERISK_PAD] = true;
 	consolekeys[K_MINUS_PAD] = true;
 	consolekeys[K_PLUS_PAD] = true;
@@ -806,11 +929,15 @@ void Key_Init (void)
 
 // register our functions
 
-
+	Cvar_RegisterVariable(&cl_bindprotect, NULL);
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
+	Cvar_RegisterVariable(&cl_key_altenter, NULL);
+#endif
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
 	Cmd_AddCommand ("bind",Key_Bind_f);
 	Cmd_AddCommand ("unbind",Key_Unbind_f);
 	Cmd_AddCommand ("unbindall",Key_Unbindall_f);
+
 
 }
 
@@ -822,12 +949,31 @@ Called by the system between frames for both key up and key down events
 Should NOT be called during an interrupt!
 ===================
 */
+extern qboolean	cl_inconsole; // Baker 3.76 - from Qrack
 void Key_Event (int key, qboolean down)
 {
 	char	*kb;
 	char	cmd[1024];
+	qboolean wasgamekey = false;
 
 	keydown[key] = down;
+
+
+	// Baker: the problem with this is some maybe a keydown is getting
+	// ignored sometimes?
+	wasgamekey = keygamedown[key]; // Baker: to prevent -aliases being triggered in-console needlessly
+	if (!down) {
+		keygamedown[key] = false; // We can always set keygamedown to false if key is released
+	}
+	// Baker: the only situation this doesn't address is how in
+	// Windowed mode we stop receiving mouse event if console is up
+	// because the mouse is freed.  Technically we should clear the mouse
+	// state if this occurs.  But this is minor, so maybe next time.
+	// For example, if you press fire with mouse1 in Windowed mode and then
+	// pull the console down, the mouse control is released to Windows
+	// and we no longer get mouse events, so the gun will be perpetually
+	// firing.
+
 
 	if (!down)
 		key_repeats[key] = 0;
@@ -853,13 +999,13 @@ void Key_Event (int key, qboolean down)
 
 		// JPG 1.05 - added K_PGUP, K_PGDN, K_TAB and check to make sure that key_dest isn't key_game
 		// JPG 3.02 - added con_forcedup check
-		if ((key_repeats[key] > 1) && ((key != K_BACKSPACE && key != K_PAUSE && key != K_PGUP && key != K_PGDN && key != K_TAB) || ((key_dest == key_game) && !con_forcedup)))
+		if ((key_repeats[key] > 1) && ((key != K_BACKSPACE && key != K_PAUSE && key != K_PGUP && key != K_PGDN && key != K_TAB) || ((key_dest == key_game) && !con_forcedup)))   // JPG 1.05 - added K_PGUP, K_PGDN, K_TAB and check to make sure that key_dest isn't key_game  // JPG 3.02 - added con_forcedup check
 		{
 			return;	// ignore most autorepeats
 		}
 
-		if (key >= K_MOUSE4  && key<= K_MOUSE5 && !keybindings[key])
-			Con_Printf ("%s is unbound, hit F4 to set.\n", Key_KeynumToString (key) );
+//		if (key >= K_MOUSE5 && key<= K_MOUSE8 && !keybindings[key])
+//			Con_Printf ("%s is unbound, hit F4 to set.\n", Key_KeynumToString (key) );
 	}
 
 	if (key == K_SHIFT)
@@ -901,6 +1047,9 @@ void Key_Event (int key, qboolean down)
 // downs can be matched with ups
 	if (!down)
 	{
+		// Baker: we only want to trigger -alias if appropriate
+		//        but we ALWAYS want to exit is key is up
+		if (wasgamekey) {
 		kb = keybindings[key];  // Baker 3.703 is this right
 		if (kb && kb[0] == '+')
 		{
@@ -916,16 +1065,57 @@ void Key_Event (int key, qboolean down)
 				Cbuf_AddText (cmd);
 			}
 		}
+		}
 		return;
 	}
 
 //
 // during demo playback, most keys bring up the main menu
 //
-	if (cls.demoplayback && down && consolekeys[key] && key_dest == key_game)
+	if (cls.demoplayback && down && consolekeys[key] && key_dest == key_game && key != K_TAB  && key != K_ENTER  && key != K_ALT &&  key != K_SHIFT  && key != K_CTRL  && key != K_PGUP && key != K_PGDN && key != 0x3d && key != 0x2d) // Baker 3.60 -- permit TAB to display scorebar during demo playback / Baker 3.67: add +/- keys 0x22d = -  0x3d = +
 	{
 		M_ToggleMenu_f ();
 		return;
+	}
+// Baker 3.76 - Modified demo play keys adapted from QRack but with different scheme
+
+	if ((cls.demoplayback) && (cl_inconsole == false))
+	{
+		switch (key)
+		{
+			case K_PGUP:
+				if (cl_demospeed.value != 1 || cl_demorewind.value !=0)
+				{
+					// If fast forwarding or rewinding then reset to default
+					Cvar_Set ("cl_demorewind", "0");
+					Cvar_SetValue ("cl_demospeed", 1);
+				}
+				else
+				{
+					// Fast forward
+					Cvar_Set ("cl_demorewind", "0");
+					Cvar_SetValue ("cl_demospeed", 5);
+				}
+				break;
+
+			case K_PGDN:
+				if (cl_demospeed.value == 1)
+				{
+					// If running normal, then rewind
+					Cvar_Set ("cl_demorewind", "1");
+					Cvar_SetValue ("cl_demospeed", 5);
+				}
+				else
+				{
+					// If not running normal then go normal speed
+					Cvar_Set ("cl_demorewind", "0");
+					Cvar_SetValue ("cl_demospeed", 1);
+				}
+				break;
+
+			default:
+				break;
+		}
 	}
 
 // if not a consolekey, send to the interpreter no matter what mode is
@@ -936,6 +1126,12 @@ void Key_Event (int key, qboolean down)
 
 		if ((kb = keybindings[key]))
 		{
+			// Baker: if we are here, the key is down
+			//        and if it is retrigger a bind
+			//        it must be allowed to trigger the -bind
+			//
+			keygamedown[key]=true; // Let it be untriggered anytime
+
 			if (kb[0] == '+')
 			{	// button commands add keynum as a parm
 				snprintf (cmd, sizeof(cmd), "%s %i\n", kb, key);

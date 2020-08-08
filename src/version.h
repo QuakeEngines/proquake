@@ -69,23 +69,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define id386	0
 #endif
 
-// Define platforms supporting HTTP_DOWNLOAD (I have this working on OSX for Intel Macs, but let's hold out)
-#ifdef _WIN32
-# define HTTP_DOWNLOAD
-# define BUILD_MP3_VERSION
-#endif
-
-// Define support for platforms that can do HLBSP
-#ifdef GLQUAKE
-# define SUPPORTS_HLBSP // Only GL
-#endif
-
 // Smooth rotation test
 //#define SMOOTH_SINGLEPLAYER_TEST
 #define QCEXEC
 #define SUPPORTS_MULTIMAP_DEMOS
 #define CHASE_CAM_FIX
-
+#define SUPPORTS_TRANSFORM_INTERPOLATION // We are switching to r_interpolate_transform
+#define SUPPORTS_AUTOID
 
 
 // Define Support For Cheat-Free Mode
@@ -110,7 +100,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define RENDERER_NAME "Win"
 #endif // end !d3dquake
 
-// Special markings for D3DQuake
+// Define exceptions to the "rule"
+#ifdef DX8QUAKE
+# define DX8QUAKE_NO_8BIT					// D3D8 wrapper didn't keep the 8bit support
+# define DX8QUAKE_GET_GL_MAX_SIZE			// D3D8 wrapper obtains the maxsize from the video card
+# define DX8QUAKE_NO_BINDTEXFUNC			// SGIS/ancient GL pathway removal
+# define DX8QUAKE_NO_GL_ZTRICK				// DX8QUAKE hates gl_ztrick; clear the buffers every time
+# define DX8QUAKE_GL_READPIXELS_NO_RGBA		// Wrapper only supports GL_RGBA; not GL_RGBA like envmap command uses
+# define DX8QUAKE_VSYNC_COMMANDLINE_PARAM	// Vsync command line param option ... -vsync
+#endif
 
 #ifdef D3DQUAKE
 # define D3DQ_EXTRA_FEATURES // (D3D_FEATURE)
@@ -134,36 +132,42 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // Define Specific General Capabilities
 #ifdef _WIN32
-# define SUPPORTS_AVI_CAPTURE // Hopelessly Windows locked
-# define SUPPORTS_INTERNATIONAL_KEYBOARD // I only know how to detect and address on Windows
-# define SUPPORTS_CD_PLAYER // Windows yes, maybe Linux too.  Not MACOSX, Fruitz of Dojo not support it.
-# define SUPPORTS_DEMO_AUTOPLAY // Windows only.  Uses file association
+# define SUPPORTS_AVI_CAPTURE					// Hopelessly Windows locked
+# define SUPPORTS_INTERNATIONAL_KEYBOARD		// I only know how to detect and address on Windows
+# define SUPPORTS_CD_PLAYER						// Windows yes, maybe Linux too.  Not MACOSX, Fruitz of Dojo not support it.
+# define SUPPORTS_DEMO_AUTOPLAY					// Windows only.  Uses file association
 # define SUPPORTS_DIRECTINPUT 
-# define SUPPORTS_INTERNATIONAL_KEYBOARD // Windows only implementation for now?; the extra key byte
-# define SUPPORTS_SYSSLEEP // Make this work on OS X sometime; "usleep"
+# define SUPPORTS_INTERNATIONAL_KEYBOARD		// Windows only implementation for now?; the extra key byte
+# define SUPPORTS_SYSSLEEP						// Make this work on OS X sometime; "usleep"
 # define SUPPORTS_CLIPBOARD
 
-// GLQUAKE additive features on top of _WIN32 only
-#if defined(GLQUAKE) && !defined(D3DQUAKE)
-# define SUPPORTS_ENHANCED_GAMMA // Windows only for now.  Probably can be multiplat in future.
-# define SUPPORTS_GLVIDEO_MODESWITCH  // Windows only for now.  Probably can be multiplat in future.
-# define SUPPORTS_VSYNC // Vertical sync; only GL does this for now
+# define WINDOWS_SCROLLWHEEL_PEEK				// CAPTURES MOUSEWHEEL WHEN keydest != game
+# define HTTP_DOWNLOAD
+# define BUILD_MP3_VERSION
+
+
+	// GLQUAKE additive features on top of _WIN32 only
+	#if defined(GLQUAKE) && !defined(D3DQUAKE)
+	# define SUPPORTS_ENHANCED_GAMMA 			// Windows only for now.  Probably can be multiplat in future.
+	# define SUPPORTS_GLVIDEO_MODESWITCH  		// Windows only for now.  Probably can be multiplat in future.
+	# define SUPPORTS_VSYNC 					// Vertical sync; only GL does this for now
+	# define SUPPORTS_TRANSPARENT_SBAR 			// Not implemented in OSX?
+
+	# define RELEASE_MOUSE_FULLSCREEN			// D3DQUAKE gets an error if it loses focus in fullscreen, so that'd be stupid
+	#endif
+
+	#if defined(GLQUAKE) && !defined(DX8QUAKE)
+	# define OLD_SGIS							// Old multitexture ... for now.
+	# define INTEL_OPENGL_DRIVER_WORKAROUND		// Windows only issue?  Or is Linux affected too?  OS X is not affected
+	#endif
+
+	#ifndef GLQUAKE // WinQuake
+	# define SUPPORTS_SW_ALTENTER				// Hacky ALT-ENTER
+	#endif
 #endif
-
-#endif
-
-
-#if defined(_WIN32) && defined(GLQUAKE) && !defined(DX8QUAKE)
-#define OLD_SGIS
-#endif
-
-#ifdef GLQUAKE
-#define NO_MGRAPH
-#endif
-
-//  Audio Capabilities
 
 #ifdef MACOSX
+# define SUPPORTS_SYSSLEEP
 # define FULL_BACKGROUND_VOLUME_CONTROL
 #endif
 
@@ -174,50 +178,43 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Define Specific Rendering Capabilities
 
 #ifdef GLQUAKE
-# define SUPPORTS_SKYBOX // Only GL
-# define SUPPORTS_GLHOMFIX_NEARWATER
+# define SUPPORTS_SKYBOX						// Skyboxes are 24-bit; WinQuake can't do that (yet)
+# define SUPPORTS_GLHOMFIX_NEARWATER			// Specific problem and solution for GL
+# define SUPPORTS_CONSOLE_SIZING				// GL can size the console; WinQuake can't do that yet
+# define SUPPORTS_ENTITY_ALPHA					// Transparency
+# define SUPPORTS_HARDWARE_ANIM_INTERPOLATION	// The hardware interpolation route
+# define SUPPORTS_2DPICS_ALPHA					// Transparency of 2D pics
+# define SUPPORTS_HLBSP							// Requires 24 bit color for now
+# define SUPPORTS_GL_OVERBRIGHTS				// Overbright method GLQuake is using, WinQuake always had them
+
+	#if !defined(D3DQUAKE)	// Any platform except D3DQUAKE
+	# define SUPPORTS_GL_DELETETEXTURES			// D3DQuake isn't emulating them at this time
+	# define SUPPORTS_FOG						// D3DQuake can't do the fog thing
+	#endif
+
+# define NO_MGRAPH								// This is for WinQuake rendering, we don't use it for GLQuake
+# define GL_QUAKE_SKIN_METHOD					// GLQuake uses a different method for skinning
 #endif
 
-#if defined(GLQUAKE) && !defined(D3DQUAKE)
-# define SUPPORTS_GL_DELETETEXTURES
+
+#ifndef GLQUAKE		// WinQuake
+# define SUPPORTS_SOFTWARE_ANIM_INTERPOLATION	// WinQuake method for animation interpolation
+# define SUPPORTS_3D_CVARS						// 3-D LCD_X stuff
+//# define SUPPORTS_ENTITY_ALPHA				// Transparency ... NOT YET
+# define SUPPORTS_SOFTWARE_FTESTAIN				// FTESTAIN
+# define SUPPORTS_SW_SKYBOX
+# define SUPPORTS_SW_WATERALPHA
 #endif
 
-#if defined(_WIN32) && defined(GLQUAKE) && !defined(D3DQUAKE) // WinQuake you can't see cursor so no point
-# define RELEASE_MOUSE_FULLSCREEN // D3DQUAKE gets an error if it loses focus in fullscreen, so that'd be stupid
-#endif
-
-#if defined(GLQUAKE) && !defined(D3DQUAKE)
-# define SUPPORTS_FOG // Only GL, D3D hates fog
-#endif
-
-#ifdef GLQUAKE
-# define SUPPORTS_ENTITY_ALPHA
-#endif
-
-#define SUPPORTS_TRANSFORM_INTERPOLATION // We are switching to r_interpolate_transform
-#ifdef GLQUAKE
-# define SUPPORTS_HARDWARE_ANIM_INTERPOLATION
-#else
-# define SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
-#endif
-
-#define SUPPORTS_AUTOID
 
 #ifdef SUPPORTS_AUTOID
 #if defined(GLQUAKE) && !defined(D3DQUAKE) && !defined(DX8QUAKE)
-# define SUPPORTS_AUTOID_HARDWARE
+# define SUPPORTS_AUTOID_HARDWARE				// The way I chose to do AUTOID for true OpenGL
 #else
-# define SUPPORTS_AUTOID_SOFTWARE
+# define SUPPORTS_AUTOID_SOFTWARE				// WinQuake, DX8QUAKE and D3DQUAKE use calculations for 2D projection of 3D
 #endif
 #endif
 
-#ifdef GLQUAKE
-# define SUPPORTS_2DPICS_ALPHA
-#endif
-
-#ifdef GLQUAKE
-# define SUPPORTS_CONSOLE_SCALING
-#endif
 
 // Alternate Methods
 
@@ -227,27 +224,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define FLASH_SOUND_DIFFERENCE
 #endif
 
-// Define Deficiencies and Workarounds
 
-#if defined(_WIN32) && defined(GLQUAKE)
-// Baker: why is this a define?  And not a cvar?  Just to mark the code? Yes
-# define INTEL_OPENGL_DRIVER_WORKAROUND // Windows only issue?  Or is Linux affected too?  OS X is not affected
-# define GL_QUAKE_SKIN_METHOD
-#endif
 
-#ifdef DX8QUAKE
-# define DX8QUAKE_NO_8BIT					// D3D8 wrapper didn't keep the 8bit support
-# define DX8QUAKE_GET_GL_MAX_SIZE			// D3D8 wrapper obtains the maxsize from the video card
-# define DX8QUAKE_CANNOT_DETECT_FULLSCREEN_BY_MODESTATE	// Detecting modestate == MS_FULLDIB can't distinguish between windowed and fullscreen modes
-# define DX8QUAKE_NO_BINDTEXFUNC			// SGIS/ancient GL pathway removal
-# define DX8QUAKE_NO_GL_ZTRICK				// DX8QUAKE hates gl_ztrick; clear the buffers every time
-# define DX8QUAKE_GL_READPIXELS_NO_RGBA		// Wrapper only supports GL_RGBA; not GL_RGBA like envmap command uses
-# define DX8QUAKE_VSYNC_COMMANDLINE_PARAM	// Vsync command line param option ... -vsync
-#endif
-
-#ifdef GLQUAKE
-# define SUPPORTS_GL_OVERBRIGHTS		// Overbright lighting support: too slow as the code is at the moment
-#endif
 // gl_keeptjunctions: Setting this to 0 will reduce the number of bsp polygon vertices by removing colinear points, however it produces holes in the BSP due to floating point precision errors.
 // Baker: this should default to 1.  That's what FTE does.
 
@@ -260,9 +238,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // Discarded DX8QUAKE #ifdefs -- all functional but either not necessary or some such thing
 
-
+// # define DX8QUAKE_CANNOT_DETECT_FULLSCREEN_BY_MODESTATE	// Detecting modestate == MS_FULLDIB can't distinguish between windowed and fullscreen modes
 //# undef  SUPPORTS_GLVIDEO_MODESWITCH  // Not now, isn't working right
-//# define DX8QUAKE_NO_DIALOGS				// No "starting Quake type "dialogs for DX8QUAKE, Improvement applicable to GL
+//#define DX8QUAKE_NO_DIALOGS				// No "starting Quake type "dialogs for DX8QUAKE, Improvement applicable to GL
 //# define DX8QUAKE_NO_FRONT_BACK_BUFFER		// Baker: 4.42 - wasn't necessary, seems DX8 wrapper can do this
 //# define DX8QUAKE_GL_MAX_SIZE_FAKE			// Baker  4.42 - this is no different than dx8 wrapper doing it right way
 //# define DX8QUAKE_ALT_MODEL_TEXTURE				// Believe this is unnecessary skin sharpening option applicanle to GL

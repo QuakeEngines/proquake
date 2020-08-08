@@ -59,7 +59,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /machine:I386
-# ADD LINK32 .\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\wqpro444.exe"
+# ADD LINK32 .\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\wqpro450.exe"
 # SUBTRACT LINK32 /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 Debug"
@@ -143,7 +143,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib .\scitech\lib\win32\vc\mgllt.lib /nologo /subsystem:windows /profile /machine:I386
 # SUBTRACT BASE LINK32 /map /debug
-# ADD LINK32 advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\glpro444.exe"
+# ADD LINK32 advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\glpro450.exe"
 # SUBTRACT LINK32 /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 Debug Unicode"
@@ -230,7 +230,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 comctl32.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:".\release_gl\glquake.exe"
 # SUBTRACT BASE LINK32 /map /debug
-# ADD LINK32 d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\d3dpro444.exe"
+# ADD LINK32 d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\d3dpro450.exe"
 # SUBTRACT LINK32 /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
@@ -259,7 +259,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /incremental:yes /machine:I386 /out:"e:\quakedm3\d3dpro421.exe"
 # SUBTRACT BASE LINK32 /profile /map /debug
-# ADD LINK32 advapi32.lib comctl32.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\dx8pro444.exe"
+# ADD LINK32 advapi32.lib comctl32.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\dx8pro450.exe"
 # SUBTRACT LINK32 /debug
 
 !ENDIF 
@@ -283,7 +283,7 @@ SOURCE=.\cd_win.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\chase.c
+SOURCE=.\cl_chase.c
 # End Source File
 # Begin Source File
 
@@ -300,6 +300,10 @@ SOURCE=.\cl_main.c
 # Begin Source File
 
 SOURCE=.\cl_parse.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\cl_sbar.c
 # End Source File
 # Begin Source File
 
@@ -2620,10 +2624,6 @@ InputName=r_varsa
 # Begin Source File
 
 SOURCE=.\registry.cpp
-# End Source File
-# Begin Source File
-
-SOURCE=.\sbar.c
 # End Source File
 # Begin Source File
 

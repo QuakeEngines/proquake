@@ -534,7 +534,11 @@ void Mod_LoadVertexes (lump_t *l)
 		Sys_Error ("Mod_LoadVertexes: funny lump size in %s",loadmodel->name);
 
 	count = l->filelen / sizeof(*in);
-	out = Hunk_AllocName ( count*sizeof(*out), loadname);
+#ifdef SUPPORTS_SW_SKYBOX
+	out = Hunk_AllocName ( (count+8)*sizeof(*out), loadname); // Manoel Kasimier - skyboxes - extra for skybox // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#else
+	out = Hunk_AllocName ( count*sizeof(*out), loadname);	
+#endif
 
 	loadmodel->vertexes = out;
 	loadmodel->numvertexes = count;
@@ -599,7 +603,12 @@ void Mod_LoadEdges (lump_t *l)
 		Sys_Error ("Mod_LoadEdges: funny lump size in %s",loadmodel->name);
 
 	count = l->filelen / sizeof(*in);
-	out = Hunk_AllocName ( (count + 1) * sizeof(*out), loadname);
+	
+#ifdef SUPPORTS_SW_SKYBOX
+	out = Hunk_AllocName ( (count + 13) * sizeof(*out), loadname); // Manoel Kasimier - skyboxes - extra for skybox // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#else
+	out = Hunk_AllocName ( (count + 1) * sizeof(*out), loadname);	
+#endif
 
 	loadmodel->edges = out;
 	loadmodel->numedges = count;
@@ -628,7 +637,12 @@ void Mod_LoadTexinfo (lump_t *l)
 		Sys_Error ("Mod_LoadTexinfo: funny lump size in %s",loadmodel->name);
 
 	count = l->filelen / sizeof(*in);
-	out = Hunk_AllocName ( count*sizeof(*out), loadname);
+	
+#ifdef SUPPORTS_SW_SKYBOX
+	out = Hunk_AllocName ( (count+6)*sizeof(*out), loadname); // Manoel Kasimier - skyboxes - extra for skybox // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#else
+	out = Hunk_AllocName ( count*sizeof(*out), loadname);	
+#endif
 
 	loadmodel->texinfo = out;
 	loadmodel->numtexinfo = count;
@@ -739,7 +753,12 @@ void Mod_LoadFaces (lump_t *l)
 		Sys_Error ("Mod_LoadFaces: funny lump size in %s",loadmodel->name);
 
 	count = l->filelen / sizeof(*in);
-	out = Hunk_AllocName ( count*sizeof(*out), loadname);
+
+#ifdef SUPPORTS_SW_SKYBOX
+	out = Hunk_AllocName ( (count+6)*sizeof(*out), loadname); // Manoel Kasimier - skyboxes - extra for skybox // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#else
+	out = Hunk_AllocName ( count*sizeof(*out), loadname);	
+#endif
 
 	loadmodel->surfaces = out;
 	loadmodel->numsurfaces = count;
@@ -778,6 +797,13 @@ void Mod_LoadFaces (lump_t *l)
 
 		if (ISTURBTEX(out->texinfo->texture->name))		// turbulent
 		{
+#ifdef SUPPORTS_SW_WATERALPHA
+			// Manoel Kasimier - translucent water - begin
+//			if (strncmp(out->texinfo->texture->name,"*lava",5)) // lava should be opaque
+		//	if (Q_strncmp(out->texinfo->texture->name,"*teleport",9)) // teleport should be opaque
+				out->flags |= SURF_DRAWTRANSLUCENT;
+			// Manoel Kasimier - translucent water - end
+#endif
 			out->flags |= (SURF_DRAWTURB | SURF_DRAWTILED);
 			for (i=0 ; i<2 ; i++)
 			{
@@ -1074,7 +1100,12 @@ void Mod_LoadSurfedges (lump_t *l)
 		Sys_Error ("Mod_LoadSurfedges: funny lump size in %s",loadmodel->name);
 
 	count = l->filelen / sizeof(*in);
-	out = Hunk_AllocName ( count*sizeof(*out), loadname);
+
+#ifdef SUPPORTS_SW_SKYBOX
+	out = Hunk_AllocName ( (count+24)*sizeof(*out), loadname); // Manoel Kasimier - skyboxes - extra for skybox // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#else
+	out = Hunk_AllocName ( count*sizeof(*out), loadname);	
+#endif
 
 	loadmodel->surfedges = out;
 	loadmodel->numsurfedges = count;
@@ -1100,7 +1131,12 @@ void Mod_LoadPlanes (lump_t *l)
 		Sys_Error ("Mod_LoadPlanes: funny lump size in %s",loadmodel->name);
 
 	count = l->filelen / sizeof(*in);
-	out = Hunk_AllocName ( count*2*sizeof(*out), loadname);
+
+#ifdef SUPPORTS_SW_SKYBOX
+	out = Hunk_AllocName ( (count+6)*2*sizeof(*out), loadname); // Manoel Kasimier - skyboxes - extra for skybox // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#else
+	out = Hunk_AllocName ( count*2*sizeof(*out), loadname);	
+#endif
 
 	loadmodel->planes = out;
 	loadmodel->numplanes = count;

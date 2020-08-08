@@ -1426,8 +1426,13 @@ void M_AdjustSliders (int dir)
 		sensitivity.value += dir * 1;
 		if (sensitivity.value < 1)
 			sensitivity.value = 1;
+#ifdef MACOSX_SENS_RANGE
+		if (sensitivity.value > 32)
+			sensitivity.value = 32;
+#else
 		if (sensitivity.value > 21)
 			sensitivity.value = 21; // Baker 3.60 increased top range to 21 from 11
+#endif /* MACOSX */
 		Cvar_SetValue ("sensitivity", sensitivity.value);
 		break;
 	case 7:	// music volume
@@ -2042,7 +2047,7 @@ void M_Pref_AdjustSliders (int dir)
 #ifdef SUPPORTS_ENTITY_ALPHA
 			if (!r_drawviewmodel.value)
 				newval = (dir<0) ? 1 : 3;
-			else if (gl_ringalpha.value < 1)
+			else if (r_ringalpha.value < 1)
 				newval = (dir<0) ? 2 : 1;
 			else
 				newval = (dir<0) ? 3 : 2;
@@ -2050,18 +2055,18 @@ void M_Pref_AdjustSliders (int dir)
 			switch (newval)
 			{
 				case 1:
-					Cvar_Set("gl_ringalpha", "1");
+					Cvar_Set("r_ringalpha", "1");
 					Cvar_Set("r_drawviewmodel", "1");
 					break;
 
 				case 2:
-					Cvar_Set("gl_ringalpha", "1");
+					Cvar_Set("r_ringalpha", "1");
 					Cvar_Set("r_drawviewmodel", "0");
 					break;
 
 				case 3:
 					Cvar_Set("r_drawviewmodel", "1");
-					Cvar_Set("gl_ringalpha", "0.4");
+					Cvar_Set("r_ringalpha", "0.4");
 					break;
 			}
 #else
@@ -2212,7 +2217,7 @@ void M_Pref_AdjustSliders (int dir)
 
 		case 16:
 
-#ifdef SUPPORTS_CONSOLE_SCALING
+#ifdef SUPPORTS_CONSOLE_SIZING
 			// 72 ON | 120 OFF | 200 OFF | 250 OFF
 			newval = bound(-2, vid_consize.value + (dir <0 ? -1 : 1), 3);
 			if (newval == 3) // We won't allow 320 selection except from console
@@ -2261,7 +2266,7 @@ void M_Pref_Options_Draw (void)
 	i += 8;
 	M_Print     (16, i, "     crosshair      "); M_Print (220, i, crosshair.value ? (cl_crosshaircentered.value ? "centered" : "on" ) : "off"); i += 8; 	  // 2
 #ifdef SUPPORTS_ENTITY_ALPHA
-	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? (gl_ringalpha.value < 1 ? "always" : "on" ) : "off"); i += 8;     // 3
+	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? (r_ringalpha.value < 1 ? "always" : "on" ) : "off"); i += 8;     // 3
 #else
 	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? "on" : "off"); i += 8; //3
 #endif
@@ -2282,7 +2287,7 @@ void M_Pref_Options_Draw (void)
 #endif
 	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, pq_maxfps.value == 72 ? "72 fps" : (pq_maxfps.value == 120 ? "120 fps" : (pq_maxfps.value == 200 ? "200 fps" : (pq_maxfps.value == 250 ? "250 fps" : "custom"))) ); i += 8; 	  // 14
 	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" );  i += 8;	  // 14
-#ifdef SUPPORTS_CONSOLE_SCALING // GLQuake + D3DQuake can resize the console;  WinQuake can't
+#ifdef SUPPORTS_CONSOLE_SIZING // GLQuake + D3DQuake can resize the console;  WinQuake can't
 	M_Print     (16, i, "     console width  "); M_Print (220, i, vid_consize.value == 0 ? "100%" : (vid_consize.value == 1 ? "50%" : (vid_consize.value == 2 ? "640 width" : (vid_consize.value == -1 ? "auto" : "custom"))) ); i += 16; 	  // 15
 #else
 	M_Print     (16, i, "     console width  "); M_Print (220, i, "n/a"); i += 16; 	  // 13

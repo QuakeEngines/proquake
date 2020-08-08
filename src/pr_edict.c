@@ -464,11 +464,11 @@ void ED_Print (edict_t *ed)
 
 	if (ed->free)
 	{
-		Con_Printf ("FREE\n");
+		Con_SafePrintf ("FREE\n");
 		return;
 	}
 
-	Con_Printf("\nEDICT %i:\n", NUM_FOR_EDICT(ed));
+	Con_SafePrintf("\nEDICT %i:\n", NUM_FOR_EDICT(ed));	// Baker: make it speedy!
 	for (i=1 ; i<progs->numfielddefs ; i++)
 	{
 		d = &pr_fielddefs[i];
@@ -487,12 +487,12 @@ void ED_Print (edict_t *ed)
 		if (j == type_size[type])
 			continue;
 
-		Con_Printf ("%s",name);
+		Con_SafePrintf ("%s",name);  // Baker: make it speedy!
 		l = strlen (name);
 		while (l++ < 15)
-			Con_Printf (" ");
+			Con_SafePrintf (" ");
 
-		Con_Printf ("%s\n", PR_ValueString(d->type, (eval_t *)v));
+		Con_SafePrintf ("%s\n", PR_ValueString(d->type, (eval_t *)v));
 	}
 }
 
@@ -557,7 +557,7 @@ void ED_PrintEdicts_f (void)
 {
 	int		i;
 
-	Con_Printf ("%i entities\n", sv.num_edicts);
+	Con_SafePrintf ("%i entities\n", sv.num_edicts);
 	for (i=0 ; i<sv.num_edicts ; i++)
 		ED_PrintNum (i);
 }
@@ -576,7 +576,7 @@ void ED_PrintEdict_f (void)
 	i = atoi (Cmd_Argv(1));
 	if (i >= sv.num_edicts)
 	{
-		Con_Printf("Bad edict number\n");
+		Con_SafePrintf("Bad edict number\n");
 		return;
 	}
 	ED_PrintNum (i);
@@ -609,11 +609,11 @@ void ED_Count_f (void)
 			step++;
 	}
 
-	Con_Printf ("num_edicts:%3i\n", sv.num_edicts);
-	Con_Printf ("active    :%3i\n", active);
-	Con_Printf ("view      :%3i\n", models);
-	Con_Printf ("touch     :%3i\n", solid);
-	Con_Printf ("step      :%3i\n", step);
+	Con_SafePrintf ("num_edicts:%3i\n", sv.num_edicts);
+	Con_SafePrintf ("active    :%3i\n", active);
+	Con_SafePrintf ("view      :%3i\n", models);
+	Con_SafePrintf ("touch     :%3i\n", solid);
+	Con_SafePrintf ("step      :%3i\n", step);
 
 }
 
@@ -686,7 +686,7 @@ void ED_ParseGlobals (char *data)
 
 		if (!(key = ED_FindGlobal (keyname)))
 		{
-			Con_Printf ("'%s' is not a global\n", keyname);
+			Con_SafePrintf ("'%s' is not a global\n", keyname);
 			continue;
 		}
 
@@ -777,7 +777,7 @@ qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s)
 	case ev_field:
 		if (!(def = ED_FindField (s)))
 		{
-			Con_Printf ("Can't find field %s\n", s);
+			Con_SafePrintf ("Can't find field %s\n", s);
 			return false;
 		}
 		*(int *)d = G_INT(def->ofs);
@@ -786,7 +786,7 @@ qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s)
 	case ev_function:
 		if (!(func = ED_FindFunction (s)))
 		{
-			Con_Printf ("Can't find function %s\n", s);
+			Con_SafePrintf ("Can't find function %s\n", s);
 			return false;
 		}
 		*(func_t *)d = func - pr_functions;
@@ -873,7 +873,7 @@ if (!strcmp(com_token, "light"))
 		if (!(key = ED_FindField (keyname)))
 		{
 			if (strcmp(keyname, "sky") && strcmp(keyname, "fog")) // Now supported in worldspawn
-			Con_Printf ("'%s' is not a field\n", keyname);
+			Con_SafePrintf ("'%s' is not a field\n", keyname);
 			continue;
 		}
 
@@ -956,7 +956,7 @@ void ED_LoadFromFile (char *data)
 // immediately call spawn function
 		if (!ent->v.classname)
 		{
-			Con_Printf ("No classname for:\n");
+			Con_SafePrintf ("No classname for:\n");
 			ED_Print (ent);
 			ED_Free (ent);
 			continue;
@@ -967,7 +967,7 @@ void ED_LoadFromFile (char *data)
 
 		if (!func)
 		{
-			Con_Printf ("No spawn function for:\n");
+			Con_SafePrintf ("No spawn function for:\n"); // Baker: makes it speedy!
 			ED_Print (ent);
 			ED_Free (ent);
 			continue;

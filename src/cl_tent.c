@@ -69,6 +69,9 @@ static void CL_ParseBeam (model_t *m)
 	end[0] = MSG_ReadCoord ();
 	end[1] = MSG_ReadCoord ();
 	end[2] = MSG_ReadCoord ();
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+	R_AddStain(end, 80, 12); //qbism ftestain
+#endif
 
 // override any beam with the same entity
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
@@ -122,6 +125,9 @@ void CL_ParseTEnt (void)
 		pos[1] = MSG_ReadCoord ();
 		pos[2] = MSG_ReadCoord ();
 		R_RunParticleEffect (pos, vec3_origin, 20, 30);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -20, 11); //qbism ftestain
+#endif
 		S_StartSound (-1, 0, cl_sfx_wizhit, pos, 1, 1);
 		break;
 		
@@ -130,6 +136,9 @@ void CL_ParseTEnt (void)
 		pos[1] = MSG_ReadCoord ();
 		pos[2] = MSG_ReadCoord ();
 		R_RunParticleEffect (pos, vec3_origin, 226, 20);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -20, 15); //qbism ftestain
+#endif
 		S_StartSound (-1, 0, cl_sfx_knighthit, pos, 1, 1);
 		break;
 		
@@ -137,11 +146,12 @@ void CL_ParseTEnt (void)
 		pos[0] = MSG_ReadCoord ();
 		pos[1] = MSG_ReadCoord ();
 		pos[2] = MSG_ReadCoord ();
-#ifdef GLTEST
-		Test_Spawn (pos);
-#else
+
 		R_RunParticleEffect (pos, vec3_origin, 0, 10);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -30, 10); //qbism ftestain
 #endif
+
 		if ( rand() % 5 )
 		{
 			S_StartSound (-1, 0, cl_sfx_tink1, pos, 1, 1);
@@ -163,6 +173,9 @@ void CL_ParseTEnt (void)
 		pos[1] = MSG_ReadCoord ();
 		pos[2] = MSG_ReadCoord ();
 		R_RunParticleEffect (pos, vec3_origin, 0, 20);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -30, 10); //qbism ftestain
+#endif
 
 		if ( rand() % 5 )
 		{
@@ -185,6 +198,9 @@ void CL_ParseTEnt (void)
 		pos[1] = MSG_ReadCoord ();
 		pos[2] = MSG_ReadCoord ();
 		R_RunParticleEffect (pos, vec3_origin, 0, 20);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -40, 12); //qbism ftestain
+#endif
 		break;
 		
 	case TE_EXPLOSION:			// rocket explosion
@@ -198,6 +214,9 @@ void CL_ParseTEnt (void)
 		dl->die = cl.time + 0.5;
 		dl->decay = 300;
 		S_StartSound (-1, 0, cl_sfx_r_exp3, pos, 1, 1);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -30, 45); //qbism ftestain
+#endif
 		break;
 		
 	case TE_TAREXPLOSION:			// tarbaby explosion
@@ -207,6 +226,9 @@ void CL_ParseTEnt (void)
 		R_BlobExplosion (pos);
 
 		S_StartSound (-1, 0, cl_sfx_r_exp3, pos, 1, 1);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -20, 60); //qbism ftestain
+#endif
 		break;
 
 	case TE_LIGHTNING1:				// lightning bolts
@@ -254,6 +276,9 @@ void CL_ParseTEnt (void)
 		dl->die = cl.time + 0.5;
 		dl->decay = 300;
 		S_StartSound (-1, 0, cl_sfx_r_exp3, pos, 1, 1);
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+		R_AddStain(pos, -30, 50); //qbism ftestain
+#endif
 		break;
 		
 	default:

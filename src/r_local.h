@@ -68,6 +68,16 @@ extern cvar_t	r_numsurfs;
 extern cvar_t	r_reportedgeout;
 extern cvar_t	r_maxedges;
 extern cvar_t	r_numedges;
+#ifdef SUPPORTS_SW_SKYBOX
+extern cvar_t	r_skyname; // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#endif
+#ifdef SUPPORTS_ENTITY_ALPHA
+extern cvar_t	r_ringalpha;
+#endif
+#ifdef SUPPORTS_SW_WATERALPHA
+extern cvar_t	r_novis;
+#endif
+
 
 #define XCENTERING	(1.0 / 2.0)
 #define YCENTERING	(1.0 / 2.0)
@@ -315,6 +325,9 @@ extern int		r_clipflags;
 extern int		r_dlightframecount;
 extern qboolean	r_fov_greater_than_90;
 
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+void R_BuildLightmaps(void); //qbism ftestain
+#endif
 void R_StoreEfrags (efrag_t **ppefrag);
 void R_TimeRefresh_f (void);
 void R_TimeGraph (void);
@@ -329,6 +342,10 @@ void R_EmitEdge (mvertex_t *pv0, mvertex_t *pv1);
 void R_ClipEdge (mvertex_t *pv0, mvertex_t *pv1, clipplane_t *clip);
 void R_SplitEntityOnNode2 (mnode_t *node);
 void R_MarkLights (dlight_t *light, int bit, mnode_t *node);
+#ifdef SUPPORTS_SW_SKYBOX
+void R_InitSkyBox (void); // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+qboolean R_LoadSkybox (char *name); // Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#endif
 
 #endif
 

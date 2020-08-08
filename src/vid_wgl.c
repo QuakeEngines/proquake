@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "resource.h"
 #include <commctrl.h>
 
+// === end includes
+
 #define MAX_MODE_LIST		600
 #define VID_ROW_SIZE	3
 #define WARP_WIDTH		320
@@ -36,6 +38,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MODE_WINDOWED			0
 #define NO_MODE					(MODE_WINDOWED - 1)
 #define MODE_FULLSCREEN_DEFAULT	(MODE_WINDOWED + 1)
+
+// === end defines
 
 typedef struct {
 	modestate_t	type;
@@ -64,7 +68,7 @@ lmode_t	lowresmodes[] = {
 
 
 qboolean		DDActive;
-qboolean		scr_skipupdate;
+
 
 static vmode_t	modelist[MAX_MODE_LIST];
 static int		nummodes;
@@ -133,15 +137,15 @@ glvert_t glv;
 // First, d3dquake must have this = 0; second, Intel display adapters hate it
 cvar_t	gl_ztrick = {"gl_ztrick","0"};
 
+modestate_t	modestate = MS_UNINIT;
 
+int			window_center_x, window_center_y, window_x, window_y, window_width, window_height;
+RECT		window_rect;
 
 HWND WINAPI InitializeWindow (HINSTANCE hInstance, int nCmdShow);
 
 viddef_t	vid;				// global video state
 
-
-
-modestate_t	modestate = MS_UNINIT;
 
 void VID_Menu_Init (void); //johnfitz
 void VID_Menu_f (void); //johnfitz
@@ -167,9 +171,13 @@ qboolean is8bit = false;
 qboolean	vid_locked = false; //johnfitz
 int			vid_current_bpp;//R00k
 
+extern	cvar_t	cl_confirmquit; // Baker 3.60
 
 
-/*********************************** CVARS ***********************************/
+
+// CVARS BEGIN HERE
+//
+
 cvar_t		vid_fullscreen = {"vid_fullscreen", "1", true};
 cvar_t		vid_width = {"vid_width", "640", true};
 cvar_t		vid_height = {"vid_height", "480", true};
@@ -195,10 +203,9 @@ cvar_t		vid_config_x = {"vid_config_x","800", true};
 cvar_t		vid_config_y = {"vid_config_y","600", true};
 cvar_t		vid_stretch_by_2 = {"vid_stretch_by_2","1", true};
 cvar_t		_windowed_mouse = {"_windowed_mouse","1", true};
-extern	cvar_t	cl_confirmquit; // Baker 3.60
+cvar_t		vid_fullscreen_mode = {"vid_fullscreen_mode","3", true};
+cvar_t		vid_windowed_mode = {"vid_windowed_mode","0", true};
 
-int			window_center_x, window_center_y, window_x, window_y, window_width, window_height;
-RECT		window_rect;
 
 typedef BOOL (APIENTRY *SWAPINTERVALFUNCPTR)(int);
 SWAPINTERVALFUNCPTR wglSwapIntervalEXT = NULL;
@@ -277,6 +284,24 @@ void D_EndDirectRect (int x, int y, int width, int height) {
 
 /*
 ================
+VID_UpdateWindowStatus
+================
+*/
+void VID_UpdateWindowStatus (void) {
+
+	window_rect.left = window_x;
+	window_rect.top = window_y;
+	window_rect.right = window_x + window_width;
+	window_rect.bottom = window_y + window_height;
+	window_center_x = (window_rect.left + window_rect.right) / 2;
+	window_center_y = (window_rect.top + window_rect.bottom) / 2;
+
+	IN_UpdateClipCursor ();
+}
+
+
+/*
+================
 CenterWindow
 ================
 */
@@ -330,7 +355,7 @@ qboolean VID_SetWindowedMode (int modenum) {
 	// Create the DIB window
 	dibwindow = CreateWindowEx (
 		 ExWindowStyle,
-		 "WinQuake",
+		 TEXT(ENGINE_NAME), // "WinQuake",
 		 va("%s %s %s",ENGINE_NAME, RENDERER_NAME, ENGINE_VERSION), // D3D diff 3 of 14
 		 WindowStyle,
 		 rect.left, rect.top,
@@ -426,7 +451,7 @@ qboolean VID_SetFullDIBMode (int modenum) {
 	// Create the DIB window
 	dibwindow = CreateWindowEx (
 		 ExWindowStyle,
-		 "WinQuake",
+		 TEXT(ENGINE_NAME),	// "WinQuake" in the past, now "ProQuake"
 		 va("%s %s %s",ENGINE_NAME, RENDERER_NAME, ENGINE_VERSION), // D3D diff 4 of 14
 		 WindowStyle,
 		 rect.left, rect.top,
@@ -484,6 +509,8 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 	temp = scr_disabled_for_loading;
 	scr_disabled_for_loading = true;
 
+	S_BlockSound ();
+	S_ClearBuffer ();
 	CDAudio_Pause ();
 
 	if (vid_modenum == NO_MODE)
@@ -514,6 +541,7 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 	window_height = DIBHeight;
 	VID_UpdateWindowStatus ();
 
+	S_UnblockSound ();
 	CDAudio_Resume ();
 	scr_disabled_for_loading = temp;
 
@@ -579,6 +607,78 @@ void d3dInitSetForce16BitTextures(int force16bitTextures);
 void d3dSetMode(int fullscreen, int width, int height, int bpp, int zbpp);
 #endif
 
+#ifdef DX8QUAKE
+void D3D_WrapResetMode (int newmodenum, qboolean newmode_is_windowed) {
+	// Baker: wrap the reset mode with all the stuff we need
+	int temp;
+	
+	Key_ClearAllStates ();
+	temp = scr_disabled_for_loading;
+	scr_disabled_for_loading = true;
+
+	S_BlockSound ();
+	S_ClearBuffer ();
+	CDAudio_Pause ();
+
+//	ShowWindow (dibwindow, SW_SHOWDEFAULT);
+//	UpdateWindow (dibwindow);
+
+//	modestate = MS_WINDOWED;
+//	DIBWidth =  modelist[newmodenum].width;
+//	DIBHeight = modelist[newmodenum].height;
+
+	// Baker: since we aren't actually do a mode change, but a resize
+	//        let's do this here to be safe
+//	IN_DeactivateMouse ();
+//	IN_ShowMouse ();
+
+	// Set either the fullscreen or windowed mode
+	if (modelist[newmodenum].type == MS_WINDOWED) {
+		if (_windowed_mouse.value && key_dest == key_game) {
+			D3D_ResetMode (modelist[newmodenum].width, modelist[newmodenum].height, modelist[newmodenum].bpp, newmode_is_windowed);
+			vid_modenum = newmodenum;
+			modestate = MS_WINDOWED;
+			IN_ActivateMouse ();
+			IN_HideMouse ();
+		} else {
+			IN_DeactivateMouse ();
+			IN_ShowMouse ();
+			D3D_ResetMode (modelist[newmodenum].width, modelist[newmodenum].height, modelist[newmodenum].bpp, newmode_is_windowed);
+			modestate = MS_WINDOWED;
+		}
+	} else if (modelist[newmodenum].type == MS_FULLDIB) {
+		// and reset the mode
+		D3D_ResetMode (modelist[newmodenum].width, modelist[newmodenum].height, modelist[newmodenum].bpp, newmode_is_windowed);
+		modestate = MS_FULLDIB;	
+		IN_ActivateMouse ();
+		IN_HideMouse ();
+	} else {
+		Sys_Error ("VID_SetMode: Bad mode type in modelist");
+	}
+
+	// now fill in all the ugly globals that Quake stores the same data in over and over again
+	// (this will be different for different engines)
+	
+	
+	DIBWidth = vid.width = window_width = WindowRect.right = modelist[newmodenum].width;
+	DIBHeight = vid.height = window_height = WindowRect.bottom = modelist[newmodenum].height;
+	VID_Consize_f();
+	
+	
+	
+	// these also needed
+	VID_UpdateWindowStatus ();
+
+	VID_SetPaletteOld (host_basepal);
+	Key_ClearAllStates ();
+	S_UnblockSound ();
+	CDAudio_Resume ();
+
+	scr_disabled_for_loading = temp;			
+	vid.recalc_refdef = 1;
+	IN_StartupMouse();
+}
+#endif
 
 qboolean vid_force_restart = false;
 
@@ -611,7 +711,7 @@ void VID_Restart_f (void)
 //
 	if (vid_fullscreen.value || vid_fullscreen_only)
 	{
-		if (modelist[vid_default].type == MS_WINDOWED)
+		if (modelist[vid_default].type == MS_WINDOWED) 
 			mode_changed = true;
 		else if (modelist[vid_default].refreshrate != (int)vid_refreshrate.value)
 			mode_changed = true;
@@ -709,17 +809,7 @@ void VID_Restart_f (void)
 		// we need this too
 		vid_canalttab = false;
 
-		// and reset the mode
-		D3D_ResetMode (modelist[vid_default].width, modelist[vid_default].height, modelist[vid_default].bpp, windowed);
-
-		// now fill in all the ugly globals that Quake stores the same data in over and over again
-		// (this will be different for different engines)
-		DIBWidth = window_width = WindowRect.right = modelist[vid_default].width;
-		DIBHeight = window_height = WindowRect.bottom = modelist[vid_default].height;
-
-		// these also needed
-		VID_UpdateWindowStatus ();
-		vid.recalc_refdef = 1;
+		D3D_WrapResetMode (vid_default, windowed);
 
 #else
 		hrc = wglGetCurrentContext();
@@ -740,6 +830,10 @@ void VID_Restart_f (void)
 //
 // set new mode
 //
+
+//#ifdef SUPPORTS_HLBSP		
+//		HalfLife_Gamma_Table(); // Half-Life map support
+//#endif
 		VID_SetMode (vid_default, host_basepal);
 
 		maindc = GetDC(mainwindow);
@@ -781,7 +875,7 @@ void VID_Restart_f (void)
 				Sys_Error ("VID_Restart: wglMakeCurrent failed");
 #endif
 
-#endif
+#endif // !DX8QUAKE
 		vid_canalttab = true;
 
 		// Baker: Now that we have created the new window, restore it
@@ -842,7 +936,7 @@ void VID_Windowed(void) {
 		return;
 
 	if (modestate == MS_WINDOWED) {
-		Con_DPrintf("VID_Windowed: Already fullscreen\n");
+		Con_DPrintf("VID_Windowed: Already windowed\n");
 		return;
 	}
 
@@ -852,8 +946,8 @@ void VID_Windowed(void) {
 	}
 
 	//MessageBox(NULL,"Stage1","Stage1",MB_OK);
-	Cbuf_AddText ("vid_fullscreen 0\n");
-	Cbuf_AddText ("vid_restart\n");
+	Cvar_SetValue("vid_fullscreen", 0);
+	VID_Restart_f();
 	//MessageBox(NULL,"Stage2","Stage2",MB_OK);
 }
 
@@ -966,22 +1060,6 @@ void VID_Unlock_f (void)
 	Cvar_Set ("vid_fullscreen", (vid_fullscreen_only) ? "1" : ((windowed) ? "0" : "1"));
 }
 
-/*
-================
-VID_UpdateWindowStatus
-================
-*/
-void VID_UpdateWindowStatus (void) {
-
-	window_rect.left = window_x;
-	window_rect.top = window_y;
-	window_rect.right = window_x + window_width;
-	window_rect.bottom = window_y + window_height;
-	window_center_x = (window_rect.left + window_rect.right) / 2;
-	window_center_y = (window_rect.top + window_rect.bottom) / 2;
-
-	IN_UpdateClipCursor ();
-}
 
 
 
@@ -1290,6 +1368,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 // enable/disable sound on focus gain/loss
 	if (!ActiveApp && sound_active) {
 		S_BlockSound ();
+		S_ClearBuffer ();
 #ifdef BUILD_MP3_VERSION
 		// Need to pause CD music here if is playing
 		if (sound_started) {
@@ -1325,7 +1404,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 
 			IN_ActivateMouse ();
 			IN_HideMouse ();
-
+			
 			if (vid_canalttab && vid_wassuspended) {
 				vid_wassuspended = false;
 				ChangeDisplaySettings (&gdevmode, CDS_FULLSCREEN);
@@ -1359,6 +1438,10 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 	}
 
 	if (!fActive) {
+#ifdef SUPPORTS_ENHANCED_GAMMA
+		if (using_hwgamma && vid_hwgamma_enabled)
+			RestoreHWGamma ();
+#endif
 		if (modestate == MS_FULLDIB) {
 
 			// Baker hack: with cl_sbar < 1, save it and set it to 1 and restore it later
@@ -1381,16 +1464,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 		} else if ((modestate == MS_WINDOWED) && _windowed_mouse.value) {
 			IN_DeactivateMouse ();
 			IN_ShowMouse ();
-
-#ifdef SUPPORTS_ENHANCED_GAMMA
-			if (using_hwgamma && vid_hwgamma_enabled)
-				RestoreHWGamma ();
-#endif
 		}
-#ifdef SUPPORTS_ENHANCED_GAMMA
-		if (using_hwgamma && vid_hwgamma_enabled)
-			RestoreHWGamma ();
-#endif
 	}
 }
 
@@ -1399,6 +1473,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 #define WM_GRAPHNOTIFY  WM_USER + 13
 #endif
 #endif
+
 LONG CDAudio_MessageHandler (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int IN_MapKey (int key);
 extern int 	key_special_dest;
@@ -1441,6 +1516,7 @@ LONG WINAPI MainWndProc (HWND    hWnd, UINT    uMsg, WPARAM  wParam, LPARAM  lPa
 			break;
 
 		case WM_MOVE:
+			
 			window_x = (int) LOWORD(lParam);
 			window_y = (int) HIWORD(lParam);
 			VID_UpdateWindowStatus ();
@@ -1541,15 +1617,17 @@ LONG WINAPI MainWndProc (HWND    hWnd, UINT    uMsg, WPARAM  wParam, LPARAM  lPa
             break;
 
    	    case WM_CLOSE:
-
+			
 			if (!cl_confirmquit.value || MessageBox(mainwindow, "Are you sure you want to quit?", "Confirm Exit", MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
 				Sys_Quit ();
 
 	        break;
 
 		case WM_ACTIVATE:
+			
 			fActive = LOWORD(wParam);
 			fMinimized = (BOOL) HIWORD(wParam);
+					
 			AppActivate(!(fActive == WA_INACTIVE), fMinimized);
 
 		// fix the leftover Alt from any Alt-Tab or the like that switched us away
@@ -1751,7 +1829,7 @@ void VID_InitDIB (HINSTANCE hInstance) {
     wc.hCursor       = LoadCursor (NULL,IDC_ARROW);
 	wc.hbrBackground = NULL;
     wc.lpszMenuName  = 0;
-    wc.lpszClassName = "WinQuake";
+    wc.lpszClassName = ENGINE_NAME; //"WinQuake";
 
     if (!RegisterClass (&wc) )
 		Sys_Error ("Couldn't register window class");
@@ -2025,6 +2103,8 @@ void	VID_Init (unsigned char *palette) {
 	Cvar_RegisterVariable (&vid_consize, VID_Consize_f); //Baker 3.97: this supercedes vid_conwidth/vid_conheight cvars
 	Cvar_RegisterVariable (&vid_refreshrate, NULL); //johnfitz
 	Cvar_RegisterVariable (&_windowed_mouse, NULL);
+	Cvar_RegisterVariable (&vid_fullscreen_mode, NULL);
+	Cvar_RegisterVariable (&vid_windowed_mode, NULL);
 
 	Cvar_RegisterVariable (&gl_clear, NULL); // Baker: cvar needs registered here so we can set it
 	Cvar_RegisterVariable (&gl_ztrick, NULL);
@@ -2251,19 +2331,8 @@ void	VID_Init (unsigned char *palette) {
 	DestroyWindow (hwnd_dialog);
 #endif
 
-#ifdef SUPPORTING_ENHANCED_GAMMA
-	// Baker begin hwgamma support
-	if (using_hwgamma) {
-		Check_Gamma (palette);
-		VID_SetPalette (palette);
-	} else
-#endif
-	{
-		// I guess the Mac uses this ... except the Mac doesn't use this file at all ... duh
-		Check_GammaOld(palette);
-		VID_SetPaletteOld (palette);
-	}
-	Build_Gamma_Table(); // Half-Life map support
+	Check_GammaOld (palette);
+	VID_SetPaletteOld (palette);	
 	VID_SetMode (vid_default, palette);
 
     maindc = GetDC(mainwindow);

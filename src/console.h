@@ -33,6 +33,7 @@ void Con_Init (void);
 void Con_DrawConsole (int lines, qboolean drawinput);
 void Con_Print (char *txt);
 void Con_Printf (char *fmt, ...);
+void Con_Debugf (char *fmt, ...);
 void Con_Success (char *fmt, ...); //johnfitz
 void Con_Warning (char *fmt, ...); //johnfitz
 void Con_DPrintf (char *fmt, ...);

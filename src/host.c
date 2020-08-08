@@ -69,7 +69,7 @@ cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
 cvar_t	host_speeds = {"host_speeds","0"};			// set for running times
 cvar_t	host_timescale = {"host_timescale", "0"}; //johnfitz
 #ifdef SUPPORTS_SYSSLEEP
-cvar_t	host_sleep = {"host_sleep", "1"};
+cvar_t	host_sleep = {"host_sleep", "0"};
 #endif
 
 cvar_t	sys_ticrate = {"sys_ticrate","0.05", false, true};
@@ -822,8 +822,10 @@ void _Host_Frame (double time)
 // if running the server locally, make intentions now
 	if (sv.active)
 		CL_SendCmd ();		// This is where mouse input is read
+#ifdef WINDOWS_SCROLLWHEEL_PEEK
 	else if (con_forcedup && key_dest == key_game) // Allows console scrolling when con_forcedup
 		IN_MouseWheel ();	// Grab mouse wheel input
+#endif
 
 //-------------------
 //

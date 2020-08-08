@@ -445,6 +445,36 @@ void SCR_DrawFPS (void)
 	}
 }
 
+#ifdef HTTP_DOWNLOAD
+/*
+==============
+SCR_DrawWebPercent
+==============
+*/
+void SCR_DrawWebPercent (void)
+{
+	int x;
+	char buff[20];
+	char *ch;
+
+	snprintf (buff, sizeof(buff), "download: %2.1f%%", (float)(cls.download.percent*100));
+	x = vid.width - (16*8); //64; // 16 x 3 = 48 ... we need 16 x 4 = 64
+
+	Draw_Fill (0, 20, vid.width, 2, 0);
+	Draw_Fill (0, 0, vid.width, 20, 98);
+	Draw_Fill (0, 8, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
+
+	ch = buff;
+
+	while (*ch)
+	{
+		Draw_Character(x, 8, (*ch)+128);
+		x += 8;
+		ch++;
+	}
+}
+#endif
+
 /*
 ==============
 SCR_DrawSpeed - Baker 3.67 from JoeQuake
@@ -973,6 +1003,7 @@ void SCR_BringDownConsole (void)
 
 void Mat_Update (void);	// JPG
 
+
 /*
 ==================
 SCR_UpdateScreen
@@ -1013,6 +1044,22 @@ void SCR_UpdateScreen (void)
 		extern	int	Minimized;
 
 		if (Minimized)
+			return;
+	}
+#endif
+
+#ifdef _WIN32
+	{	// don't suck up any cpu if minimized
+		extern	int	Minimized;
+
+		if (Minimized)
+			return;
+	}
+#endif
+
+#ifdef MACOSX
+	if (qMinimized) {
+			Sys_Sleep ();
 			return;
 	}
 #endif
@@ -1109,6 +1156,9 @@ void SCR_UpdateScreen (void)
 		if (cls.state == ca_connected) {
 			void Draw_Crosshair (void);
 			Draw_Crosshair ();
+#ifdef SUPPORTS_AUTOID_SOFTWARE
+			R_DrawNameTags(); 
+#endif
 		SCR_DrawFPS (); // JPG - draw FPS
 		SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
 		SCR_CheckDrawCenterString ();
@@ -1118,6 +1168,11 @@ void SCR_UpdateScreen (void)
 
 		if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
 			SCR_DrawConsole ();
+
+#ifdef HTTP_DOWNLOAD
+		if (cls.download.web)
+			SCR_DrawWebPercent ();
+#endif
 
 		M_Draw ();
 		Mat_Update ();	// JPG

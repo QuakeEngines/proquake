@@ -1164,6 +1164,16 @@ void Sys_InfoPrint_f(void) {
 	Con_Printf ("%s\n", q_system_string);
 }
 
+void Sys_Sleep_f (void) {
+	if (Cmd_Argc() == 1) {
+		Con_Printf ("Usage: %s <milliseconds> : let system sleep and yield cpu\n", Cmd_Argv(0));
+		return;
+	}
+
+	Con_Printf ("Sleeping %i milliseconds ...\n", atoi(Cmd_Argv(1)));		
+	Sleep (atoi(Cmd_Argv(1)));
+}
+
 
 char * SYSINFO_GetString(void)
 {
@@ -1280,6 +1290,7 @@ void Sys_InfoInit(void)
 	Cmd_AddCommand ("homepage", Sys_HomePage_f);
 	Cmd_AddCommand ("openquakefolder", Sys_OpenQuakeFolder_f);
 	Cmd_AddCommand ("sysinfo", Sys_InfoPrint_f);
+	Cmd_AddCommand ("sleep", Sys_Sleep_f);
 	Cvar_RegisterVariable(&sys_disableWinKeys, OnChange_sys_disableWinKeys);
 	Cvar_RegisterVariable(&sys_highpriority, OnChange_sys_highpriority);
 }

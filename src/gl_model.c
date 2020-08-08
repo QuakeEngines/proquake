@@ -920,7 +920,9 @@ void Mod_LoadFaces (lump_t *l)
 	dface_t		*in;
 	msurface_t 	*out;
 	int			i, count, surfnum, planenum, side;
-
+#ifdef SUPPORTS_GL_OVERBRIGHTS
+	extern cvar_t gl_overbright;
+#endif
 	in = (void *)(mod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
 		Sys_Error ("Mod_LoadFaces: funny lump size in %s",loadmodel->name);
@@ -951,6 +953,11 @@ void Mod_LoadFaces (lump_t *l)
 			out->styles[i] = in->styles[i];
 		i = LittleLong(in->lightofs);
 		out->samples = (i == -1) ? NULL : loadmodel->lightdata + i;
+
+#ifdef SUPPORTS_GL_OVERBRIGHTS
+		// mh - overbrights
+		out->overbright = gl_overbright.value;
+#endif
 
 	// set the drawing flags flag
 		if (ISSKYTEX(out->texinfo->texture->name))	// sky

@@ -71,7 +71,7 @@ int		d_lightstylevalue[256];	// 8.8 fraction of base light value
 cvar_t	r_norefresh = {"r_norefresh","0"};
 cvar_t	r_drawentities = {"r_drawentities","1"};
 cvar_t	r_drawviewmodel = {"r_drawviewmodel","1", true};  // Baker 3.80x - Save to config
-cvar_t	gl_ringalpha = {"gl_ringalpha", "0.4", true}; // Baker 3.80x - gl_ringalpha
+cvar_t	r_ringalpha = {"r_ringalpha", "0.4", true}; // Baker 3.80x - gl_ringalpha
 cvar_t	r_truegunangle = {"r_truegunangle","0", true};  // Baker 3.80x - Optional "true" gun positioning on viewmodel
 cvar_t	r_speeds = {"r_speeds","0"};
 cvar_t	r_fullbright = {"r_fullbright","0"};
@@ -80,7 +80,7 @@ cvar_t	r_shadows = {"r_shadows","0"};
 cvar_t	r_mirroralpha = {"r_mirroralpha","1"};
 cvar_t	r_wateralpha = {"r_wateralpha","1",true};
 cvar_t	r_dynamic = {"r_dynamic","1"};
-cvar_t	r_novis = {"r_novis","0",true};
+cvar_t	r_novis = {"r_novis","0"};
 cvar_t  r_interpolate_animation = {"r_interpolate_animation", "0", true};
 cvar_t  r_interpolate_transform = {"r_interpolate_transform", "0", true};
 cvar_t  r_interpolate_weapon = {"r_interpolate_weapon", "0", true};
@@ -429,7 +429,7 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 	int		count;
 
 	// Baker 3.80x - Transparent weapon (invisibility ring option)
-	alpha = (currententity == &cl.viewent) ? ((cl.items & IT_INVISIBILITY) ? (gl_ringalpha.value < 1 ? gl_ringalpha.value : 0) : (r_drawviewmodel.value ? 1: 0)) : 1;
+	alpha = (currententity == &cl.viewent) ? ((cl.items & IT_INVISIBILITY) ? (r_ringalpha.value < 1 ? r_ringalpha.value : 0) : (r_drawviewmodel.value ? 1: 0)) : 1;
 
 	lastposenum = posenum;
 
@@ -497,7 +497,7 @@ fenix@io.com: model animation interpolation
 */
 void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, float blend)
 {
-	float	alpha; // Baker 3.80x - added alpha for gl_ringalpha
+	float	alpha; // Baker 3.80x - added alpha for r_ringalpha
 	float       l;
     trivertx_t* verts1;
     trivertx_t* verts2;
@@ -506,7 +506,7 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
     vec3_t      d;
 
 	// Baker 3.80x - Transparent weapon (invisibility ring option)
-	alpha = (currententity == &cl.viewent) ? ((cl.items & IT_INVISIBILITY) ? (gl_ringalpha.value < 1 ? gl_ringalpha.value : 0) : (r_drawviewmodel.value ? 1: 0)) : 1;
+	alpha = (currententity == &cl.viewent) ? ((cl.items & IT_INVISIBILITY) ? (r_ringalpha.value < 1 ? r_ringalpha.value : 0) : (r_drawviewmodel.value ? 1: 0)) : 1;
 
 	lastposenum0 = pose1;
     lastposenum  = pose2;
@@ -952,7 +952,8 @@ void R_DrawAliasModel (entity_t *ent)
 	if (gl_affinemodels.value)
 		glHint (GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 
-        // fenix@io.com: model animation interpolation
+       // fenix@io.com: model animation interpolation
+	// Baker: r_interpolate_weapon here!
     if (r_interpolate_animation.value) {
 		R_SetupAliasBlendedFrame (currententity->frame, paliashdr, currententity);
     } else {
@@ -967,14 +968,8 @@ void R_DrawAliasModel (entity_t *ent)
 
 	glPopMatrix ();
 
-
-
-
-
-
-
-
-	if (r_shadows.value) 	{
+	// aguirRe ... no shadows if r_fullbright or unlit world
+	if (r_shadows.value && !r_fullbright.value && cl.worldmodel->lightdata) 	{
 		//
 		// Test for models that we don't want to shadow. KH
 		// Not a nice way to do it...
@@ -997,12 +992,14 @@ void R_DrawAliasModel (entity_t *ent)
 		// Baker 3.60 - interpolation plus flicker fix
 		// Quick-fix issue with self-overlapping alias triangles.
 		//glColor4f (0,0,0,0.5); // Original.
-		glColor4f (0.0f, 0.0f, 0.0f, 1.0f); // KH
+		// glColor4f (0.0f, 0.0f, 0.0f, 1.0f); // KH
+		glColor4f (0.0f, 0.0f, 0.0f, r_shadows.value); // KH
 
 		// fenix@io.com: model animation interpolation
 		if (r_interpolate_animation.value) {
             GL_DrawAliasBlendedShadow (paliashdr, lastposenum0, lastposenum, currententity);
 		} else {
+			GL_DrawAliasShadow (paliashdr, lastposenum);
 		}
 
 
@@ -1013,31 +1010,7 @@ void R_DrawAliasModel (entity_t *ent)
 	}
 }
 
-void SortEntitiesByTransparency (void)
-{
-	int		i, j;
-	entity_t	*tmp;
 
-	for (i = 0 ; i < cl_numvisedicts ; i++)
-	{
-		if (cl_visedicts[i]->istransparent)
-		{
-			for (j = cl_numvisedicts - 1 ; j > i ; j--)
-			{
-				// if not transparent, exchange with transparent
-				if (!(cl_visedicts[j]->istransparent))
-				{
-					tmp = cl_visedicts[i];
-					cl_visedicts[i] = cl_visedicts[j];
-					cl_visedicts[j] = tmp;
-					break;
-				}
-			}
-			if (j == i)
-				return;
-		}
-	}
-}
 
 /*
 =============
@@ -1047,13 +1020,17 @@ R_DrawEntitiesOnList
 void R_DrawEntitiesOnList (void)
 {
 	int		i;
+	void SortEntitiesByTransparency (void);
 
 	if (!r_drawentities.value)
 		return;
 
 	// Baker: http://forums.inside3d.com/viewtopic.php?p=13458
 	//        Transparent entities need sorted to ensure items behind transparent objects get drawn (z-buffer)
+
+#ifdef SUPPORTS_ENTITY_ALPHA	
 	SortEntitiesByTransparency ();
+#endif
 
 	// draw sprites seperately, because of alpha blending
 	for (i=0 ; i<cl_numvisedicts ; i++)
@@ -1122,7 +1099,7 @@ void R_DrawViewModel (void)
 	int			ambientlight, shadelight;
 
 	// fenix@io.com: model transform interpolation
-    float		old_interpolate_transform;
+//    float		old_interpolate_transform;
 
 	if (!r_drawviewmodel.value)
 		return;
@@ -1136,7 +1113,7 @@ void R_DrawViewModel (void)
 	if (!r_drawentities.value)
 		return;
 
-	if (cl.items & IT_INVISIBILITY && gl_ringalpha.value == 0)
+	if (cl.items & IT_INVISIBILITY && r_ringalpha.value == 1.0f)
 		return;
 
 	if (cl.stats[STAT_HEALTH] <= 0)
@@ -1186,7 +1163,7 @@ void R_DrawViewModel (void)
 	glDepthRange (gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
 
         // fenix@io.com: model transform interpolation
-//    old_interpolate_transform = gl_interpolate_transform.value;
+	//    old_interpolate_transform = gl_interpolate_transform.value;
   //  gl_interpolate_transform.value = false;
 	R_DrawAliasModel (currententity);
 //    gl_interpolate_transform.value = old_interpolate_transform;
@@ -1369,12 +1346,12 @@ void TurnVector (vec3_t out, vec3_t forward, vec3_t side, float angle)
 	out[2] = scale_forward*forward[2] + scale_side*side[2];
 }
 
-
+#if 0
 void GL_OverBright_f(void) {
 	if (cls.state == ca_connected)
 		Con_Printf("Restart map for changes to take full effect ...\n");
 }
-
+#endif
 
 
 
@@ -1554,7 +1531,7 @@ void R_Init (void)
 	extern cvar_t gl_finish;
 	extern cvar_t r_truegunangle;
 	extern cvar_t r_farclip;
-	extern cvar_t gl_ringalpha;
+	extern cvar_t r_ringalpha;
 	extern cvar_t gl_fullbright;
 	extern void R_Envmap_f (void);
 	extern void R_SetClearColor_f (void);
@@ -1573,7 +1550,7 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_fullbright, NULL);
 	Cvar_RegisterVariable (&r_drawentities, NULL);
 	Cvar_RegisterVariable (&r_drawviewmodel, NULL);
-	Cvar_RegisterVariable (&gl_ringalpha, NULL);
+	Cvar_RegisterVariable (&r_ringalpha, NULL);
 	Cvar_RegisterVariable (&r_truegunangle, NULL);
 
 	Cvar_RegisterVariable (&r_shadows, NULL);
@@ -1610,7 +1587,7 @@ void R_Init (void)
 	Cvar_RegisterVariable (&gl_keeptjunctions, NULL);
 	Cvar_RegisterVariable (&gl_reporttjunctions, NULL);
 	Cvar_RegisterVariable (&gl_fullbright, NULL);
-	Cvar_RegisterVariable (&gl_overbright, GL_OverBright_f);
+	Cvar_RegisterVariable (&gl_overbright, NULL);
 
 	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
 #ifdef SUPPORTS_SKYBOX

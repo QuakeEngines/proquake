@@ -20,10 +20,57 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_screen.c -- master for refresh, status bar, console, chat, notify, etc
 
 #include "quakedef.h"
-//#include "r_local.h"
+
 #ifdef SUPPORTS_AVI_CAPTURE
 #include "movie.h"
 #endif
+
+/*
+
+background clear
+rendering
+turtle/net/ram icons
+sbar
+centerprint / slow centerprint
+notify lines
+intermission / finale overlay
+loading plaque
+console
+menu
+
+required background clears
+required update regions
+
+
+syncronous draw mode or async
+One off screen buffer, with updates either copied or xblited
+Need to double buffer?
+
+
+async draw will require the refresh area to be cleared, because it will be
+xblited, but sync draw can just ignore it.
+
+sync
+draw
+
+CenterPrint ()
+SlowPrint ()
+Screen_Update ();
+Con_Printf ();
+
+net
+turn off messages option
+
+the refresh is always rendered, unless the console is full screen
+
+
+console is:
+	notify lines
+	half
+	full
+
+
+*/
 
 // only the refresh window will be updated unless these variables are flagged
 int			scr_copytop;
@@ -33,9 +80,10 @@ float		scr_con_current;
 float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
+
 cvar_t		scr_viewsize = {"viewsize","100", true};
-cvar_t		scr_fov = {"fov","90", true, 6};	// 10 - 170  Baker 3.60 - Save to config
-cvar_t		default_fov = {"default_fov","0", true};	// Baker 3.85 - Default_fov from FuhQuake
+cvar_t		scr_fov = {"fov","90", true};				// 10 - 170
+cvar_t		default_fov = {"default_fov","0", true};	// Default_fov from FuhQuake
 cvar_t		scr_conspeed = {"scr_conspeed","99999", true}; // Baker 3.60 - Save to config
 cvar_t		scr_centertime = {"scr_centertime","2"};
 cvar_t		scr_showram = {"showram","1"};
@@ -110,6 +158,7 @@ void SCR_CenterPrint (char *str)
 	}
 }
 
+#ifndef GLQUAKE // Baker: software to erase the center string in small viewsizes
 void SCR_EraseCenterString (void)
 {
 	int		y;
@@ -128,6 +177,7 @@ void SCR_EraseCenterString (void)
 	scr_copytop = 1;
 	Draw_TileClear (0, y,vid.width, 8*scr_erase_lines);
 }
+#endif
 
 void SCR_DrawCenterString (void)
 {
@@ -209,8 +259,8 @@ float CalcFov (float fov_x, float width, float height)
         if (fov_x < 1 || fov_x > 179)
                 Sys_Error ("Bad fov: %f", fov_x);
 
-        x = width/tan(fov_x/360*M_PI);
-        a = atan (height/x);
+        x = width/tanf(fov_x/360*M_PI);
+        a = atanf (height/x);
         a = a*360/M_PI;
         return a;
 }
@@ -330,6 +380,10 @@ void SCR_Init (void)
 	Cvar_RegisterVariable (&scr_centertime, NULL);
 	Cvar_RegisterVariable (&scr_printspeed, NULL);
 
+#ifdef GLQUAKE
+	Cvar_RegisterVariable (&gl_triplebuffer, NULL);
+#endif
+
 	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
 	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
 
@@ -445,6 +499,7 @@ void SCR_DrawFPS (void)
 	}
 }
 
+#ifdef HTTP_DOWNLOAD
 /* 
 ==============
 SCR_DrawWebPercent
@@ -472,6 +527,7 @@ void SCR_DrawWebPercent (void)
 		ch++;
 	}
 }
+#endif
 
 /*
 ==============
@@ -615,14 +671,18 @@ void SCR_SetUpToDrawConsole (void)
 
 	if (clearconsole++ < vid.numpages)
 	{
+#ifndef GLQUAKE
 		scr_copytop = 1;
 		Draw_TileClear (0,(int)scr_con_current,vid.width, vid.height - (int)scr_con_current);
+#endif
 		Sbar_Changed ();
 	}
 	else if (clearnotify++ < vid.numpages)
 	{
+#ifndef GLQUAKE
 		scr_copytop = 1;
 		Draw_TileClear (0,0,vid.width, con_notifylines);
+#endif
 	}
 	else
 	{
@@ -676,6 +736,79 @@ typedef struct
     char	filler[58];
     unsigned char	data;			// unbounded
 } pcx_t;
+
+#ifdef SUPPORTS_SW_SKYBOX
+/*
+============
+LoadPCX
+============
+*/
+void LoadPCX (char *filename, byte **pic, int *width, int *height)
+{
+	pcx_t	*pcx;
+	byte	*pcxbuf, *out, *pix;
+	int		x, y;
+	int		dataByte, runLength;
+
+	*pic = NULL;
+	pcxbuf = COM_LoadTempFile (filename);
+	if (!pcxbuf)
+		return;
+
+//
+// parse the PCX file
+//
+	pcx = (pcx_t *)pcxbuf;
+	pcx->xmax = LittleShort (pcx->xmax);
+	pcx->xmin = LittleShort (pcx->xmin);
+	pcx->ymax = LittleShort (pcx->ymax);
+	pcx->ymin = LittleShort (pcx->ymin);
+	pcx->hres = LittleShort (pcx->hres);
+	pcx->vres = LittleShort (pcx->vres);
+	pcx->bytes_per_line = LittleShort (pcx->bytes_per_line);
+	pcx->palette_type = LittleShort (pcx->palette_type);
+
+	pix = &pcx->data;
+
+	if (pcx->manufacturer != 0x0a
+		|| pcx->version != 5
+		|| pcx->encoding != 1
+		|| pcx->bits_per_pixel != 8
+		|| pcx->xmax >= 640
+/*		|| pcx->ymax >= 480*/)
+	{
+		Con_Printf ("Bad pcx file\n");
+		return;
+	}
+
+	if (width)
+		*width = pcx->xmax+1;
+	if (height)
+		*height = pcx->ymax+1;
+
+	*pic = out = Q_malloc ((pcx->xmax+1) * (pcx->ymax+1));
+
+	for (y=0 ; y<=pcx->ymax ; y++, out += pcx->xmax+1)
+	{
+		for (x=0 ; x<=pcx->xmax ; )
+		{
+			dataByte = *pix++;
+
+			if((dataByte & 0xC0) == 0xC0)
+			{
+				runLength = dataByte & 0x3F;
+				dataByte = *pix++;
+			}
+			else
+				runLength = 1;
+
+			while(runLength-- > 0)
+				out[x++] = dataByte;
+		}
+	}
+}
+// Manoel Kasimier - skyboxes - end
+#endif
 
 /*
 ==============
@@ -847,7 +980,7 @@ void SCR_DrawNotifyString (void)
 
 	start = scr_notifystring;
 
-	y = vid.height*0.35;
+	y = (int)(vid.height*0.35f);
 
 	do {
 	// scan the width of the line
@@ -877,6 +1010,7 @@ Displays a text string in the center of the screen and waits for a Y or N
 keypress.
 ==================
 */
+// Baker Note: Because this loop gets control a connection to a server can die here
 int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
 	double time1, time2; //johnfitz -- timeout
@@ -892,10 +1026,12 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 	scr_notifystring = text;
 
 // draw a fresh screen
+#ifndef GLQUAKE // Baker: find out why
 	scr_fullupdate = 0;
+#endif
+
 	scr_drawdialog = true;
 	SCR_UpdateScreen ();
-	scr_drawdialog = false;
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
@@ -908,8 +1044,11 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 		if (timeout) time2 = Sys_DoubleTime (); //johnfitz -- zero timeout means wait forever.
 	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE && time2 <= time1);
 
+	scr_drawdialog = false;
+	
+	// Baker: gl doesn't use scr_fullupdate, but has it defined
 	scr_fullupdate = 0;
-	SCR_UpdateScreen ();
+
 	//johnfitz -- timeout
 	if (time2 > time1)
 		return false;
@@ -940,8 +1079,40 @@ void SCR_BringDownConsole (void)
 	VID_SetPaletteOld (host_basepal);
 }
 
-void Mat_Update (void);	// JPG
 
+
+void Software_EndRendering(void) {
+// update one of three areas
+	vrect_t		vrect;
+	if (scr_copyeverything) {
+		// Copies entire screen
+		vrect.x = 0;
+		vrect.y = 0;
+		vrect.width = vid.width;
+		vrect.height = vid.height;
+		vrect.pnext = 0;
+
+		VID_Update (&vrect);
+	} else if (scr_copytop) {
+		// Copies entire screen except sbar
+		vrect.x = 0;
+		vrect.y = 0;
+		vrect.width = vid.width;
+		vrect.height = vid.height - sb_lines;
+		vrect.pnext = 0;
+
+		VID_Update (&vrect);
+	} else {
+		// Copies only view area
+		vrect.x = scr_vrect.x;
+		vrect.y = scr_vrect.y;
+		vrect.width = scr_vrect.width;
+		vrect.height = scr_vrect.height;
+		vrect.pnext = 0;
+
+		VID_Update (&vrect);
+	}
+}
 
 /*
 ==================
@@ -957,12 +1128,12 @@ needs almost the entire 256k of stack space!
 void SCR_UpdateScreen (void)
 {
 	static float	oldscr_viewsize;
+#ifdef SUPPORTS_3D_CVARS
 	static float	oldlcd_x;
-	vrect_t		vrect;
+#endif
 
 	if (cls.state == ca_dedicated)
 		return;				// stdout only
-
 
 	if (scr_skipupdate || block_drawing)
 		return;
@@ -987,6 +1158,12 @@ void SCR_UpdateScreen (void)
 	}
 #endif
 
+#ifdef MACOSX
+	if (qMinimized)
+			return;
+#endif
+
+
 	scr_copytop = 0;
 	scr_copyeverything = 0;
 
@@ -1003,11 +1180,13 @@ void SCR_UpdateScreen (void)
 		vid.recalc_refdef = true;
 	}
 
+#ifdef SUPPORTS_3D_CVARS
 	if (oldlcd_x != lcd_x.value)
 	{
 		oldlcd_x = lcd_x.value;
 		vid.recalc_refdef = true;
 	}
+#endif
 
 	if (oldscreensize != scr_viewsize.value)
 	{
@@ -1022,7 +1201,10 @@ void SCR_UpdateScreen (void)
 	}
 
 // do 3D refresh drawing, and then update the screen
+#ifndef GLQUAKE
+	// Software clears the tile before the 3D
 	D_EnableBackBufferAccess ();	// of all overlay stuff if drawing directly
+
 
 	if (scr_fullupdate++ < vid.numpages)
 	{	// clear the entire screen
@@ -1032,17 +1214,37 @@ void SCR_UpdateScreen (void)
 	}
 
 	pconupdate = NULL;
+#endif
 
 	SCR_SetUpToDrawConsole ();
-	SCR_EraseCenterString ();
 
+#ifndef GLQUAKE
+	SCR_EraseCenterString ();	// Software needs this for small viewsize 10 windows to tileclear it
+#endif
+
+#ifndef GLQUAKE
 	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in for linear writes all the time
+#endif
 
+#ifndef GLQUAKE // Although it wouldn't hurt to remove this ifdef
 	VID_LockBuffer ();
+#endif
 	V_RenderView ();
+#ifndef GLQUAKE // Although it wouldn't hurt to remove this ifdef	
 	VID_UnlockBuffer ();
+#endif
 
+#ifdef SUPPORTS_AUTOID_HARDWARE
+	SCR_SetupAutoID ();
+#endif
+
+#ifdef GLQUAKE
+	GL_Set2D ();
+#endif
+
+#ifndef GLQUAKE
 	D_EnableBackBufferAccess ();	// of all overlay stuff if drawing directly
+#endif
 
 	if (scr_drawdialog) //new game confirm
 	{
@@ -1065,7 +1267,7 @@ void SCR_UpdateScreen (void)
 		Sbar_FinaleOverlay ();
 		SCR_CheckDrawCenterString ();
 	}
-	else if (cl.intermission == 3 && key_dest == key_game)
+	else if (cl.intermission == 3 && key_dest == key_game) //cut-scene
 	{
 		SCR_CheckDrawCenterString ();
 	}
@@ -1077,11 +1279,13 @@ void SCR_UpdateScreen (void)
 		SCR_DrawPause ();
 		
 		if (cls.state == ca_connected) {
-			void Draw_Crosshair (void);
-			Draw_Crosshair ();	
+#ifdef SUPPORTS_AUTOID_HARDWARE
+			SCR_DrawAutoID ();
+#endif
 #ifdef SUPPORTS_AUTOID_SOFTWARE
 			R_DrawNameTags(); 
 #endif
+			Draw_Crosshair ();	
 			SCR_DrawFPS (); // JPG - draw FPS
 			SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
 			SCR_CheckDrawCenterString ();
@@ -1101,7 +1305,9 @@ void SCR_UpdateScreen (void)
 		Mat_Update ();	// JPG
 	}
 
+#ifndef GLQUAKE
 	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in for linear writes all the time
+#endif
 
 #if 0
 	if (pconupdate) {
@@ -1111,50 +1317,12 @@ void SCR_UpdateScreen (void)
 
 	V_UpdatePalette_Software ();
 
-// update one of three areas
-	if (scr_copyeverything)
-	{
-		vrect.x = 0;
-		vrect.y = 0;
-		vrect.width = vid.width;
-		vrect.height = vid.height;
-		vrect.pnext = 0;
 
-		VID_Update (&vrect);
-	}
-	else if (scr_copytop)
-	{
-		vrect.x = 0;
-		vrect.y = 0;
-		vrect.width = vid.width;
-		vrect.height = vid.height - sb_lines;
-		vrect.pnext = 0;
-
-		VID_Update (&vrect);
-	}
-	else
-	{
-		vrect.x = scr_vrect.x;
-		vrect.y = scr_vrect.y;
-		vrect.width = scr_vrect.width;
-		vrect.height = scr_vrect.height;
-		vrect.pnext = 0;
-
-		VID_Update (&vrect);
-	}
+	Software_EndRendering ();
 
 #ifdef SUPPORTS_AVI_CAPTURE
 	Movie_UpdateScreen ();
 #endif
+
 }
 
-/*
-==================
-SCR_UpdateWholeScreen
-==================
-*/
-void SCR_UpdateWholeScreen (void)
-{
-	scr_fullupdate = 0;
-	SCR_UpdateScreen ();
-}

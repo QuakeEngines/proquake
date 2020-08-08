@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	BOTTOM_RANGE	96
 
 //=============================================================================
+#define ISTRANSPARENT(ent)	((ent)->istransparent && (ent)->transparency > 0 && (ent)->transparency < 1)
 
 typedef struct efrag_s
 {
@@ -33,6 +34,10 @@ typedef struct efrag_s
 	struct efrag_s		*entnext;
 } efrag_t;
 
+#ifdef SUPPORTS_SW_WATERALPHA
+extern cvar_t r_wateralpha; // Manoel Kasimier - translucent water
+byte r_foundwater, r_drawwater; // Manoel Kasimier - translucent water
+#endif
 
 typedef struct entity_s
 {
@@ -152,6 +157,11 @@ void R_InitSky (struct texture_s *mt);	// called at level load
 #ifdef SUPPORTS_SKYBOX
 void R_SkyCommand_f (void);
 #endif
+#ifdef SUPPORTS_SW_SKYBOX
+void R_LoadSky (char *s); // Manoel Kasimier - skyboxes
+void LoadPCX (char *filename, byte **pic, int *width, int *height); // Manoel Kasimier - skyboxes
+#endif
+
 
 void R_AddEfrags (entity_t *ent);
 void R_RemoveEfrags (entity_t *ent);
@@ -188,3 +198,9 @@ void D_FlushCaches (void);
 void D_DeleteSurfaceCache (void);
 void D_InitCaches (void *buffer, int size);
 void R_SetVrect (vrect_t *pvrect, vrect_t *pvrectin, int lineadj);
+
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+//qbism ftestain.  Could lightdelta be int ?
+void R_AddStain(vec3_t org, float tint, float radius);
+void R_LessenStains(void);
+#endif

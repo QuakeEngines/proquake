@@ -78,6 +78,10 @@ typedef struct texture_s
 #define SURF_DRAWTURB		0x10
 #define SURF_DRAWTILED		0x20
 #define SURF_DRAWBACKGROUND	0x40
+#ifdef SUPPORTS_SW_SKYBOX
+#define SURF_DRAWSKYBOX		0x80		// Manoel Kasimier - skyboxes // Code taken from the ToChriS engine - Author: Vic (vic@quakesrc.org) (http://hkitchen.quakesrc.org/)
+#endif
+#define SURF_DRAWTRANSLUCENT	0x100		// Manoel Kasimier - translucent water
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct
@@ -100,6 +104,11 @@ typedef struct msurface_s
 
 	int			dlightframe;
 	int			dlightbits;
+#ifdef SUPPORTS_SOFTWARE_FTESTAIN
+	int			lightmaptexturenum;  //qbism ftestain
+	int			light_s, light_t;	//qbism ftestain lightmap coordinates
+	qboolean stained; //qbism ftestain
+#endif
 
 	mplane_t	*plane;
 	int			flags;

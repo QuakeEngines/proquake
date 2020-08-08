@@ -60,7 +60,7 @@ int			key_repeats[256];	// if > 1, it is autorepeating
 qboolean	keydown[256];
 qboolean	keygamedown[256];  // Baker: to prevent -aliases from triggering
 
-#ifdef SUPPORTS_GLVIDEO_MODESWITCH
+#if defined(SUPPORTS_GLVIDEO_MODESWITCH) || defined(SUPPORTS_SW_ALTENTER)
 cvar_t		cl_key_altenter = {"cl_key_altenter", "1", true}; // Baker 3.99q: allows user to disable new ALT-ENTER behavior
 #endif
 
@@ -340,7 +340,7 @@ void Key_Console (int key, int ascii)
 		Cbuf_AddText (key_lines[edit_line]+1);	// skip the >
 		Cbuf_AddText ("\n");
 		Con_Printf ("%s\n",key_lines[edit_line]);
-		edit_line = (edit_line + 1) & 31;
+		edit_line = (edit_line + 1) & (CMDLINES-1);
 		history_line = edit_line;
 		key_lines[edit_line][0] = ']';
 		key_linepos = 1;
@@ -404,7 +404,7 @@ void Key_Console (int key, int ascii)
 	{
 		do
 		{
-			history_line = (history_line - 1) & 31;
+			history_line = (history_line - 1) & (CMDLINES-1);
 		} while (history_line != edit_line
 				&& !key_lines[history_line][1]);
 		if (history_line == edit_line)
@@ -420,7 +420,7 @@ void Key_Console (int key, int ascii)
 			return;
 		do
 		{
-			history_line = (history_line + 1) & 31;
+			history_line = (history_line + 1) & (CMDLINES-1);
 		}
 		while (history_line != edit_line && !key_lines[history_line][1]);
 
@@ -1028,7 +1028,7 @@ void Key_Init (void)
 // register our functions
 
 	Cvar_RegisterVariable(&cl_bindprotect, NULL);
-#ifdef SUPPORTS_GLVIDEO_MODESWITCH
+#if defined(SUPPORTS_GLVIDEO_MODESWITCH) || defined(SUPPORTS_SW_ALTENTER)
 	Cvar_RegisterVariable(&cl_key_altenter, NULL);
 #endif
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
@@ -1087,25 +1087,54 @@ void Key_Event (int key, int ascii, qboolean down)
 		// Alt-Enter detected
 		// swallow it and process
 
-#ifdef DX8QUAKE_CANNOT_DETECT_FULLSCREEN_BY_MODESTATE
-		Cbuf_AddText("toggle vid_fullscreen\n");
-		Cbuf_AddText("vid_restart\n");
-		Cbuf_Execute ();
-		return;
-#endif
-
 		if (VID_WindowedSwapAvailable()) { // We can switch to/from Windowed mode?
 			if (VID_isFullscreen())
 				VID_Windowed();
 			else
 				VID_Fullscreen();
-
-			return; // Get out of here and don't process the key
 		} else {
 			// Let someone know this isn't available
 
 			Con_Printf("Switching between windowed/fullscreen mode is locked\n");
 		}
+		return; // Get out of here and don't process the key
+	}
+#endif
+
+#ifdef SUPPORTS_SW_ALTENTER
+	// Baker: the basics of this ...
+	// Remember our current mode and preserve both the windowed and fullscreen settings
+	// And just make it work
+	if (alt_down && key == K_ENTER && !down && cl_key_altenter.value) {
+		// Alt-Enter detected
+		// swallow it and process
+		extern cvar_t vid_fullscreen_mode;
+		extern cvar_t vid_windowed_mode;
+		extern cvar_t vid_mode; 
+		
+		if (vid_mode.value >=3) {
+			// We are in fullscreen mode, this is our switch mode
+			Cvar_SetValue ("vid_fullscreen_mode", vid_mode.value);
+		} else {
+			Cvar_SetValue ("vid_windowed_mode", vid_mode.value);
+		}
+
+
+		if (vid_mode.value >=3) {
+			// fullscreen switching to windowed mode					
+			
+			Cbuf_InsertText (va("vid_mode %i\n", (int) vid_windowed_mode.value));
+			Cbuf_Execute ();
+			
+		} else {
+			// windowed mode switching to fullscreen mode
+			
+			Cbuf_InsertText (va("vid_mode %i\n", (int) vid_fullscreen_mode.value));
+			Cbuf_Execute ();
+			
+		}
+		
+		return; // Get out of here and don't process the key
 	}
 #endif
 

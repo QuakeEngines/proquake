@@ -24,95 +24,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "d_local.h"
 #include "resource.h"
 
+// === end includes
+
 #define MAX_MODE_LIST	30
 #define VID_ROW_SIZE	3
-
-
-qboolean	dibonly;
-
-extern int		Minimized;
-
-HWND		mainwindow;
-
-HWND WINAPI InitializeWindow (HINSTANCE hInstance, int nCmdShow);
-
-int			DIBWidth, DIBHeight;
-qboolean	DDActive;
-RECT		WindowRect;
-DWORD		WindowStyle, ExWindowStyle;
-
-int			window_center_x, window_center_y, window_x, window_y, window_width, window_height;
-RECT		window_rect;
-
-static DEVMODE	gdevmode;
-static qboolean	startwindowed = 0, windowed_mode_set;
-static int		firstupdate = 1;
-static qboolean	vid_initialized = false, vid_palettized;
-static int		lockcount;
-static int		vid_fulldib_on_focus_mode;
-static qboolean	force_minimized, in_mode_set, is_mode0x13, force_mode_set;
-static int		vid_stretched, windowed_mouse;
-static qboolean	palette_changed, syscolchg, vid_mode_set, hide_window, pal_is_nostatic;
-static HICON	hIcon;
-extern cvar_t cl_confirmquit; // Baker 3.60
-
-viddef_t	vid;				// global video state
 
 #define MODE_WINDOWED			0
 #define MODE_SETTABLE_WINDOW	2
 #define NO_MODE					(MODE_WINDOWED - 1)
 #define MODE_FULLSCREEN_DEFAULT	(MODE_WINDOWED + 3)
 
-extern qboolean	flex_mouseactive;  // from in_win.c
-
-cvar_t		vid_mode = {"vid_mode","0", false}; // Note that 0 is MODE_WINDOWED
-cvar_t		_vid_default_mode = {"_vid_default_mode","0", true}; // Note that 3 is MODE_FULLSCREEN_DEFAULT
-cvar_t		_vid_default_mode_win = {"_vid_default_mode_win","3", true};  // Baker 3.85: reverted this (from 8) as it inteferes with saving
-cvar_t		vid_wait = {"vid_wait","0"};
-cvar_t		vid_nopageflip = {"vid_nopageflip","0", true};
-cvar_t		_vid_wait_override = {"_vid_wait_override", "0", true};
-cvar_t		vid_config_x = {"vid_config_x","800", true};
-cvar_t		vid_config_y = {"vid_config_y","600", true};
-cvar_t		vid_stretch_by_2 = {"vid_stretch_by_2","1", true};
-cvar_t		_windowed_mouse = {"_windowed_mouse","1", true};
-cvar_t		vid_fullscreen_mode = {"vid_fullscreen_mode","3", true};
-cvar_t		vid_windowed_mode = {"vid_windowed_mode","0", true};
-cvar_t		block_switch = {"block_switch","0", true};
-cvar_t		vid_window_x = {"vid_window_x", "0", true};
-cvar_t		vid_window_y = {"vid_window_y", "0", true};
-
-typedef struct {
-	int		width;
-	int		height;
-} lmode_t;
-
-lmode_t	lowresmodes[] = {
-	{320, 200},
-	{320, 240},
-	{400, 300},
-	{512, 384},
-};
-
-int			vid_modenum = NO_MODE;
-int			vid_testingmode, vid_realmode;
-double		vid_testendtime;
-int			vid_default = MODE_WINDOWED;
-static int	windowed_default;
-
-modestate_t	modestate = MS_UNINIT;
-
-static byte		*vid_surfcache;
-static int		vid_surfcachesize;
-static int		VID_highhunkmark;
-
-unsigned char	vid_curpal[256*3];
-
-unsigned short	d_8to16table[256];
-unsigned	d_8to24table[256];
-
-int     	driver = grDETECT,mode;
-qboolean    useWinDirect = true, useDirectDraw = true;
-MGLDC	*mgldc = NULL,*memdc = NULL,*dibdc = NULL,*windc = NULL;
+// === end defines
 
 typedef struct {
 	modestate_t	type;
@@ -128,23 +50,155 @@ typedef struct {
 	char		modedesc[13];
 } vmode_t;
 
+typedef struct {
+	int		width;
+	int		height;
+} lmode_t;
+
+lmode_t	lowresmodes[] = {
+	{320, 200},
+	{320, 240},
+	{400, 300},
+	{512, 384},
+};
+
+
+qboolean	DDActive;
+qboolean	dibonly;
+
+extern int		Minimized;
+
+
 static vmode_t	modelist[MAX_MODE_LIST];
 static int		nummodes;
 static vmode_t	*pcurrentmode;
+static vmode_t	badmode;
 
+static DEVMODE	gdevmode;
 int		aPage;					// Current active display page
 int		vPage;					// Current visible display page
 int		waitVRT = true;			// True to wait for retrace on flip
+extern qboolean	flex_mouseactive;  // from in_win.c
+static HICON	hIcon;
 
-static vmode_t	badmode;
 
-static byte	backingbuf[48*24];
+
+int			DIBWidth, DIBHeight;
+RECT		WindowRect;
+DWORD		WindowStyle, ExWindowStyle;
+
+HWND		mainwindow;
+
+int			vid_modenum = NO_MODE;
+int			vid_testingmode, vid_realmode;
+double		vid_testendtime;
+int			vid_default = MODE_WINDOWED;
+
+
+
+
+
+static int	windowed_default;
+unsigned char	vid_curpal[256*3];
+
+
+
+
+static qboolean	startwindowed = 0, windowed_mode_set;
+static int		firstupdate = 1;
+static qboolean	vid_initialized = false, vid_palettized;
+static int		lockcount;
+static int		vid_fulldib_on_focus_mode;
+static qboolean	force_minimized, in_mode_set, is_mode0x13, force_mode_set;
+static int		vid_stretched, windowed_mouse;
+
+static qboolean	palette_changed, syscolchg, vid_mode_set, hide_window, pal_is_nostatic;
+
+
+
+
+
+modestate_t	modestate = MS_UNINIT;
+
+int			window_center_x, window_center_y, window_x, window_y, window_width, window_height;
+RECT		window_rect;
+
+HWND WINAPI InitializeWindow (HINSTANCE hInstance, int nCmdShow);
+
+viddef_t	vid;				// global video state
+
+
 
 void VID_MenuDraw (void);
 void VID_MenuKey (int key);
 
 LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void AppActivate(BOOL fActive, BOOL minimize);
+
+
+
+static byte		*vid_surfcache;
+static int		vid_surfcachesize;
+static int		VID_highhunkmark;
+
+
+
+unsigned short	d_8to16table[256];
+unsigned	d_8to24table[256];
+
+int     	driver = grDETECT,mode;
+qboolean    useWinDirect = true, useDirectDraw = true;
+MGLDC	*mgldc = NULL,*memdc = NULL,*dibdc = NULL,*windc = NULL;
+
+static byte	backingbuf[48*24];
+
+extern cvar_t cl_confirmquit; // Baker 3.60
+
+
+
+// CVARS BEGIN HERE
+//
+
+cvar_t		vid_mode = {"vid_mode","0", false}; // Note that 0 is MODE_WINDOWED
+cvar_t		_vid_default_mode = {"_vid_default_mode","0", true}; // Note that 3 is MODE_FULLSCREEN_DEFAULT
+cvar_t		_vid_default_mode_win = {"_vid_default_mode_win","3", true};  // Baker 3.85: reverted this (from 8) as it inteferes with saving
+cvar_t		vid_wait = {"vid_wait","0"};
+cvar_t		vid_nopageflip = {"vid_nopageflip","0", true};
+cvar_t		_vid_wait_override = {"_vid_wait_override", "0", true};
+cvar_t		vid_config_x = {"vid_config_x","800", true};
+cvar_t		vid_config_y = {"vid_config_y","600", true};
+cvar_t		vid_stretch_by_2 = {"vid_stretch_by_2","1", true};
+cvar_t		_windowed_mouse = {"_windowed_mouse","1", true};
+cvar_t		vid_fullscreen_mode = {"vid_fullscreen_mode","3", true};
+cvar_t		vid_windowed_mode = {"vid_windowed_mode","0", true};
+cvar_t		block_switch = {"block_switch","0", true};
+//cvar_t		vid_window_x = {"vid_window_x", "0", true};
+//cvar_t		vid_window_y = {"vid_window_y", "0", true};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//==========================================================================
+// direct draw software compatability stuff
 
 
 void VID_RememberWindowPos (void) {
@@ -159,6 +213,7 @@ void VID_RememberWindowPos (void) {
 	}
 }
 
+#if 0
 void VID_CheckWindowXY (void) {
 
 	if (((int)vid_window_x.value > (GetSystemMetrics (SM_CXSCREEN) - 160)) ||
@@ -169,6 +224,7 @@ void VID_CheckWindowXY (void) {
 		Cvar_SetValue ("vid_window_y", 0.0 );
 	}
 }
+#endif
 
 void VID_UpdateWindowStatus (void) {
 
@@ -181,6 +237,25 @@ void VID_UpdateWindowStatus (void) {
 
 	IN_UpdateClipCursor ();
 }
+
+
+/*
+================
+CenterWindow
+================
+*/
+void CenterWindow(HWND hWndCenter, int width, int height, BOOL lefttopjustify) {
+    int     CenterX, CenterY;
+
+	CenterX = (GetSystemMetrics(SM_CXSCREEN) - width) / 2;
+	CenterY = (GetSystemMetrics(SM_CYSCREEN) - height) / 2;
+	if (CenterX > CenterY*2)
+		CenterX >>= 1;	// dual screens
+	CenterX = (CenterX < 0) ? 0: CenterX;
+	CenterY = (CenterY < 0) ? 0: CenterY;
+	SetWindowPos (hWndCenter, NULL, CenterX, CenterY, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW | SWP_DRAWFRAME);
+}
+
 
 /*
 ================
@@ -527,7 +602,7 @@ void VID_InitMGLDIB (HINSTANCE hInstance) {
     wc.hCursor       = LoadCursor (NULL,IDC_ARROW);
 	wc.hbrBackground = NULL;
     wc.lpszMenuName  = 0;
-    wc.lpszClassName = TEXT("WinQuake");
+    wc.lpszClassName = TEXT(ENGINE_NAME); //"WinQuake");
 
     if (!RegisterClass (&wc) )
 		Sys_Error ("Couldn't register window class");
@@ -556,7 +631,7 @@ void VID_InitMGLDIB (HINSTANCE hInstance) {
 	strcpy (modelist[1].modedesc, "640x480");
 	modelist[1].mode13 = 0;
 	modelist[1].modenum = MODE_WINDOWED + 1;
-	modelist[1].stretched = 1;
+	modelist[1].stretched = 0;  // Baker:  Prior to 4.50, this was 1
 	modelist[1].dib = 1;
 	modelist[1].fullscreen = 0;
 	modelist[1].halfscreen = 0;
@@ -568,7 +643,7 @@ void VID_InitMGLDIB (HINSTANCE hInstance) {
 	strcpy (modelist[2].modedesc, "800x600");
 	modelist[2].mode13 = 0;
 	modelist[2].modenum = MODE_WINDOWED + 2;
-	modelist[2].stretched = 1;
+	modelist[2].stretched = 1;		// Baker:  Prior to 4.50, this was 1
 	modelist[2].dib = 1;
 	modelist[2].fullscreen = 0;
 	modelist[2].halfscreen = 0;
@@ -1030,6 +1105,8 @@ void DestroyFullDIBWindow (void){
 	}
 }
 
+
+
 qboolean VID_SetWindowedMode (int modenum){
 	HDC				hdc;
 	pixel_format_t	pf;
@@ -1090,8 +1167,8 @@ qboolean VID_SetWindowedMode (int modenum){
 	if (!vid_mode_set) {
 		mainwindow = CreateWindowEx (
 			 ExWindowStyle,
-			 TEXT("WinQuake"),
-			 TEXT("WinQuake"),
+			 TEXT(ENGINE_NAME), // TEXT("WinQuake"),
+			 va("%s %s %s",ENGINE_NAME, RENDERER_NAME, ENGINE_VERSION), // TEXT("WinQuake")
 			 WindowStyle,
 			 0, 0,
 			 WindowRect.right - WindowRect.left,
@@ -1125,10 +1202,17 @@ qboolean VID_SetWindowedMode (int modenum){
 		return true;
 
 // position and show the DIB window
+#if 0
 	VID_CheckWindowXY ();
 	SetWindowPos (mainwindow, NULL, (int)vid_window_x.value,
 				  (int)vid_window_y.value, 0, 0,
 				  SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW | SWP_DRAWFRAME);
+#endif
+
+#if 1
+	CenterWindow(mainwindow, WindowRect.right - WindowRect.left, WindowRect.bottom - WindowRect.top, false);
+#endif
+
 
 	if (force_minimized)
 		ShowWindow (mainwindow, SW_MINIMIZE);
@@ -1171,6 +1255,7 @@ qboolean VID_SetWindowedMode (int modenum){
 	SendMessage (mainwindow, WM_SETICON, (WPARAM)TRUE, (LPARAM)hIcon);
 	SendMessage (mainwindow, WM_SETICON, (WPARAM)FALSE, (LPARAM)hIcon);
 
+	Sleep (100);
 	return true;
 }
 
@@ -1281,6 +1366,7 @@ qboolean VID_SetFullDIBMode (int modenum) {
 // position and show the DIB window
 	SetWindowPos (mainwindow, HWND_TOPMOST, 0, 0, 0, 0,
 				  SWP_NOSIZE | SWP_SHOWWINDOW | SWP_DRAWFRAME);
+
 	ShowWindow (mainwindow, SW_SHOWDEFAULT);
 	UpdateWindow (mainwindow);
 
@@ -1381,8 +1467,9 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 	scr_disabled_for_loading = true;
 	in_mode_set = true;
 
-	CDAudio_Pause ();
+	S_BlockSound ();
 	S_ClearBuffer ();
+	CDAudio_Pause ();
 
 	if (vid_modenum == NO_MODE)
 		original_mode = windowed_default;
@@ -1417,6 +1504,7 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 	window_height = vid.height << vid_stretched;
 	VID_UpdateWindowStatus ();
 
+	S_UnblockSound ();
 	CDAudio_Resume ();
 	scr_disabled_for_loading = temp;
 
@@ -1467,8 +1555,11 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 	Sleep (100);
 
 	if (!force_minimized) {
-		SetWindowPos (mainwindow, HWND_TOP, 0, 0, 0, 0,
-				  SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOCOPYBITS);
+		if (modestate == MS_FULLDIB)
+			SetWindowPos (mainwindow, HWND_TOP, 0, 0, 0, 0, SWP_DRAWFRAME | SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOCOPYBITS);
+		else {
+			CenterWindow(mainwindow, WindowRect.right - WindowRect.left, WindowRect.bottom - WindowRect.top, false);
+		}
 
 		SetForegroundWindow (mainwindow);
 	}
@@ -1792,8 +1883,8 @@ void	VID_Init (unsigned char *palette) {
 	Cvar_RegisterVariable (&vid_fullscreen_mode, NULL);
 	Cvar_RegisterVariable (&vid_windowed_mode, NULL);
 	Cvar_RegisterVariable (&block_switch, NULL);
-	Cvar_RegisterVariable (&vid_window_x, NULL);
-	Cvar_RegisterVariable (&vid_window_y, NULL);
+//	Cvar_RegisterVariable (&vid_window_x, NULL);
+//	Cvar_RegisterVariable (&vid_window_y, NULL);
 
 	Cmd_AddCommand ("vid_testmode", VID_TestMode_f);
 	Cmd_AddCommand ("vid_nummodes", VID_NumModes_f);
@@ -2015,6 +2106,12 @@ void	VID_Update (vrect_t *rects) {
 		if (modestate == MS_WINDOWED) {
 			GetWindowRect (mainwindow, &trect);
 
+#if 1
+			Con_Printf("First update\n");
+			CenterWindow(mainwindow, trect.right - trect.left, trect.bottom - trect.top, false);
+#endif
+
+#if 0
 			if ((trect.left != (int)vid_window_x.value) || (trect.top  != (int)vid_window_y.value))
 			{
 				if (COM_CheckParm ("-resetwinpos"))
@@ -2028,7 +2125,9 @@ void	VID_Update (vrect_t *rects) {
 				  (int)vid_window_y.value, 0, 0,
 				  SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW | SWP_DRAWFRAME);
 			}
+#endif
 		}
+
 
 		if ((_vid_default_mode_win.value != vid_default) &&
 			(!startwindowed || (_vid_default_mode_win.value < MODE_FULLSCREEN_DEFAULT))) {
@@ -2038,6 +2137,7 @@ void	VID_Update (vrect_t *rects) {
 			{
 				Cvar_SetValue ("vid_window_x", 0.0);
 				Cvar_SetValue ("vid_window_y", 0.0);
+				Con_Printf("Eliminate this\n");
 			}
 
 			if ((_vid_default_mode_win.value < 0) || (_vid_default_mode_win.value >= nummodes))
@@ -2046,6 +2146,8 @@ void	VID_Update (vrect_t *rects) {
 			Cvar_SetValue ("vid_mode", _vid_default_mode_win.value);
 		}
 	}
+
+	firstupdate =0;
 
 	// We've drawn the frame; copy it to the screen
 	FlipScreen (rects);
@@ -2345,23 +2447,14 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 		S_BlockSound ();
 		S_ClearBuffer ();
 #ifdef BUILD_MP3_VERSION
-		// Need to pause CD music here if is playing
-		if (sound_started) {
-			Cbuf_InsertText ("cd pause\n");
-			Cbuf_Execute ();
-		}
+		CDAudio_Pause ();
 #endif
 		sound_active = false;
 	}
 	else if (ActiveApp && !sound_active) {
 		S_UnblockSound ();
-		S_ClearBuffer ();
 #ifdef BUILD_MP3_VERSION
-		// Need to unpause CD music here if was playing
-		if (sound_started) {
-			Cbuf_InsertText ("cd resume\n");
-			Cbuf_Execute ();
-		}
+		CDAudio_Resume ();
 #endif
 		sound_active = true;
 	}
@@ -2498,9 +2591,9 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 			window_y = (int) HIWORD(lParam);
 			VID_UpdateWindowStatus ();
 
-			if ((modestate == MS_WINDOWED) && !in_mode_set && !Minimized) // Baker 3.71 - GL does not have
-				VID_RememberWindowPos ();                                 // Baker 3.71 - GL does not have
-
+//			if ((modestate == MS_WINDOWED) && !in_mode_set && !Minimized) // Baker 3.71 - GL does not have
+//				VID_RememberWindowPos ();                                 // Baker 3.71 - GL does not have
+//
 			break;
 
 		case WM_KEYDOWN:
@@ -2539,14 +2632,14 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 				extmousey = Q_rint((float)HIWORD(lParam));//*((float)vid.height/(float)glheight));
 				Key_Event (K_MOUSECLICK_BUTTON1, 0, false);
 				break;
-			}	
+			}
 		case WM_RBUTTONUP:
 			// Mouse isn't active + special destination
 			// means Quake doesn't control mouse
 			if (key_special_dest && !flex_mouseactive) {
 				Key_Event (K_MOUSECLICK_BUTTON2, 0, false);
 				break;
-			}	
+			}
 
 // Since we are not trapping button downs for special destination
 // like namemaker or customize controls, we need the down event
@@ -2560,37 +2653,37 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 			if (!in_mode_set)
 			{
 				temp = 0;
-	
+
 				if (wParam & MK_LBUTTON)
 					temp |= 1;
-	
+
 				if (wParam & MK_RBUTTON)
 					temp |= 2;
-	
+
 				if (wParam & MK_MBUTTON) {
 					if (key_special_dest && !flex_mouseactive) {
 						Key_Event (K_MOUSECLICK_BUTTON3, 0, false);
 						break; // Get out
-					}	
+					}
 					temp |= 4;
 				}
-	
+
 				if (wParam & MK_XBUTTON1) {
 					if (key_special_dest && !flex_mouseactive) {
 						Key_Event (K_MOUSECLICK_BUTTON4, 0, false);
 						break; // Get out
-					}	
+					}
 					temp |= 8;
 				}
-	
+
 				if (wParam & MK_XBUTTON2) {
 					if (key_special_dest && !flex_mouseactive) {
 						Key_Event (K_MOUSECLICK_BUTTON5, 0, false);
 						break; // Get out
-					}	
+					}
 					temp |= 16;
 				}
-				
+
 				IN_MouseEvent (temp);
 			}
 			break;
@@ -2622,6 +2715,7 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 		// this causes Close in the right-click task bar menu not to work, but right
 		// now bad things happen if Close is handled in that case (garbage and a
 		// crash on Win95)
+
 			if (!in_mode_set) {
 				// Baker 3.60 - cl_confirmquit support
 				if (!cl_confirmquit.value || MessageBox(mainwindow, TEXT("Are you sure you want to quit?"), TEXT("Confirm Exit"), MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
@@ -2630,6 +2724,7 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 			break;
 
 		case WM_ACTIVATE:
+
 			fActive = LOWORD(wParam);
 			fMinimized = (BOOL) HIWORD(wParam);
 			AppActivate(!(fActive == WA_INACTIVE), fMinimized);
@@ -2707,8 +2802,12 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 		case WM_PAINT:
 			hdc = BeginPaint(hWnd, &ps);
 
-			if (!in_mode_set && host_initialized)
-				SCR_UpdateWholeScreen ();
+			if (!in_mode_set && host_initialized) {
+				// Baker: formerly was SCR_UpdateWholeScreen
+				// but it was used here and here only and I have removed it in 4.47
+				scr_fullupdate = 0;
+				SCR_UpdateScreen ();
+			}
 
 			EndPaint(hWnd, &ps);
 			break;

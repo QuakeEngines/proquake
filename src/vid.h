@@ -108,3 +108,7 @@ qboolean VID_isFullscreen(void);
 void VID_Windowed(void);
 void VID_Fullscreen(void);
 #endif
+
+#ifdef MACOSX
+extern qboolean qMinimized;
+#endif

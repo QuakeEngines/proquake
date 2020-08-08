@@ -1007,7 +1007,7 @@ Returns the position (1 to argc-1) in the command's argument list
 where the given parameter apears, or 0 if not present
 ================
 */
-static int Cmd_CheckParm (char *parm)
+ int Cmd_CheckParm (char *parm)
 {
 	int i;
 
@@ -1030,7 +1030,7 @@ Cmd_CmdList_f
 List all console commands
 ====================
 */
-static void Cmd_CmdList_f (void) {
+ void Cmd_CmdList_f (void) {
 	cmd_function_t	*cmd;
 
 	char 		*partial;

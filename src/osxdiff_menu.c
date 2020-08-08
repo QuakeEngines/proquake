@@ -51,7 +51,9 @@ enum {
 	m_lanconfig,
 	m_gameoptions,
 	m_search,
-	m_slist
+	m_slist,
+	m_preferences,
+	m_namemaker
 } m_state;
 
 void M_Menu_Main_f (void);
@@ -60,9 +62,11 @@ void M_Menu_Main_f (void);
 		void M_Menu_Save_f (void);
 	void M_Menu_MultiPlayer_f (void);
 		void M_Menu_Setup_f (void);
+void M_Menu_NameMaker_f (void);//JQ1.5dev
 		void M_Menu_Net_f (void);
 	void M_Menu_Options_f (void);
 		void M_Menu_Keys_f (void);
+//		void M_Menu_Preferences_f (void);
 		void M_Menu_Video_f (void);
 	void M_Menu_Help_f (void);
 	void M_Menu_Quit_f (void);
@@ -79,9 +83,11 @@ void M_Main_Draw (void);
 		void M_Save_Draw (void);
 	void M_MultiPlayer_Draw (void);
 		void M_Setup_Draw (void);
+void M_NameMaker_Draw (void);//JQ1.5Dev
 		void M_Net_Draw (void);
 	void M_Options_Draw (void);
 		void M_Keys_Draw (void);
+//void M_VideoModes_Draw (void);
 		void M_Video_Draw (void);
 	void M_Help_Draw (void);
 	void M_Quit_Draw (void);
@@ -391,8 +397,8 @@ void M_Menu_Main_f (void)
 {
 	if (key_dest != key_menu)
 	{
-		m_save_demonum = cls.demonum;
-		cls.demonum = -1;
+//		m_save_demonum = cls.demonum;
+//		cls.demonum = -1;
 	}
 	key_dest = key_menu;
 	m_state = m_main;
@@ -421,11 +427,18 @@ void M_Main_Key (int key)
 	switch (key)
 	{
 	case K_ESCAPE:
+#ifdef FLASH_FILE_SYSTEM
+		//For FLASH, we write config.cfg every time we leave the main menu.
+		//This is because we cant do it when we quit (as is done originally),
+		//as you cant quit a flash app
+
+		Host_WriteConfiguration();
+#endif
 		key_dest = key_game;
 		m_state = m_none;
-		cls.demonum = m_save_demonum;
-		if (cls.demonum != -1 && !cls.demoplayback && cls.state != ca_connected)
-			CL_NextDemo ();
+//		cls.demonum = m_save_demonum;
+//		if (cls.demonum != -1 && !cls.demoplayback && cls.state != ca_connected)
+//			CL_NextDemo ();
 		break;
 
 	case K_DOWNARROW:
@@ -567,6 +580,9 @@ void M_ScanSaves (void)
 		strcpy (m_filenames[i], "--- UNUSED SLOT ---");
 		loadable[i] = false;
 		snprintf (name, sizeof(name), "%s/s%i.sav", com_gamedir, i);
+#ifdef FLASH_FILE_SYSTEM
+		as3ReadFileSharedObject(name);
+#endif
 		f = fopen (name, "r");
 		if (!f)
 			continue;
@@ -792,21 +808,26 @@ void M_MultiPlayer_Key (int key)
 //=============================================================================
 /* SETUP MENU */
 
-int		setup_cursor = 4;
-int		setup_cursor_table[] = {40, 56, 80, 104, 140};
-
+int		setup_cursor = 5;
+int	setup_cursor_table[] = {40, 56, 80, 104, 128, 152};
+char	namemaker_name[16]; // Baker 3.83: Name maker
+qboolean namemaker_shortcut = false; //Support for namemaker command
 char	setup_hostname[16], setup_myname[16];
 int	setup_oldtop, setup_oldbottom, setup_top, setup_bottom;
 
-#define	NUM_SETUP_CMDS	5
+#define	NUM_SETUP_CMDS	6
 
 void M_Menu_Setup_f (void)
 {
 	key_dest = key_menu;
 	m_state = m_setup;
 	m_entersound = true;
-	strcpy(setup_myname, cl_name.string);
-	strcpy(setup_hostname, hostname.string);
+
+	strlcpy (setup_hostname, hostname.string, sizeof(setup_hostname));
+
+	if (!(strlen(setup_myname)))
+		strlcpy (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
+
 	setup_top = setup_oldtop = ((int)cl_color.value) >> 4;
 	setup_bottom = setup_oldbottom = ((int)cl_color.value) & 15;
 }
@@ -828,18 +849,19 @@ void M_Setup_Draw (void)
 	M_DrawTextBox (160, 48, 16, 1);
 	M_PrintWhite (168, 56, setup_myname);  // Baker 3.83: Draw it correctly!
 
+	M_Print (64, 80, "Name Maker");
 
-	M_Print (64, 80, "Shirt color");
-	M_Print (64, 104, "Pants color");
+	M_Print (64, 104, "Shirt color");
+	M_Print (64, 128, "Pants color");
 
-	M_DrawTextBox (64, 140-8, 14, 1);
-	M_Print (72, 140, "Accept Changes");
+	M_DrawTextBox (64, 152-8, 14, 1);
+	M_Print (72, 152, "Accept Changes");
 
-	p = Draw_CachePic ("gfx/bigbox.lmp");
-	M_DrawTransPic (160, 64, p);
+	//p = Draw_CachePic ("gfx/bigbox.lmp");
+	M_DrawTextBox (160, 64, 8, 8);
 	p = Draw_CachePic ("gfx/menuplyr.lmp");
 	M_BuildTranslationTable(setup_top*16, setup_bottom*16);
-	M_DrawTransPicTranslate (172, 72, p);
+	M_DrawTransPicTranslate (176, 76, p);
 
 	M_DrawCharacter (56, setup_cursor_table [setup_cursor], 12+((int)(realtime*4)&1));
 
@@ -864,6 +886,7 @@ void M_Setup_Key (int key)
 	switch (key)
 	{
 	case K_ESCAPE:
+		strlcpy (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
 		M_Menu_MultiPlayer_f ();
 		break;
 
@@ -881,13 +904,23 @@ void M_Setup_Key (int key)
 			setup_cursor = 0;
 		break;
 
+	case K_HOME:
+		S_LocalSound ("misc/menu1.wav");
+		setup_cursor = 0;
+		break;
+
+	case K_END:
+		S_LocalSound ("misc/menu1.wav");
+		setup_cursor = NUM_SETUP_CMDS - 1;
+		break;
+
 	case K_LEFTARROW:
 		if (setup_cursor < 2)
 			return;
 		S_LocalSound ("misc/menu3.wav");
-		if (setup_cursor == 2)
-			setup_top = setup_top - 1;
 		if (setup_cursor == 3)
+			setup_top = setup_top - 1;
+		if (setup_cursor == 4)
 			setup_bottom = setup_bottom - 1;
 		break;
 	case K_RIGHTARROW:
@@ -895,25 +928,33 @@ void M_Setup_Key (int key)
 			return;
 forward:
 		S_LocalSound ("misc/menu3.wav");
-		if (setup_cursor == 2)
-			setup_top = setup_top + 1;
 		if (setup_cursor == 3)
+			setup_top = setup_top + 1;
+		if (setup_cursor == 4)
 			setup_bottom = setup_bottom + 1;
 		break;
 
+	case K_SPACE:
 	case K_ENTER:
 		if (setup_cursor == 0 || setup_cursor == 1)
 			return;
 
-		if (setup_cursor == 2 || setup_cursor == 3)
+		if (setup_cursor == 3 || setup_cursor == 4)
 			goto forward;
 
-		// setup_cursor == 4 (OK)
-		if (strcmp(cl_name.string, setup_myname) != 0)
+		if (setup_cursor == 2)
+		{
+			m_entersound = true;
+			M_Menu_NameMaker_f ();
+			break;
+		}
+
+		// setup_cursor == 5 (OK)
+//		if (strcmp(cl_name.string, setup_myname) != 0)
 			Cbuf_AddText ( va ("name \"%s\"\n", setup_myname) );
-		if (strcmp(hostname.string, setup_hostname) != 0)
+//		if (strcmp(hostname.string, setup_hostname) != 0)
 			Cvar_Set("hostname", setup_hostname);
-		if (setup_top != setup_oldtop || setup_bottom != setup_oldbottom)
+//		if (setup_top != setup_oldtop || setup_bottom != setup_oldbottom)
 			Cbuf_AddText( va ("color %i %i\n", setup_top, setup_bottom) );
 		m_entersound = true;
 		M_Menu_MultiPlayer_f ();
@@ -970,6 +1011,217 @@ forward:
 		setup_bottom = 0;
 	if (setup_bottom < 0)
 		setup_bottom = 13;
+}
+
+//=============================================================================
+/* NAME MAKER MENU */ //From: JoeQuake 1.5Dev!!
+//=============================================================================
+int	namemaker_cursor_x, namemaker_cursor_y;
+#define	NAMEMAKER_TABLE_SIZE	16
+//extern int key_special_dest;
+
+void M_Menu_NameMaker_f (void)
+{
+	key_dest = key_menu;
+//	key_special_dest = 1;
+	m_state = m_namemaker;
+	m_entersound = true;
+	strlcpy (namemaker_name, setup_myname, sizeof(namemaker_name));
+}
+
+void M_Shortcut_NameMaker_f (void) {
+// Baker: our little shortcut into the name maker
+	namemaker_shortcut = true;
+	strlcpy (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
+	namemaker_cursor_x = 0;
+	namemaker_cursor_y = 0;
+	M_Menu_NameMaker_f();
+}
+
+void M_NameMaker_Draw (void)
+{
+	int	x, y;
+
+	M_Print (48, 16, "Your name");
+	M_DrawTextBox (120, 8, 16, 1);
+	M_PrintWhite (128, 16, namemaker_name);
+
+	for (y=0 ; y<NAMEMAKER_TABLE_SIZE ; y++)
+		for (x=0 ; x<NAMEMAKER_TABLE_SIZE ; x++)
+			M_DrawCharacter (32 + (16 * x), 40 + (8 * y), NAMEMAKER_TABLE_SIZE * y + x);
+
+	if (namemaker_cursor_y == NAMEMAKER_TABLE_SIZE)
+		M_DrawCharacter (128, 184, 12 + ((int)(realtime*4)&1));
+	else
+		M_DrawCharacter (24 + 16*namemaker_cursor_x, 40 + 8*namemaker_cursor_y, 12 + ((int)(realtime*4)&1));
+
+//	M_DrawTextBox (136, 176, 2, 1);
+	M_Print (144, 184, "Press ESC to exit");
+}
+
+void Key_Extra (int *key);
+void M_NameMaker_Key (int key)
+{
+	int	l;
+
+	switch (key)
+	{
+	case K_ESCAPE:
+//		key_special_dest = false;
+
+		if (namemaker_shortcut) {// Allow quick exit for namemaker command
+			key_dest = key_game;
+			m_state = m_none;
+			
+			//Save the name
+			Cbuf_AddText (va("name \"%s\"\n", namemaker_name));
+			//Cvar_Set(&hostname, namemaker_name);
+			// Clear the state
+			namemaker_shortcut = false;
+		} else {
+			strlcpy (setup_myname, namemaker_name, sizeof(setup_myname));//R00k			
+		M_Menu_Setup_f ();
+		}
+
+		break;
+
+	case K_UPARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y--;
+		if (namemaker_cursor_y < 0)
+			namemaker_cursor_y = NAMEMAKER_TABLE_SIZE-1;
+		break;
+
+	case K_DOWNARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y++;
+		if (namemaker_cursor_y > NAMEMAKER_TABLE_SIZE-1)
+			namemaker_cursor_y = 0;
+		break;
+
+	case K_PGUP:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y = 0;
+		break;
+
+	case K_PGDN:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y = NAMEMAKER_TABLE_SIZE-1;
+		break;
+
+	case K_LEFTARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x--;
+		if (namemaker_cursor_x < 0)
+			namemaker_cursor_x = NAMEMAKER_TABLE_SIZE - 1;
+		break;
+
+	case K_RIGHTARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x++;
+		if (namemaker_cursor_x >= NAMEMAKER_TABLE_SIZE-1)
+			namemaker_cursor_x = 0;
+		break;
+
+	case K_HOME:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x = 0;
+		break;
+
+	case K_END:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x = NAMEMAKER_TABLE_SIZE - 1;
+		break;
+
+	case K_BACKSPACE:
+		if ((l = strlen(namemaker_name)))
+			namemaker_name[l-1] = 0;
+		break;
+#ifdef _WIN32
+	case K_MOUSECLICK_BUTTON1:
+
+		{
+			extern int extmousex, extmousey;
+			extern int newmousex, newmousey;
+			int		x, y, rectx, recty;
+			qboolean match=false;
+
+/*			Never used in ProQuake
+			if (scr_scalemenu.value) { // This is the default
+				// we need to adjust the extmousex/y for menu effective size!
+				extmousex = (float)extmousex*((float)menuwidth/(float)vid.width);
+				extmousey = (float)extmousey*((float)menuheight/(float)vid.height);
+			}*/
+
+			for (y=0 ; y<NAMEMAKER_TABLE_SIZE ; y++) {
+				for (x=0 ; x<NAMEMAKER_TABLE_SIZE ; x++) {
+					//Draw_Character (cx + ((menuwidth - 320) >> 1), line + m_yofs, num);
+//					rectx = (32 + (16 * x)) + ((menuwidth - 320) >> 1);
+//					recty = 40 + (8 * y) + scr_centermenu.value ? (menuheight - 200) / 2 : 0;
+					rectx = (32 + (16 * x)); //+ ((menuwidth - 320) >> 1);
+					recty = 40 + (8 * y);// + (scr_centermenu.value ? (menuheight - 200) / 2 : 0);
+					rectx = rectx + ((vid.width - 320)>>1); // the adjustment
+					//recty = recty + m_yofs;
+					//M_DrawCharacter (32 + (16 * x), 40 + (8 * y), NAMEMAKER_TABLE_SIZE * y + x);
+					//Draw_Fill(rectx, recty, 8,8, NAMEMAKER_TABLE_SIZE * y + x); // Draw our hotspots
+
+					//Draw_Fill(rectx, recty, 8,8, 0); // Draw our hotspots						
+					if (extmousex >= rectx && extmousey >=recty) {
+						if (extmousex <=rectx+7 && extmousey <= recty+7) {
+							namemaker_cursor_x = x;
+							namemaker_cursor_y = y;
+							match = true;
+						}
+					}
+					if (match) break;
+				}
+				if (match) break;
+			}
+//			Con_Printf("Mouse click x/y %d/%d\n", extmousex, extmousey);
+//			Con_Printf("Match is %d = %d\n", match, namemaker_cursor_y * 16 + namemaker_cursor_x);
+			{
+				extern HWND mainwindow;
+				SetWindowText(mainwindow, va("Mouse click %d %d", extmousex, extmousey));
+			}
+			if (!match) {
+				// Baker: nothing was hit
+				return;
+			}
+		}
+
+
+		// If we reached this point, we are simulating ENTER
+#endif
+	case K_SPACE:
+	case K_ENTER:
+		if (namemaker_cursor_y == NAMEMAKER_TABLE_SIZE)
+		{
+			strlcpy (setup_myname, namemaker_name, sizeof(setup_myname));
+			M_Menu_Setup_f ();
+		}
+		else
+		{
+			l = strlen(namemaker_name);
+			if (l < 15)
+			{
+				namemaker_name[l] = NAMEMAKER_TABLE_SIZE * namemaker_cursor_y + namemaker_cursor_x;
+				namemaker_name[l+1] = 0;
+			}
+		}
+		break;
+
+	default:
+		if (key < 32 || key > 127)
+			break;
+
+		l = strlen(namemaker_name);
+		if (l < 15)
+		{
+			namemaker_name[l] = key;
+			namemaker_name[l+1] = 0;
+		}
+		break;
+	}
 }
 
 //=============================================================================
@@ -1213,12 +1465,30 @@ void M_AdjustSliders (int dir)
 		Cvar_SetValue ("fov", scr_fov.value);
 		break;
 	case 5:	// gamma
+		// Baker hwgamma support
+#ifdef SUPPORTS_ENHANCED_GAMMA
+		// D3DQUAKE should use hardware gamma
+		// at least for here!
+		if (using_hwgamma) {
+			v_gamma.value -= dir * 0.05;
+			if (v_gamma.value < 0.5)
+				v_gamma.value = 0.5;
+			if (v_gamma.value > 1)
+				v_gamma.value = 1;
+			Cvar_SetValue ("gamma", v_gamma.value);
+		} else {
+			SCR_ModalMessage("Brightness adjustment cannot\nbe done in-game if using the\n-gamma command line parameter.\n\n\nRemove -gamma from your command\nline to use in-game brightness.\n\nPress Y or N to continue.",0.0f);
+		}
+#else
 		vold_gamma.value -= dir * 0.05;
 		if (vold_gamma.value < 0.5)
 			vold_gamma.value = 0.5;
 		if (vold_gamma.value > 1)
 			vold_gamma.value = 1;
 		Cvar_SetValue ("gamma", vold_gamma.value);
+#endif
+
+		// Baker end hwgamma support
 		break;
 	case 6:	// mouse speed
 		sensitivity.value += dir * 0.5;
@@ -1234,10 +1504,10 @@ void M_AdjustSliders (int dir)
 		Cvar_SetValue ("sensitivity", sensitivity.value);
 		break;
 	case 7:	// music volume
-#ifdef _WIN32
-		bgmvolume.value += dir * 1.0;
-#else
+#ifdef FULL_BACKGROUND_VOLUME_CONTROL
 		bgmvolume.value += dir * 0.1;
+#else
+		bgmvolume.value += dir * 1.0;
 #endif
 		if (bgmvolume.value < 0)
 			bgmvolume.value = 0;
@@ -1255,15 +1525,24 @@ void M_AdjustSliders (int dir)
 		break;
 
 	case 9:	// always run
-		if (cl_forwardspeed.value > 200)
-		{
+		if (cl_upspeed.value > 200) {
+			// Maxxed to OFF
 			Cvar_SetValue ("cl_forwardspeed", 200);
 			Cvar_SetValue ("cl_backspeed", 200);
-		}
-		else
-		{
-			Cvar_SetValue ("cl_forwardspeed", 400);
-			Cvar_SetValue ("cl_backspeed", 400);
+			Cvar_SetValue ("cl_sidespeed", 350);    // Baker 3.60 - added 350 is the default
+			Cvar_SetValue ("cl_upspeed", 200);	// Baker 3.60 - added 350 is the default
+		} else if (cl_forwardspeed.value > 200) {
+			// Classic to Maxxed
+			Cvar_SetValue ("cl_forwardspeed", 999); // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_backspeed", 999);    // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_sidespeed", 999);    // Baker 3.60 - added
+			Cvar_SetValue ("cl_upspeed", 999);		// Baker 3.60 - added
+		} else {
+			// OFF to Classic
+			Cvar_SetValue ("cl_forwardspeed", 400); // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_backspeed", 400);    // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_sidespeed", 350);    // Baker 3.60 - added
+			Cvar_SetValue ("cl_upspeed", 200);		// Baker 3.60 - added
 		}
 		break;
 
@@ -1345,7 +1624,15 @@ void M_Options_Draw (void)
 	M_DrawSlider (220, 64, r);
 
 	M_Print (16, 72, "            Brightness");
+
+	// Baker hwgamma support
+#ifdef SUPPORTS_ENHANCED_GAMMA
+	if (using_hwgamma)
+		r = (1.0 - v_gamma.value) / 0.5;
+	else
+#endif
 	r = (1.0 - vold_gamma.value) / 0.5;
+
 	M_DrawSlider (220, 72, r);
 
 	M_Print (16, 80, "           Mouse Speed");
@@ -1365,8 +1652,8 @@ void M_Options_Draw (void)
 	M_DrawSlider (220, 96, r);
 
 	M_Print (16, 104,  "            Always Run");
-
-	M_DrawCheckbox (220, 104, cl_forwardspeed.value > 200);
+	//M_DrawCheckbox (220, 104, cl_forwardspeed.value > 200);
+	M_Print (220, 104, cl_upspeed.value > 200 ? "maximum" : cl_forwardspeed.value > 200 ? "on" : "off");
 
 	// Baker 3.60 - the "freelook" standard variable in Quake2, Quake3, etc.
 	M_Print (16, 112, "            Mouse Look");
@@ -1401,7 +1688,7 @@ void M_Options_Draw (void)
 	M_DrawCharacter (200, 32 + options_cursor*8, 12+((int)(realtime*4)&1));
 }
 
-
+void Cmd_Baker_Inject_Aliases ();
 void M_Options_Key (int key)
 {
 
@@ -1423,7 +1710,15 @@ void M_Options_Key (int key)
 			Con_ToggleConsole_f ();
 			break;
 		case 2:
-			Cbuf_AddText ("exec default.cfg\n");
+			if (!SCR_ModalMessage("Are you sure you want to reset\nall keys and settings?",0.0f))
+					break;
+
+			Cbuf_AddText ("resetall\n"); //johnfitz
+			Cbuf_AddText ("exec default.cfg\n"); //Baker: this isn't quite gamedir neutral
+			Cmd_Baker_Inject_Aliases();
+			// Question: should everything be unaliased too?
+			// Question: what about instances where the default has been faked?
+			// To do:    Add Cvar_SetDefault
 			break;
 
 		case 14:
@@ -1767,6 +2062,7 @@ void M_Help_Draw (void)
 	{
 		M_DrawTextBox (16, 16, 34, 16);
 		M_PrintWhite(32, 48,  va("     %s version %s", ENGINE_NAME, ENGINE_VERSION));
+// Baker: fixme this isn't going to line up properly ^^^^^
 		M_Print		(32, 72,  "          New Updates By Baker");
 		M_PrintWhite(32, 80,  "       http://www.quakeone.com");
 
@@ -3282,6 +3578,8 @@ void M_Init (void)
 	Cmd_AddCommand ("menu_save", M_Menu_Save_f);
 	Cmd_AddCommand ("menu_multiplayer", M_Menu_MultiPlayer_f);
 	Cmd_AddCommand ("menu_setup", M_Menu_Setup_f);
+	Cmd_AddCommand ("menu_namemaker", M_Menu_NameMaker_f);
+	Cmd_AddCommand ("namemaker", M_Shortcut_NameMaker_f);
 	Cmd_AddCommand ("menu_options", M_Menu_Options_f);
 	Cmd_AddCommand ("menu_keys", M_Menu_Keys_f);
 	Cmd_AddCommand ("menu_video", M_Menu_Video_f);
@@ -3301,10 +3599,14 @@ void M_Draw (void)
 
 		if (scr_con_current)
 		{
+//			Draw_String (1,1, "M_Draw\n");
+			if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
 			Draw_ConsoleBackground (vid.height);
-			VID_UnlockBuffer ();
-			S_ExtraUpdate ();
-			VID_LockBuffer ();
+
+	VID_UnlockBuffer ();
+	S_ExtraUpdate ();
+	VID_LockBuffer ();
+
 		}
 		else
 			Draw_FadeScreen ();
@@ -3343,6 +3645,10 @@ void M_Draw (void)
 
 	case m_setup:
 		M_Setup_Draw ();
+		break;
+
+	case m_namemaker:
+		M_NameMaker_Draw ();
 		break;
 
 	case m_net:
@@ -3435,6 +3741,10 @@ void M_Keydown (int key)
 
 	case m_setup:
 		M_Setup_Key (key);
+		return;
+
+	case m_namemaker:
+		M_NameMaker_Key (key);
 		return;
 
 	case m_net:

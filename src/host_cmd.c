@@ -2209,6 +2209,8 @@ void Host_Startdemos_f (void)
 		return;
 	}
 
+
+#if 0 // QView connecting plays demos so this is out
 	if (sv.active || cls.demoplayback)
 	{
 #if 0	// Baker: no this is annoying if you use +map xxxx in the command line
@@ -2216,7 +2218,7 @@ void Host_Startdemos_f (void)
 #endif
 		return;
 	}
-
+#endif
 
 	c = Cmd_Argc() - 1;
 	if (c > MAX_DEMOS)
@@ -2234,10 +2236,12 @@ void Host_Startdemos_f (void)
 	for (;i <= MAX_DEMOS;i++)
 		cls.demos[i-1][0] = 0;
 
-	// Set next demo to play to 0 and begin demo playback
-	cls.demonum = 0;
-	CL_NextDemo ();
-
+	if (!sv.active && cls.demonum != -1 && !cls.demoplayback) {
+		cls.demonum = 0;
+		CL_NextDemo ();
+	}
+	else
+		cls.demonum = -1;
 }
 
 

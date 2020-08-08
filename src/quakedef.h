@@ -24,9 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	QUAKE_GAME					// as opposed to utilities
 
 #define ENGINE_NAME "ProQuake"
-#define ENGINE_VERSION 	"4.44 Beta"
+#define ENGINE_VERSION 	"4.50 Beta"
 #define ENGINE_HOMEPAGE_URL "http:////www.quakeone.com//proquake"
-#define PROQUAKE_SERIES_VERSION		4.44
+#define PROQUAKE_SERIES_VERSION		4.50
 #include "version.h"
 
 //define	PARANOID				// speed sapping error checking
@@ -54,6 +54,17 @@ void as3UpdateFileSharedObject(const char* filename);
 void as3ReadFileSharedObject(const char* filename);
 #endif
 
+#if defined(_WIN32)
+
+void	VID_LockBuffer (void);
+void	VID_UnlockBuffer (void);
+
+#else
+
+#define	VID_LockBuffer()
+#define	VID_UnlockBuffer()
+
+#endif
 
 #ifndef NO_ASSEMBLY // Formerly #if id386
 #define UNALIGNED_OK		1			// set to 0 if unaligned accesses are not supported
@@ -286,7 +297,7 @@ extern	qboolean	host_initialized;		// true if into command execution
 extern	double		host_frametime;
 extern	byte		*host_basepal;
 extern	byte		*host_colormap;
-extern	int		host_framecount;		// incremented every frame, never reset
+extern	int			host_framecount;		// incremented every frame, never reset
 extern	double		realtime;			// not bounded in any way, changed at
 							// start of every frame, never reset
 extern double last_angle_time; // JPG - need this for smooth chasecam

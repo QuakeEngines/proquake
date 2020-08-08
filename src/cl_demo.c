@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 
 // added by joe
-static	framepos_t	*dem_framepos = NULL;
+	framepos_t	*dem_framepos = NULL;
 
 static	qboolean	start_of_demo = false;
 cvar_t	cl_demorewind = {"cl_demorewind", "0"};
@@ -85,7 +85,7 @@ void CL_StopPlayback (void)
 CL_FixMsg
 ==============
 */
-static void CL_FixMsg (int fix)
+ void CL_FixMsg (int fix)
 {
 	char s1[7] = "coop 0";
 	char s2[7] = "cmd xs";
@@ -131,7 +131,7 @@ CL_WriteDemoMessage
 Dumps the current net message, prefixed by the length and view angles
 ====================
 */
-static void CL_WriteDemoMessage (void)
+ void CL_WriteDemoMessage (void)
 {
 	int	i, len;
 	float	f;
@@ -149,7 +149,7 @@ static void CL_WriteDemoMessage (void)
 	fflush (cls.demofile);
 }
 
-static void PushFrameposEntry (long fbaz)
+ void PushFrameposEntry (long fbaz)
 {
 	framepos_t	*newf;
 
@@ -488,7 +488,7 @@ void CL_Record_f (void)
 	}
 }
 
-static void StartPlayingOpenedDemo (void)
+ void StartPlayingOpenedDemo (void)
 {
 	int		c;
 	qboolean	neg = false;
@@ -579,7 +579,7 @@ void CL_PlayDemo_f (void)
 CL_FinishTimeDemo
 ====================
 */
-static void CL_FinishTimeDemo (void)
+ void CL_FinishTimeDemo (void)
 {
 	int		frames;
 	float	time;

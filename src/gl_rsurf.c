@@ -332,6 +332,30 @@ extern	int		alphaskytexture;
 extern	float	speedscale;		// for top sky and bottom sky
 
 /*
+===============
+R_UploadLightmap -- uploads the modified lightmap to opengl if necessary
+
+assumes lightmap texture is already bound
+===============
+*/
+void R_UploadLightmap (int lmap)
+{
+	glRect_t *theRect;
+
+	if (!lightmap_modified[lmap])
+		return;
+
+	lightmap_modified[lmap] = false;
+
+	theRect = &lightmap_rectchange[lmap];
+	glTexSubImage2D (GL_TEXTURE_2D, 0, 0, theRect->t, BLOCK_WIDTH, theRect->h, gl_lightmap_format, GL_UNSIGNED_BYTE, lightmaps+(lmap * BLOCK_HEIGHT + theRect->t) *BLOCK_WIDTH*lightmap_bytes);
+	theRect->l = BLOCK_WIDTH;
+	theRect->t = BLOCK_HEIGHT;
+	theRect->h = 0;
+	theRect->w = 0;
+}
+
+/*
 ================
 R_BlendLightmaps
 ================
@@ -380,22 +404,7 @@ void R_BlendLightmaps (void) {
 	
 		// BengtQuake uploads lightmap here
 
-#if 1 // This isn't in BengtQuake which does this instead
-#if 0
 		R_UploadLightmap (i); // BengtQuake way
-#endif
-
-		if (lightmap_modified[i]) {
-			lightmap_modified[i] = false;
-			theRect = &lightmap_rectchange[i];
-
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, theRect->t, BLOCK_WIDTH, theRect->h, gl_lightmap_format, GL_UNSIGNED_BYTE, lightmaps+(i* BLOCK_HEIGHT + theRect->t) *BLOCK_WIDTH*lightmap_bytes);
-			theRect->l = BLOCK_WIDTH;
-			theRect->t = BLOCK_HEIGHT;
-			theRect->h = 0;
-			theRect->w = 0;
-		}
-#endif
 
 		for ( ; p ; p=p->chain) {
 			// JPG - added r_waterwarp
@@ -427,6 +436,8 @@ void R_BlendLightmaps (void) {
 	glDepthMask (GL_TRUE);	// GLTRUE = 1 back to normal Z buffering
 }
 
+
+
 /*
 ================
 R_RenderDynamicLightmaps
@@ -447,11 +458,11 @@ void R_RenderDynamicLightmaps (msurface_t *fa)
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
 	lightmap_polys[fa->lightmaptexturenum] = fa->polys;
 
-#if 0 // MH Overbrights
+#ifdef SUPPORTS_GL_OVERBRIGHTS // MH Overbrights
 	// mh - overbrights - need to rebuild the lightmap if this changes
-	if (fa->overbright != gl_usingoverbright)
+	if (fa->overbright != gl_overbright.value)
 	{
-		fa->overbright = gl_usingoverbright;
+		fa->overbright = gl_overbright.value;
 		goto dynamic;
 	}
 
@@ -721,7 +732,7 @@ int gNoSurfaces=0;
 			GL_SelectTexture(TEXTURE0_SGIS);
 			GL_Bind (t->gl_texturenum);
 //			BengtQuake uploads the lightmap here
-//			R_UploadLightmap (s->lightmaptexturenum);
+			R_UploadLightmap (s->lightmaptexturenum);
 			// BengtOverbright does this
 //			GL_BeginLightBlend ();
 //          instead of this next line
@@ -730,19 +741,8 @@ int gNoSurfaces=0;
 			// Binds lightmap to texenv 1
 			GL_EnableMultitexture(); // Same as SelectTexture (TEXTURE1)
 			GL_Bind (lightmap_textures + s->lightmaptexturenum);
-			i = s->lightmaptexturenum;
-			if (lightmap_modified[i])
-			{
-				lightmap_modified[i] = false;
-				theRect = &lightmap_rectchange[i];
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, theRect->t,
-					BLOCK_WIDTH, theRect->h, gl_lightmap_format, GL_UNSIGNED_BYTE,
-					lightmaps+(i* BLOCK_HEIGHT + theRect->t) *BLOCK_WIDTH*lightmap_bytes);
-				theRect->l = BLOCK_WIDTH;
-				theRect->t = BLOCK_HEIGHT;
-				theRect->h = 0;
-				theRect->w = 0;
-			}
+			R_UploadLightmap (s->lightmaptexturenum);
+
 			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
 			glBegin(GL_POLYGON);
 			v = p->verts[0];
@@ -839,23 +839,11 @@ int gNoSurfaces=0;
 		GL_SelectTexture(TEXTURE0_SGIS);
 		GL_Bind (t->gl_texturenum);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-// BengtQuake differences here (uploads lightmap)
-// Overbright differences here
 		GL_EnableMultitexture();
 		GL_Bind (lightmap_textures + s->lightmaptexturenum);
-		i = s->lightmaptexturenum;
-		if (lightmap_modified[i])
-		{
-			lightmap_modified[i] = false;
-			theRect = &lightmap_rectchange[i];
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, theRect->t,
-				BLOCK_WIDTH, theRect->h, gl_lightmap_format, GL_UNSIGNED_BYTE,
-				lightmaps+(i* BLOCK_HEIGHT + theRect->t) *BLOCK_WIDTH*lightmap_bytes);
-			theRect->l = BLOCK_WIDTH;
-			theRect->t = BLOCK_HEIGHT;
-			theRect->h = 0;
-			theRect->w = 0;
-		}
+		
+		R_UploadLightmap (s->lightmaptexturenum);
+		
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
 		glBegin (GL_TRIANGLE_FAN);
 		v = p->verts[0];
@@ -998,11 +986,11 @@ void R_RenderBrushPoly (msurface_t *fa)
 
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
 	lightmap_polys[fa->lightmaptexturenum] = fa->polys;
-#if 0
+#ifdef SUPPORTS_GL_OVERBRIGHTS
 	// mh - overbrights - need to rebuild the lightmap if this changes
-	if (fa->overbright != gl_usingoverbright)
+	if (fa->overbright != gl_overbright.value)
 	{
-		fa->overbright = gl_usingoverbright;
+		fa->overbright = gl_overbright.value;
 		goto dynamic;
 	}
 #endif
@@ -1388,7 +1376,7 @@ void R_MarkLeaves (void)
 		{
 			if ((*mark)->flags & SURF_DRAWTURB)
 			{
-				nearwaterportal = TRUE;
+				nearwaterportal = true;
 				//	Con_SafePrintf ("R_MarkLeaves: nearwaterportal, surfs=%d\n", r_viewleaf->nummarksurfaces);
 				break;
 			}

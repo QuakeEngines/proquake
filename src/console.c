@@ -746,6 +746,29 @@ void Con_Warning (char *fmt, ...)
 }
 
 /*
+==================
+Con_Debugf
+
+So Baker can remove testing notes more easily ...
+==================
+*/
+void Con_Debugf (char *fmt, ...)
+{
+	va_list		argptr;
+	char		msg[1024];
+	int			temp;
+
+	va_start (argptr,fmt);
+	vsnprintf (msg,sizeof(msg),fmt,argptr);
+	va_end (argptr);
+
+	temp = scr_disabled_for_loading;
+	scr_disabled_for_loading = true;
+	Con_Printf ("%s", msg);
+	scr_disabled_for_loading = temp;
+}
+
+/*
 ================
 Con_Printf
 

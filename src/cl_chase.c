@@ -49,7 +49,7 @@ void Chase_Init (void)
 	Cvar_RegisterVariable (&chase_active, NULL);
 }
 
-static void Chase_Reset (void)
+ void Chase_Reset (void)
 {
 	// for respawning and teleporting
 //	start position 12 units behind head
@@ -151,7 +151,7 @@ void Chase_Update (void)
 
 #ifdef SUPPORTS_AUTOID
 // Baker: Used by autoid
-static qboolean Still_Visible (vec3_t checkpoint, int viewcontents)
+ qboolean Still_Visible (vec3_t checkpoint, int viewcontents)
 {
    int i;
    vec3_t mins;

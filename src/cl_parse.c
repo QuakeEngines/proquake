@@ -905,7 +905,7 @@ static void CL_ParseClientdata (int bits)
 CL_NewTranslation
 =====================
 */
-static void CL_NewTranslation (int slot)
+ void CL_NewTranslation (int slot)
 {
 	int		i, j, top, bottom;
 	byte	*dest, *source;
@@ -970,7 +970,7 @@ static void CL_ParseStatic (void)
 CL_ParseStaticSound
 ===================
 */
-static void CL_ParseStaticSound (void)
+ void CL_ParseStaticSound (void)
 {
 	int			i, sound_num, vol, atten;
 	vec3_t		org;
@@ -1001,7 +1001,7 @@ static int MSG_ReadShortPQ (void)
 CL_ParseProQuakeMessage
 =======================
 */
-static void CL_ParseProQuakeMessage (void)
+ void CL_ParseProQuakeMessage (void)
 {
 	int cmd, i;
 	int team, frags, shirt, ping;
@@ -1085,7 +1085,7 @@ static void CL_ParseProQuakeMessage (void)
 
 
 
-static void Q_Version(char *s)
+ void Q_Version(char *s)
 {
 	static float q_version_reply_time = -20.0; // Baker: so it can be instantly used
 	char *t;
@@ -1118,7 +1118,7 @@ extern cvar_t pq_scoreboard_pings; // JPG - need this for CL_ParseProQuakeString
 CL_ParseProQuakeString
 ======================
 */
-static void CL_ParseProQuakeString (char *string)
+ void CL_ParseProQuakeString (char *string)
 {
 	static int checkping = -1;
 	int ping, i;

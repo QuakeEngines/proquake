@@ -202,7 +202,7 @@ typedef struct gl_tmustate_s
 
 	// gl_combine_t combstate;
 
-	// these come from glTexEnv and are properties of the TMU; other D3DTEXTURESTAGESTATETYPEs 
+	// these come from glTexEnv and are properties of the TMU; other D3DTEXTURESTAGESTATETYPEs
 	// come from glTexParameter and are properties of the individual texture.
 	DWORD colorop;
 	DWORD colorarg1;
@@ -618,7 +618,7 @@ void D3D_InitTexture (d3d_texture_t *tex)
 {
 	tex->glnum = 0;
 
-	// note - we can't set the ->next pointer to NULL here as this texture may be a 
+	// note - we can't set the ->next pointer to NULL here as this texture may be a
 	// member of the linked list that has just become free...
 	tex->addressu = D3DTADDRESS_WRAP;
 	tex->addressv = D3DTADDRESS_WRAP;
@@ -923,7 +923,7 @@ void D3D_CheckDirtyTextureStates (int tmu)
 			D3D_SetTextureState (tmu, D3DTSS_MAXANISOTROPY, d3d_TMUs[tmu].boundtexture->anisotropy);
 
 			// minfilter and magfilter need to switch to anisotropic (only for mipmaps)
-			if (d3d_TMUs[tmu].boundtexture->anisotropy > 1 && 
+			if (d3d_TMUs[tmu].boundtexture->anisotropy > 1 &&
 				d3d_TMUs[tmu].boundtexture->mipfilter != D3DTEXF_NONE)
 			{
 				D3D_SetTextureState (tmu, D3DTSS_MAGFILTER, D3DTEXF_ANISOTROPIC);
@@ -1125,7 +1125,7 @@ void GL_SubmitVertexes (void)
 		else
 		{
 			// no polygon offset - back to normal z bias
-			// (see comment in 
+			// (see comment in
 			D3D_SetRenderState (D3DRS_ZBIAS, 8);
 		}
 
@@ -2392,13 +2392,13 @@ BOOL WINAPI SetPixelFormat (HDC hdc, int format, CONST PIXELFORMATDESCRIPTOR *pp
 }
 
 
-void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed)
+void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed_)
 {
 	// clear present params to NULL
 	memset (&d3d_PresentParams, 0, sizeof (D3DPRESENT_PARAMETERS));
 
 	// popup windows are fullscreen always
-	if (windowed)
+	if (windowed_)
 	{
 		// defaults for windowed mode - also need to store out clientrect.right and clientrect.bottom
 		// (d3d_BPP is only used for fullscreen modes and is retrieved from our CDS override)
@@ -2436,7 +2436,7 @@ void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed)
 	// fill in mode-dependent stuff
 	d3d_PresentParams.BackBufferFormat = d3d_CurrentMode.Format;
 	d3d_PresentParams.FullScreen_RefreshRateInHz = d3d_CurrentMode.RefreshRate;
-	d3d_PresentParams.Windowed = windowed;
+	d3d_PresentParams.Windowed = windowed_;
 
 	// request 1 backbuffer
 	d3d_PresentParams.BackBufferCount = 1;
@@ -2491,10 +2491,10 @@ BOOL WINAPI wglMakeCurrent (HDC hdc, HGLRC hglrc)
 
 	// setup our present parameters (popup windows are fullscreen always)
 
-	if (COM_CheckParm("-fullwindow"))
-		D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, 1);
+		if (COM_CheckParm("-fullwindow"))
+			D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, 1);
 	else
-		D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, !(winstyle & WS_POPUP));
+			D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, !(winstyle & WS_POPUP));
 
 	// here we use D3DCREATE_FPU_PRESERVE to maintain the resolution of Quake's timers (this is a serious problem)
 	// and D3DCREATE_DISABLE_DRIVER_MANAGEMENT to protect us from rogue drivers (call it honest paranoia).  first
@@ -2927,7 +2927,7 @@ void D3D_PostResetRestore (void)
 }
 
 
-void D3D_ResetMode (int width, int height, int bpp, BOOL windowed)
+void D3D_ResetMode (int width, int height, int bpp, BOOL windowed_)
 {
 	RECT winrect;
 	int winstyle;
@@ -2944,7 +2944,7 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed)
 	}
 
 	// reset present params
-	D3D_SetupPresentParams (width, height, bpp, windowed);
+	D3D_SetupPresentParams (width, height, bpp, windowed_);
 
 	// reset device
 	IDirect3DDevice8_Reset (d3d_Device, &d3d_PresentParams);
@@ -2965,7 +2965,7 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed)
 	winrect.bottom = height;
 
 	winexstyle = 0;
-	winstyle = COM_CheckParm("-fullwindow") ? WS_POPUP : (windowed ? WS_OVERLAPPED | WS_BORDER | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX : WS_POPUP);
+		winstyle = COM_CheckParm("-fullwindow") ? WS_POPUP : (windowed_ ? WS_OVERLAPPED | WS_BORDER | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX : WS_POPUP);
 
 	// reset stuff
 	SetWindowLong (d3d_PresentParams.hDeviceWindow, GWL_EXSTYLE, winexstyle);
@@ -2981,11 +2981,11 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed)
 	(
 		d3d_PresentParams.hDeviceWindow,
 		NULL,
-		windowed ? (d3d_DesktopMode.Width - (winrect.right - winrect.left)) / 2 : 0,
-		windowed ? (d3d_DesktopMode.Height - (winrect.bottom - winrect.top)) / 2 : 0,
+		windowed_ ? (d3d_DesktopMode.Width - (winrect.right - winrect.left)) / 2 : 0,
+		windowed_ ? (d3d_DesktopMode.Height - (winrect.bottom - winrect.top)) / 2 : 0,
 		winrect.right - winrect.left,
 		winrect.bottom - winrect.top,
-		SWP_NOOWNERZORDER | SWP_NOREPOSITION | SWP_NOZORDER | SWP_SHOWWINDOW
+		SWP_NOOWNERZORDER | SWP_NOREPOSITION | SWP_NOZORDER | SWP_SHOWWINDOW 
 	);
 
 	// ensure
@@ -2998,7 +2998,8 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed)
 	Sleep (500);
 
 	// give some user feedback here
-	Con_Printf ("Set %s mode %ix%ix%i\n", windowed ? "windowed" : "fullscreen", width, height, bpp);
+	Con_Printf ("Set %s mode %ix%ix%i\n", windowed_ ? "windowed" : "fullscreen", width, height, bpp);
+
 }
 
 
