@@ -1,0 +1,363 @@
+// !$*UTF8*$!
+{
+	29B97313FDCFA39411CA2CEA /* Project object */ = {
+		activeArchitecture = i386;
+		activeBuildConfigurationName = Release;
+		activeExecutable = 9A7A6E250EAD5C50007D6929 /* GLQuake */;
+		activeTarget = D29BE26709C61E0C00EBE023 /* GLQuake */;
+		codeSenseManager = 9A7A6E410EAD5C89007D6929 /* Code sense */;
+		executables = (
+			9A7A6E240EAD5C50007D6929 /* Quake */,
+			9A7A6E250EAD5C50007D6929 /* GLQuake */,
+			9A7A6E280EAD5C50007D6929 /* Read Me */,
+			9AA2AC700EAD798C00F99104 /* QuakeWorld */,
+			9AA2AC720EAD798C00F99104 /* GLQuakeWorld */,
+			9AA2AC740EAD798C00F99104 /* qwsv */,
+			9AA2AC760EAD798C00F99104 /* qwfwd */,
+		);
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXBookmarksDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXBookmarksDataSource_NameID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					200,
+					200,
+					325,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXBookmarksDataSource_LocationID,
+					PBXBookmarksDataSource_NameID,
+					PBXBookmarksDataSource_CommentsID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXErrorsWarningsDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXErrorsWarningsDataSource_LocationID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					433,
+					272,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXErrorsWarningsDataSource_TypeID,
+					PBXErrorsWarningsDataSource_MessageID,
+					PBXErrorsWarningsDataSource_LocationID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXExecutablesDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXExecutablesDataSource_NameID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					22,
+					300,
+					403,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXExecutablesDataSource_ActiveFlagID,
+					PBXExecutablesDataSource_NameID,
+					PBXExecutablesDataSource_CommentsID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					515,
+					20,
+					48,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXFindDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFindDataSource_LocationID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					200,
+					529,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFindDataSource_MessageID,
+					PBXFindDataSource_LocationID,
+				);
+			};
+			PBXConfiguration.PBXTargetDataSource.PBXTargetDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					475,
+					60,
+					20,
+					48.16259765625,
+					43,
+					43,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXTargetDataSource_PrimaryAttribute,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 246376017;
+			PBXWorkspaceStateSaveDate = 246376017;
+		};
+		sourceControlManager = 9A7A6E400EAD5C89007D6929 /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	8D1107260486CEB800E47090 /* Quake */ = {
+		activeExec = 0;
+		executables = (
+			9A7A6E240EAD5C50007D6929 /* Quake */,
+		);
+	};
+	9A7A6E240EAD5C50007D6929 /* Quake */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 0;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = Quake;
+		sourceDirectories = (
+		);
+	};
+	9A7A6E250EAD5C50007D6929 /* GLQuake */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 0;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = GLQuake;
+		sourceDirectories = (
+		);
+	};
+	9A7A6E280EAD5C50007D6929 /* Read Me */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = "Read Me";
+		sourceDirectories = (
+		);
+	};
+	9A7A6E400EAD5C89007D6929 /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+		};
+	};
+	9A7A6E410EAD5C89007D6929 /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+	9AA2AC700EAD798C00F99104 /* QuakeWorld */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = QuakeWorld;
+		sourceDirectories = (
+		);
+	};
+	9AA2AC720EAD798C00F99104 /* GLQuakeWorld */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = GLQuakeWorld;
+		sourceDirectories = (
+		);
+	};
+	9AA2AC740EAD798C00F99104 /* qwsv */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = qwsv;
+		sourceDirectories = (
+		);
+	};
+	9AA2AC760EAD798C00F99104 /* qwfwd */ = {
+		isa = PBXExecutable;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		breakpointsEnabled = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = qwfwd;
+		sourceDirectories = (
+		);
+	};
+	D29BE26709C61E0C00EBE023 /* GLQuake */ = {
+		activeExec = 0;
+		executables = (
+			9A7A6E250EAD5C50007D6929 /* GLQuake */,
+		);
+	};
+	D29BE27A09C61F4200EBE023 /* QuakeWorld */ = {
+		activeExec = 0;
+		executables = (
+			9AA2AC700EAD798C00F99104 /* QuakeWorld */,
+		);
+	};
+	D29BE28409C61F5200EBE023 /* GLQuakeWorld */ = {
+		activeExec = 0;
+		executables = (
+			9AA2AC720EAD798C00F99104 /* GLQuakeWorld */,
+		);
+	};
+	D29BE28E09C61F6A00EBE023 /* Read Me */ = {
+		activeExec = 0;
+		executables = (
+			9A7A6E280EAD5C50007D6929 /* Read Me */,
+		);
+	};
+	D29BE29709C61F8600EBE023 /* qwsv */ = {
+		activeExec = 0;
+		executables = (
+			9AA2AC740EAD798C00F99104 /* qwsv */,
+		);
+	};
+	D29BE29C09C61F9900EBE023 /* qwfwd */ = {
+		activeExec = 0;
+		executables = (
+			9AA2AC760EAD798C00F99104 /* qwfwd */,
+		);
+	};
+	D29BE58909C624FA00EBE023 /* cl_input.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {813, 8288}}";
+			sepNavSelRange = "{11420, 56}";
+			sepNavVisRange = "{11280, 197}";
+		};
+	};
+	D29BE58A09C624FA00EBE023 /* cl_main.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {813, 13104}}";
+			sepNavSelRange = "{22439, 0}";
+			sepNavVisRange = "{8631, 206}";
+			sepNavWindowFrame = "{{84, 120}, {750, 558}}";
+		};
+	};
+	D29BE60509C6265A00EBE023 /* gl_test.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {691, 2464}}";
+			sepNavSelRange = "{1391, 0}";
+			sepNavVisRange = "{1127, 522}";
+			sepNavWindowFrame = "{{301, 220}, {750, 526}}";
+		};
+	};
+}
