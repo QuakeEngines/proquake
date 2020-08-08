@@ -413,15 +413,24 @@ Draw_SmoothFont_f
 ===============
 */
 static qboolean smoothfont = 1;
+qboolean smoothfont_init =false;
 
 static void SetSmoothFont (void)
 {
+	smoothfont_init = true; // This is now available
 	GL_Bind (char_texture);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, smoothfont ? GL_LINEAR : GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, smoothfont ? GL_LINEAR : GL_NEAREST);
 }
 
-void Draw_SmoothFont_f (void)
+
+void SmoothFontSet(qboolean smoothfont_choice) {
+	smoothfont = smoothfont_choice;
+	if (smoothfont_init)
+		SetSmoothFont();
+}
+
+/*void Draw_SmoothFont_f (void)
 {
 	if (Cmd_Argc() == 1)
 	{
@@ -431,7 +440,7 @@ void Draw_SmoothFont_f (void)
 
 	smoothfont = Q_atoi (Cmd_Argv(1));
 	SetSmoothFont ();
-}
+} */
 
 static void Load_CharSet (void)
 {
@@ -495,7 +504,7 @@ void Draw_Init (void)
 		Cvar_Set ("gl_max_size", "256");
 
 	Cmd_AddCommand ("gl_texturemode", &Draw_TextureMode_f);
-	Cmd_AddCommand ("gl_smoothfont", &Draw_SmoothFont_f);
+//	Cmd_AddCommand ("gl_smoothfont", &Draw_SmoothFont_f);
 // D3D diff 3 of 14
 #ifdef D3DQUAKE
 	Cmd_AddCommand ("d3d_maxanisotropy", &Draw_MaxAnisotropy_f);
@@ -830,6 +839,38 @@ void Draw_Pic (int x, int y, qpic_t *pic)
 	glEnd ();
 }
 
+void Draw_SubPic(int x, int y, qpic_t *pic, int srcx, int srcy, int width, int height)
+{
+	glpic_t			*gl;
+	float newsl, newtl, newsh, newth;
+	float oldglwidth, oldglheight;
+
+	if (scrap_dirty)
+		Scrap_Upload ();
+	gl = (glpic_t *)pic->data;
+	
+	oldglwidth = gl->sh - gl->sl;
+	oldglheight = gl->th - gl->tl;
+
+	newsl = gl->sl + (srcx*oldglwidth)/pic->width;
+	newsh = newsl + (width*oldglwidth)/pic->width;
+
+	newtl = gl->tl + (srcy*oldglheight)/pic->height;
+	newth = newtl + (height*oldglheight)/pic->height;
+	
+	glColor4f (1,1,1,1);
+	GL_Bind (gl->texnum);
+	glBegin (GL_QUADS);
+	glTexCoord2f (newsl, newtl);
+	glVertex2f (x, y);
+	glTexCoord2f (newsh, newtl);
+	glVertex2f (x+width, y);
+	glTexCoord2f (newsh, newth);
+	glVertex2f (x+width, y+height);
+	glTexCoord2f (newsl, newth);
+	glVertex2f (x, y+height);
+	glEnd ();
+}
 
 /*
 =============

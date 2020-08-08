@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-// screen.c -- master for refresh, status bar, console, chat, notify, etc
+// r_screen.c -- master for refresh, status bar, console, chat, notify, etc
 
 #include "quakedef.h"
 #include "r_local.h"
@@ -132,10 +132,7 @@ void SCR_EraseCenterString (void)
 void SCR_DrawCenterString (void)
 {
 	char	*start;
-	int		l;
-	int		j;
-	int		x, y;
-	int		remaining;
+	int	l, j, x, y, remaining;
 
 // the finale prints the characters one at a time
 	if (cl.intermission)
@@ -151,8 +148,7 @@ void SCR_DrawCenterString (void)
 	else
 		y = 48;
 
-	do
-	{
+	do {
 	// scan the width of the line
 		for (l=0 ; l<40 ; l++)
 			if (start[l] == '\n' || !start[l])
@@ -186,6 +182,7 @@ void SCR_CheckDrawCenterString (void)
 
 	if (scr_centertime_off <= 0 && !cl.intermission)
 		return;
+
 	if (key_dest != key_game)
 		return;
 
@@ -201,8 +198,7 @@ CalcFov
 */
 float CalcFov (float fov_x, float width, float height)
 {
-        float   a;
-        float   x;
+        float   a, x;
 
         if (fov_x < 1 || fov_x > 179)
                 Sys_Error ("Bad fov: %f", fov_x);
@@ -332,9 +328,8 @@ void SCR_Init (void)
 
 	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
 	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
-//
+
 // register our commands
-//
 	Cmd_AddCommand ("screenshot",SCR_ScreenShot_f);
 	Cmd_AddCommand ("sizeup",SCR_SizeUp_f);
 	Cmd_AddCommand ("sizedown",SCR_SizeDown_f);
@@ -349,8 +344,6 @@ void SCR_Init (void)
 
 	scr_initialized = true;
 }
-
-
 
 /*
 ==============
@@ -402,6 +395,7 @@ void SCR_DrawNet (void)
 {
 	if (realtime - cl.last_received_message < 0.3)
 		return;
+
 	if (cls.demoplayback)
 		return;
 
@@ -516,11 +510,8 @@ void SCR_DrawPause (void)
 		return;
 
 	pic = Draw_CachePic ("gfx/pause.lmp");
-	Draw_Pic ( (vid.width - pic->width)/2,
-		(vid.height - 48 - pic->height)/2, pic);
+	Draw_Pic ((vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
-
-
 
 /*
 ==============
@@ -535,14 +526,10 @@ void SCR_DrawLoading (void)
 		return;
 
 	pic = Draw_CachePic ("gfx/loading.lmp");
-	Draw_Pic ( (vid.width - pic->width)/2,
-		(vid.height - 48 - pic->height)/2, pic);
+	Draw_Pic ( (vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
 
-
-
 //=============================================================================
-
 
 /*
 ==================
@@ -602,7 +589,9 @@ void SCR_SetUpToDrawConsole (void)
 		Draw_TileClear (0,0,vid.width, con_notifylines);
 	}
 	else
+	{
 		con_notifylines = 0;
+	}
 }
 
 /*
@@ -624,7 +613,6 @@ void SCR_DrawConsole (void)
 			Con_DrawNotify ();	// only draw notify in game
 	}
 }
-
 
 /*
 ==============================================================================
@@ -768,14 +756,11 @@ void SCR_ScreenShot_f (void)
 	Con_Printf ("Wrote %s\n", pcxname);
 }
 
-
 //=============================================================================
-
 
 /*
 ===============
 SCR_BeginLoadingPlaque
-
 ================
 */
 void SCR_BeginLoadingPlaque (void)
@@ -806,7 +791,6 @@ void SCR_BeginLoadingPlaque (void)
 /*
 ===============
 SCR_EndLoadingPlaque
-
 ================
 */
 void SCR_EndLoadingPlaque (void)
@@ -824,16 +808,13 @@ qboolean	scr_drawdialog;
 void SCR_DrawNotifyString (void)
 {
 	char	*start;
-	int		l;
-	int		j;
-	int		x, y;
+	int	l, j, x, y;
 
 	start = scr_notifystring;
 
 	y = vid.height*0.35;
 
-	do
-	{
+	do {
 	// scan the width of the line
 		for (l=0 ; l<40 ; l++)
 			if (start[l] == '\n' || !start[l])
@@ -881,8 +862,7 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 	time1 = Sys_FloatTime () + timeout; //johnfitz -- timeout
 	time2 = 0.0f; //johnfitz -- timeout
 
-	do
-	{
+	do {
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
 		if (timeout) time2 = Sys_FloatTime (); //johnfitz -- zero timeout means wait forever.
@@ -897,7 +877,6 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 
 	return key_lastpress == 'y';
 }
-
 
 //=============================================================================
 
@@ -969,9 +948,7 @@ void SCR_UpdateScreen (void)
 		vid.recalc_refdef = 1;
 	}
 
-//
 // check for vid changes
-//
 	if (oldfov != scr_fov.value)
 	{
 		oldfov = scr_fov.value;
@@ -996,9 +973,7 @@ void SCR_UpdateScreen (void)
 		SCR_CalcRefdef ();
 	}
 
-//
 // do 3D refresh drawing, and then update the screen
-//
 	D_EnableBackBufferAccess ();	// of all overlay stuff if drawing directly
 
 	if (scr_fullupdate++ < vid.numpages)
@@ -1010,17 +985,13 @@ void SCR_UpdateScreen (void)
 
 	pconupdate = NULL;
 
-
 	SCR_SetUpToDrawConsole ();
 	SCR_EraseCenterString ();
 
-	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in
-									//  for linear writes all the time
+	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in for linear writes all the time
 
 	VID_LockBuffer ();
-
 	V_RenderView ();
-
 	VID_UnlockBuffer ();
 
 	D_EnableBackBufferAccess ();	// of all overlay stuff if drawing directly
@@ -1075,10 +1046,7 @@ void SCR_UpdateScreen (void)
 
 	V_UpdatePaletteOld ();
 
-//
 // update one of three areas
-//
-
 	if (scr_copyeverything)
 	{
 		vrect.x = 0;
@@ -1114,7 +1082,6 @@ void SCR_UpdateScreen (void)
 	Movie_UpdateScreen ();
 #endif
 }
-
 
 /*
 ==================

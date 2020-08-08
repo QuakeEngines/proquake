@@ -76,4 +76,4 @@ extern	int			scr_copyeverything;
 extern qboolean		block_drawing;
 
 void SCR_UpdateWholeScreen (void);
-extern	cvar_t		vid_conwidth;
+extern	cvar_t		vid_consize;

@@ -17,6 +17,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+// menu.c
+
 #include "quakedef.h"
 
 #ifdef _WIN32
@@ -1978,23 +1980,23 @@ void M_Pref_AdjustSliders (int dir)
 			break;
 
 
-		case 11:
+/*		case 11:
 
 			Cvar_Set("scr_conspeed", (scr_conspeed.value >= 5000) ? "300" : "9999");
-			break;
+			break; */
 
 
-		case 12:
+		case 11:
 
 			Cvar_Set("pq_moveup",pq_moveup.value ? "0" : "1");
 			break;
 
-		case 13:
+		case 12:
 
 			Cvar_Set("ambient_level", ambient_level.value ? "0" : "0.3");
 			break;
 
-		case 14:
+		case 13:
 
 #ifdef GLQUAKE
 
@@ -2006,7 +2008,7 @@ void M_Pref_AdjustSliders (int dir)
 #endif
 			break;
 
-		case 15:
+		case 14:
 
 #ifdef GLQUAKE
 			// 72 ON | 120 OFF | 200 OFF | 250 OFF
@@ -2043,9 +2045,21 @@ void M_Pref_AdjustSliders (int dir)
 			break;
 
 
-		case 16:
+		case 15:
 
 			Cvar_Set("pq_drawfps",pq_drawfps.value ? "0" : "1");
+			break;
+
+		case 16:
+
+#ifdef GLQUAKE
+			// 72 ON | 120 OFF | 200 OFF | 250 OFF
+			newval = bound(1, vid_consize.value + 1, 3);
+			if (newval == 3) // We won't allow 320 selection except from console
+				newval = 0;
+
+			Cvar_SetValue("vid_consize", newval);
+#endif
 			break;
 
 		case 18:
@@ -2089,21 +2103,25 @@ void M_Pref_Options_Draw (void)
 	title = "interface"; M_PrintWhite ((320-8*strlen(title))/2, i, title);  i += 8;							  // 8
 	i += 8;																									  // 9
 	M_Print     (16, i, "     keypad binding "); M_Print (220, i, cl_keypad.value ? "on" : "off"); i += 8; 	  // 10
-	M_Print     (16, i, "     fast console   "); M_Print (220, i, scr_conspeed.value >= 5000 ? "on" : "off" ); i += 8; 	  // 11
-	M_Print     (16, i, "     jump is moveup "); M_Print (220, i, pq_moveup.value ? "on" : "off" ); i += 8; 	  // 12
-	M_Print     (16, i, "     ambient sound  "); M_Print (220, i, ambient_level.value ? "on" : "off" ); i += 8; 	  // 13
+	M_Print     (16, i, "     jump is moveup "); M_Print (220, i, pq_moveup.value ? "on" : "off" ); i += 8; 	  // 11
+	M_Print     (16, i, "     ambient sound  "); M_Print (220, i, ambient_level.value ? "on" : "off" ); i += 8; 	  // 12
 #ifdef GLQUAKE
 #ifdef D3DQUAKE
-	M_Print     (16, i, "     vsync          "); M_Print (220, i, "[driver set]" ); i += 8; 	  // 14
+	M_Print     (16, i, "     vsync          "); M_Print (220, i, "[driver set]" ); i += 8; 	  // 13
 #else
-	M_Print     (16, i, "     vsync          "); M_Print (220, i, vid_vsync.value ? "on" : "off" ); i += 8; 	  // 14
+	M_Print     (16, i, "     vsync          "); M_Print (220, i, vid_vsync.value ? "on" : "off" ); i += 8; 	  // 13
 #endif
 	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, pq_maxfps.value == 72 ? "72 fps" : (pq_maxfps.value == 120 ? "120 fps" : (pq_maxfps.value == 200 ? "200 fps" : (pq_maxfps.value == 250 ? "250 fps" : "custom"))) ); i += 8; 	  // 14
 #else
-	M_Print     (16, i, "     vsync          "); M_Print (220, i, "n/a"); i += 8;	  // 14
-	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, "n/a"); i += 8;	  // 14
+	M_Print     (16, i, "     vsync          "); M_Print (220, i, "n/a"); i += 8;	  // 13
+	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, "n/a"); i += 8;	  // 13
 #endif
-	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" );  i += 16;	  // 14
+	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" );  i += 8;	  // 14
+#ifdef GLQUAKE
+	M_Print     (16, i, "     console width  "); M_Print (220, i, vid_consize.value == 0 ? "100%" : (vid_consize.value == 1 ? "50%" : (vid_consize.value == 2 ? "640 width" : "custom")) ); i += 16; 	  // 15
+#else
+	M_Print     (16, i, "     console width  "); M_Print (220, i, "n/a"); i += 16; 	  // 13
+#endif
 	M_Print     (16, i, "     directinput mouse "); M_Print (220, i, IN_DirectInputON() ? "on" : "off" ); i += 8;
 	M_Print     (16, i, "     keyboard automap"); M_Print (220, i, Key_InternationalON() ? "on" : "off" );
 
@@ -2233,7 +2251,7 @@ void M_Help_Draw (void)
 	{
 		M_DrawTextBox (16, 16, 34, 16);
 		M_PrintWhite(32, 48,  va("     ProQuake version %4.2f        ", PROQUAKE_VERSION));
-		M_Print		(32, 72,  "   Unofficial Version By Baker");
+		M_Print		(32, 72,  "          New Updates By Baker");
 		M_PrintWhite(32, 80,  "       http://www.quakeone.com");
 
 		M_Print		(32, 96,  "   Programmed by J.P. Grossman    ");

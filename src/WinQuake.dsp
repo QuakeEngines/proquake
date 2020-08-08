@@ -58,7 +58,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /machine:I386
-# ADD LINK32 .\scitech\lib\win32\vc\mgllt.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\wqpro396.exe"
+# ADD LINK32 .\scitech\lib\win32\vc\mgllt.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\wqpro398.exe"
 # SUBTRACT LINK32 /map /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 Debug"
@@ -142,7 +142,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib .\scitech\lib\win32\vc\mgllt.lib /nologo /subsystem:windows /profile /machine:I386
 # SUBTRACT BASE LINK32 /map /debug
-# ADD LINK32 comctl32.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro396.exe"
+# ADD LINK32 comctl32.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro398.exe"
 # SUBTRACT LINK32 /map /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 Debug Unicode"
@@ -229,7 +229,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 comctl32.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:".\release_gl\glquake.exe"
 # SUBTRACT BASE LINK32 /map /debug
-# ADD LINK32 comctl32.lib .\dxsdk\sdk7\lib\dxguid.lib .\dxsdk\sdk7\lib\d3dxd.lib .\dxsdk\sdk7\lib\ddraw.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /incremental:yes /machine:I386 /out:"c:\program files\quaket\d3dpro396.exe"
+# ADD LINK32 comctl32.lib .\dxsdk\sdk7\lib\dxguid.lib .\dxsdk\sdk7\lib\d3dxd.lib .\dxsdk\sdk7\lib\ddraw.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /incremental:yes /machine:I386 /out:"c:\program files\quaket\d3dpro398.exe"
 # SUBTRACT LINK32 /profile /map /debug
 
 !ENDIF 
@@ -1957,6 +1957,31 @@ SOURCE=.\r_part.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\r_screen.c
+
+!IF  "$(CFG)" == "winquake - Win32 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Debug"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 GL Debug"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 GL Release"
+
+# PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Debug Unicode"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 D3D Debug"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
+
+# PROP Exclude_From_Build 1
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
 SOURCE=.\r_sky.c
 
 !IF  "$(CFG)" == "winquake - Win32 Release"
@@ -2124,37 +2149,6 @@ SOURCE=.\registry.cpp
 # Begin Source File
 
 SOURCE=.\sbar.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\screen.c
-
-!IF  "$(CFG)" == "winquake - Win32 Release"
-
-!ELSEIF  "$(CFG)" == "winquake - Win32 Debug"
-
-!ELSEIF  "$(CFG)" == "winquake - Win32 GL Debug"
-
-# PROP Exclude_From_Build 1
-
-!ELSEIF  "$(CFG)" == "winquake - Win32 GL Release"
-
-# PROP Exclude_From_Build 1
-
-!ELSEIF  "$(CFG)" == "winquake - Win32 Debug Unicode"
-
-!ELSEIF  "$(CFG)" == "winquake - Win32 D3D Debug"
-
-# PROP BASE Exclude_From_Build 1
-# PROP Exclude_From_Build 1
-
-!ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
-
-# PROP BASE Exclude_From_Build 1
-# PROP Exclude_From_Build 1
-
-!ENDIF 
-
 # End Source File
 # Begin Source File
 

@@ -84,8 +84,9 @@ float		scr_con_current;
 float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
-cvar_t		vid_conwidth = {"vid_conwidth", "0", true}; //johnfitz
-cvar_t		vid_conheight = {"vid_conheight", "0", true}; //johnfitz
+//cvar_t		vid_conwidth = {"vid_conwidth", "0", true}; //johnfitz
+//cvar_t		vid_conheight = {"vid_conheight", "0", true}; //johnfitz
+cvar_t		vid_consize = {"vid_consize", "0", true}; //Baker 3.97
 cvar_t		scr_viewsize = {"viewsize","100", true};
 cvar_t		scr_fov = {"fov","90", true, 6};	// 10 - 170  // Baker 3.60 - Save to config
 cvar_t		default_fov = {"default_fov","0", true, 7};	// Baker 3.85 - Default_fov from FuhQuake
@@ -105,6 +106,7 @@ extern	cvar_t	crosshair;
 extern  cvar_t	cl_crosshaircentered; // Baker 3.60 - centered crosshair
 extern	cvar_t	cl_crossx;	// JPG - added this
 extern	cvar_t	cl_crossy;  // JPG - added this
+extern  cvar_t  cl_sbar;
 
 qboolean	scr_initialized;		// ready to draw
 
@@ -309,14 +311,19 @@ static void SCR_CalcRefdef (void)
 	}
 
 	if (cl.intermission)
-	{
+		{
 		full = true;
 		size = 100;
 		sb_lines = 0;
 	}
 	size /= 100.0;
 
-	h = vid.height - sb_lines;
+	if (cl_sbar.value >= 1.0) {
+		h = vid.height - sb_lines;
+	} else {
+		// LordHavoc: always fullscreen rendering
+		h = vid.height;
+	}
 
 	r_refdef.vrect.width = vid.width * size;
 	if (r_refdef.vrect.width < 96)
@@ -326,9 +333,13 @@ static void SCR_CalcRefdef (void)
 	}
 
 	r_refdef.vrect.height = vid.height * size;
-	if (r_refdef.vrect.height > vid.height - sb_lines)
-		r_refdef.vrect.height = vid.height - sb_lines;
-	if (r_refdef.vrect.height > vid.height)
+	if (cl_sbar.value >= 1.0) {
+		 // Baker 3.97: Only if we are displaying the sbar
+		if (r_refdef.vrect.height > vid.height - sb_lines)
+			r_refdef.vrect.height = vid.height - sb_lines;
+	}
+
+	if (r_refdef.vrect.height > (int) vid.height)
 			r_refdef.vrect.height = vid.height;
 	r_refdef.vrect.x = (vid.width - r_refdef.vrect.width)/2;
 	if (full)
@@ -347,7 +358,7 @@ static void SCR_CalcRefdef (void)
 		r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
 	} 
 	scr_vrect = r_refdef.vrect;
-}
+} 
 
 
 /*
@@ -377,111 +388,6 @@ void SCR_SizeDown_f (void)
 	vid.recalc_refdef = 1;
 }
 
-/*
-==================
-VID_Conwidth_f -- johnfitz -- called when vid_conwidth changes
-==================
-*/
-extern qpic_t *conback;
-qboolean vid_consize_force =false; // To force a console size, even though glwidth/glheight not updated.  This DOES set the 2d width.
-qboolean vid_consize_ignore_callback = false; // To merely set the cvars, for writing to config.  This does not even set the 2d width.
-void VID_Conheight_f (void)
-{
-	float startvalue = vid.height; // Except if it de-syncs
-	
-	if (vid_consize_ignore_callback) // Set it!  No questions asked.
-		return;
-	
-	if (vid_consize_force) {
-		vid.height = vid_conheight.value;
-		return;
-	}
-		
-	vid.height = CLAMP (200, vid_conheight.value, glheight);
-
-	if (vid.height != startvalue) 
-		Cvar_SetValue("vid_conheight", vid.height);
-
-	conback->height = vid.conheight = vid.height;
-	vid.recalc_refdef = 1;
-
-}
-
-extern cvar_t vid_width;
-extern cvar_t vid_height;
-
-void VID_Conwidth_Reset ()
-{
-	//float startwidth = vid_width.value;
-
-	
-	vid.width = vid_width.value;
-	vid.height = vid_height.value;
-	vid.width &= 0xFFFFFFF8;
-	vid.height &= 0xFFFFFFF8;
-
-	// Baker: I think this is idea, but can confuse the user
-	/*	if (vid.width >= 1280) {
-		// Avoid non-microscopic text
-		vid.width = (int)(vid.width / 2);
-		vid.height = (int)(vid.height / 2);
-		vid.width &= 0xFFFFFFF8;
-		vid.height &= 0xFFFFFFF8;
-	} */
-
-	vid_consize_force = true;
-
-	if (vid.height != vid_conheight.value)
-		Cvar_SetValue("vid_conheight", (float)vid.height);
-
-	if (vid.width != vid_conwidth.value) {
-		Cvar_SetValue("vid_conwidth", (float)vid.width);
-	}
-
-	vid_consize_force = false;
-
-	// Baker: the following is a necessary evil ... for now
-	conback->width = vid.conwidth = vid.width;
-	conback->height = vid.conheight = vid.height;
-
-	vid.recalc_refdef = 1;
-
-}
-
-void VID_Conwidth_f (void)
-{
-	float startwidth = vid.width;
-	
-	if (vid_consize_ignore_callback) // Set it!  No questions asked.
-		return;
-
-	if (vid_consize_force) {
-		vid.width = vid_conwidth.value;
-		vid.height = vid_conheight.value;
-		return;
-	}
-
-	vid.width = (vid_conwidth.value > 0) ? (int)vid_conwidth.value : glwidth;
-	vid.width = CLAMP (320, vid.width, glwidth);
-	vid.width &= 0xFFFFFFF8;
-	vid.height = vid.width * glheight / glwidth;
-	vid.height &= 0xFFFFFFF8;
-
-	if (startwidth != vid.width || vid_conwidth.value != vid.width) {
-		Cvar_SetValue("vid_conwidth", vid.width);
-		return; 
-	}
-
-	if (vid.height != vid_conheight.value )
-		Cvar_SetValue("vid_conheight", vid.height);
-
-	// From Qrack as test
-	conback->width = vid.conwidth = vid.width;
-	conback->height = vid.conheight = vid.height;
-
-	vid.recalc_refdef = 1;
-
-}
 
 //============================================================================
 
@@ -494,10 +400,6 @@ void CL_Default_fov_f(void);
 void CL_Fov_f(void);
 void SCR_Init (void)
 {
-	//johnfitz -- new cvars
-	Cvar_RegisterVariable (&vid_conwidth, &VID_Conwidth_f);
-	Cvar_RegisterVariable (&vid_conheight, &VID_Conheight_f);
-	//johnfitz
 	
 
 	Cvar_RegisterVariable (&default_fov, &CL_Default_fov_f);
@@ -1053,6 +955,8 @@ WARNING: be very careful calling this from elsewhere, because the refresh
 needs almost the entire 256k of stack space!
 ==================
 */
+
+
 void SCR_UpdateScreen (void)
 {
 	static float	oldscr_viewsize;
@@ -1114,7 +1018,8 @@ void SCR_UpdateScreen (void)
 
 	// draw any areas not covered by the refresh
 
-	SCR_TileClear ();
+	if (cl_sbar.value >=1.0 || scr_viewsize.value < 100.0)
+		SCR_TileClear ();
 
 	if (scr_drawdialog)
 	{

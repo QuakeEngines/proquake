@@ -383,6 +383,8 @@ void CenterWindow(HWND hWndCenter, int width, int height, BOOL lefttopjustify) {
 	SetWindowPos (hWndCenter, NULL, CenterX, CenterY, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW | SWP_DRAWFRAME);
 }
 
+void VID_Consize_f();
+
 /*
 ================
 VID_SetWindowedMode
@@ -452,9 +454,14 @@ qboolean VID_SetWindowedMode (int modenum) {
 	//johnfitz -- stuff
 	vid.width = modelist[modenum].width;
 	vid.height = modelist[modenum].height;
-	vid.conwidth = vid.width & 0xFFFFFFF8;
-	vid.conheight = vid.conwidth * vid.height / vid.width;
+	// Need to elim next 2 lines after debug
+//	vid.conwidth = vid.width & 0xFFFFFFF8;
+//	vid.conheight = vid.conwidth * vid.height / vid.width;
+	
+//	MessageBox vid.conwidth
 	//johnfitz
+
+	VID_Consize_f();
 
 	vid.numpages = 2;
 
@@ -489,12 +496,17 @@ qboolean VID_SetFullDIBMode (int modenum) {
 		gdevmode.dmDisplayFrequency = modelist[modenum].refreshrate; //johnfitz -- refreshrate
 		gdevmode.dmSize = sizeof (gdevmode);
 
+#if 0
+	// Baker 3.97: Rook uses this and appears to be related
+	//             to "Full screen dib issue".
+
 		if (vid_refreshrate.value > 59)
 		{
 			gdevmode.dmDisplayFrequency = modelist[modenum].refreshrate = vid_refreshrate.value;
 			gdevmode.dmFields |= DM_DISPLAYFREQUENCY;
 		}
 		else
+#endif
 			gdevmode.dmDisplayFrequency = modelist[modenum].refreshrate;
 
 		if (ChangeDisplaySettings (&gdevmode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
@@ -553,8 +565,12 @@ qboolean VID_SetFullDIBMode (int modenum) {
 		vid.conwidth = modelist[modenum].width; */
 	vid.width = modelist[modenum].width;
 	vid.height = modelist[modenum].height;
-	vid.conwidth = vid.width & 0xFFFFFFF8;
-	vid.conheight = vid.conwidth * vid.height / vid.width;
+//	Need to elim these 2 lines
+//	vid.conwidth = vid.width & 0xFFFFFFF8;
+//	vid.conheight = vid.conwidth * vid.height / vid.width;
+//	MessageBox vid.conwidth
+
+	VID_Consize_f();
 
 	vid.numpages = 2;
 
@@ -685,7 +701,7 @@ void VID_SyncCvars (void);
 void d3dInitSetForce16BitTextures(int force16bitTextures);
 void d3dSetMode(int fullscreen, int width, int height, int bpp, int zbpp);
 #endif
-//void VID_Conwidth_Reset (void);
+
 void VID_Restart (void)
 {
 	HDC			hdc;
@@ -860,6 +876,8 @@ void VID_Restart (void)
 		//vid.conheight = vid.conwidth * vid.height / vid.width;
 
 
+//		VID_Consize_f();
+
 	}
 
 
@@ -874,7 +892,7 @@ void VID_Restart (void)
 
 //	Cvar_Set ("vid_conwidth", "99999");
 	VID_SyncCvars ();
-	VID_Conwidth_Reset ();
+	VID_Consize_f ();
 
 //	VID_Conwidth_f(); // Force recalc
 //	Cvar_SetValue("vid_conwidth", vid.width);
@@ -2125,7 +2143,7 @@ void	VID_Init (unsigned char *palette)
 	Cvar_RegisterVariable (&vid_fullscreen, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_width, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_height, NULL); //johnfitz
-
+	Cvar_RegisterVariable (&vid_consize, &VID_Consize_f); //Baker 3.97: this supercedes vid_conwidth/vid_conheight cvars
 	Cvar_RegisterVariable (&vid_refreshrate, NULL); //johnfitz
 	Cvar_RegisterVariable (&_windowed_mouse, NULL);
 	Cvar_RegisterVariable (&gl_ztrick, NULL);
@@ -2452,6 +2470,98 @@ void VID_SyncCvars (void)
 	Cvar_Set ("vid_refreshrate", va("%i", modelist[vid_default].refreshrate));
 	Cvar_Set ("vid_fullscreen", (windowed) ? "0" : "1");
 }
+
+// Baker 3.97: new scheme supercedes these
+
+/*
+==================
+VID_Consize_f -- Baker -- called when vid_consize changes
+==================
+*/
+extern qpic_t *conback;
+//qboolean vid_smoothfont = false;
+extern qboolean smoothfont_init;
+
+void VID_Consize_f(void) {
+	
+	float startwidth;
+	float startheight;
+	float desiredwidth;
+	int exception = 0;
+	
+	startwidth = vid.width = modelist[vid_default].width;
+	startheight = vid.height = modelist[vid_default].height;
+
+//	Con_Printf("Entering ...\n");
+//	Con_Printf("vid.width is %d and vid.height is %d\n", vid.width, vid.height);
+//	Con_Printf("vid.conwidth is %d and vid.conheight is %d\n", vid.conwidth, vid.conheight);
+
+	// Baker 3.97
+	// We need to appropriately set vid.width, vid.height, vid.smoothfont (?)
+
+//	vid_smoothfont = false; // Assume it is unnecessary
+
+	switch ((int)vid_consize.value) {
+		case 0: // consize is width
+
+			desiredwidth = vid.width;
+			break;
+
+		case 1: // consize is 50% width (if possible)
+
+			// if resolution is < 640, must use the resolution itself.
+			if (vid.width < 640) {
+				exception = 1; // Notify later about console resolution unavailable
+				desiredwidth = vid.width;
+				break;
+			}
+			
+			desiredwidth = (int)(vid.width/2);
+			break;
+			
+		case 3:
+			desiredwidth = 320;
+			break;
+
+		default:
+			// If vid.width is under 640, must use 320?
+			if (vid.width < 640) {
+				exception = 2; // Notify later about console resolution unavailable
+				desiredwidth = vid.width;
+				break;
+			}
+			desiredwidth = 640;
+			break;
+	}
+
+	vid.conwidth = CLAMP (320, desiredwidth, vid.width);
+	vid.conwidth &= 0xFFFFFFF8;                      // But this must be a multiple of 8
+	vid.conheight = vid.conwidth * vid.height / vid.width;  // Now set height using proper aspect ratio
+	vid.conheight &= 0xFFFFFFF8;					  // This too must be a multiple of 8
+
+	conback->width = vid.width = vid.conwidth; // = vid.width;
+	conback->height = vid.height = vid.conheight; // = vid.height;
+
+	//  Determine if smooth font is needed
+
+	if ((int)(startwidth / vid.conwidth) == ((startwidth + 0.0f) / (vid.conwidth + 0.0f)) && (int)(startheight / vid.conheight) == ((startheight + 0.0f) / (vid.conheight + 0.0f))) {
+		SmoothFontSet (false);
+	} else {
+		SmoothFontSet (true);
+	}
+
+	// Print messages AFTER console resizing to ensure they print right
+	if (exception) {
+		if (exception == 1)
+			Con_Printf ("VID_Consize_f: 50%% console size unavailable, using 100%% for this resolution.\n");
+		else
+			Con_Printf ("VID_Consize_f: 640 console size unavailable, using 100%% for this resolution.\n");
+	}
+
+	vid.recalc_refdef = 1;
+
+}
+
 
 //==========================================================================
 //

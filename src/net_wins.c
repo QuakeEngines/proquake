@@ -107,7 +107,10 @@ void WINS_GetLocalAddress()
 	if (local == NULL)
 		return;
 
-	myAddr = *(int *)local->h_addr_list[0];
+	if (COM_CheckParm("-dslhack"))
+		myAddr = *(int *)local->h_addr_list[1];  // Baker 3.98: dslhack this is so improper!
+	else
+		myAddr = *(int *)local->h_addr_list[0];
 
 	addr = ntohl(myAddr);
 	sprintf(my_tcpip_address, "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);

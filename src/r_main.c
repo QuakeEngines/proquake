@@ -55,17 +55,14 @@ byte		*r_stack_start;
 
 qboolean	r_fov_greater_than_90;
 
-//
+
 // view origin
-//
 vec3_t	vup, base_vup;
 vec3_t	vpn, base_vpn;
 vec3_t	vright, base_vright;
 vec3_t	r_origin;
 
-//
 // screen size info
-//
 refdef_t	r_refdef;
 float		xcenter, ycenter;
 float		xscale, yscale;
@@ -82,9 +79,7 @@ float	xOrigin, yOrigin;
 
 mplane_t	screenedge[4];
 
-//
 // refresh flags
-//
 int		r_framecount = 1;	// so frame counts initialized to 0 don't match
 int		r_visframecount;
 int		d_spanpixcount;
@@ -167,12 +162,7 @@ void	R_InitTextures (void)
 		dest = (byte *)r_notexture_mip + r_notexture_mip->offsets[m];
 		for (y=0 ; y< (16>>m) ; y++)
 			for (x=0 ; x< (16>>m) ; x++)
-			{
-				if (  (y< (8>>m) ) ^ (x< (8>>m) ) )
-					*dest++ = 0;
-				else
-					*dest++ = 0xff;
-			}
+			*dest++ = ((y < (8>>m)) ^ (x < (8>>m))) ? 0 : 0xff;
 	}	
 }
 
@@ -221,10 +211,8 @@ void R_Init (void)
 
 	view_clipplanes[0].leftedge = true;
 	view_clipplanes[1].rightedge = true;
-	view_clipplanes[1].leftedge = view_clipplanes[2].leftedge =
-			view_clipplanes[3].leftedge = false;
-	view_clipplanes[0].rightedge = view_clipplanes[2].rightedge =
-			view_clipplanes[3].rightedge = false;
+	view_clipplanes[1].leftedge = view_clipplanes[2].leftedge = view_clipplanes[3].leftedge = false;
+	view_clipplanes[0].rightedge = view_clipplanes[2].rightedge = view_clipplanes[3].rightedge = false;
 
 	r_refdef.xOrigin = XCENTERING;
 	r_refdef.yOrigin = YCENTERING;
@@ -233,8 +221,7 @@ void R_Init (void)
 
 // TODO: collect 386-specific code in one place
 #if	id386
-	Sys_MakeCodeWriteable ((long)R_EdgeCodeStart,
-					     (long)R_EdgeCodeEnd - (long)R_EdgeCodeStart);
+	Sys_MakeCodeWriteable ((long)R_EdgeCodeStart, (long)R_EdgeCodeEnd - (long)R_EdgeCodeStart);
 #endif	// id386
 
 	D_Init ();
@@ -287,17 +274,13 @@ void R_NewMap (void)
 		r_numallocatededges = MINEDGES;
 
 	if (r_numallocatededges <= NUMSTACKEDGES)
-	{
 		auxedges = NULL;
-	}
 	else
-	{
-		auxedges = Hunk_AllocName (r_numallocatededges * sizeof(edge_t),
-								   "edges");
-	}
+		auxedges = Hunk_AllocName (r_numallocatededges * sizeof(edge_t), "edges");
 
 	r_dowarpold = false;
 	r_viewchanged = false;
+
 #ifdef PASSAGES
 CreatePassages ();
 #endif
@@ -313,17 +296,30 @@ void R_SetVrect (vrect_t *pvrectin, vrect_t *pvrect, int lineadj)
 {
 	int		h;
 	float	size;
+	qboolean	full = false;	// joe
 
-	size = scr_viewsize.value > 100 ? 100 : scr_viewsize.value;
+	if (scr_viewsize.value >= 100.0)
+	{
+		size = 100.0;
+		full = true;
+	}
+	else
+	{
+		size = scr_viewsize.value;
+	}
+
 	if (cl.intermission)
 	{
-		size = 100;
+		full = true;	// joe
+		size = 100.0;
 		lineadj = 0;
 	}
-	size /= 100;
+	size /= 100.0;
 
-	h = pvrectin->height - lineadj;
-	pvrect->width = pvrectin->width * size;
+	h = (!cl_sbar.value && full) ? pvrectin->height : pvrectin->height - lineadj;
+
+	pvrect->width = full ? pvrectin->width : pvrectin->width * size;
+
 	if (pvrect->width < 96)
 	{
 		size = 96.0 / pvrectin->width;
@@ -331,20 +327,26 @@ void R_SetVrect (vrect_t *pvrectin, vrect_t *pvrect, int lineadj)
 	}
 	pvrect->width &= ~7;
 	pvrect->height = pvrectin->height * size;
+
+	if (cl_sbar.value || !full)
+	{
 	if (pvrect->height > pvrectin->height - lineadj)
 		pvrect->height = pvrectin->height - lineadj;
+	}
+	else if (pvrect->height > pvrectin->height)
+	{
+		pvrect->height = pvrectin->height;
+	}
 
 	pvrect->height &= ~1;
 
 	pvrect->x = (pvrectin->width - pvrect->width)/2;
-	pvrect->y = (h - pvrect->height)/2;
+	pvrect->y = full ? 0 : (h - pvrect->height) / 2;
 
+	if (lcd_x.value)
 	{
-		if (lcd_x.value)
-		{
-			pvrect->y >>= 1;
-			pvrect->height >>= 1;
-		}
+		pvrect->y >>= 1;
+		pvrect->height >>= 1;
 	}
 }
 
@@ -385,17 +387,14 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 	r_refdef.aliasvrect.y = (int)(r_refdef.vrect.y * r_aliasuvscale);
 	r_refdef.aliasvrect.width = (int)(r_refdef.vrect.width * r_aliasuvscale);
 	r_refdef.aliasvrect.height = (int)(r_refdef.vrect.height * r_aliasuvscale);
-	r_refdef.aliasvrectright = r_refdef.aliasvrect.x +
-			r_refdef.aliasvrect.width;
-	r_refdef.aliasvrectbottom = r_refdef.aliasvrect.y +
-			r_refdef.aliasvrect.height;
+	r_refdef.aliasvrectright = r_refdef.aliasvrect.x + r_refdef.aliasvrect.width;
+	r_refdef.aliasvrectbottom = r_refdef.aliasvrect.y + r_refdef.aliasvrect.height;
 
 	pixelAspect = aspect;
 	xOrigin = r_refdef.xOrigin;
 	yOrigin = r_refdef.yOrigin;
 	
-	screenAspect = r_refdef.vrect.width*pixelAspect /
-			r_refdef.vrect.height;
+	screenAspect = r_refdef.vrect.width*pixelAspect / r_refdef.vrect.height;
 // 320*200 1.0 pixelAspect = 1.6 screenAspect
 // 320*240 1.0 pixelAspect = 1.3333 screenAspect
 // proper 320*200 pixelAspect = 0.8333333
@@ -408,11 +407,9 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 // the polygon rasterization will never render in the first row or column
 // but will definately render in the [range] row and column, so adjust the
 // buffer origin to get an exact edge to edge fill
-	xcenter = ((float)r_refdef.vrect.width * XCENTERING) +
-			r_refdef.vrect.x - 0.5;
+	xcenter = ((float)r_refdef.vrect.width * XCENTERING) + r_refdef.vrect.x - 0.5;
 	aliasxcenter = xcenter * r_aliasuvscale;
-	ycenter = ((float)r_refdef.vrect.height * YCENTERING) +
-			r_refdef.vrect.y - 0.5;
+	ycenter = ((float)r_refdef.vrect.height * YCENTERING) + r_refdef.vrect.y - 0.5;
 	aliasycenter = ycenter * r_aliasuvscale;
 
 	xscale = r_refdef.vrect.width / r_refdef.horizontalFieldOfView;
@@ -431,8 +428,7 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 	screenedge[0].type = PLANE_ANYZ;
 	
 // right side clip
-	screenedge[1].normal[0] =
-			1.0 / ((1.0-xOrigin)*r_refdef.horizontalFieldOfView);
+	screenedge[1].normal[0] = 1.0 / ((1.0-xOrigin)*r_refdef.horizontalFieldOfView);
 	screenedge[1].normal[1] = 0;
 	screenedge[1].normal[2] = 1;
 	screenedge[1].type = PLANE_ANYZ;
@@ -452,9 +448,7 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 	for (i=0 ; i<4 ; i++)
 		VectorNormalize (screenedge[i].normal);
 
-	res_scale = sqrt ((double)(r_refdef.vrect.width * r_refdef.vrect.height) /
-			          (320.0 * 152.0)) *
-			(2.0 / r_refdef.horizontalFieldOfView);
+	res_scale = sqrt ((double)(r_refdef.vrect.width * r_refdef.vrect.height) / (320.0 * 152.0)) * (2.0 / r_refdef.horizontalFieldOfView);
 	r_aliastransition = r_aliastransbase.value * res_scale;
 	r_resfudge = r_aliastransadj.value * res_scale;
 
@@ -528,8 +522,7 @@ R_DrawEntitiesOnList
 */
 void R_DrawEntitiesOnList (void)
 {
-	int			i, j;
-	int			lnum;
+	int		i, j, lnum;
 	alight_t	lighting;
 // FIXME: remove and do real lighting
 	float		lightvec[3] = {-1, 0, 0};
@@ -579,9 +572,7 @@ void R_DrawEntitiesOnList (void)
 				{
 					if (cl_dlights[lnum].die >= cl.time)
 					{
-						VectorSubtract (currententity->origin,
-										cl_dlights[lnum].origin,
-										dist);
+						VectorSubtract (currententity->origin, cl_dlights[lnum].origin, dist);
 						add = cl_dlights[lnum].radius - Length(dist);
 	
 						if (add > 0)
@@ -615,8 +606,7 @@ void R_DrawViewModel (void)
 {
 // FIXME: remove and do real lighting
 	float		lightvec[3] = {-1, 0, 0};
-	int			j;
-	int			lnum;
+	int		j, lnum;
 	vec3_t		dist;
 	float		add;
 	dlight_t	*dl;
@@ -646,7 +636,7 @@ void R_DrawViewModel (void)
 	j = R_LightPoint (currententity->origin);
 
 	if (j < 24)
-		j = 24;		// allways give some light on gun
+		j = 24;		// always give some light on gun
 	r_viewlighting.ambientlight = j;
 	r_viewlighting.shadelight = j;
 
@@ -675,10 +665,6 @@ void R_DrawViewModel (void)
 
 	r_viewlighting.plightvec = lightvec;
 
-#ifdef QUAKE2
-	cl.light_level = r_viewlighting.ambientlight;
-#endif
-
 	R_AliasDrawModel (&r_viewlighting);
 }
 
@@ -696,8 +682,7 @@ int R_BmodelCheckBBox (model_t *clmodel, float *minmaxs)
 
 	clipflags = 0;
 
-	if (currententity->angles[0] || currententity->angles[1]
-		|| currententity->angles[2])
+	if (currententity->angles[0] || currententity->angles[1] || currententity->angles[2])
 	{
 		for (i=0 ; i<4 ; i++)
 		{
@@ -886,25 +871,17 @@ R_EdgeDrawing
 */
 void R_EdgeDrawing (void)
 {
-	edge_t	ledges[NUMSTACKEDGES +
-				((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
-	surf_t	lsurfs[NUMSTACKSURFACES +
-				((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
+	edge_t	ledges[NUMSTACKEDGES + ((CACHE_SIZE - 1) / sizeof(edge_t)) + 1];
+	surf_t	lsurfs[NUMSTACKSURFACES + ((CACHE_SIZE - 1) / sizeof(surf_t)) + 1];
 
 	if (auxedges)
-	{
 		r_edges = auxedges;
-	}
 	else
-	{
-		r_edges =  (edge_t *)
-				(((long)&ledges[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
-	}
+		r_edges =  (edge_t *) (((long)&ledges[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
 
 	if (r_surfsonstack)
 	{
-		surfaces =  (surf_t *)
-				(((long)&lsurfs[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
+		surfaces =  (surf_t *)(((long)&lsurfs[0] + CACHE_SIZE - 1) & ~(CACHE_SIZE - 1));
 		surf_max = &surfaces[r_cnumsurfs];
 	// surface 0 doesn't really exist; it's just a dummy because index 0
 	// is used to indicate no edge attached to surface
@@ -915,9 +892,7 @@ void R_EdgeDrawing (void)
 	R_BeginEdgeFrame ();
 
 	if (r_dspeeds.value)
-	{
 		rw_time1 = Sys_FloatTime ();
-	}
 
 	R_RenderWorld ();
 
@@ -1059,8 +1034,7 @@ SetVisibilityByPassages ();
 
 void R_RenderView (void)
 {
-	int		dummy;
-	int		delta;
+	int	dummy, delta;
 	
 	delta = (byte *)&dummy - r_stack_start;
 	if (delta < -10000 || delta > 10000)

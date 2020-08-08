@@ -390,7 +390,7 @@ void IN_SMouseRead (int *mx, int *my) {
 	bound(0, wheel_dn_count, 10);
 	bound(0, wheel_up_count, 10);
 
-	Con_Printf("Serve wheel\n");
+//	Con_Printf("Serve wheel\n");
 
 	while (wheel_dn_count >	0) {
 		Key_Event (K_MWHEELDOWN, 0, true);

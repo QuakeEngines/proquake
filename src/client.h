@@ -27,9 +27,6 @@ typedef struct
 	float	forwardmove;
 	float	sidemove;
 	float	upmove;
-#ifdef QUAKE2
-	byte	lightlevel;
-#endif
 } usercmd_t;
 
 typedef struct
@@ -70,10 +67,7 @@ typedef struct
 
 #define	NAME_LENGTH	64
 
-
-//
 // client_state_t should hold all pieces of the client state
-//
 
 #define	SIGNONS		4			// signon messages to receive before connected
 
@@ -90,7 +84,6 @@ typedef struct
 	qboolean	dark;			// subtracts light instead of adding
 #endif
 } dlight_t;
-
 
 #define	MAX_BEAMS	24
 typedef struct
@@ -123,10 +116,8 @@ ca_disconnected, 	// full screen console with no connection
 ca_connected		// valid netcon, talking to a server
 } cactive_t;
 
-//
 // the client_static_t structure is persistant through an arbitrary number
 // of server connections
-//
 typedef struct
 {
 	cactive_t	state;
@@ -161,10 +152,8 @@ typedef struct
 
 extern client_static_t	cls;
 
-//
 // the client_state_t structure is wiped completely at every
 // server signon
-//
 typedef struct
 {
 	int			movemessages;	// since connecting to this server
@@ -224,9 +213,7 @@ typedef struct
 
 	float		last_received_message;	// (realtime) for net trouble icon
 
-//
 // information that is static for the entire time connected to a server
-//
 	struct model_s		*model_precache[MAX_MODELS];
 	struct sfx_s		*sound_precache[MAX_SOUNDS];
 
@@ -268,9 +255,7 @@ typedef struct
 } client_state_t;
 
 
-//
 // cvars
-//
 extern	cvar_t	cl_name;
 extern	cvar_t	cl_color;
 
@@ -301,6 +286,7 @@ extern	cvar_t	m_yaw;
 extern	cvar_t	m_forward;
 extern	cvar_t	m_side;
 
+extern	cvar_t	cl_sbar;
 extern	cvar_t	cl_demorewind;
 extern	cvar_t	cl_demospeed;
 
