@@ -206,8 +206,7 @@ This will be sent on the initial connection and upon each server load.
 */
 void SV_SendServerinfo (client_t *client)
 {
-	char			**s;
-	char			message[2048];
+	char			**s, message[2048];
 
 	// JPG - This used to be VERSION 1.09 SERVER (xxxxx CRC)
 	MSG_WriteByte (&client->message, svc_print);
@@ -275,11 +274,11 @@ once for a player each game, not once for each level change.
 */
 void SV_ConnectClient (int clientnum)
 {
+	int				i, edictnum;
+	float			spawn_parms[NUM_SPAWN_PARMS];
 	edict_t			*ent;
 	client_t		*client;
-	int				i, edictnum;
 	struct qsocket_s *netconnection;
-	float			spawn_parms[NUM_SPAWN_PARMS];
 
 	client = svs.clients + clientnum;
 
@@ -332,7 +331,6 @@ void SV_ConnectClient (int clientnum)
 /*
 ===================
 SV_CheckForNewClients
-
 ===================
 */
 void SV_CheckForNewClients (void)
@@ -343,8 +341,7 @@ void SV_CheckForNewClients (void)
 // check for new connections
 	while (1)
 	{
-		ret = NET_CheckNewConnections ();
-		if (!ret)
+		if (!(ret = NET_CheckNewConnections ()))
 			break;
 
 	// init a new client structure
@@ -352,7 +349,7 @@ void SV_CheckForNewClients (void)
 			if (!svs.clients[i].active)
 				break;
 		if (i == svs.maxclients)
-			Sys_Error ("Host_CheckForNewClients: no free clients");
+			Sys_Error ("SV_CheckForNewClients: no free clients");
 
 		svs.clients[i].netconnection = ret;
 		SV_ConnectClient (i);
@@ -724,15 +721,14 @@ qboolean SV_InvisibleToClient(edict_t *viewer, edict_t *seen)
 /*
 =============
 SV_WriteEntitiesToClient
-
 =============
 */
 void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 {
 	int		e, i, bits;
+	float	miss;
 	byte	*pvs;
 	vec3_t	org;
-	float	miss;
 	edict_t	*ent;
 
 // find the client's PVS
@@ -840,7 +836,6 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 			MSG_WriteShort (msg,e);
 		else
 			MSG_WriteByte (msg,e);
-
 		if (bits & U_MODEL)
 			MSG_WriteByte (msg,	ent->v.modelindex);
 		if (bits & U_FRAME)
@@ -1171,7 +1166,9 @@ void SV_SendClientMessages (void)
 			}
 
 			if (host_client->dropasap)
+			{
 				SV_DropClient (false);	// went to another level
+			}
 			else
 			{
 				if (NET_SendMessage (host_client->netconnection, &host_client->message) == -1)
@@ -1358,10 +1355,7 @@ void SV_SpawnServer (char *server)
 	if (coop.value)
 		Cvar_SetValue ("deathmatch", 0);
 	current_skill = (int)(skill.value + 0.5);
-	if (current_skill < 0)
-		current_skill = 0;
-	if (current_skill > 3)
-		current_skill = 3;
+	current_skill = bound(0, current_skill, 3);
 
 	Cvar_SetValue ("skill", (float)current_skill);
 
@@ -1435,13 +1429,12 @@ void SV_SpawnServer (char *server)
 	sv.model_precache[1] = sv.modelname;
 	for (i=1 ; i<sv.worldmodel->numsubmodels ; i++)
 	{
-		sv.model_precache[1+i] = localmodels[i];
+		sv.model_precache[i+1] = localmodels[i];
 		sv.models[i+1] = Mod_ForName (localmodels[i], false);
 	}
 
-//
+
 // load the rest of the entities
-//
 	ent = EDICT_NUM(0);
 	memset (&ent->v, 0, progs->entityfields * 4);
 	ent->free = false;

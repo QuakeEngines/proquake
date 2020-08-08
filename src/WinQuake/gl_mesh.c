@@ -182,20 +182,17 @@ done:
 	return stripcount;
 }
 
-
 /*
 ================
 BuildTris
 
-Generate a list of trifans or strips
-for the model, which holds for all frames
+Generate a list of trifans or strips for the model, which holds for all frames
 ================
 */
 void BuildTris (void)
 {
-	int		i, j, k, startv, len, bestlen, besttype, type;
+	int		i, j, k, startv, len, bestlen, besttype, type, bestverts[1024], besttris[1024];
 	float		s, t;
-	int		bestverts[1024], besttris[1024];
 
 	// build tristrips
 	numorder = 0;
@@ -261,8 +258,7 @@ void BuildTris (void)
 
 
 void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr) {
-	int		i, j;
-	int		*cmds;
+	int		i, j, *cmds;
 	trivertx_t	*verts;
 
 	// Tonik: don't cache anything, because it seems just as fast

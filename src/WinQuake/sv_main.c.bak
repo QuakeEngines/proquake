@@ -25,6 +25,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 server_t		sv;
 server_static_t	svs;
 
+
+cvar_t	sv_defaultmap = {"sv_defaultmap",""}; //Baker 3.95: R00k
+cvar_t	sv_cullentities = {"sv_cullentities", "1", false, true}; // Baker 3.99c: Rook and I both think sv_cullentities is better cvar name than sv_cullplayers
+cvar_t	sv_cullentities_notify = {"sv_cullentities_notify", "0", false, true}; // in event there are multiple modes for anti-wallhack (Rook has a more comprehensive mode)
+
 char	localmodels[MAX_MODELS][5];			// inline model names for precache
 
 //============================================================================
@@ -47,6 +52,20 @@ void SV_Init (void)
 	extern	cvar_t	sv_accelerate;
 	extern	cvar_t	sv_idealpitchscale;
 	extern	cvar_t	sv_aim;
+	extern  cvar_t  pq_connectmute;
+//	extern	cvar_t  sv_cullplayers_trace;
+//	extern	cvar_t  sv_cullplayers_notify;
+
+
+
+	Cvar_RegisterVariable (&sv_defaultmap, NULL); //Baker 3.99b: R00k create a default map to load
+
+
+	// Baker: Dedicated server "defaults" - this is ok because quake.rc is executed later, so these "defaults" won't override config.cfg settings, etc.
+	if (COM_CheckParm ("-dedicated")) {
+//		Cvar_Set("sv_defaultmap", "start"); // Baker 3.99b: "Default" it to start if dedicated server.
+		Cvar_Set("pq_connectmute", "3"); 	// Baker 3.99g: "Default" it to 10 seconds
+	}
 
 	Cvar_RegisterVariable (&sv_maxvelocity, NULL);
 	Cvar_RegisterVariable (&sv_gravity, NULL);
@@ -59,6 +78,9 @@ void SV_Init (void)
 	Cvar_RegisterVariable (&sv_aim, NULL);
 	Cvar_RegisterVariable (&sv_nostep, NULL);
 	Cvar_RegisterVariable (&pq_fullpitch, NULL);	// JPG 2.01
+
+	Cvar_RegisterVariable (&sv_cullentities, NULL);	// JPG 2.01
+	Cvar_RegisterVariable (&sv_cullentities_notify, NULL);	// JPG 2.01
 
 	for (i=0 ; i<MAX_MODELS ; i++)
 		snprintf (localmodels[i], sizeof(localmodels[i]), "*%i", i);
@@ -189,23 +211,14 @@ void SV_SendServerinfo (client_t *client)
 
 	// JPG - This used to be VERSION 1.09 SERVER (xxxxx CRC)
 	MSG_WriteByte (&client->message, svc_print);
-#if defined (__APPLE__) || defined (MACOSX)
-	sprintf (message, "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n"
+	snprintf(message, sizeof(message), "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n"
 					  "\n   \01\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\03");
 	MSG_WriteString (&client->message,message);
 	MSG_WriteByte (&client->message, svc_print);
-	sprintf (message, "\02\n   \04ProQuake Server Version %4.2f\06"
+	snprintf(message, sizeof(message), "\02\n   \04ProQuake Server Version %4.2f\06"
 					  "\n   \07\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\11", PROQUAKE_VERSION);
 
-#else
-	sprintf (message, "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n"
-					  "\n   \01\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\03");
-	MSG_WriteString (&client->message,message);
-	MSG_WriteByte (&client->message, svc_print);
-	sprintf (message, "\02\n   \04ProQuake Server Version %4.2f\06"
-					  "\n   \07\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\11", PROQUAKE_VERSION);
 
-#endif /* __APPLE__ ||ÊMACOSX */
 	MSG_WriteString (&client->message,message);
 
 	MSG_WriteByte (&client->message, svc_serverinfo);
@@ -217,11 +230,7 @@ void SV_SendServerinfo (client_t *client)
 	else
 		MSG_WriteByte (&client->message, GAME_COOP);
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (message, 2048, pr_strings+sv.edicts->v.message);
-#else
-	sprintf (message, pr_strings+sv.edicts->v.message);
-#endif /* __APPLE__ ||ÊMACOSX */
+	snprintf(message, sizeof(message), pr_strings+sv.edicts->v.message);
 
 	MSG_WriteString (&client->message,message);
 
@@ -440,8 +449,277 @@ byte *SV_FatPVS (vec3_t org)
 	return fatpvs;
 }
 
+
+#define VectorNegate(a,b)		((b)[0]=-(a)[0],(b)[1]=-(a)[1],(b)[2]=-(a)[2])
+
+/*
+==================
+SV_HullPointContents
+
+==================
+*/
+static int Q1_HullPointContents (hull_t *hull, int num, vec3_t p)
+{
+	float		d;
+	dclipnode_t	*node;
+	mplane_t	*plane;
+
+	while (num >= 0)
+	{
+		if (num < hull->firstclipnode || num > hull->lastclipnode)
+			Sys_Error ("SV_HullPointContents: bad node number");
+
+		node = hull->clipnodes + num;
+		plane = hull->planes + node->planenum;
+
+		if (plane->type < 3)
+			d = p[plane->type] - plane->dist;
+		else
+			d = DotProduct (plane->normal, p) - plane->dist;
+		if (d < 0)
+			num = node->children[1];
+		else
+			num = node->children[0];
+	}
+
+	return num;
+}
+
+#define	DIST_EPSILON	(0.03125)
+#define	Q1CONTENTS_EMPTY	-1
+#define	Q1CONTENTS_SOLID	-2
+#define	Q1CONTENTS_WATER	-3
+#define	Q1CONTENTS_SLIME	-4
+#define	Q1CONTENTS_LAVA		-5
+#define	Q1CONTENTS_SKY		-6
+qboolean Q1BSP_RecursiveHullCheck (hull_t *hull, int num, float p1f, float p2f, vec3_t p1, vec3_t p2, trace_t *trace)
+{
+	dclipnode_t	*node;
+	mplane_t	*plane;
+	float		t1, t2;
+	float		frac;
+	int			i;
+	vec3_t		mid;
+	int			side;
+	float		midf;
+
+// check for empty
+	if (num < 0)
+	{
+		if (num != Q1CONTENTS_SOLID)
+		{
+			trace->allsolid = false;
+			if (num == Q1CONTENTS_EMPTY)
+				trace->inopen = true;
+			else
+				trace->inwater = true;
+		}
+		else
+			trace->startsolid = true;
+		return true;		// empty
+	}
+
+	if (num < hull->firstclipnode || num > hull->lastclipnode)
+		Sys_Error ("Q1BSP_RecursiveHullCheck: bad node number");
+
+//
+// find the point distances
+//
+	node = hull->clipnodes + num;
+	plane = hull->planes + node->planenum;
+
+	if (plane->type < 3)
+	{
+		t1 = p1[plane->type] - plane->dist;
+		t2 = p2[plane->type] - plane->dist;
+	}
+	else
+	{
+		t1 = DotProduct (plane->normal, p1) - plane->dist;
+		t2 = DotProduct (plane->normal, p2) - plane->dist;
+	}
+
+#if 1
+	if (t1 >= 0 && t2 >= 0)
+		return Q1BSP_RecursiveHullCheck (hull, node->children[0], p1f, p2f, p1, p2, trace);
+	if (t1 < 0 && t2 < 0)
+		return Q1BSP_RecursiveHullCheck (hull, node->children[1], p1f, p2f, p1, p2, trace);
+#else
+	if ( (t1 >= DIST_EPSILON && t2 >= DIST_EPSILON) || (t2 > t1 && t1 >= 0) )
+		return Q1BSP_RecursiveHullCheck (hull, node->children[0], p1f, p2f, p1, p2, trace);
+	if ( (t1 <= -DIST_EPSILON && t2 <= -DIST_EPSILON) || (t2 < t1 && t1 <= 0) )
+		return Q1BSP_RecursiveHullCheck (hull, node->children[1], p1f, p2f, p1, p2, trace);
+#endif
+
+// put the crosspoint DIST_EPSILON pixels on the near side
+	if (t1 < 0)
+		frac = (t1 + DIST_EPSILON)/(t1-t2);
+	else
+		frac = (t1 - DIST_EPSILON)/(t1-t2);
+	if (frac < 0)
+		frac = 0;
+	if (frac > 1)
+		frac = 1;
+
+	midf = p1f + (p2f - p1f)*frac;
+	for (i=0 ; i<3 ; i++)
+		mid[i] = p1[i] + frac*(p2[i] - p1[i]);
+
+	side = (t1 < 0);
+
+// move up to the node
+	if (!Q1BSP_RecursiveHullCheck (hull, node->children[side], p1f, midf, p1, mid, trace) )
+		return false;
+
+#ifdef PARANOID
+	if (Q1BSP_RecursiveHullCheck (sv_hullmodel, mid, node->children[side])
+	== Q1CONTENTS_SOLID)
+	{
+		Con_Printf ("mid PointInHullSolid\n");
+		return false;
+	}
+#endif
+
+	if (Q1_HullPointContents (hull, node->children[side^1], mid)
+	!= Q1CONTENTS_SOLID)
+// go past the node
+		return Q1BSP_RecursiveHullCheck (hull, node->children[side^1], midf, p2f, mid, p2, trace);
+
+	if (trace->allsolid)
+		return false;		// never got out of the solid area
+
+//==================
+// the other side of the node is solid, this is the impact point
+//==================
+	if (!side)
+	{
+		VectorCopy (plane->normal, trace->plane.normal);
+		trace->plane.dist = plane->dist;
+	}
+	else
+	{
+		VectorNegate (plane->normal, trace->plane.normal);
+		trace->plane.dist = -plane->dist;
+	}
+
+	while (Q1_HullPointContents (hull, hull->firstclipnode, mid)
+	== Q1CONTENTS_SOLID)
+	{ // shouldn't really happen, but does occasionally
+		frac -= 0.1;
+		if (frac < 0)
+		{
+			trace->fraction = midf;
+			VectorCopy (mid, trace->endpos);
+			Con_DPrintf ("backup past 0\n");
+			return false;
+		}
+		midf = p1f + (p2f - p1f)*frac;
+		for (i=0 ; i<3 ; i++)
+			mid[i] = p1[i] + frac*(p2[i] - p1[i]);
+	}
+
+	trace->fraction = midf;
+	VectorCopy (mid, trace->endpos);
+
+	return false;
+}
+
 //=============================================================================
 
+qboolean Q1BSP_Trace(model_t *model, int forcehullnum, int frame, vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs, trace_t *trace)
+{
+	hull_t *hull;
+	vec3_t size;
+	vec3_t start_l, end_l;
+	vec3_t offset;
+
+	memset (trace, 0, sizeof(trace_t));
+	trace->fraction = 1;
+	trace->allsolid = true;
+
+	VectorSubtract (maxs, mins, size);
+	if (forcehullnum >= 1 && forcehullnum <= MAX_MAP_HULLS && model->hulls[forcehullnum-1].available)
+		hull = &model->hulls[forcehullnum-1];
+	else
+	{
+		if (model->hulls[5].available)
+		{	//choose based on hexen2 sizes.
+
+			if (size[0] < 3) // Point
+				hull = &model->hulls[0];
+			else if (size[0] <= 32 && size[2] <= 28)  // Half Player
+				hull = &model->hulls[3];
+			else if (size[0] <= 32)  // Full Player
+				hull = &model->hulls[1];
+			else // Golumn
+				hull = &model->hulls[5];
+		}
+		else
+		{
+			if (size[0] < 3 || !model->hulls[1].available)
+				hull = &model->hulls[0];
+			else if (size[0] <= 32)
+			{
+				if (size[2] < 54 && model->hulls[3].available)
+					hull = &model->hulls[3]; // 32x32x36 (half-life's crouch)
+				else
+					hull = &model->hulls[1];
+			}
+			else
+				hull = &model->hulls[2];
+		}
+	}
+
+// calculate an offset value to center the origin
+	VectorSubtract (hull->clip_mins, mins, offset);
+	VectorSubtract(start, offset, start_l);
+	VectorSubtract(end, offset, end_l);
+	Q1BSP_RecursiveHullCheck(hull, hull->firstclipnode, 0, 1, start_l, end_l, trace);
+	if (trace->fraction == 1)
+	{
+		VectorCopy (end, trace->endpos);
+	}
+	else
+	{
+		VectorAdd (trace->endpos, offset, trace->endpos);
+	}
+
+	return trace->fraction != 1;
+}
+
+
+qboolean SV_InvisibleToClient(edict_t *viewer, edict_t *seen)
+{
+	int i;
+	trace_t tr;
+	vec3_t start;
+	vec3_t end;
+
+//	if (seen->v->solid == SOLID_BSP)
+//		return false;	//bsp ents are never culled this way
+
+	//stage 1: check against their origin
+	VectorAdd(viewer->v.origin, viewer->v.view_ofs, start);
+	tr.fraction = 1;
+
+	if (!Q1BSP_Trace (sv.worldmodel, 1, 0, start, seen->v.origin, vec3_origin, vec3_origin, &tr))
+		return false;	//wasn't blocked
+
+
+	//stage 2: check against their bbox
+	for (i = 0; i < 8; i++)
+	{
+		end[0] = seen->v.origin[0] + ((i&1)?seen->v.mins[0]:seen->v.maxs[0]);
+		end[1] = seen->v.origin[1] + ((i&2)?seen->v.mins[1]:seen->v.maxs[1]);
+		end[2] = seen->v.origin[2] + ((i&4)?seen->v.mins[2]+0.1:seen->v.maxs[2]);
+
+		tr.fraction = 1;
+		if (!Q1BSP_Trace (sv.worldmodel, 1, 0, start, end, vec3_origin, vec3_origin, &tr))
+			return false;	//this trace went through, so don't cull
+	}
+
+	return true;
+}
 
 /*
 =============
@@ -486,6 +764,22 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 			// Baker 3.99b: Slot Zero's user activated anti-lag mod capability
 	       if ((int)clent->v.flags & FL_LOW_BANDWIDTH_CLIENT && (int)ent->v.effects & EF_MAYBE_DRAW)
 	            continue;
+
+// Baker theoretical sv_cullentities_trace
+
+			if (e<=svs.maxclients && sv_cullentities.value) {
+				if(SV_InvisibleToClient(clent, ent)) {
+					if (sv_cullentities_notify.value)
+						Con_Printf("Not visible\n");
+					continue;
+				} else {
+					if (sv_cullentities_notify.value)
+						Con_Printf("Visible\n");
+				}
+			}
+
+// End Baker theoretical
+
 		}
 
 		if (msg->maxsize - msg->cursize < 16)
@@ -1114,6 +1408,16 @@ void SV_SpawnServer (char *server)
 	strcpy (sv.name, server);
 	snprintf (sv.modelname, sizeof(sv.modelname), "maps/%s.bsp", server);
 	sv.worldmodel = Mod_ForName (sv.modelname, false);
+
+	//Baker 3.99b: R00k if map isnt found then load the sv_defaultmap instead
+	if (!sv.worldmodel && sv_defaultmap.string[0])
+	{
+		strcpy (sv.name, sv_defaultmap.string);
+		vsnprintf (sv.modelname, sizeof(sv.modelname), "maps/%s.bsp", sv_defaultmap.string);
+		sv.worldmodel = Mod_ForName (sv.modelname, false);
+	}
+	// Baker 3.99b: end mod
+
 	if (!sv.worldmodel)
 	{
 		Con_Printf ("Couldn't spawn server %s\n", sv.modelname);

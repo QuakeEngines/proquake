@@ -134,7 +134,7 @@ extern void	V_CalcBlend (void);
 =================
 R_CullBox
 
-Returns true if the box is completely outside the frustom
+Returns true if the box is completely outside the frustum
 =================
 */
 qboolean R_CullBox (vec3_t mins, vec3_t maxs)
@@ -144,6 +144,7 @@ qboolean R_CullBox (vec3_t mins, vec3_t maxs)
 	for (i=0 ; i<4 ; i++)
 		if (BoxOnPlaneSide (mins, maxs, &frustum[i]) == 2)
 			return true;
+
 	return false;
 }
 
@@ -290,11 +291,9 @@ mspriteframe_t *R_GetSpriteFrame (entity_t *currententity)
 	return pspriteframe;
 }
 
-
 /*
 =================
 R_DrawSpriteModel
-
 =================
 */
 void R_DrawSpriteModel (entity_t *e)
@@ -311,7 +310,8 @@ void R_DrawSpriteModel (entity_t *e)
 	psprite = currententity->model->cache.data;
 
 	if (psprite->type == SPR_ORIENTED)
-	{	// bullet marks on walls
+	{	
+		// bullet marks on walls
 		AngleVectors (currententity->angles, v_forward, v_right, v_up);
 		up = v_up;
 		right = v_right;
@@ -363,7 +363,6 @@ void R_DrawSpriteModel (entity_t *e)
 
 ===============================================================================
 */
-
 
 #define NUMVERTEXNORMALS	162
 

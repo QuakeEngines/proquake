@@ -435,32 +435,15 @@ if (bits&(1<<i))
 	VectorCopy (ent->msg_origins[0], ent->msg_origins[1]);
 	VectorCopy (ent->msg_angles[0], ent->msg_angles[1]);
 
-	if (bits & U_ORIGIN1)
-		ent->msg_origins[0][0] = MSG_ReadCoord ();
-	else
-		ent->msg_origins[0][0] = ent->baseline.origin[0];
-	if (bits & U_ANGLE1)
-		ent->msg_angles[0][0] = MSG_ReadAngle();
-	else
-		ent->msg_angles[0][0] = ent->baseline.angles[0];
+	ent->msg_origins[0][0] = (bits & U_ORIGIN1) ? MSG_ReadCoord() : ent->baseline.origin[0];
+	ent->msg_angles[0][0] = (bits & U_ANGLE1) ? MSG_ReadAngle() : ent->baseline.angles[0];
 
-	if (bits & U_ORIGIN2)
-		ent->msg_origins[0][1] = MSG_ReadCoord ();
-	else
-		ent->msg_origins[0][1] = ent->baseline.origin[1];
-	if (bits & U_ANGLE2)
-		ent->msg_angles[0][1] = MSG_ReadAngle();
-	else
-		ent->msg_angles[0][1] = ent->baseline.angles[1];
+	ent->msg_origins[0][1] = (bits & U_ORIGIN2) ? MSG_ReadCoord() : ent->baseline.origin[1];
+	ent->msg_angles[0][1] = (bits & U_ANGLE2) ? MSG_ReadAngle() : ent->baseline.angles[1];
 
-	if (bits & U_ORIGIN3)
-		ent->msg_origins[0][2] = MSG_ReadCoord ();
-	else
-		ent->msg_origins[0][2] = ent->baseline.origin[2];
-	if (bits & U_ANGLE3)
-		ent->msg_angles[0][2] = MSG_ReadAngle();
-	else
-		ent->msg_angles[0][2] = ent->baseline.angles[2];
+	ent->msg_origins[0][2] = (bits & U_ORIGIN3) ? MSG_ReadCoord() : ent->baseline.origin[2];
+	ent->msg_angles[0][2] = (bits & U_ANGLE3) ? MSG_ReadAngle() : ent->baseline.angles[2];
+
 
 	if ( bits & U_NOLERP )
 		ent->forcelink = true;
@@ -506,32 +489,18 @@ void CL_ParseClientdata (int bits)
 {
 	int		i, j;
 
-	if (bits & SU_VIEWHEIGHT)
-		cl.viewheight = MSG_ReadChar ();
-	else
-		cl.viewheight = DEFAULT_VIEWHEIGHT;
-
-	if (bits & SU_IDEALPITCH)
-		cl.idealpitch = MSG_ReadChar ();
-	else
-		cl.idealpitch = 0;
+	cl.viewheight = (bits & SU_VIEWHEIGHT) ? MSG_ReadChar() : DEFAULT_VIEWHEIGHT;
+	cl.idealpitch = (bits & SU_IDEALPITCH) ? MSG_ReadChar () :0;
 
 	VectorCopy (cl.mvelocity[0], cl.mvelocity[1]);
 	for (i=0 ; i<3 ; i++)
 	{
-		if (bits & (SU_PUNCH1<<i) )
-			cl.punchangle[i] = MSG_ReadChar();
-		else
-			cl.punchangle[i] = 0;
-		if (bits & (SU_VELOCITY1<<i) )
-			cl.mvelocity[0][i] = MSG_ReadChar()*16;
-		else
-			cl.mvelocity[0][i] = 0;
+		cl.punchangle[i] = (bits & (SU_PUNCH1<<i) ) ? MSG_ReadChar() : 0;
+		cl.mvelocity[0][i] = (bits & (SU_VELOCITY1<<i) ) ?  MSG_ReadChar()*16 : 0;
 	}
 
 // [always sent]	if (bits & SU_ITEMS)
 		i = MSG_ReadLong ();
-
 	if (cl.items != i)
 	{	// set flash times
 		Sbar_Changed ();
@@ -544,25 +513,16 @@ void CL_ParseClientdata (int bits)
 	cl.onground = (bits & SU_ONGROUND) != 0;
 	cl.inwater = (bits & SU_INWATER) != 0;
 
-	if (bits & SU_WEAPONFRAME)
-		cl.stats[STAT_WEAPONFRAME] = MSG_ReadByte ();
-	else
-		cl.stats[STAT_WEAPONFRAME] = 0;
+	cl.stats[STAT_WEAPONFRAME] = (bits & SU_WEAPONFRAME) ?MSG_ReadByte (): 0;
 
-	if (bits & SU_ARMOR)
-		i = MSG_ReadByte ();
-	else
-		i = 0;
+	i = (bits & SU_ARMOR) ? MSG_ReadByte () : 0;
 	if (cl.stats[STAT_ARMOR] != i)
 	{
 		cl.stats[STAT_ARMOR] = i;
 		Sbar_Changed ();
 	}
 
-	if (bits & SU_WEAPON)
-		i = MSG_ReadByte ();
-	else
-		i = 0;
+	i = (bits & SU_WEAPON) ? MSG_ReadByte (): 0;
 	if (cl.stats[STAT_WEAPON] != i)
 	{
 		cl.stats[STAT_WEAPON] = i;
@@ -661,12 +621,10 @@ CL_ParseStatic
 void CL_ParseStatic (void)
 {
 	entity_t *ent;
-	int		i;
 
-	i = cl.num_statics;
-	if (i >= MAX_STATIC_ENTITIES)
+	if (cl.num_statics >= MAX_STATIC_ENTITIES)
 		Host_Error ("Too many static entities");
-	ent = &cl_static_entities[i];
+	ent = &cl_static_entities[cl.num_statics];
 	cl.num_statics++;
 	CL_ParseBaseline (ent);
 
@@ -1187,23 +1145,16 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_setpause:
-			{
-				cl.paused = MSG_ReadByte ();
-
-				if (cl.paused)
-				{
+			if ((cl.paused = MSG_ReadByte ())) {
 					CDAudio_Pause ();
 #ifdef _WIN32
 					VID_HandlePause (true);
 #endif
-				}
-				else
-				{
+			} else {
 					CDAudio_Resume ();
 #ifdef _WIN32
 					VID_HandlePause (false);
 #endif
-				}
 			}
 			break;
 
@@ -1234,7 +1185,7 @@ void CL_ParseServerMessage (void)
 			i = MSG_ReadByte ();
 			if (i < 0 || i >= MAX_CL_STATS)
 				Sys_Error ("svc_updatestat: %i is invalid", i);
-			cl.stats[i] = MSG_ReadLong ();;
+			cl.stats[i] = MSG_ReadLong ();
 			break;
 
 		case svc_spawnstaticsound:

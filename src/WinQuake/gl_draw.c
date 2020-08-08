@@ -18,9 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
-// draw.c -- this is the only file outside the refresh that touches the
-// vid buffer
+// gl_draw.c -- this is the only file outside the refresh that touches the vid buffer
 
 #include "quakedef.h"
 
@@ -107,13 +105,12 @@ void GL_Bind (int texnum)
 #endif
 }
 
-
 /*
 =============================================================================
 
   scrap allocation
 
-  Allocate all the little status bar obejcts into a single texture
+  Allocate all the little status bar objects into a single texture
   to crutch up stupid hardware / drivers
 
 =============================================================================
@@ -131,8 +128,7 @@ int		scrap_texnum;
 // returns a texture number and the position inside it
 int Scrap_AllocBlock (int w, int h, int *x, int *y)
 {
-	int		i, j;
-	int		best, best2;
+	int		i, j, best, best2;
 	int		texnum;
 
 	for (texnum=0 ; texnum<MAX_SCRAPS ; texnum++)
@@ -215,9 +211,7 @@ qpic_t *Draw_PicFromWad (char *name)
 	// load little ones into the scrap
 	if (p->width < 64 && p->height < 64)
 	{
-		int		x, y;
-		int		i, j, k;
-		int		texnum;
+		int		x, y, i, j, k, texnum;
 
 		texnum = Scrap_AllocBlock (p->width, p->height, &x, &y);
 		scrap_dirty = true;
@@ -246,7 +240,6 @@ qpic_t *Draw_PicFromWad (char *name)
 	return p;
 }
 
-
 /*
 ================
 Draw_CachePic
@@ -254,8 +247,8 @@ Draw_CachePic
 */
 qpic_t	*Draw_CachePic (char *path)
 {
-	cachepic_t	*pic;
 	int			i;
+	cachepic_t	*pic;
 	qpic_t		*dat;
 	glpic_t		*gl;
 
@@ -268,11 +261,8 @@ qpic_t	*Draw_CachePic (char *path)
 	menu_numcachepics++;
 	strcpy (pic->name, path);
 
-//
 // load the pic from disk
-//
-	dat = (qpic_t *)COM_LoadTempFile (path);
-	if (!dat)
+	if (!(dat = (qpic_t *)COM_LoadTempFile (path)))
 		Sys_Error ("Draw_CachePic: failed to load %s", path);
 	SwapPic (dat);
 
@@ -295,13 +285,10 @@ qpic_t	*Draw_CachePic (char *path)
 	return &pic->pic;
 }
 
-
 void Draw_CharToConback (int num, byte *dest)
 {
-	int		row, col;
+	int		row, col, drawline, x;
 	byte	*source;
-	int		drawline;
-	int		x;
 
 	row = num>>4;
 	col = num&15;
@@ -860,12 +847,8 @@ Draw_TransPic
 */
 void Draw_TransPic (int x, int y, qpic_t *pic)
 {
-
-	if (x < 0 || (unsigned)(x + pic->width) > vid.width || y < 0 ||
-		 (unsigned)(y + pic->height) > vid.height)
-	{
+	if (x < 0 || (unsigned)(x + pic->width) > vid.width || y < 0 || (unsigned)(y + pic->height) > vid.height)
 		Sys_Error ("Draw_TransPic: bad coordinates");
-	}
 
 	Draw_Pic (x, y, pic);
 }
@@ -880,10 +863,9 @@ Only used for the player color selection menu
 */
 void Draw_TransPicTranslate (int x, int y, qpic_t *pic, byte *translation)
 {
-	int				v, u, c;
+	int				v, u, c, p;
 	unsigned		trans[64*64], *dest;
 	byte			*src;
-	int				p;
 
 	GL_Bind (translate_texture);
 
@@ -896,10 +878,7 @@ void Draw_TransPicTranslate (int x, int y, qpic_t *pic, byte *translation)
 		for (u=0 ; u<64 ; u++)
 		{
 			p = src[(u*pic->width)>>6];
-			if (p == 255)
-				dest[u] = p;
-			else
-				dest[u] =  d_8to24table[translation[p]];
+			dest[u] = (p == 255) ? p : d_8to24table[translation[p]];
 		}
 	}
 
@@ -925,11 +904,9 @@ void Draw_TransPicTranslate (int x, int y, qpic_t *pic, byte *translation)
 	glEnd ();
 }
 
-
 /*
 ================
 Draw_ConsoleBackground
-
 ================
 */
 // D3D diff 9 of 14
@@ -1164,7 +1141,6 @@ void Draw_Fill (int x, int y, int w, int h, int c)
 /*
 ================
 Draw_FadeScreen
-
 ================
 */
 void Draw_FadeScreen (void)
@@ -1173,13 +1149,12 @@ void Draw_FadeScreen (void)
 	glDisable (GL_TEXTURE_2D);
 	glColor4f (0, 0, 0, 0.8);
 	glBegin (GL_QUADS);
-
 	glVertex2f (0,0);
 	glVertex2f (vid.width, 0);
 	glVertex2f (vid.width, vid.height);
 	glVertex2f (0, vid.height);
-
 	glEnd ();
+
 	glColor4f (1,1,1,1);
 	glEnable (GL_TEXTURE_2D);
 	glDisable (GL_BLEND);
@@ -1246,7 +1221,7 @@ void GL_Set2D (void)
 	glColor4f (1,1,1,1);
 }
 
-//====================================================================
+//=============================================================================
 
 /*
 ================

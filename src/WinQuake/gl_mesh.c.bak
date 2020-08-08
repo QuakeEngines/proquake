@@ -29,8 +29,8 @@ ALIAS MODEL DISPLAY LIST GENERATION
 =================================================================
 */
 
-model_t		*aliasmodel;
-aliashdr_t	*paliashdr;
+//model_t		*aliasmodel;
+//aliashdr_t	*paliashdr;
 
 qboolean	used[8192];
 
@@ -260,137 +260,14 @@ void BuildTris (void)
 }
 
 
-/*
-================
-GL_MakeAliasModelDisplayLists
-================
-*/
-
-// <AWE> required for reading/writing cache files in little endian:
-static void	SwapBufferEndianess()
-{
-	int i = 0;
-	
-	for (; i < numcommands; ++i)
-	{
-		commands[i] = LittleLong(commands[i]);
-	}
-
-	for (i = 0; i < numorder; ++i)
-	{
-		vertexorder[i] = LittleLong(vertexorder[i]);
-	}
-}
-
-void GL_MakeAliasModelDisplayLists (model_t *m, aliashdr_t *hdr)
-{
+void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr) {
 	int		i, j;
-//	maliasgroup_t	*paliasgroup;
 	int		*cmds;
 	trivertx_t	*verts;
-	char		cache[MAX_QPATH], fullpath[MAX_OSPATH];//, *c;
-	FILE		*f;
-	size_t		success = 0;
-//	int		len;
-//	byte		*data;
 
-	aliasmodel = m;
-	paliashdr = hdr;	// (aliashdr_t *)Mod_Extradata (m);
-
-	//
-	// look for a cached version
-	//
-	strcpy (cache, "glquake/");
-	COM_StripExtension (m->name+strlen("progs/"), cache+strlen("glquake/"));
-	strcat (cache, ".ms2");
-
-	COM_FOpenFile (cache, &f);	
-	if (f)
-	{
-		// <AWE> we always read now little endian and do more checks on fread:
-		success = fread (&numcommands, 4, 1, f);
-		
-		if (success == 1)
-		{
-			success = fread (&numorder, 4, 1, f);
-		}
-
-		numcommands	= LittleLong(numcommands);		
-		numorder	= LittleLong(numorder);
-		
-		if (numcommands >= 8192 || numorder >= 8192)
-		{
-			success = 0;
-		}
-
-		if (success == 1)
-		{
-			success = fread (&commands, numcommands * sizeof(commands[0]), 1, f);
-		}
-		
-		if (success == 1)
-		{
-			success = fread (&vertexorder, numorder * sizeof(vertexorder[0]), 1, f);
-		}
-		
-		if (success == 1)
-		{
-			SwapBufferEndianess();
-		}
-		
-		fclose (f);
-	}
-	
-	if (success == 0)
-	{
-		//
-		// build it from scratch
-		//
-		Con_Printf ("meshing %s...\n",m->name);
-
+	// Tonik: don't cache anything, because it seems just as fast
+	// (if not faster) to rebuild the tris instead of loading them from disk
 		BuildTris ();		// trifans or lists
-
-		//
-		// save out the cached version
-		//
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (fullpath, MAX_OSPATH, "%s/%s", com_gamedir, cache);
-#else
-		sprintf (fullpath, "%s/%s", com_gamedir, cache);
-#endif /* __APPLE__ || MACOSX */
-		f = fopen (fullpath, "wb");
-/*
-		if (!f) {
-			char gldir[MAX_OSPATH];
-
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf (gldir, MAX_OSPATH, "%s/glquake", com_gamedir);
-#else
-			sprintf (gldir, "%s/glquake", com_gamedir);
-#endif
-			Sys_mkdir (gldir);
-			f = fopen (fullpath, "wb");
-		}                
-*/              
-		if (f)
-		{
-			// <AWE> we always write now in little endian:
-			int littleNumCommands	= LittleLong(numcommands);
-			int littleNumOrder		= LittleLong(numorder);
-						
-			fwrite (&littleNumCommands, 4, 1, f);
-			fwrite (&littleNumOrder, 4, 1, f);
-			
-			SwapBufferEndianess();
-			
-			fwrite (&commands, numcommands * sizeof(commands[0]), 1, f);
-			fwrite (&vertexorder, numorder * sizeof(vertexorder[0]), 1, f);
-			fclose (f);
-			
-			SwapBufferEndianess();
-		}
-	}
-
 
 	// save the data out
 	paliashdr->poseverts = numorder;

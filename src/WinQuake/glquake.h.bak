@@ -243,9 +243,7 @@ extern	const char *gl_extensions;
 #if defined(__APPLE__) || defined(MACOSX)
 extern void R_TranslatePlayerSkin (int playernum);
 extern void GL_Bind (int texnum);
-extern void GL_CheckTextureRAM (GLenum theTarget, GLint theLevel, GLint theInternalFormat, GLsizei theWidth,
-                                GLsizei theHeight, GLsizei theDepth , GLint theBorder, GLenum theFormat,
-                                GLenum theType);
+extern void GL_CheckTextureRAM (GLenum theTarget, GLint theLevel, GLint theInternalFormat, GLsizei theWidth, GLsizei theHeight, GLsizei theDepth , GLint theBorder, GLenum theFormat, GLenum theType);
 #else
 void R_TranslatePlayerSkin (int playernum);
 void GL_Bind (int texnum);

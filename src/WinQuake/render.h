@@ -54,16 +54,14 @@ typedef struct entity_s
 	byte					*colormap;
 	int						effects;		// light, particals, etc
 	int						skinnum;		// for Alias models
-	int						visframe;		// last frame this entity was
-											//  found in an active leaf
+	int						visframe;		// last frame this entity was found in an active leaf
 											
 	int						dlightframe;	// dynamic lighting
 	int						dlightbits;
 	
 // FIXME: could turn these into a union
 	int						trivial_accept;
-	struct mnode_s			*topnode;		// for bmodels, first world node
-											//  that splits bmodel, or NULL if not split
+	struct mnode_s			*topnode;		// for bmodels, first world node that splits bmodel, or NULL if not split
 #ifdef GLQUAKE
         // fenix@io.com: model animation interpolation
         float           frame_start_time;
@@ -87,8 +85,7 @@ typedef struct
 	vrect_t		aliasvrect;			// scaled Alias version
 	int			vrectright, vrectbottom;	// right & bottom screen coords
 	int			aliasvrectright, aliasvrectbottom;	// scaled Alias versions
-	float		vrectrightedge;			// rightmost right edge we care about,
-										//  for use in edge list
+	float		vrectrightedge;			// rightmost right edge we care about, for use in edge list
 	float		fvrectx, fvrecty;		// for floating-point compares
 	float		fvrectx_adj, fvrecty_adj; // left and top edges, for clamping
 	int			vrect_x_adj_shift20;	// (vrect.x + 0.5 - epsilon) << 20

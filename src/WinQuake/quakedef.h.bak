@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define	QUAKE_GAME					// as opposed to utilities
 
-#define PROQUAKE_VERSION	3.59 // JPG - added this
+#define PROQUAKE_VERSION	3.61 // JPG - added this
 #define	VERSION				1.09
 #define	GLQUAKE_VERSION		1.00
 #define	D3DQUAKE_VERSION	0.01
@@ -59,10 +59,14 @@ void	VID_UnlockBuffer (void);
 
 #endif
 
+#ifdef NO_ASSEMBLY
+#define id386 0
+#else
 #if defined __i386__ && !(defined(__APPLE__) || defined(MACOSX)) // && !defined __sun__
 #define id386			1
 #else
 #define id386			0
+#endif
 #endif
 
 #if id386
@@ -291,6 +295,10 @@ extern	double		realtime;			// not bounded in any way, changed at
 							// start of every frame, never reset
 extern double last_angle_time; // JPG - need this for smooth chasecam
 
+#ifdef _WIN32
+extern	qboolean	nostartdemos; // Baker 3.76 - for demo autoplay support
+#endif
+
 // JPG 3.20
 #ifdef _WIN32
 extern char	*argv[MAX_NUM_ARGVS];
@@ -332,16 +340,10 @@ extern cvar_t pq_dequake;	// JPG 1.05 - dedicated console translation
 
 
 #ifdef _WIN32
-
 // Baker D3DQuake
-
 #pragma warning(disable : 4244) /* MIPS conversion to float, possible loss of data */
-
 #pragma warning(disable : 4305) /* MIPS truncation from const double to float */
-
 #pragma warning(disable : 4018) /* MIPS signed/unsigned mismatch */
-
 #pragma warning(disable : 4101) /* MIPS unreferenced local variable */
-
 // End D3DQuake
 #endif

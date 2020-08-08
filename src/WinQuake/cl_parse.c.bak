@@ -1216,11 +1216,17 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_killedmonster:
+			if (cls.demoplayback && cl_demorewind.value)
+				cl.stats[STAT_MONSTERS]--;
+			else
 			cl.stats[STAT_MONSTERS]++;
 
 			break;
 
 		case svc_foundsecret:
+			if (cls.demoplayback && cl_demorewind.value)
+				cl.stats[STAT_SECRETS]--;
+			else
 			cl.stats[STAT_SECRETS]++;
 			break;
 
@@ -1246,7 +1252,9 @@ void CL_ParseServerMessage (void)
 
 		case svc_intermission:
 			cl.intermission = 1;
-			cl.completed_time = cl.time;
+//			cl.completed_time = cl.time;
+			// intermission bugfix -- by joe
+			cl.completed_time = cl.mtime[0];
 			vid.recalc_refdef = true;	// go to full screen
 			break;
 

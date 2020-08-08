@@ -958,6 +958,113 @@ void Draw_ConsoleBackground (int lines)
 		Draw_AlphaPic (0, lines - vid.height, conback, (float)(1.2 * lines)/y);
 }
 
+/*
+==================
+VID_Consize_f -- Baker -- called when vid_consize changes
+==================
+*/
+extern qpic_t *conback;
+//qboolean vid_smoothfont = false;
+extern qboolean smoothfont_init;
+extern int gGLDisplayWidth;
+extern int gGLDisplayHeight;
+void VID_Consize_f(void) {
+
+	float startwidth;
+	float startheight;
+	float desiredwidth;
+	extern cvar_t vid_consize;
+	int contype = vid_consize.value;
+	int exception = 0;
+	
+#ifdef _WIN32
+	startwidth = vid.width = modelist[vid_default].width;
+	startheight = vid.height = modelist[vid_default].height;
+#else
+	startwidth = vid.width = gGLDisplayWidth;
+	startheight = vid.height = gGLDisplayHeight;
+
+#endif 
+
+//	Con_Printf("Entering ...\n");
+//	Con_Printf("vid.width is %d and vid.height is %d\n", vid.width, vid.height);
+//	Con_Printf("vid.conwidth is %d and vid.conheight is %d\n", vid.conwidth, vid.conheight);
+
+	// Baker 3.97
+	// We need to appropriately set vid.width, vid.height, vid.smoothfont (?)
+
+//	vid_smoothfont = false; // Assume it is unnecessary
+
+	if (contype == -1) {
+		// Automatic consize to avoid microscopic text
+		if (vid.width>=1024)
+			contype = 1;
+		else
+			contype = 0;
+	}
+
+	switch (contype) {
+
+		case 0: // consize is width
+
+			desiredwidth = vid.width;
+			break;
+
+		case 1: // consize is 50% width (if possible)
+
+			// if resolution is < 640, must use the resolution itself.
+			if (vid.width < 640) {
+				exception = 1; // Notify later about console resolution unavailable
+				desiredwidth = vid.width;
+				break;
+			}
+
+			desiredwidth = (int)(vid.width/2);
+			break;
+
+		case 3:
+			desiredwidth = 320;
+			break;
+
+		default:
+			// If vid.width is under 640, must use 320?
+			if (vid.width < 640) {
+				exception = 2; // Notify later about console resolution unavailable
+				desiredwidth = vid.width;
+				break;
+			}
+			desiredwidth = 640;
+			break;
+	}
+
+	vid.conwidth = CLAMP (320, desiredwidth, vid.width);
+	vid.conwidth &= 0xFFFFFFF8;                      // But this must be a multiple of 8
+	vid.conheight = vid.conwidth * vid.height / vid.width;  // Now set height using proper aspect ratio
+	vid.conheight &= 0xFFFFFFF8;					  // This too must be a multiple of 8
+
+	conback->width = vid.width = vid.conwidth; // = vid.width;
+	conback->height = vid.height = vid.conheight; // = vid.height;
+
+	//  Determine if smooth font is needed
+
+	if ((int)(startwidth / vid.conwidth) == ((startwidth + 0.0f) / (vid.conwidth + 0.0f)) /*&& (int)(startheight / vid.conheight) == ((startheight + 0.0f) / (vid.conheight + 0.0f))*/) {
+		SmoothFontSet (false);
+	} else {
+		SmoothFontSet (true);
+	}
+
+	// Print messages AFTER console resizing to ensure they print right
+	if (exception) {
+		if (exception == 1)
+			Con_Printf ("VID_Consize_f: 50%% console size unavailable, using 100%% for this resolution.\n");
+		else
+			Con_Printf ("VID_Consize_f: 640 console size unavailable, using 100%% for this resolution.\n");
+	}
+
+	vid.recalc_refdef = 1;
+
+}
+
 
 /*
 =============

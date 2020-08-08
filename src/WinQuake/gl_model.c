@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // on the same machine.
 
 #include "quakedef.h"
+#include "gl_fullbright.h"
 
 model_t	*loadmodel;
 char	loadname[32];	// for hunk tags
@@ -355,7 +356,9 @@ void Mod_LoadTextures (lump_t *l)
 	texture_t	*anims[10];
 	texture_t	*altanims[10];
 	dmiptexlump_t *m;
-
+#ifndef NOFULLBRIGHT
+	char fbr_mask_name[64];
+#endif
 	if (!l->filelen)
 	{
 		loadmodel->textures = NULL;
@@ -413,7 +416,28 @@ void Mod_LoadTextures (lump_t *l)
 			texture_mode = GL_LINEAR_MIPMAP_NEAREST; //_LINEAR;
 			tx->gl_texturenum = GL_LoadTexture (mt->name, tx->width, tx->height, (byte *)(tx+1), true, false);
 			texture_mode = GL_LINEAR;
+
+#ifndef NOFULLBRIGHT
+			
+			    // check for fullbright pixels in the texture - only if it ain't liquid, etc also
+			    if ((tx->name[0] != '*') && (FindFullbrightTexture ((byte *)(tx+1), pixels))) {
+			
+			        // convert any non fullbright pixel to fully transparent
+			        ConvertPixels ((byte *)(tx + 1), pixels);
+			
+			        // get a new name for the fullbright mask to avoid cache mismatches
+			        sprintf (fbr_mask_name, "fullbright_mask_%s", mt->name);
+			
+			        // load the fullbright pixels version of the texture
+			        tx->fullbright = GL_LoadTexture (fbr_mask_name, tx->width, tx->height, (byte *)(tx + 1), true, true);
+			    } else {
+					tx->fullbright = -1; // because 0 is a potentially valid texture number
+				}
+#endif
 		}
+
+
+
 	}
 
 //

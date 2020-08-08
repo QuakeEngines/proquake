@@ -28,6 +28,8 @@ extern int			skytexturenum;
 #define	GL_RGBA4	0
 #endif
 
+void DrawGLPoly (glpoly_t *p);
+void DrawGLWaterPoly (glpoly_t *p);
 
 int		lightmap_bytes;		// 1, 2, or 4
 
@@ -431,10 +433,10 @@ void R_DrawSequentialPoly (msurface_t *s)
 	texture_t	*t;
 	vec3_t		nv;
 	glRect_t	*theRect;
+
 // Begin D3DQuake
 #ifdef D3DQUAKE
 int gNoSurfaces=0;
-
 	if ( gNoSurfaces ) return;
 // End D3DQuake
 #endif D3DQUAKE
@@ -481,7 +483,9 @@ int gNoSurfaces=0;
 				glVertex3fv (v);
 			}
 			glEnd ();
+#ifdef NOFULLBRIGHT
 			return;
+#endif
 		} else {
 			p = s->polys;
 
@@ -509,8 +513,21 @@ int gNoSurfaces=0;
 
 			glDisable (GL_BLEND);
 		}
+#ifndef NOFULLBRIGHT
+// draw fullbright mask if appropriate
+if (t->fullbright == -1)
+    return;
 
+GL_DisableMultitexture ();
+glEnable (GL_BLEND);
+GL_Bind (t->fullbright);
+DrawGLPoly (s->polys);
+glDisable (GL_BLEND);
+
+return;
+#else
 		return;
+#endif
 	}
 
 	//
@@ -601,6 +618,19 @@ int gNoSurfaces=0;
 		DrawGLWaterPolyLightmap (p);
 		glDisable (GL_BLEND);
 	}
+#ifndef NOFULLBRIGHT
+	// draw fullbright mask if appropriate
+	if (t->fullbright == -1)
+	    return;
+	
+	GL_DisableMultitexture ();
+	glEnable (GL_BLEND);
+	GL_Bind (t->fullbright);
+	DrawGLWaterPoly (s->polys);
+	glDisable (GL_BLEND);
+	
+	return;
+#endif
 }
 #endif
 
@@ -801,6 +831,9 @@ void R_RenderBrushPoly (msurface_t *fa)
 	else
 		DrawGLPoly (fa->polys);
 
+#ifndef NOFULLBRIGHT
+	fa->draw_this_frame = 1;
+#endif
 	// add the poly to the proper lightmap chain
 
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
@@ -1187,6 +1220,10 @@ e->angles[0] = -e->angles[0];	// stupid quake bug
 
 	R_BlendLightmaps ();
 
+#ifndef NOFULLBRIGHT
+	DrawFullBrightTextures (clmodel->surfaces, clmodel->numsurfaces);
+#endif
+
 	glPopMatrix ();
 }
 
@@ -1351,6 +1388,10 @@ void R_DrawWorld (void)
 
 	R_BlendLightmaps ();
 
+#ifndef NOFULLBRIGHT
+	DrawFullBrightTextures (cl.worldmodel->surfaces, cl.worldmodel->numsurfaces);
+#endif
+
 #ifdef QUAKE2
 	R_DrawSkyBox ();
 #endif
@@ -1451,7 +1492,7 @@ int AllocBlock (int w, int h, int *x, int *y)
 	}
 
 	Sys_Error ("AllocBlock: full");
-	return 0;  // Baker 3.80x - avoid compiler warning
+        return(0);
 }
 
 

@@ -28,6 +28,10 @@ extern int			skytexturenum;
 #define	GL_RGBA4	0
 #endif
 
+#ifndef NOFULLBRIGHT
+void DrawGLPoly (glpoly_t *p);
+void DrawGLWaterPoly (glpoly_t *p);
+#endif
 
 int		lightmap_bytes;		// 1, 2, or 4
 
@@ -481,7 +485,9 @@ int gNoSurfaces=0;
 				glVertex3fv (v);
 			}
 			glEnd ();
+#ifdef NOFULLBRIGHT
 			return;
+#endif
 		} else {
 			p = s->polys;
 
@@ -509,8 +515,21 @@ int gNoSurfaces=0;
 
 			glDisable (GL_BLEND);
 		}
+#ifndef NOFULLBRIGHT
+// draw fullbright mask if appropriate
+if (t->fullbright == -1)
+    return;
 
+GL_DisableMultitexture ();
+glEnable (GL_BLEND);
+GL_Bind (t->fullbright);
+DrawGLPoly (s->polys);
+glDisable (GL_BLEND);
+
+return;
+#else
 		return;
+#endif
 	}
 
 	//
@@ -601,6 +620,19 @@ int gNoSurfaces=0;
 		DrawGLWaterPolyLightmap (p);
 		glDisable (GL_BLEND);
 	}
+#ifndef NOFULLBRIGHT
+	// draw fullbright mask if appropriate
+	if (t->fullbright == -1)
+	    return;
+	
+	GL_DisableMultitexture ();
+	glEnable (GL_BLEND);
+	GL_Bind (t->fullbright);
+	DrawGLWaterPoly (s->polys);
+	glDisable (GL_BLEND);
+	
+	return;
+#endif
 }
 #endif
 
@@ -801,6 +833,9 @@ void R_RenderBrushPoly (msurface_t *fa)
 	else
 		DrawGLPoly (fa->polys);
 
+#ifndef NOFULLBRIGHT
+	fa->draw_this_frame = 1;
+#endif
 	// add the poly to the proper lightmap chain
 
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
@@ -1187,6 +1222,10 @@ e->angles[0] = -e->angles[0];	// stupid quake bug
 
 	R_BlendLightmaps ();
 
+#ifndef NOFULLBRIGHT
+	DrawFullBrightTextures (clmodel->surfaces, clmodel->numsurfaces);
+#endif
+
 	glPopMatrix ();
 }
 
@@ -1350,6 +1389,10 @@ void R_DrawWorld (void)
 	DrawTextureChains ();
 
 	R_BlendLightmaps ();
+
+#ifndef NOFULLBRIGHT
+	DrawFullBrightTextures (cl.worldmodel->surfaces, cl.worldmodel->numsurfaces);
+#endif
 
 #ifdef QUAKE2
 	R_DrawSkyBox ();

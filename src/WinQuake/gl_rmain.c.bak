@@ -102,6 +102,7 @@ cvar_t	gl_polyblend = {"gl_polyblend","1", true};
 cvar_t	gl_flashblend = {"gl_flashblend","1", true};
 cvar_t	gl_playermip = {"gl_playermip","0", true};
 cvar_t	gl_nocolors = {"gl_nocolors","0"};
+cvar_t	vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
 
 #if defined(__APPLE__) || defined(MACOSX)
 cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","1"};
@@ -133,7 +134,7 @@ extern void	V_CalcBlend (void);
 =================
 R_CullBox
 
-Returns true if the box is completely outside the frustom
+Returns true if the box is completely outside the frustum
 =================
 */
 qboolean R_CullBox (vec3_t mins, vec3_t maxs)
@@ -143,6 +144,7 @@ qboolean R_CullBox (vec3_t mins, vec3_t maxs)
 	for (i=0 ; i<4 ; i++)
 		if (BoxOnPlaneSide (mins, maxs, &frustum[i]) == 2)
 			return true;
+
 	return false;
 }
 
@@ -289,11 +291,9 @@ mspriteframe_t *R_GetSpriteFrame (entity_t *currententity)
 	return pspriteframe;
 }
 
-
 /*
 =================
 R_DrawSpriteModel
-
 =================
 */
 void R_DrawSpriteModel (entity_t *e)
@@ -362,7 +362,6 @@ void R_DrawSpriteModel (entity_t *e)
 
 ===============================================================================
 */
-
 
 #define NUMVERTEXNORMALS	162
 
