@@ -58,6 +58,9 @@ extern	unsigned short	d_8to16table[256];
 extern	unsigned	d_8to24table[256];
 extern void (*vid_menudrawfn)(void);
 extern void (*vid_menukeyfn)(int key);
+#ifdef GLQUAKE
+extern void (*vid_menucmdfn)(void); //johnfitz
+#endif
 
 void	VID_SetPalette (unsigned char *palette);
 // called at startup and after any gamma correction

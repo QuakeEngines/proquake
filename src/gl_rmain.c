@@ -911,9 +911,6 @@ R_SetupFrame
 */
 void R_SetupFrame (void)
 {
-//	int				edgecount;
-//	vrect_t			vrect;
-//	float			w, h;
 
 // don't allow cheats in multiplayer
 	if (cl.maxclients > 1)
@@ -966,8 +963,6 @@ R_SetupGL
 void R_SetupGL (void)
 {
 	float	screenaspect;
-//	float	yfov;
-//	int		i;
 	extern	int glwidth, glheight;
 	int		x, x2, y2, y, w, h;
 

@@ -205,7 +205,7 @@ IN_BestWeapon
 */
 void IN_BestWeapon (void)
 {
-	int i, impulse /*,bit*/;
+	int i, impulse;
 
 	for (i = 1 ; i < Cmd_Argc() ; i++)
 	{
@@ -282,21 +282,11 @@ cvar_t	cl_yawspeed = {"cl_yawspeed","140"};
 cvar_t	cl_pitchspeed = {"cl_pitchspeed","150"};
 
 cvar_t	cl_anglespeedkey = {"cl_anglespeedkey","1.5"};
-qboolean OnChange_freelook (cvar_t *var, char *string);  // Baker 3.60 - Freelook cvar support from JoeQuake
+//qboolean OnChange_freelook (cvar_t *var, char *string);  // Baker 3.60 - Freelook cvar support from JoeQuake
 cvar_t	m_accel = {"m_accel", "0"};
 
 cvar_t	freelook = {"freelook", "1", true};    // Baker 3.60 - Freelook cvar support
-/* qboolean OnChange_freelook (cvar_t *var, char *string)
-{
 	
-	if (!string[0])
-		return true;
-
-	if (!mlook_active && lookspring.value)  // Baker 3.60 - Freelook cvar support
-		V_StartPitchDrift ();
-
-	return false;
-} */
 
 cvar_t	pq_lag = {"pq_lag", "0"};			// JPG - synthetic lag
 cvar_t	cl_fullpitch = {"cl_fullpitch", "0"};	// JPG 2.01 - get rid of the "unknown command" messages
@@ -582,7 +572,7 @@ void CL_InitInput (void)
 
 	Cmd_AddCommand ("bestweapon", IN_BestWeapon);	// JPG 3.30 - bestweapon from QuakePro+
 
-	Cvar_RegisterVariable (&pq_lag); // JPG - synthetic lag
-	Cvar_RegisterVariable (&cl_fullpitch); // JPG 2.01 - get rid of "unknown command"
+	Cvar_RegisterVariable (&pq_lag, NULL); // JPG - synthetic lag
+	Cvar_RegisterVariable (&cl_fullpitch, NULL); // JPG 2.01 - get rid of "unknown command"
 }
 

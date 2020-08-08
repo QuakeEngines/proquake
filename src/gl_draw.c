@@ -111,7 +111,6 @@ int Scrap_AllocBlock (int w, int h, int *x, int *y)
 {
 	int		i, j;
 	int		best, best2;
-//	int		bestx;
 	int		texnum;
 
 	for (texnum=0 ; texnum<MAX_SCRAPS ; texnum++)
@@ -316,6 +315,16 @@ glmode_t modes[] = {
 
 /*
 ===============
+Draw_LoadPics -- johnfitz
+===============
+*/
+void Draw_LoadPics (void)
+{
+	draw_disc = Draw_PicFromWad ("disc");
+	draw_backtile = Draw_PicFromWad ("backtile");
+}
+/*
+===============
 Draw_TextureMode_f
 ===============
 */
@@ -362,6 +371,7 @@ void Draw_TextureMode_f (void)
 	}
 }
 
+void Draw_InitConback_Old(void);
 /*
 ===============
 Draw_Init
@@ -371,18 +381,17 @@ void Draw_Init (void)
 {
 	int		i;
 	qpic_t	*cb;
-	byte	*dest /*, *src */ ;
+	int		start;
+	byte	*dest;
 	int		x, y;
 	char	ver[40];
 	glpic_t	*gl;
-	int		start;
+	
 	byte	*ncdata;
-//	int		f, fstep;
 
-
-	Cvar_RegisterVariable (&gl_nobind);
-	Cvar_RegisterVariable (&gl_max_size);
-	Cvar_RegisterVariable (&gl_picmip);
+	Cvar_RegisterVariable (&gl_nobind, NULL);
+	Cvar_RegisterVariable (&gl_max_size, NULL);
+	Cvar_RegisterVariable (&gl_picmip, NULL);
 
 	// 3dfx can only handle 256 wide textures
 	if (!Q_strncasecmp ((char *)gl_renderer, "3dfx",4) ||
@@ -403,6 +412,68 @@ void Draw_Init (void)
 	// now turn them into textures
 	char_texture = GL_LoadTexture ("charset", 128, 128, draw_chars, false, true);
 
+/*	start = Hunk_LowMark();
+
+	cb = (qpic_t *)COM_LoadTempFile ("gfx/conback.lmp");	
+	if (!cb)
+		Sys_Error ("Couldn't load gfx/conback.lmp");
+	SwapPic (cb);
+
+	// hack the version number directly into the pic
+#if defined(__linux__)
+	sprintf (ver, "(Linux %2.2f, gl %4.2f) %4.2f", (float)LINUX_VERSION, (float)GLQUAKE_VERSION, (float)VERSION);
+#else
+	//sprintf (ver, "(gl %4.2f) %4.2f", (float)GLQUAKE_VERSION, (float)VERSION);
+	sprintf(ver, "(ProQuake) %4.2f", (float)PROQUAKE_VERSION); // JPG - obvious change
+#endif
+	dest = cb->data + 320*186 + 320 - 11 - 8*strlen(ver);
+	y = strlen(ver);
+	for (x=0 ; x<y ; x++)
+		Draw_CharToConback (ver[x], dest+(x<<3));
+
+	conback->width = cb->width;
+	conback->height = cb->height;
+	ncdata = cb->data;
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	gl = (glpic_t *)conback->data;
+	gl->texnum = GL_LoadTexture ("conback", conback->width, conback->height, ncdata, false, false);
+	gl->sl = 0;
+	gl->sh = 1;
+	gl->tl = 0;
+	gl->th = 1;
+	conback->width = vid.width;
+	conback->height = vid.height; 
+
+	// free loaded console
+	Hunk_FreeToLowMark(start); */
+
+	Draw_InitConback_Old();
+
+	// save a texture slot for translated picture
+	translate_texture = texture_extension_number++;
+
+	// save slots for scraps
+	scrap_texnum = texture_extension_number;
+	texture_extension_number += MAX_SCRAPS;
+
+	// load game pics
+	Draw_LoadPics ();
+}
+
+void Draw_InitConback_Old(void) {
+	int		i;
+	qpic_t	*cb;
+	int		start;
+	byte	*dest;
+	int		x, y;
+	char	ver[40];
+	glpic_t	*gl;
+
+	byte	*ncdata;
+	
 	start = Hunk_LowMark();
 
 	cb = (qpic_t *)COM_LoadTempFile ("gfx/conback.lmp");	
@@ -422,40 +493,9 @@ void Draw_Init (void)
 	for (x=0 ; x<y ; x++)
 		Draw_CharToConback (ver[x], dest+(x<<3));
 
-#if 0
-	conback->width = vid.conwidth;
-	conback->height = vid.conheight;
-
- 	// scale console to vid size
- 	dest = ncdata = Hunk_AllocName(vid.conwidth * vid.conheight, "conback");
- 
- 	for (y=0 ; y<vid.conheight ; y++, dest += vid.conwidth)
- 	{
- 		src = cb->data + cb->width * (y*cb->height/vid.conheight);
- 		if (vid.conwidth == cb->width)
- 			memcpy (dest, src, vid.conwidth);
- 		else
- 		{
- 			f = 0;
- 			fstep = cb->width*0x10000/vid.conwidth;
- 			for (x=0 ; x<vid.conwidth ; x+=4)
- 			{
- 				dest[x] = src[f>>16];
- 				f += fstep;
- 				dest[x+1] = src[f>>16];
- 				f += fstep;
- 				dest[x+2] = src[f>>16];
- 				f += fstep;
- 				dest[x+3] = src[f>>16];
- 				f += fstep;
- 			}
- 		}
- 	}
-#else
 	conback->width = cb->width;
 	conback->height = cb->height;
 	ncdata = cb->data;
-#endif
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -467,25 +507,52 @@ void Draw_Init (void)
 	gl->tl = 0;
 	gl->th = 1;
 	conback->width = vid.width;
-	conback->height = vid.height;
+	conback->height = vid.height; 
 
 	// free loaded console
-	Hunk_FreeToLowMark(start);
-
-	// save a texture slot for translated picture
-	translate_texture = texture_extension_number++;
-
-	// save slots for scraps
-	scrap_texnum = texture_extension_number;
-	texture_extension_number += MAX_SCRAPS;
-
-	//
-	// get the other pics we need
-	//
-	draw_disc = Draw_PicFromWad ("disc");
-	draw_backtile = Draw_PicFromWad ("backtile");
+	Hunk_FreeToLowMark(start); 
 }
 
+//Qrack version
+void Draw_InitConback_Qrack (void)
+{
+	qpic_t	*cb;
+	int		start;
+#if 0
+	int		x, y;
+	byte	*dest;
+	char	ver[40];
+#endif
+
+	start = Hunk_LowMark ();
+
+	if (!(cb = (qpic_t *)COM_LoadHunkFile("gfx/conback.lmp")))
+		Sys_Error ("Couldn't load gfx/conback.lmp");
+	SwapPic (cb);
+
+	if (cb->width != 320 || cb->height != 200)
+		Sys_Error ("Draw_InitConback: conback.lmp size is not 320x200");
+
+#if 0	// hack the version number directly into the pic
+	sprintf (ver, "Qrack %s", VersionString());
+	
+	dest = cb->data + 320*186 + 320 - 11 - 8*strlen(ver);
+	y = strlen(ver);
+	for (x=0 ; x<y ; x++)
+		Draw_CharToConback (ver[x], dest + (x<<3));
+#endif
+
+
+	conback->width = cb->width;
+	conback->height = cb->height;
+	GL_LoadPicTexture ("conback", conback, cb->data);
+
+	conback->width = vid.conwidth;
+	conback->height = vid.conheight;
+
+	// free loaded console
+	Hunk_FreeToLowMark (start);
+}
 
 
 /*
@@ -498,11 +565,7 @@ smoothly scrolled off.
 ================
 */
 void Draw_Character (int x, int y, int num)
-{
-//	byte			*dest;
-//	byte			*source;
-//	unsigned short	*pusdest;
-//	int				drawline;	
+{	
 	int				row, col;
 	float			frow, fcol, size;
 
@@ -570,9 +633,6 @@ Draw_AlphaPic
 */
 void Draw_AlphaPic (int x, int y, qpic_t *pic, float alpha)
 {
-//	byte			*dest, *source;
-//	unsigned short	*pusdest;
-//	int				v, u;
 	glpic_t			*gl;
 
 	if (scrap_dirty)
@@ -607,9 +667,6 @@ Draw_Pic
 */
 void Draw_Pic (int x, int y, qpic_t *pic)
 {
-//	byte			*dest, *source;
-//	unsigned short	*pusdest;
-//	int				v, u;
 	glpic_t			*gl;
 
 	if (scrap_dirty)
@@ -637,9 +694,6 @@ Draw_TransPic
 */
 void Draw_TransPic (int x, int y, qpic_t *pic)
 {
-//	byte	*dest, *source, tbyte;
-//	unsigned short	*pusdest;
-//	int				v /* , u */;
 
 	if (x < 0 || (unsigned)(x + pic->width) > vid.width || y < 0 ||
 		 (unsigned)(y + pic->height) > vid.height)
@@ -1093,7 +1147,6 @@ void GL_Upload8_EXT (byte *data, int width, int height,  qboolean mipmap, qboole
 {
 	int			i, s;
 	qboolean	noalpha;
-//	int			p;
 	static unsigned j;
 	int			samples;
     static	unsigned char scaled[1024*512];	// [512*256];
@@ -1239,8 +1292,7 @@ Code provided by Reckless
 */
 int GL_LoadTexture (char *identifier, int width, int height, byte *data, qboolean mipmap, qboolean alpha)
 {
-//	qboolean	noalpha;
-	int			i /*, p, s */;
+	int			i;
 	gltexture_t	*glt;
    unsigned short crc; // Baker 3.80x - LoadTexture fix LordHavoc provided by Reckless
 

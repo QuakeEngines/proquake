@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "r_local.h"
+#ifdef _WIN32
+#include "movie.h"
+#endif
 
 // only the refresh window will be updated unless these variables are flagged
 int			scr_copytop;
@@ -317,18 +320,18 @@ SCR_Init
 */
 void SCR_Init (void)
 {
-	Cvar_RegisterVariable (&default_fov);
-	Cvar_RegisterVariable (&scr_fov);
-	Cvar_RegisterVariable (&scr_viewsize);
-	Cvar_RegisterVariable (&scr_conspeed);
-	Cvar_RegisterVariable (&scr_showram);
-	Cvar_RegisterVariable (&scr_showturtle);
-	Cvar_RegisterVariable (&scr_showpause);
-	Cvar_RegisterVariable (&scr_centertime);
-	Cvar_RegisterVariable (&scr_printspeed);
+	Cvar_RegisterVariable (&default_fov, NULL);
+	Cvar_RegisterVariable (&scr_fov, NULL);
+	Cvar_RegisterVariable (&scr_viewsize, NULL);
+	Cvar_RegisterVariable (&scr_conspeed, NULL);
+	Cvar_RegisterVariable (&scr_showram, NULL);
+	Cvar_RegisterVariable (&scr_showturtle, NULL);
+	Cvar_RegisterVariable (&scr_showpause, NULL);
+	Cvar_RegisterVariable (&scr_centertime, NULL);
+	Cvar_RegisterVariable (&scr_printspeed, NULL);
 
-	Cvar_RegisterVariable (&pq_drawfps); // JPG - draw frames per second
-	Cvar_RegisterVariable (&show_speed); // Baker 3.67
+	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
+	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
 //
 // register our commands
 //
@@ -339,6 +342,10 @@ void SCR_Init (void)
 	scr_ram = Draw_PicFromWad ("ram");
 	scr_net = Draw_PicFromWad ("net");
 	scr_turtle = Draw_PicFromWad ("turtle");
+
+#ifdef _WIN32
+	Movie_Init ();
+#endif
 
 	scr_initialized = true;
 }
@@ -544,6 +551,11 @@ SCR_SetUpToDrawConsole
 */
 void SCR_SetUpToDrawConsole (void)
 {
+	//johnfitz -- let's hack away the problem of slow console when host_timescale is <0
+	extern cvar_t host_timescale;
+	float timescale;
+	//johnfitz
+
 	Con_CheckResize ();
 
 	if (scr_drawloading)
@@ -562,16 +574,18 @@ void SCR_SetUpToDrawConsole (void)
 	else
 		scr_conlines = 0;				// none visible
 
+	timescale = (host_timescale.value > 0) ? host_timescale.value : 1; //johnfitz -- timescale
+
 	if (scr_conlines < scr_con_current)
 	{
-		scr_con_current -= scr_conspeed.value*host_frametime;
+		scr_con_current -= scr_conspeed.value*host_frametime/timescale; //johnfitz -- timescale
 		if (scr_conlines > scr_con_current)
 			scr_con_current = scr_conlines;
 
 	}
 	else if (scr_conlines > scr_con_current)
 	{
-		scr_con_current += scr_conspeed.value*host_frametime;
+		scr_con_current += scr_conspeed.value*host_frametime/timescale; //johnfitz -- timescale
 		if (scr_conlines < scr_con_current)
 			scr_con_current = scr_conlines;
 	}
@@ -847,8 +861,10 @@ Displays a text string in the center of the screen and waits for a Y or N
 keypress.
 ==================
 */
-int SCR_ModalMessage (char *text)
+int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
+	double time1, time2; //johnfitz -- timeout
+
 	if (cls.state == ca_dedicated)
 		return true;
 
@@ -862,14 +878,22 @@ int SCR_ModalMessage (char *text)
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
+	time1 = Sys_FloatTime () + timeout; //johnfitz -- timeout
+	time2 = 0.0f; //johnfitz -- timeout
+
 	do
 	{
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
-	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE);
+		if (timeout) time2 = Sys_FloatTime (); //johnfitz -- zero timeout means wait forever.
+	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE && time2 <= time1);
 
 	scr_fullupdate = 0;
 	SCR_UpdateScreen ();
+	//johnfitz -- timeout
+	if (time2 > time1)
+		return false;
+	//johnfitz
 
 	return key_lastpress == 'y';
 }
@@ -1008,16 +1032,16 @@ void SCR_UpdateScreen (void)
 		SCR_DrawNotifyString ();
 		scr_copyeverything = true;
 	}
-	else if (scr_drawloading)
+	else if (scr_drawloading) //loading
 	{
 		SCR_DrawLoading ();
 		Sbar_Draw ();
 	}
-	else if (cl.intermission == 1 && key_dest == key_game)
+	else if (cl.intermission == 1 && key_dest == key_game) //end of level
 	{
 		Sbar_IntermissionOverlay ();
 	}
-	else if (cl.intermission == 2 && key_dest == key_game)
+	else if (cl.intermission == 2 && key_dest == key_game) //end of episode
 	{
 		Sbar_FinaleOverlay ();
 		SCR_CheckDrawCenterString ();
@@ -1085,6 +1109,10 @@ void SCR_UpdateScreen (void)
 
 		VID_Update (&vrect);
 	}
+
+#ifdef _WIN32
+	Movie_UpdateScreen ();
+#endif
 }
 
 

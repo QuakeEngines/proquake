@@ -60,6 +60,8 @@ cvar_t	pq_moveup = {"pq_moveup", "0", true};
 // JPG 3.00 - added this by request
 cvar_t	pq_smoothcam = {"pq_smoothcam", "1", true};
 
+cvar_t	cl_demospeed		= {"cl_demospeed", "1"}; // Baker 3.75 - demo rewind/ff
+
 client_static_t	cls;
 client_state_t	cl;
 // FIXME: put these on hunk?
@@ -358,7 +360,12 @@ void CL_NextDemo (void)
 		cls.demonum = 0;
 		if (!cls.demos[cls.demonum][0])
 		{
+			if (nostartdemos)
+				nostartdemos = false; // Baker 3.76 -- part of hack to avoid start demos with dem autoplay 
+			else
+			{
 			Con_Printf ("No demos listed with startdemos\n");
+			}
 			CL_Disconnect();	// JPG 1.05 - patch by CSR to fix crash
 			cls.demonum = -1;
 			return;
@@ -388,8 +395,7 @@ void CL_PrintEntities_f (void)
 			Con_Printf ("EMPTY\n");
 			continue;
 		}
-		Con_Printf ("%s:%2i  (%5.1f,%5.1f,%5.1f) [%5.1f %5.1f %5.1f]\n"
-		,ent->model->name,ent->frame, ent->origin[0], ent->origin[1], ent->origin[2], ent->angles[0], ent->angles[1], ent->angles[2]);
+		Con_Printf ("%s:%2i  (%5.1f,%5.1f,%5.1f) [%5.1f %5.1f %5.1f]\n",ent->model->name,ent->frame, ent->origin[0], ent->origin[1], ent->origin[2], ent->angles[0], ent->angles[1], ent->angles[2]);
 	}
 }
 
@@ -525,7 +531,8 @@ float	CL_LerpPoint (void)
 
 	if (!f || cl_nolerp.value || cls.timedemo || sv.active)
 	{
-		cl.time = cl.mtime[0];
+		// Baker 3.75 demo rewind
+		cl.time = cl.ctime = cl.mtime[0];
 		return 1;
 	}
 
@@ -534,14 +541,14 @@ float	CL_LerpPoint (void)
 		cl.mtime[1] = cl.mtime[0] - 0.1;
 		f = 0.1;
 	}
-	frac = (cl.time - cl.mtime[1]) / f;
-//Con_Printf ("frac: %f\n",frac);
+	frac = (cl.ctime - cl.mtime[1]) / f;
+
 	if (frac < 0)
 	{
 		if (frac < -0.01)
 		{
 SetPal(1);
-			cl.time = cl.mtime[1];
+			cl.time = cl.ctime = cl.mtime[1];
 //				Con_Printf ("low frac\n");
 		}
 		frac = 0;
@@ -551,7 +558,7 @@ SetPal(1);
 		if (frac > 1.01)
 		{
 SetPal(2);
-			cl.time = cl.mtime[0];
+			cl.time = cl.ctime = cl.mtime[0];
 //				Con_Printf ("high frac\n");
 		}
 		frac = 1;
@@ -772,8 +779,17 @@ int CL_ReadFromServer (void)
 {
 	int		ret;
 
-	cl.oldtime = cl.time;
+	/*cl.oldtime = cl.time;
+	cl.time += host_frametime;  //Baker 3.75 old way */
+
+	// Baker 3.75 - demo rewind
+	cl.oldtime = cl.ctime;
 	cl.time += host_frametime;
+	if (!cl_demorewind.value || !cls.demoplayback)	// by joe
+		cl.ctime += host_frametime;
+	else
+		cl.ctime -= host_frametime;
+	// Baker 3.75 - end demo fast rewind
 
 	do
 	{
@@ -851,25 +867,16 @@ void CL_SendCmd (void)
 
 extern cvar_t default_fov;
 
-qboolean OnChange_scr_fov (cvar_t *var, char *string) {
-	if (Q_atof(string) == 90.0 && default_fov.value) {
+void CL_Fov_f (void) {
+	if (scr_fov.value == 90.0 && default_fov.value) {
 		Cvar_SetValue ("fov", default_fov.value);
 		Con_Printf("fov set to default_fov %s\n", default_fov.string);
-	} else {
-		Cvar_SetValue ("fov", Q_atof(string));
 	}
-	return false;
 }
 
-float OnChange_validate_default_fov (char *value) {
-	float newfov = Q_atof(value);
-
-	if (newfov < 10.0 || newfov > 140.0){
-		Con_Printf("Invalid default_fov\n");
-		return 0;
-	}
-
-	return newfov;
+void CL_Default_fov_f (void) {
+	if (default_fov.value < 10.0 || default_fov.value > 140.0)
+		Cvar_SetValue ("default_fov", 90.0f);
 }
 
 // End Baker
@@ -974,29 +981,31 @@ void CL_Init (void)
 //
 // register our commands
 //
-	Cvar_RegisterVariable (&cl_name);
-	Cvar_RegisterVariable (&cl_color);
-	Cvar_RegisterVariable (&cl_upspeed);
-	Cvar_RegisterVariable (&cl_forwardspeed);
-	Cvar_RegisterVariable (&cl_backspeed);
-	Cvar_RegisterVariable (&cl_sidespeed);
-	Cvar_RegisterVariable (&cl_movespeedkey);
-	Cvar_RegisterVariable (&cl_yawspeed);
-	Cvar_RegisterVariable (&cl_pitchspeed);
-	Cvar_RegisterVariable (&cl_anglespeedkey);
-	Cvar_RegisterVariable (&cl_shownet);
-	Cvar_RegisterVariable (&cl_nolerp);
-	Cvar_RegisterVariable (&lookspring);
-	Cvar_RegisterVariable (&lookstrafe);
-	Cvar_RegisterVariable (&sensitivity);
-	Cvar_RegisterVariable (&freelook);   // Baker 3.60 - Freelook cvar support
+	Cvar_RegisterVariable (&cl_name, NULL);
+	Cvar_RegisterVariable (&cl_color, NULL);
+	Cvar_RegisterVariable (&cl_upspeed, NULL);
+	Cvar_RegisterVariable (&cl_forwardspeed, NULL);
+	Cvar_RegisterVariable (&cl_backspeed, NULL);
+	Cvar_RegisterVariable (&cl_sidespeed, NULL);
+	Cvar_RegisterVariable (&cl_movespeedkey, NULL);
+	Cvar_RegisterVariable (&cl_yawspeed, NULL);
+	Cvar_RegisterVariable (&cl_pitchspeed, NULL);
+	Cvar_RegisterVariable (&cl_anglespeedkey, NULL);
+	Cvar_RegisterVariable (&cl_shownet, NULL);
+	Cvar_RegisterVariable (&cl_nolerp, NULL);
+	Cvar_RegisterVariable (&lookspring, NULL);
+	Cvar_RegisterVariable (&lookstrafe, NULL);
+	Cvar_RegisterVariable (&sensitivity, NULL);
+	Cvar_RegisterVariable (&freelook, NULL);   // Baker 3.60 - Freelook cvar support
 
-	Cvar_RegisterVariable (&m_pitch);
-	Cvar_RegisterVariable (&m_yaw);
-	Cvar_RegisterVariable (&m_forward);
-	Cvar_RegisterVariable (&m_side);
+	Cvar_RegisterVariable (&m_pitch, NULL);
+	Cvar_RegisterVariable (&m_yaw, NULL);
+	Cvar_RegisterVariable (&m_forward, NULL);
+	Cvar_RegisterVariable (&m_side, NULL);
 
 //	Cvar_RegisterVariable (&cl_autofire);
+	Cvar_RegisterVariable (&cl_demorewind, NULL);
+	Cvar_RegisterVariable (&cl_demospeed, NULL);
 
 	Cmd_AddCommand ("entities", CL_PrintEntities_f);
 	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
@@ -1011,23 +1020,23 @@ void CL_Init (void)
 	Cmd_AddCommand ("viewpos", CL_Viewpos_f); //Baker 3.76 - Using FitzQuake's viewpos instead of my own
 
 	// JPG - added these for %r formatting
-	Cvar_RegisterVariable (&pq_needrl);
-	Cvar_RegisterVariable (&pq_haverl);
-	Cvar_RegisterVariable (&pq_needrox);
+	Cvar_RegisterVariable (&pq_needrl, NULL);
+	Cvar_RegisterVariable (&pq_haverl, NULL);
+	Cvar_RegisterVariable (&pq_needrox, NULL);
 
 	// JPG - added these for %p formatting
-	Cvar_RegisterVariable (&pq_quad);
-	Cvar_RegisterVariable (&pq_pent);
-	Cvar_RegisterVariable (&pq_ring);
+	Cvar_RegisterVariable (&pq_quad, NULL);
+	Cvar_RegisterVariable (&pq_pent, NULL);
+	Cvar_RegisterVariable (&pq_ring, NULL);
 
 	// JPG 3.00 - %w formatting
-	Cvar_RegisterVariable (&pq_weapons);
-	Cvar_RegisterVariable (&pq_noweapons);
+	Cvar_RegisterVariable (&pq_weapons, NULL);
+	Cvar_RegisterVariable (&pq_noweapons, NULL);
 
 	// JPG 1.05 - added this for +jump -> +moveup translation
-	Cvar_RegisterVariable (&pq_moveup);
+	Cvar_RegisterVariable (&pq_moveup, NULL);
 
 	// JPG 3.02 - added this by request
-	Cvar_RegisterVariable (&pq_smoothcam);
+	Cvar_RegisterVariable (&pq_smoothcam, NULL);
 }
 

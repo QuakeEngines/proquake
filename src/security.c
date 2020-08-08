@@ -59,7 +59,7 @@ void Security_Init (void)
 	pq_cheatfreeEnabled = true;
 
 #ifndef STEST
-	Cvar_RegisterVariable (&pq_cvar_cheatfree);
+	Cvar_RegisterVariable (&pq_cvar_cheatfree, NULL);
 	Con_Printf("Security module initialized\n");
 #endif
 

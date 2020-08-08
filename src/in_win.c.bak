@@ -729,7 +729,7 @@ void IN_SetGlobals(void) {
 	
 }
 
-
+extern cvar_t in_keymap;
 void IN_Init (void) {
 	
 
@@ -752,6 +752,7 @@ void IN_Init (void) {
 
 		// keyboard variables
 		Cvar_RegisterVariable (&cl_keypad);
+		Cvar_RegisterVariable (&in_keymap);
 
 		// joystick variables 
 		Cvar_RegisterVariable (&in_joystick); // Baker 3.83: Leaving here ONLY because this saves to config.
@@ -1400,7 +1401,7 @@ IN_MapKey -- Baker 3.72 - Attempt to address international keyboard issue
 Map from windows to quake keynums
 ===========
 */
-int IN_MapKey (int key, char ascii) {
+int IN_MapKey (int key, int ascii) {
 	int result;
 	int modified = (key >> 16) & 255;
 	qboolean is_extended = false;

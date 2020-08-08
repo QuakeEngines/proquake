@@ -378,51 +378,64 @@ void Cmd_Alias_f (void)
 	int			i, c;
 	char		*s;
 
-	if (Cmd_Argc() == 1)
+	
+	switch (Cmd_Argc())
 	{
-		Con_Printf ("Current alias commands:\n");
+	case 1: //list all aliases
+		for (a = cmd_alias, i = 0; a; a=a->next, i++)
+			Con_SafePrintf ("   %s: %s", a->name, a->value);
+		if (i)
+			Con_SafePrintf ("%i alias command(s)\n", i);
+		else
+			Con_SafePrintf ("no alias commands found\n");
+		break;
+	case 2: //output current alias string
 		for (a = cmd_alias ; a ; a=a->next)
-			Con_Printf ("%s : %s\n", a->name, a->value);
-		return;
-	}
-
-	s = Cmd_Argv(1);
-	if (strlen(s) >= MAX_ALIAS_NAME)
-	{
-		Con_Printf ("Alias name is too long\n");
-		return;
-	}
-
-	// if the alias allready exists, reuse it
-	for (a = cmd_alias ; a ; a=a->next)
-	{
-		if (!strcmp(s, a->name))
+			if (!strcmp(Cmd_Argv(1), a->name))
+				Con_Printf ("   %s: %s", a->name, a->value);
+		break;
+		
+	default: //set alias string
+	
+		s = Cmd_Argv(1);
+		if (strlen(s) >= MAX_ALIAS_NAME)
 		{
-			Z_Free (a->value);
-			break;
+			Con_Printf ("Alias name is too long\n");
+			return;
 		}
+	
+		// if the alias allready exists, reuse it
+		for (a = cmd_alias ; a ; a=a->next)
+		{
+			if (!strcmp(s, a->name))
+			{
+				Z_Free (a->value);
+				break;
+			}
+		}
+	
+		if (!a)
+		{
+			a = Z_Malloc (sizeof(cmdalias_t));
+			a->next = cmd_alias;
+			cmd_alias = a;
+		}
+		strcpy (a->name, s);
+	
+	// copy the rest of the command line
+		cmd[0] = 0;		// start out with a null string
+		c = Cmd_Argc();
+		for (i=2 ; i< c ; i++)
+		{
+			strcat (cmd, Cmd_Argv(i));
+			if (i != c)
+				strcat (cmd, " ");
+		}
+		strcat (cmd, "\n");
+	
+		a->value = CopyString (cmd);
+		break;
 	}
-
-	if (!a)
-	{
-		a = Z_Malloc (sizeof(cmdalias_t));
-		a->next = cmd_alias;
-		cmd_alias = a;
-	}
-	strcpy (a->name, s);
-
-// copy the rest of the command line
-	cmd[0] = 0;		// start out with a null string
-	c = Cmd_Argc();
-	for (i=2 ; i< c ; i++)
-	{
-		strcat (cmd, Cmd_Argv(i));
-		if (i != c)
-			strcat (cmd, " ");
-	}
-	strcat (cmd, "\n");
-
-	a->value = CopyString (cmd);
 }
 
 /*

@@ -25,6 +25,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "winquake.h"
 #endif
 
+#ifdef _WIN32
+#include "movie.h"
+#endif
+
+
 void S_Play(void);
 void S_PlayVol(void);
 void S_SoundList(void);
@@ -169,12 +174,10 @@ S_Init
 */
 void S_Init (void)
 {
-
-	Con_Printf("\nSound Initialization\n");
-
 	if (COM_CheckParm("-nosound"))
 		return;
 
+	Con_Printf("\nSound Initialization\n");
 	if (COM_CheckParm("-simsound"))
 		fakedma = true;
 
@@ -186,17 +189,17 @@ void S_Init (void)
 	Cmd_AddCommand ("volumedown", S_VolumeDown_f); // Baker 3.60 - from JoeQuake 0.15
 	Cmd_AddCommand ("volumeup", S_VolumeUp_f); // Baker 3.60 - from JoeQuake 0.15
 
-	Cvar_RegisterVariable(&nosound);
-	Cvar_RegisterVariable(&volume);
-	Cvar_RegisterVariable(&precache);
-	Cvar_RegisterVariable(&loadas8bit);
-	Cvar_RegisterVariable(&bgmvolume);
-	Cvar_RegisterVariable(&bgmbuffer);
-	Cvar_RegisterVariable(&ambient_level);
-	Cvar_RegisterVariable(&ambient_fade);
-	Cvar_RegisterVariable(&snd_noextraupdate);
-	Cvar_RegisterVariable(&snd_show);
-	Cvar_RegisterVariable(&_snd_mixahead);
+	Cvar_RegisterVariable(&nosound, NULL);
+	Cvar_RegisterVariable(&volume, NULL);
+	Cvar_RegisterVariable(&precache, NULL);
+	Cvar_RegisterVariable(&loadas8bit, NULL);
+	Cvar_RegisterVariable(&bgmvolume, NULL);
+	Cvar_RegisterVariable(&bgmbuffer, NULL);
+	Cvar_RegisterVariable(&ambient_level, NULL);
+	Cvar_RegisterVariable(&ambient_fade, NULL);
+	Cvar_RegisterVariable(&snd_noextraupdate, NULL);
+	Cvar_RegisterVariable(&snd_show, NULL);
+	Cvar_RegisterVariable(&_snd_mixahead, NULL);
 
 	if (host_parms.memsize < 0x800000)
 	{
@@ -403,7 +406,7 @@ SND_Spatialize
 void SND_Spatialize(channel_t *ch)
 {
     vec_t dot;
-    vec_t /*ldist, rdist, */ dist;
+    vec_t dist;
     vec_t lscale, rscale, scale;
     vec3_t source_vec;
 	sfx_t *snd;
@@ -818,6 +821,12 @@ void GetSoundtime(void)
 	static	int		buffers;
 	static	int		oldsamplepos;
 	int		fullsamples;
+
+#ifdef _WIN32
+	if (Movie_GetSoundtime())
+		return;
+#endif
+
 	
 	fullsamples = shm->samples / shm->channels;
 
@@ -849,9 +858,13 @@ void GetSoundtime(void)
 void S_ExtraUpdate (void)
 {
 
+
 #ifdef _WIN32
+	if (Movie_IsActive())
+		return;
 	IN_Accumulate ();
 #endif
+
 
 	if (snd_noextraupdate.value)
 		return;		// don't pollute timings

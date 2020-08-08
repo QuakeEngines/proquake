@@ -55,7 +55,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /machine:I386
-# ADD LINK32 .\dxsdk\sdk7\lib\dxguid.lib .\scitech\lib\win32\vc\mgllt.lib winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\wqpro380.exe"
+# ADD LINK32 .\dxsdk\sdk7\lib\dxguid.lib .\scitech\lib\win32\vc\mgllt.lib winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\wqpro390.exe"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 Debug"
 
@@ -127,7 +127,7 @@ LINK32=link.exe
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /G5 /GX /Ox /Ot /Ow /I ".\scitech\include" /I ".\dxsdk\sdk\inc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /c
 # SUBTRACT BASE CPP /Oa /Og
-# ADD CPP /nologo /G5 /W1 /GX /O2 /I ".\dxsdk\sdk7\inc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "GLQUAKE" /FR /YX /FD /c
+# ADD CPP /nologo /G5 /GX /O2 /I ".\dxsdk\sdk7\inc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "GLQUAKE" /FR /YX /FD /c
 # ADD BASE MTL /nologo /D "NDEBUG" /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -138,7 +138,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib .\scitech\lib\win32\vc\mgllt.lib /nologo /subsystem:windows /profile /machine:I386
 # SUBTRACT BASE LINK32 /map /debug
-# ADD LINK32 .\dxsdk\sdk7\lib\dxguid.lib comctl32.lib winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro380.exe"
+# ADD LINK32 .\dxsdk\sdk7\lib\dxguid.lib comctl32.lib winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro390.exe"
 
 !ENDIF 
 
@@ -1117,6 +1117,14 @@ SOURCE=.\model.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\movie.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\movie_avi.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\net_dgrm.c
 # End Source File
 # Begin Source File
@@ -1633,6 +1641,10 @@ InputName=r_varsa
 # End Source File
 # Begin Source File
 
+SOURCE=.\registry.cpp
+# End Source File
+# Begin Source File
+
 SOURCE=.\sbar.c
 # End Source File
 # Begin Source File
@@ -2127,6 +2139,14 @@ SOURCE=.\model.h
 # Begin Source File
 
 SOURCE=.\modelgen.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\movie.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\movie_avi.h
 # End Source File
 # Begin Source File
 

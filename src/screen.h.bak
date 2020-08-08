@@ -32,7 +32,7 @@ void SCR_CenterPrint (char *str);
 void SCR_BeginLoadingPlaque (void);
 void SCR_EndLoadingPlaque (void);
 
-int SCR_ModalMessage (char *text);
+int SCR_ModalMessage (char *text, float timeout);
 
 extern	float		scr_con_current;
 extern	float		scr_conlines;		// lines of console to display
@@ -44,9 +44,30 @@ extern	int			clearnotify;	// set to 0 whenever notify text is drawn
 extern	qboolean	scr_disabled_for_loading;
 extern	qboolean	scr_skipupdate;
 
+// Baker 3.60 - begin menu cvars - todo: classify and put them in proper location(s)
 extern	cvar_t		scr_viewsize;
+extern	cvar_t		scr_fov; // Baker 3.60 - FOV in menu
+extern	cvar_t		pq_drawfps; 
+extern	cvar_t		show_speed; 
+extern	cvar_t		pq_maxfps; 
+extern	cvar_t		vid_vsync; 
+extern  cvar_t      m_directinput;
+extern  cvar_t      in_keymap;
+extern	cvar_t		crosshair;
+extern	cvar_t		cl_crosshaircentered;
+extern	cvar_t		scr_conspeed;
+extern	cvar_t		pq_moveup;
+extern	cvar_t		cl_bob;
+extern	cvar_t		cl_keypad;
+extern	cvar_t		r_drawviewmodel;
+extern	cvar_t		r_truegunangle;
+extern	cvar_t		cl_rollangle;
+extern	cvar_t		pq_ringblend;
+extern	cvar_t		pq_pentblend;
+extern	cvar_t		pq_quadblend;
+extern	cvar_t		pq_suitblend;
 
-extern cvar_t scr_viewsize;
+// Baker 3.60 - end  menu cvars
 
 // only the refresh window will be updated unless these variables are flagged 
 extern	int			scr_copytop;

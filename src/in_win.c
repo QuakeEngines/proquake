@@ -45,7 +45,8 @@ cvar_t  m_directinput = {"m_directinput", "0", true, 4};
 void IN_StartupMouse (void);
 void IN_DeactivateMouse (void);
 
-qboolean OnChange_m_directinput (cvar_t *var, char *string) {
+void IN_DirectInput_f(void) {
+	// Called when m_directinput changes
 	if (host_initialized) {
 		IN_Shutdown ();
 		IN_Init ();
@@ -55,7 +56,6 @@ qboolean OnChange_m_directinput (cvar_t *var, char *string) {
 		IN_ActivateMouse ();
 		IN_HideMouse ();
 	}
-	return false;
 }
 
 
@@ -441,8 +441,8 @@ void IN_SMouseInit (void) {
 	SetThreadPriority (thread, THREAD_PRIORITY_HIGHEST);
 	ResumeThread (thread);
 
-	Cvar_RegisterVariable (&m_rate);
-	Cvar_RegisterVariable (&m_showrate);
+	Cvar_RegisterVariable (&m_rate, NULL);
+	Cvar_RegisterVariable (&m_showrate, NULL);
 	use_m_smooth = true;
 }
 
@@ -660,12 +660,15 @@ void IN_StartupMouse (void) {
 
 	// Baker 3.85: Moved to here.  It makes more sense
 	//Con_Printf("Dinput is %d and fullwindow is %d = %d -> %d", dinput, modestate, MS_WINDOWED, modestate == MS_WINDOWED);
-	if (flex_dinput && modestate != MS_WINDOWED) {
-		// Baker 3.80x: this is an outstanding issue!
-		//Cvar_SetDefault("m_forcewheel", 1);
-		Cvar_SetValue("m_forcewheel", 1);
-	} else {
-		Cvar_SetValue("m_forcewheel", 0); // Baker 3.85: Added for mouserestart
+	if (flex_firstinit) {
+		// Only call this after IN_Init
+		if (flex_dinput && modestate != MS_WINDOWED) {
+			// Baker 3.80x: this is an outstanding issue!
+			//Cvar_SetDefault("m_forcewheel", 1);
+			Cvar_SetValue("m_forcewheel", 1);
+		} else {
+			Cvar_SetValue("m_forcewheel", 0); // Baker 3.85: Added for mouserestart
+		}
 	}
 
 }
@@ -730,6 +733,8 @@ void IN_SetGlobals(void) {
 }
 
 extern cvar_t in_keymap;
+void KEY_Keymap_f(void);
+
 void IN_Init (void) {
 	
 
@@ -741,24 +746,25 @@ void IN_Init (void) {
 		// Baker 3.85: Very first input initialization
 
 		// mouse variables
-		Cvar_RegisterVariable (&m_filter);
-		Cvar_RegisterVariable (&m_forcewheel);
-		Cvar_RegisterVariable (&m_accel);
-		Cvar_RegisterVariable (&m_directinput);
+		Cvar_RegisterVariable (&m_filter, NULL);
+		Cvar_RegisterVariable (&m_forcewheel, NULL);
+		Cvar_RegisterVariable (&m_accel, NULL);
+		Cvar_RegisterVariable (&m_directinput, &IN_DirectInput_f);
 		
 		if (COM_CheckParm("-dinput")) {
 			Cvar_SetValue("m_directinput", 1);
 		}
 
 		// keyboard variables
-		Cvar_RegisterVariable (&cl_keypad);
-		Cvar_RegisterVariable (&in_keymap);
+		Cvar_RegisterVariable (&cl_keypad, NULL);
+		Cvar_RegisterVariable (&in_keymap, &KEY_Keymap_f);
 
 		// joystick variables 
-		Cvar_RegisterVariable (&in_joystick); // Baker 3.83: Leaving here ONLY because this saves to config.
+		Cvar_RegisterVariable (&in_joystick, NULL); // Baker 3.83: Leaving here ONLY because this saves to config.
 
 
 		Cmd_AddCommand ("force_centerview", Force_CenterView_f);
+		Con_Printf("Input startup initialized\n");
 	}
 
 	IN_SetGlobals ();
@@ -989,26 +995,26 @@ void IN_StartupJoystick (void)  {
  	if (!flex_firstinit) {
 		// Baker 3.85: Only do this once!
 
-		Cvar_RegisterVariable (&joy_name);
-		Cvar_RegisterVariable (&joy_advanced);
-		Cvar_RegisterVariable (&joy_advaxisx);
-		Cvar_RegisterVariable (&joy_advaxisy);
-		Cvar_RegisterVariable (&joy_advaxisz);
-		Cvar_RegisterVariable (&joy_advaxisr);
-		Cvar_RegisterVariable (&joy_advaxisu);
-		Cvar_RegisterVariable (&joy_advaxisv);
-		Cvar_RegisterVariable (&joy_forwardthreshold);
-		Cvar_RegisterVariable (&joy_sidethreshold);
-		Cvar_RegisterVariable (&joy_flythreshold);
-		Cvar_RegisterVariable (&joy_pitchthreshold);
-		Cvar_RegisterVariable (&joy_yawthreshold);
-		Cvar_RegisterVariable (&joy_forwardsensitivity);
-		Cvar_RegisterVariable (&joy_sidesensitivity);
-		Cvar_RegisterVariable (&joy_flysensitivity);
-		Cvar_RegisterVariable (&joy_pitchsensitivity);
-		Cvar_RegisterVariable (&joy_yawsensitivity);
-		Cvar_RegisterVariable (&joy_wwhack1);
-		Cvar_RegisterVariable (&joy_wwhack2);
+		Cvar_RegisterVariable (&joy_name, NULL);
+		Cvar_RegisterVariable (&joy_advanced, NULL);
+		Cvar_RegisterVariable (&joy_advaxisx, NULL);
+		Cvar_RegisterVariable (&joy_advaxisy, NULL);
+		Cvar_RegisterVariable (&joy_advaxisz, NULL);
+		Cvar_RegisterVariable (&joy_advaxisr, NULL);
+		Cvar_RegisterVariable (&joy_advaxisu, NULL);
+		Cvar_RegisterVariable (&joy_advaxisv, NULL);
+		Cvar_RegisterVariable (&joy_forwardthreshold, NULL);
+		Cvar_RegisterVariable (&joy_sidethreshold, NULL);
+		Cvar_RegisterVariable (&joy_flythreshold, NULL);
+		Cvar_RegisterVariable (&joy_pitchthreshold, NULL);
+		Cvar_RegisterVariable (&joy_yawthreshold, NULL);
+		Cvar_RegisterVariable (&joy_forwardsensitivity, NULL);
+		Cvar_RegisterVariable (&joy_sidesensitivity, NULL);
+		Cvar_RegisterVariable (&joy_flysensitivity, NULL);
+		Cvar_RegisterVariable (&joy_pitchsensitivity, NULL);
+		Cvar_RegisterVariable (&joy_yawsensitivity, NULL);
+		Cvar_RegisterVariable (&joy_wwhack1, NULL);
+		Cvar_RegisterVariable (&joy_wwhack2, NULL);
 		Cmd_AddCommand ("joyadvancedupdate", Joy_AdvancedUpdate_f);
 	}
 

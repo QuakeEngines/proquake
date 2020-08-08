@@ -551,7 +551,6 @@ void V_UpdatePalette (void)
 	byte	pal[768];
 	float	r,g,b,a;
 	int		ir, ig, ib;
-//	qboolean force;
 
 	V_CalcPowerupCshift ();
 	
@@ -1161,50 +1160,50 @@ void V_Init (void)
 	Cmd_AddCommand ("bf", V_BonusFlash_f);
 	Cmd_AddCommand ("centerview", V_StartPitchDrift);
 
-	Cvar_RegisterVariable (&lcd_x);
-	Cvar_RegisterVariable (&lcd_yaw);
+	Cvar_RegisterVariable (&lcd_x, NULL);
+	Cvar_RegisterVariable (&lcd_yaw, NULL);
 
-	Cvar_RegisterVariable (&v_centermove);
-	Cvar_RegisterVariable (&v_centerspeed);
+	Cvar_RegisterVariable (&v_centermove, NULL);
+	Cvar_RegisterVariable (&v_centerspeed, NULL);
 
-	Cvar_RegisterVariable (&v_iyaw_cycle);
-	Cvar_RegisterVariable (&v_iroll_cycle);
-	Cvar_RegisterVariable (&v_ipitch_cycle);
-	Cvar_RegisterVariable (&v_iyaw_level);
-	Cvar_RegisterVariable (&v_iroll_level);
-	Cvar_RegisterVariable (&v_ipitch_level);
+	Cvar_RegisterVariable (&v_iyaw_cycle, NULL);
+	Cvar_RegisterVariable (&v_iroll_cycle, NULL);
+	Cvar_RegisterVariable (&v_ipitch_cycle, NULL);
+	Cvar_RegisterVariable (&v_iyaw_level, NULL);
+	Cvar_RegisterVariable (&v_iroll_level, NULL);
+	Cvar_RegisterVariable (&v_ipitch_level, NULL);
 
-	Cvar_RegisterVariable (&v_idlescale);
-	Cvar_RegisterVariable (&crosshair);
-	Cvar_RegisterVariable (&cl_crossx);
-	Cvar_RegisterVariable (&cl_crossy);
-	Cvar_RegisterVariable (&cl_crosshaircentered); // Baker 3.60 - centered crosshair
-	Cvar_RegisterVariable (&gl_cshiftpercent);
+	Cvar_RegisterVariable (&v_idlescale, NULL);
+	Cvar_RegisterVariable (&crosshair, NULL);
+	Cvar_RegisterVariable (&cl_crossx, NULL);
+	Cvar_RegisterVariable (&cl_crossy, NULL);
+	Cvar_RegisterVariable (&cl_crosshaircentered, NULL); // Baker 3.60 - centered crosshair
+	Cvar_RegisterVariable (&gl_cshiftpercent, NULL);
 
-	Cvar_RegisterVariable (&scr_ofsx);
-	Cvar_RegisterVariable (&scr_ofsy);
-	Cvar_RegisterVariable (&scr_ofsz);
-	Cvar_RegisterVariable (&cl_rollspeed);
-	Cvar_RegisterVariable (&cl_rollangle);
-	Cvar_RegisterVariable (&cl_bob);
-	Cvar_RegisterVariable (&cl_bobcycle);
-	Cvar_RegisterVariable (&cl_bobup);
+	Cvar_RegisterVariable (&scr_ofsx, NULL);
+	Cvar_RegisterVariable (&scr_ofsy, NULL);
+	Cvar_RegisterVariable (&scr_ofsz, NULL);
+	Cvar_RegisterVariable (&cl_rollspeed, NULL);
+	Cvar_RegisterVariable (&cl_rollangle, NULL);
+	Cvar_RegisterVariable (&cl_bob, NULL);
+	Cvar_RegisterVariable (&cl_bobcycle, NULL);
+	Cvar_RegisterVariable (&cl_bobup, NULL);
 
-	Cvar_RegisterVariable (&v_kicktime);
-	Cvar_RegisterVariable (&v_kickroll);
-	Cvar_RegisterVariable (&v_kickpitch);	
+	Cvar_RegisterVariable (&v_kicktime, NULL);
+	Cvar_RegisterVariable (&v_kickroll, NULL);
+	Cvar_RegisterVariable (&v_kickpitch, NULL);	
 	
 	BuildGammaTable (1.0);	// no gamma yet
-	Cvar_RegisterVariable (&v_gamma);
+	Cvar_RegisterVariable (&v_gamma, NULL);
 
 	// JPG 1.05 - colour shifts
-	Cvar_RegisterVariable (&pq_waterblend);
-	Cvar_RegisterVariable (&pq_quadblend);
-	Cvar_RegisterVariable (&pq_pentblend);
-	Cvar_RegisterVariable (&pq_ringblend);
-	Cvar_RegisterVariable (&pq_suitblend);
+	Cvar_RegisterVariable (&pq_waterblend, NULL);
+	Cvar_RegisterVariable (&pq_quadblend, NULL);
+	Cvar_RegisterVariable (&pq_pentblend, NULL);
+	Cvar_RegisterVariable (&pq_ringblend, NULL);
+	Cvar_RegisterVariable (&pq_suitblend, NULL);
 #ifndef GLQUAKE
-	Cvar_RegisterVariable (&r_polyblend);	// JPG 3.30 - winquake version of gl_polyblend
+	Cvar_RegisterVariable (&r_polyblend, NULL);	// JPG 3.30 - winquake version of gl_polyblend
 #endif
 }
 

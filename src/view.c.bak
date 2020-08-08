@@ -38,16 +38,17 @@ cvar_t	scr_ofsx = {"scr_ofsx","0", false};
 cvar_t	scr_ofsy = {"scr_ofsy","0", false};
 cvar_t	scr_ofsz = {"scr_ofsz","0", false};
 
-cvar_t	cl_rollspeed = {"cl_rollspeed", "200"};
-cvar_t	cl_rollangle = {"cl_rollangle", "2.0"};
+cvar_t	cl_rollspeed = {"cl_rollspeed", "200", true};
+cvar_t	cl_rollangle = {"cl_rollangle", "0", true}; // Quake classic default = 2.0
 
-cvar_t	cl_bob = {"cl_bob","0.02", false};
-cvar_t	cl_bobcycle = {"cl_bobcycle","0.6", false};
-cvar_t	cl_bobup = {"cl_bobup","0.5", false};
+cvar_t	cl_bob = {"cl_bob","0", true}; // Quake classic default = 0.02
+cvar_t	cl_bobcycle = {"cl_bobcycle","0.6", false}; // Leave it
+cvar_t	cl_bobup = {"cl_bobup","0", false}; // Quake classic default is 0.5
 
-cvar_t	v_kicktime = {"v_kicktime", "0.5", false};
-cvar_t	v_kickroll = {"v_kickroll", "0.6", false};
-cvar_t	v_kickpitch = {"v_kickpitch", "0.6", false};
+cvar_t	v_kicktime = {"v_kicktime", "0", true};  //"0.5", true};  // Baker 3.80x - Save to config
+cvar_t	v_kickroll = {"v_kickroll", "0", true};  //"0.6", true};  // Baker 3.80x - Save to config
+cvar_t	v_kickpitch = {"v_kickpitch", "0", true};  //"0.6", true};  // Baker 3.80x - Save to config
+
 
 cvar_t	v_iyaw_cycle = {"v_iyaw_cycle", "2", false};
 cvar_t	v_iroll_cycle = {"v_iroll_cycle", "0.5", false};
@@ -58,18 +59,19 @@ cvar_t	v_ipitch_level = {"v_ipitch_level", "0.3", false};
 
 cvar_t	v_idlescale = {"v_idlescale", "0", false};
 
-cvar_t	crosshair = {"crosshair", "0", true};
-cvar_t	cl_crossx = {"cl_crossx", "0", false};
-cvar_t	cl_crossy = {"cl_crossy", "0", false};
-
+cvar_t	crosshair = {"crosshair", "1", true};
+cvar_t	cl_crosshaircentered = {"cl_crosshaircentered", "1", true}; // Baker 3.60 - Optional centered crosshair
+cvar_t	cl_crossx = {"cl_crossx", "0", true};  // Baker 3.80x - Save to config
+cvar_t	cl_crossy = {"cl_crossy", "0", true};  // Baker 3.80x - Save to config
+extern cvar_t r_truegunangle; 					// Baker 3.80x
 cvar_t	gl_cshiftpercent = {"gl_cshiftpercent", "100", false};
 
 // JPG 1.05 - palette changes
-cvar_t	pq_waterblend = {"pq_waterblend", "1"};
-cvar_t	pq_quadblend = {"pq_quadblend", "1"};
-cvar_t	pq_ringblend = {"pq_ringblend", "1"};
-cvar_t	pq_pentblend = {"pq_pentblend", "1"};
-cvar_t	pq_suitblend = {"pq_suitblend", "1"};
+cvar_t	pq_waterblend = {"pq_waterblend", "0", true};
+cvar_t	pq_quadblend = {"pq_quadblend", "0.3", true};
+cvar_t	pq_ringblend = {"pq_ringblend", "0", true};
+cvar_t	pq_pentblend = {"pq_pentblend", "0.3", true};
+cvar_t	pq_suitblend = {"pq_suitblend", "0.3", true};
 #ifndef GLQUAKE
 cvar_t	r_polyblend = {"r_polyblend", "1"};		// JPG 3.30 - winquake version of r_polyblend
 #endif
@@ -308,7 +310,11 @@ qboolean V_CheckGamma (void)
 	
 	if (v_gamma.value == oldgammavalue)
 		return false;
+#ifdef GLQuake
 	oldgammavalue = v_gamma.value;
+#else
+	oldgammavalue = bound(0.1,v_gamma.value,1); // Baker 3.80x - do not allow white screen in wqpro
+#endif
 	
 	BuildGammaTable (v_gamma.value);
 	vid.recalc_refdef = 1;				// force a surface cache flush
@@ -545,7 +551,7 @@ void V_UpdatePalette (void)
 	byte	pal[768];
 	float	r,g,b,a;
 	int		ir, ig, ib;
-	qboolean force;
+//	qboolean force;
 
 	V_CalcPowerupCshift ();
 	
@@ -958,7 +964,8 @@ void V_CalcRefdef (void)
 
 // fudge position around to keep amount of weapon visible
 // roughly equal with different FOV
-
+	if (!r_truegunangle.value) // Baker 3.80x - True gun angle option (FitzQuake/DarkPlaces style)
+	{
 #if 0
 	if (cl.model_precache[cl.stats[STAT_WEAPON]] && strcmp (cl.model_precache[cl.stats[STAT_WEAPON]]->name,  "progs/v_shot2.mdl"))
 #endif
@@ -970,6 +977,7 @@ void V_CalcRefdef (void)
 		view->origin[2] += 1;
 	else if (scr_viewsize.value == 80)
 		view->origin[2] += 0.5;
+	}
 
 	view->model = cl.model_precache[cl.stats[STAT_WEAPON]];
 	view->frame = cl.stats[STAT_WEAPONFRAME];
@@ -1002,6 +1010,52 @@ else
 	if (chase_active.value && !pq_cheatfree)	// JPG 3.20 - added pq_cheatfree
 		Chase_Update ();
 }
+
+/*
+===============
+SCR_DrawVolume - Baker 3.80x -- from JoeQuake
+===============
+*/
+void SCR_DrawVolume (void)
+{
+	int		i, yofs;
+	float		j;
+	char		bar[11];
+	static	float	volume_time = 0;
+	extern qboolean	volume_changed;
+
+	if (realtime < volume_time - 2.0)
+	{
+		volume_time = 0;
+		return;
+	}
+
+	if (volume_changed)
+	{
+		volume_time = realtime + 2.0;
+		volume_changed = false;
+	}
+	else if (realtime > volume_time)
+	{
+		return;
+	}
+
+	for (i = 1, j = 0.1 ; i <= 10 ; i++, j += 0.1)
+		bar[i-1] = ((volume.value +0.05) >= j) ? 139 : 11; // Baker 3.60 + 0.0.5 hack for now
+
+	bar[10] = 0;
+
+	/*if (show_stats.value == 1 || show_stats.value == 3)
+		yofs = !show_stats_small.value ? 32 : 16;
+	else if (show_stats.value == 2 || show_stats.value == 4)
+		yofs = !show_stats_small.value ? 80 : 32;
+	else */
+		yofs = 8;
+
+	Draw_String (vid.width - 88, yofs, bar);
+	Draw_String (vid.width - 88, yofs + 8, "volume");
+}
+
 
 /*
 ==================
@@ -1076,8 +1130,20 @@ void V_RenderView (void)
 
 #ifndef GLQUAKE
 	if (crosshair.value)
-		Draw_Character (scr_vrect.x + scr_vrect.width/2 + cl_crossx.value, 
-			scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+');
+	{
+			if (!cl_crosshaircentered.value)  // Baker 3.80x - centered crosshair
+			{
+				// Standard off-center Quake crosshair
+				Draw_Character (scr_vrect.x + scr_vrect.width/2 + cl_crossx.value, scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+');
+			} else
+			{
+				// Baker 3.60 - Centered crosshair (FuhQuake)
+				Draw_Character (scr_vrect.x + scr_vrect.width / 2 - 4 + cl_crossx.value, scr_vrect.y + scr_vrect.height / 2 - 4 + cl_crossy.value, '+');
+			}
+
+		/* Draw_Character (scr_vrect.x + scr_vrect.width/2 + cl_crossx.value,
+			scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+'); */
+	}
 #endif
 		
 }
@@ -1095,49 +1161,50 @@ void V_Init (void)
 	Cmd_AddCommand ("bf", V_BonusFlash_f);
 	Cmd_AddCommand ("centerview", V_StartPitchDrift);
 
-	Cvar_RegisterVariable (&lcd_x);
-	Cvar_RegisterVariable (&lcd_yaw);
+	Cvar_RegisterVariable (&lcd_x, NULL);
+	Cvar_RegisterVariable (&lcd_yaw, NULL);
 
-	Cvar_RegisterVariable (&v_centermove);
-	Cvar_RegisterVariable (&v_centerspeed);
+	Cvar_RegisterVariable (&v_centermove, NULL);
+	Cvar_RegisterVariable (&v_centerspeed, NULL);
 
-	Cvar_RegisterVariable (&v_iyaw_cycle);
-	Cvar_RegisterVariable (&v_iroll_cycle);
-	Cvar_RegisterVariable (&v_ipitch_cycle);
-	Cvar_RegisterVariable (&v_iyaw_level);
-	Cvar_RegisterVariable (&v_iroll_level);
-	Cvar_RegisterVariable (&v_ipitch_level);
+	Cvar_RegisterVariable (&v_iyaw_cycle, NULL);
+	Cvar_RegisterVariable (&v_iroll_cycle, NULL);
+	Cvar_RegisterVariable (&v_ipitch_cycle, NULL);
+	Cvar_RegisterVariable (&v_iyaw_level, NULL);
+	Cvar_RegisterVariable (&v_iroll_level, NULL);
+	Cvar_RegisterVariable (&v_ipitch_level, NULL);
 
-	Cvar_RegisterVariable (&v_idlescale);
-	Cvar_RegisterVariable (&crosshair);
-	Cvar_RegisterVariable (&cl_crossx);
-	Cvar_RegisterVariable (&cl_crossy);
-	Cvar_RegisterVariable (&gl_cshiftpercent);
+	Cvar_RegisterVariable (&v_idlescale, NULL);
+	Cvar_RegisterVariable (&crosshair, NULL);
+	Cvar_RegisterVariable (&cl_crossx, NULL);
+	Cvar_RegisterVariable (&cl_crossy, NULL);
+	Cvar_RegisterVariable (&cl_crosshaircentered, NULL); // Baker 3.60 - centered crosshair
+	Cvar_RegisterVariable (&gl_cshiftpercent, NULL);
 
-	Cvar_RegisterVariable (&scr_ofsx);
-	Cvar_RegisterVariable (&scr_ofsy);
-	Cvar_RegisterVariable (&scr_ofsz);
-	Cvar_RegisterVariable (&cl_rollspeed);
-	Cvar_RegisterVariable (&cl_rollangle);
-	Cvar_RegisterVariable (&cl_bob);
-	Cvar_RegisterVariable (&cl_bobcycle);
-	Cvar_RegisterVariable (&cl_bobup);
+	Cvar_RegisterVariable (&scr_ofsx, NULL);
+	Cvar_RegisterVariable (&scr_ofsy, NULL);
+	Cvar_RegisterVariable (&scr_ofsz, NULL);
+	Cvar_RegisterVariable (&cl_rollspeed, NULL);
+	Cvar_RegisterVariable (&cl_rollangle, NULL);
+	Cvar_RegisterVariable (&cl_bob, NULL);
+	Cvar_RegisterVariable (&cl_bobcycle, NULL);
+	Cvar_RegisterVariable (&cl_bobup, NULL);
 
-	Cvar_RegisterVariable (&v_kicktime);
-	Cvar_RegisterVariable (&v_kickroll);
-	Cvar_RegisterVariable (&v_kickpitch);	
+	Cvar_RegisterVariable (&v_kicktime, NULL);
+	Cvar_RegisterVariable (&v_kickroll, NULL);
+	Cvar_RegisterVariable (&v_kickpitch, NULL);	
 	
 	BuildGammaTable (1.0);	// no gamma yet
-	Cvar_RegisterVariable (&v_gamma);
+	Cvar_RegisterVariable (&v_gamma, NULL);
 
 	// JPG 1.05 - colour shifts
-	Cvar_RegisterVariable (&pq_waterblend);
-	Cvar_RegisterVariable (&pq_quadblend);
-	Cvar_RegisterVariable (&pq_pentblend);
-	Cvar_RegisterVariable (&pq_ringblend);
-	Cvar_RegisterVariable (&pq_suitblend);
+	Cvar_RegisterVariable (&pq_waterblend, NULL);
+	Cvar_RegisterVariable (&pq_quadblend, NULL);
+	Cvar_RegisterVariable (&pq_pentblend, NULL);
+	Cvar_RegisterVariable (&pq_ringblend, NULL);
+	Cvar_RegisterVariable (&pq_suitblend, NULL);
 #ifndef GLQUAKE
-	Cvar_RegisterVariable (&r_polyblend);	// JPG 3.30 - winquake version of gl_polyblend
+	Cvar_RegisterVariable (&r_polyblend, NULL);	// JPG 3.30 - winquake version of gl_polyblend
 #endif
 }
 

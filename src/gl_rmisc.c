@@ -106,7 +106,6 @@ Grab six views for environment mapping tests
 void R_Envmap_f (void)
 {
 	byte	buffer[256*256*4];
-//	char	name[1024];
 
 	glDrawBuffer  (GL_FRONT);
 	glReadBuffer  (GL_FRONT);
@@ -179,40 +178,40 @@ void R_Init (void)
 	Cmd_AddCommand ("envmap", R_Envmap_f);	
 	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);	
 
-	Cvar_RegisterVariable (&r_norefresh);
-	Cvar_RegisterVariable (&r_lightmap);
-	Cvar_RegisterVariable (&r_fullbright);
-	Cvar_RegisterVariable (&r_drawentities);
-	Cvar_RegisterVariable (&r_drawviewmodel);
-	Cvar_RegisterVariable (&gl_ringalpha);
-	Cvar_RegisterVariable (&r_truegunangle);
-	Cvar_RegisterVariable (&r_shadows);
-	Cvar_RegisterVariable (&r_mirroralpha);
-	Cvar_RegisterVariable (&r_wateralpha);
-	Cvar_RegisterVariable (&r_dynamic);
-	Cvar_RegisterVariable (&r_novis);
-	Cvar_RegisterVariable (&r_speeds);
-	Cvar_RegisterVariable (&r_waterwarp);
+	Cvar_RegisterVariable (&r_norefresh, NULL);
+	Cvar_RegisterVariable (&r_lightmap, NULL);
+	Cvar_RegisterVariable (&r_fullbright, NULL);
+	Cvar_RegisterVariable (&r_drawentities, NULL);
+	Cvar_RegisterVariable (&r_drawviewmodel, NULL);
+	Cvar_RegisterVariable (&gl_ringalpha, NULL);
+	Cvar_RegisterVariable (&r_truegunangle, NULL);
+	Cvar_RegisterVariable (&r_shadows, NULL);
+	Cvar_RegisterVariable (&r_mirroralpha, NULL);
+	Cvar_RegisterVariable (&r_wateralpha, NULL);
+	Cvar_RegisterVariable (&r_dynamic, NULL);
+	Cvar_RegisterVariable (&r_novis, NULL);
+	Cvar_RegisterVariable (&r_speeds, NULL);
+	Cvar_RegisterVariable (&r_waterwarp, NULL);
 
-	Cvar_RegisterVariable (&gl_finish);
-	Cvar_RegisterVariable (&gl_clear);
-	Cvar_RegisterVariable (&gl_texsort);
+	Cvar_RegisterVariable (&gl_finish, NULL);
+	Cvar_RegisterVariable (&gl_clear, NULL);
+	Cvar_RegisterVariable (&gl_texsort, NULL);
 
  	if (gl_mtexable)
 		Cvar_SetValue ("gl_texsort", 0.0);
 
-	Cvar_RegisterVariable (&gl_cull);
-	Cvar_RegisterVariable (&gl_smoothmodels);
-	Cvar_RegisterVariable (&gl_affinemodels);
-	Cvar_RegisterVariable (&gl_polyblend);
-	Cvar_RegisterVariable (&gl_flashblend);
-	Cvar_RegisterVariable (&gl_playermip);
-	Cvar_RegisterVariable (&gl_nocolors);
+	Cvar_RegisterVariable (&gl_cull, NULL);
+	Cvar_RegisterVariable (&gl_smoothmodels, NULL);
+	Cvar_RegisterVariable (&gl_affinemodels, NULL);
+	Cvar_RegisterVariable (&gl_polyblend, NULL);
+	Cvar_RegisterVariable (&gl_flashblend, NULL);
+	Cvar_RegisterVariable (&gl_playermip, NULL);
+	Cvar_RegisterVariable (&gl_nocolors, NULL);
 
-	Cvar_RegisterVariable (&gl_keeptjunctions);
-	Cvar_RegisterVariable (&gl_reporttjunctions);
+	Cvar_RegisterVariable (&gl_keeptjunctions, NULL);
+	Cvar_RegisterVariable (&gl_reporttjunctions, NULL);
 
-	Cvar_RegisterVariable (&gl_doubleeyes);
+	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
 
 	R_InitParticles ();
 	R_InitParticleTexture ();
@@ -431,8 +430,6 @@ void R_TimeRefresh_f (void)
 {
 	int			i;
 	float		start, stop, time;
-//	int			startangle;
-//	vrect_t		vr;
 
 	glDrawBuffer  (GL_FRONT);
 	glFinish ();

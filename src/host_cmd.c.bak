@@ -79,7 +79,7 @@ void Host_Status_f (void)
 	int			seconds;
 	int			minutes;
 	int			hours = 0;
-	int			j;
+	int			j, a, b, c; // Baker 3.60 - a,b,c added for IP
 	void		(*print) (char *fmt, ...);
 	
 	if (cmd_source == src_command)
@@ -119,6 +119,10 @@ void Host_Status_f (void)
 		else
 			hours = 0;
 		print ("#%-2u %-16.16s  %3i  %2i:%02i:%02i\n", j+1, client->name, (int)client->edict->v.frags, hours, minutes, seconds);
+		
+		if (cmd_source != src_command && sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3 && COM_CheckParm ("-noipmask") == 0 )  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
+         print ("   %d.%d.%d.xxx\n", a, b, c);  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
+         else  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
 		print ("   %s\n", client->netconnection->address);
 	}
 }
@@ -1340,6 +1344,7 @@ Host_Pause_f
 */
 void Host_Pause_f (void)
 {
+	cl.paused ^= 2;		// by joe: to handle demo-pause
 	
 	if (cmd_source == src_command)
 	{
@@ -1692,7 +1697,7 @@ Host_Give_f
 void Host_Give_f (void)
 {
 	char	*t;
-	int		v, w;
+	int		v /*, w*/;
 	eval_t	*val;
 
 	if (cmd_source == src_command)
@@ -2115,7 +2120,7 @@ void Host_Identify_f (void)
 
 	if (!iplog_size)
 	{
-		Con_Printf("IP logging not available\nUse -iplog command line option\n");
+		Con_Printf("IP logging not available\nRemove -noiplog command line option\n"); // Baker 3.83: Now -iplog is the default
 		return;
 	}
 
@@ -2316,4 +2321,5 @@ void Host_InitCommands (void)
 	Cmd_AddCommand ("identify", Host_Identify_f);	// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipdump", IPLog_Dump);			// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipmerge", IPLog_Import);		// JPG 3.00 - import an IP data file
+	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
 }

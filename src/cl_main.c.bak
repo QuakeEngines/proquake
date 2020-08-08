@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -58,7 +58,7 @@ cvar_t	pq_noweapons = {"pq_noweapons", "no weapons", true};
 cvar_t	pq_moveup = {"pq_moveup", "0", true};
 
 // JPG 3.00 - added this by request
-cvar_t	pq_smoothcam = {"pq_smoothcam", "1", true};  
+cvar_t	pq_smoothcam = {"pq_smoothcam", "1", true};
 
 client_static_t	cls;
 client_state_t	cl;
@@ -72,6 +72,9 @@ dlight_t		cl_dlights[MAX_DLIGHTS];
 int				cl_numvisedicts;
 entity_t		*cl_visedicts[MAX_VISEDICTS];
 
+extern cvar_t scr_fov;
+float			savedsensitivity;
+float			savedfov;
 /*
 =====================
 CL_ClearState
@@ -90,7 +93,7 @@ void CL_ClearState (void)
 
 	SZ_Clear (&cls.message);
 
-// clear other arrays	
+// clear other arrays
 	memset (cl_efrags, 0, sizeof(cl_efrags));
 	memset (cl_entities, 0, sizeof(cl_entities));
 	memset (cl_dlights, 0, sizeof(cl_dlights));
@@ -119,7 +122,7 @@ void CL_Disconnect (void)
 {
 // stop sounds (especially looping!)
 	S_StopAllSounds (true);
-	
+
 // bring the console down and fade the colors back to normal
 //	SCR_BringDownConsole ();
 
@@ -185,7 +188,7 @@ void CL_EstablishConnection (char *host)
 
 	Con_DPrintf ("CL_EstablishConnection: connected to %s\n", host);
 
-	// JPG - proquake message 
+	// JPG - proquake message
 	if (cls.netcon->mod == MOD_PROQUAKE)
 	{
 		if (pq_cheatfree)
@@ -264,14 +267,14 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 		if (cls.netcon && !cls.netcon->encrypt)
 			cls.netcon->encrypt = 3;
 		break;
-		
-	case 2:		
+
+	case 2:
 		MSG_WriteByte (&cls.message, clc_stringcmd);
 		MSG_WriteString (&cls.message, va("name \"%s\"\n", cl_name.string));
-	
+
 		MSG_WriteByte (&cls.message, clc_stringcmd);
 		MSG_WriteString (&cls.message, va("color %i %i\n", ((int)cl_color.value)>>4, ((int)cl_color.value)&15));
-	
+
 		MSG_WriteByte (&cls.message, clc_stringcmd);
 		sprintf (str, "spawn %s", cls.spawnparms);
 		MSG_WriteString (&cls.message, str);
@@ -317,8 +320,8 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 			}
 		}
 		break;
-		
-	case 3:	
+
+	case 3:
 		MSG_WriteByte (&cls.message, clc_stringcmd);
 		MSG_WriteString (&cls.message, "begin");
 		Cache_Report ();		// print remaining memory
@@ -327,7 +330,7 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 		if (cls.netcon)
 			cls.netcon->encrypt = 1;
 		break;
-		
+
 	case 4:
 		SCR_EndLoadingPlaque ();		// allow normal screen updates
 		break;
@@ -376,7 +379,7 @@ void CL_PrintEntities_f (void)
 {
 	entity_t	*ent;
 	int			i;
-	
+
 	for (i=0,ent=cl_entities ; i<cl.num_entities ; i++,ent++)
 	{
 		Con_Printf ("%3i:",i);
@@ -404,7 +407,7 @@ void SetPal (int i)
 	static int old;
 	byte	pal[768];
 	int		c;
-	
+
 	if (i == old)
 		return;
 	old = i;
@@ -490,7 +493,7 @@ void CL_DecayLights (void)
 	int			i;
 	dlight_t	*dl;
 	float		time;
-	
+
 	time = cl.time - cl.oldtime;
 
 	dl = cl_dlights;
@@ -498,7 +501,7 @@ void CL_DecayLights (void)
 	{
 		if (dl->die < cl.time || !dl->radius)
 			continue;
-		
+
 		dl->radius -= time*dl->decay;
 		if (dl->radius < 0)
 			dl->radius = 0;
@@ -519,13 +522,13 @@ float	CL_LerpPoint (void)
 	float	f, frac;
 
 	f = cl.mtime[0] - cl.mtime[1];
-	
+
 	if (!f || cl_nolerp.value || cls.timedemo || sv.active)
 	{
 		cl.time = cl.mtime[0];
 		return 1;
 	}
-		
+
 	if (f > 0.1)
 	{	// dropped packet, or start of demo
 		cl.mtime[1] = cl.mtime[0] - 0.1;
@@ -555,7 +558,7 @@ SetPal(2);
 	}
 	else
 		SetPal(0);
-		
+
 	return frac;
 }
 
@@ -576,13 +579,13 @@ void CL_RelinkEntities (void)
 	vec3_t		oldorg;
 	dlight_t	*dl;
 
-// determine partial update time	
+// determine partial update time
 	frac = CL_LerpPoint ();
 
 	// JPG - check to see if we need to update the status bar
 	if (pq_timer.value && ((int) cl.time != (int) cl.oldtime))
 		Sbar_Changed();
-	
+
 	cl_numvisedicts = 0;
 
 //
@@ -593,7 +596,7 @@ void CL_RelinkEntities (void)
 
 	if (cls.demoplayback || (last_angle_time > host_time && !(in_attack.state & 3)) && pq_smoothcam.value) // JPG - check for last_angle_time for smooth chasecam!
 	{
-	// interpolate the angles	
+	// interpolate the angles
 		for (j=0 ; j<3 ; j++)
 		{
 			d = cl.mviewangles[0][j] - cl.mviewangles[1][j];
@@ -609,9 +612,9 @@ void CL_RelinkEntities (void)
 	}
 	else
 		VectorCopy(cl.viewangles, cl.lerpangles);
-	
+
 	bobjrotate = anglemod(100*cl.time);
-	
+
 // start on the entity after the world
 	for (i=1,ent=cl_entities+1 ; i<cl.num_entities ; i++,ent++)
 	{
@@ -659,7 +662,7 @@ void CL_RelinkEntities (void)
 					d += 360;
 				ent->angles[j] = ent->msg_angles[1][j] + f*d;
 			}
-			
+
 		}
 
 // rotate binary objects locally
@@ -680,14 +683,14 @@ void CL_RelinkEntities (void)
 			VectorCopy (ent->origin,  dl->origin);
 			dl->origin[2] += 16;
 			AngleVectors (ent->angles, fv, rv, uv);
-			 
+
 			VectorMA (dl->origin, 18, fv, dl->origin);
 			dl->radius = 200 + (rand()&31);
 			dl->minlight = 32;
 			dl->die = cl.time + 0.1;
 		}
 		if (ent->effects & EF_BRIGHTLIGHT)
-		{			
+		{
 			dl = CL_AllocDlight (i);
 			VectorCopy (ent->origin,  dl->origin);
 			dl->origin[2] += 16;
@@ -695,7 +698,7 @@ void CL_RelinkEntities (void)
 			dl->die = cl.time + 0.001;
 		}
 		if (ent->effects & EF_DIMLIGHT)
-		{			
+		{
 			dl = CL_AllocDlight (i);
 			VectorCopy (ent->origin,  dl->origin);
 			dl->radius = 200 + (rand()&31);
@@ -703,7 +706,7 @@ void CL_RelinkEntities (void)
 		}
 #ifdef QUAKE2
 		if (ent->effects & EF_DARKLIGHT)
-		{			
+		{
 			dl = CL_AllocDlight (i);
 			VectorCopy (ent->origin,  dl->origin);
 			dl->radius = 200.0 + (rand()&31);
@@ -711,7 +714,7 @@ void CL_RelinkEntities (void)
 			dl->dark = true;
 		}
 		if (ent->effects & EF_LIGHT)
-		{			
+		{
 			dl = CL_AllocDlight (i);
 			VectorCopy (ent->origin,  dl->origin);
 			dl->radius = 200;
@@ -779,11 +782,11 @@ int CL_ReadFromServer (void)
 			Host_Error ("CL_ReadFromServer: lost server connection");
 		if (!ret)
 			break;
-		
+
 		cl.last_received_message = realtime;
 		CL_ParseServerMessage ();
 	} while (ret && cls.state == ca_connected);
-	
+
 	if (cl_shownet.value)
 		Con_Printf ("\n");
 
@@ -812,13 +815,13 @@ void CL_SendCmd (void)
 	{
 	// get basic movement from keyboard
 		CL_BaseMove (&cmd);
-	
+
 	// allow mice or other external controllers to add to the move
 		IN_Move (&cmd);
-	
+
 	// send the unreliable message
 		CL_SendMove (&cmd);
-	
+
 	}
 
 	if (cls.demoplayback)
@@ -826,11 +829,11 @@ void CL_SendCmd (void)
 		SZ_Clear (&cls.message);
 		return;
 	}
-	
+
 // send the reliable message
 	if (!cls.message.cursize)
 		return;		// no message at all
-	
+
 	if (!NET_CanSendMessage (cls.netcon))
 	{
 		Con_DPrintf ("CL_WriteToServer: can't send\n");
@@ -841,6 +844,81 @@ void CL_SendCmd (void)
 		Host_Error ("CL_WriteToServer: lost server connection");
 
 	SZ_Clear (&cls.message);
+}
+
+// Baker 3.85:  This should really be located elsewhere, but duplicating it in both gl_screen.c and screen.c is silly.
+//              Quakeworld has the equivalent in cl_cmd.c
+
+extern cvar_t default_fov;
+
+void CL_Fov_f (void) {
+	if (scr_fov.value == 90.0 && default_fov.value) {
+		Cvar_SetValue ("fov", default_fov.value);
+		Con_Printf("fov set to default_fov %s\n", default_fov.string);
+	}
+}
+
+void CL_Default_fov_f (void) {
+	if (default_fov.value < 10.0 || default_fov.value > 140.0)
+		Cvar_SetValue ("default_fov", 90.0f);
+}
+
+// End Baker
+
+
+
+/*
+================
+CL_SaveFOV
+
+Saves the FOV
+================
+*/
+void CL_SaveFOV_f (void) {
+	savedfov = scr_fov.value;
+}
+
+/*
+================
+CL_RestoreFOV
+
+Restores FOV to saved level
+================
+*/
+void CL_RestoreFOV_f (void) {
+	if (!savedfov) {
+		Con_Printf("RestoreFOV: No saved FOV to restore\n");
+		return;
+	}
+
+	Cvar_SetValue("fov", savedfov);
+}
+
+/*
+================
+CL_SaveSensivity
+
+Saves the Sensitivity
+================
+*/
+void CL_SaveSensitivity_f (void) {
+	savedsensitivity = sensitivity.value;
+}
+
+/*
+================
+CL_RestoreSensitivity
+
+Restores Sensitivity to saved level
+================
+*/
+void CL_RestoreSensitivity_f (void) {
+	if (!savedsensitivity) {
+		Con_Printf("RestoreSensitivity: No saved SENSITIVITY to restore\n");
+		return;
+	}
+
+	Cvar_SetValue("sensitivity", savedsensitivity);
 }
 
 /*
@@ -878,65 +956,69 @@ CL_Init
 =================
 */
 void CL_Init (void)
-{	
+{
 	SZ_Alloc (&cls.message, 1024);
 
 	CL_InitInput ();
 	CL_InitTEnts ();
-	
+
 //
 // register our commands
 //
-	Cvar_RegisterVariable (&cl_name);
-	Cvar_RegisterVariable (&cl_color);
-	Cvar_RegisterVariable (&cl_upspeed);
-	Cvar_RegisterVariable (&cl_forwardspeed);
-	Cvar_RegisterVariable (&cl_backspeed);
-	Cvar_RegisterVariable (&cl_sidespeed);
-	Cvar_RegisterVariable (&cl_movespeedkey);
-	Cvar_RegisterVariable (&cl_yawspeed);
-	Cvar_RegisterVariable (&cl_pitchspeed);
-	Cvar_RegisterVariable (&cl_anglespeedkey);
-	Cvar_RegisterVariable (&cl_shownet);
-	Cvar_RegisterVariable (&cl_nolerp);
-	Cvar_RegisterVariable (&lookspring);
-	Cvar_RegisterVariable (&lookstrafe);
-	Cvar_RegisterVariable (&sensitivity);
-	Cvar_RegisterVariable (&freelook);   // Baker 3.60 - Freelook cvar support
+	Cvar_RegisterVariable (&cl_name, NULL);
+	Cvar_RegisterVariable (&cl_color, NULL);
+	Cvar_RegisterVariable (&cl_upspeed, NULL);
+	Cvar_RegisterVariable (&cl_forwardspeed, NULL);
+	Cvar_RegisterVariable (&cl_backspeed, NULL);
+	Cvar_RegisterVariable (&cl_sidespeed, NULL);
+	Cvar_RegisterVariable (&cl_movespeedkey, NULL);
+	Cvar_RegisterVariable (&cl_yawspeed, NULL);
+	Cvar_RegisterVariable (&cl_pitchspeed, NULL);
+	Cvar_RegisterVariable (&cl_anglespeedkey, NULL);
+	Cvar_RegisterVariable (&cl_shownet, NULL);
+	Cvar_RegisterVariable (&cl_nolerp, NULL);
+	Cvar_RegisterVariable (&lookspring, NULL);
+	Cvar_RegisterVariable (&lookstrafe, NULL);
+	Cvar_RegisterVariable (&sensitivity, NULL);
+	Cvar_RegisterVariable (&freelook, NULL);   // Baker 3.60 - Freelook cvar support
 
-	Cvar_RegisterVariable (&m_pitch);
-	Cvar_RegisterVariable (&m_yaw);
-	Cvar_RegisterVariable (&m_forward);
-	Cvar_RegisterVariable (&m_side);
+	Cvar_RegisterVariable (&m_pitch, NULL);
+	Cvar_RegisterVariable (&m_yaw, NULL);
+	Cvar_RegisterVariable (&m_forward, NULL);
+	Cvar_RegisterVariable (&m_side, NULL);
 
 //	Cvar_RegisterVariable (&cl_autofire);
-	
+
 	Cmd_AddCommand ("entities", CL_PrintEntities_f);
 	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
 	Cmd_AddCommand ("record", CL_Record_f);
 	Cmd_AddCommand ("stop", CL_Stop_f);
 	Cmd_AddCommand ("playdemo", CL_PlayDemo_f);
 	Cmd_AddCommand ("timedemo", CL_TimeDemo_f);
+	Cmd_AddCommand ("savefov", CL_SaveFOV_f);
+	Cmd_AddCommand ("savesensitivity", CL_SaveSensitivity_f);
+	Cmd_AddCommand ("restorefov", CL_RestoreFOV_f);
+	Cmd_AddCommand ("restoresensitivity", CL_RestoreSensitivity_f);
 	Cmd_AddCommand ("viewpos", CL_Viewpos_f); //Baker 3.76 - Using FitzQuake's viewpos instead of my own
 
 	// JPG - added these for %r formatting
-	Cvar_RegisterVariable (&pq_needrl);
-	Cvar_RegisterVariable (&pq_haverl);
-	Cvar_RegisterVariable (&pq_needrox);
+	Cvar_RegisterVariable (&pq_needrl, NULL);
+	Cvar_RegisterVariable (&pq_haverl, NULL);
+	Cvar_RegisterVariable (&pq_needrox, NULL);
 
 	// JPG - added these for %p formatting
-	Cvar_RegisterVariable (&pq_quad);
-	Cvar_RegisterVariable (&pq_pent);
-	Cvar_RegisterVariable (&pq_ring);
+	Cvar_RegisterVariable (&pq_quad, NULL);
+	Cvar_RegisterVariable (&pq_pent, NULL);
+	Cvar_RegisterVariable (&pq_ring, NULL);
 
 	// JPG 3.00 - %w formatting
-	Cvar_RegisterVariable (&pq_weapons);
-	Cvar_RegisterVariable (&pq_noweapons);
+	Cvar_RegisterVariable (&pq_weapons, NULL);
+	Cvar_RegisterVariable (&pq_noweapons, NULL);
 
 	// JPG 1.05 - added this for +jump -> +moveup translation
-	Cvar_RegisterVariable (&pq_moveup);
+	Cvar_RegisterVariable (&pq_moveup, NULL);
 
 	// JPG 3.02 - added this by request
-	Cvar_RegisterVariable (&pq_smoothcam);
+	Cvar_RegisterVariable (&pq_smoothcam, NULL);
 }
 

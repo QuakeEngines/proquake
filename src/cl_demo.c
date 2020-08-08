@@ -19,6 +19,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "quakedef.h"
+#ifdef _WIN32
+#include "movie.h"
+#endif
+#include <time.h>
+// added by joe
+framepos_t	*dem_framepos = NULL;
+qboolean	start_of_demo = false;
+cvar_t	cl_demorewind = {"cl_demorewind", "0"};
 
 void CL_FinishTimeDemo (void);
 
@@ -58,6 +66,13 @@ void CL_StopPlayback (void)
 
 	if (cls.timedemo)
 		CL_FinishTimeDemo ();
+		
+
+#ifdef _WIN32
+	Movie_StopPlayback ();
+#endif
+
+
 }
 
 /* JPG - need to fix up the demo message
@@ -113,8 +128,7 @@ Dumps the current net message, prefixed by the length and view angles
 */
 void CL_WriteDemoMessage (void)
 {
-	int		len;
-	int		i;
+	int	i, len;
 	float	f;
 
 	len = LittleLong (net_message.cursize);
@@ -128,6 +142,34 @@ void CL_WriteDemoMessage (void)
 	fwrite (net_message.data, net_message.cursize, 1, cls.demofile);
 	CL_FixMsg(0); // JPG - some demo things are bad
 	fflush (cls.demofile);
+}
+
+void PushFrameposEntry (long fbaz)
+{
+	framepos_t	*newf;
+
+	newf = Q_malloc (sizeof(framepos_t));
+	newf->baz = fbaz;
+
+	if (!dem_framepos)
+	{
+		newf->next = NULL;
+		start_of_demo = false;
+	}
+	else
+	{
+		newf->next = dem_framepos;
+	}
+	dem_framepos = newf;
+}
+
+void EraseTopEntry (void)
+{
+	framepos_t	*top;
+
+	top = dem_framepos;
+	dem_framepos = dem_framepos->next;
+	free (top);
 }
 
 /*
@@ -146,6 +188,13 @@ int CL_GetMessage (void)
 	
 	if	(cls.demoplayback)
 	{
+		if (start_of_demo && cl_demorewind.value)
+			return 0;
+
+		if (cls.signon < SIGNONS)	// clear stuffs if new demo
+			while (dem_framepos)
+				EraseTopEntry ();
+
 	// decide if it is time to grab the next message		
 		if (cls.signon == SIGNONS)	// always grab until fully connected
 		{
@@ -159,10 +208,17 @@ int CL_GetMessage (void)
 				if (host_framecount == cls.td_startframe + 1)
 					cls.td_starttime = realtime;
 			}
-			else if ( /* cl.time > 0 && */ cl.time <= cl.mtime[0])
-			{
+			// modified by joe to handle rewind playing
+			else if (!cl_demorewind.value && cl.ctime <= cl.mtime[0])
 					return 0;		// don't need another message yet
-			}
+			else if (cl_demorewind.value && cl.ctime >= cl.mtime[0])
+				return 0;
+
+			// joe: fill in the stack of frames' positions
+			// enable on intermission or not...?
+			// NOTE: it can't handle fixed intermission views!
+			if (!cl_demorewind.value /*&& !cl.intermission*/)
+				PushFrameposEntry (ftell(cls.demofile));
 		}
 		
 	// get the next message
@@ -184,6 +240,15 @@ int CL_GetMessage (void)
 			return 0;
 		}
 	
+		// joe: get out framestack's top entry
+		if (cl_demorewind.value /*&& !cl.intermission*/)
+		{
+			fseek (cls.demofile, dem_framepos->baz, SEEK_SET);
+			EraseTopEntry ();
+			if (!dem_framepos)
+				start_of_demo = true;
+		}
+
 		return 1;
 	}
 
@@ -351,12 +416,11 @@ void CL_Record_f (void)
 	
 	cls.demorecording = true;
 
-	// JPG 1.05 - initialize the demo file if we're already connected
-	if (c == 2 && cls.state == ca_connected)
+	// joe: initialize the demo file if we're already connected
+	if (c < 3 && cls.state == ca_connected)
 	{
 		byte *data = net_message.data;
-		int cursize = net_message.cursize;
-		int i;
+		int	i, cursize = net_message.cursize;
 
 		for (i = 0 ; i < 2 ; i++)
 		{
@@ -406,6 +470,26 @@ void CL_Record_f (void)
 	}
 }
 
+void StartPlayingOpenedDemo (void)
+{
+	int		c;
+	qboolean	neg = false;
+
+	cls.demoplayback = true;
+	cls.state = ca_connected;
+	cls.forcetrack = 0;
+
+	while ((c = getc(cls.demofile)) != '\n')
+	{
+		if (c == '-')
+			neg = true;
+		else
+			cls.forcetrack = cls.forcetrack * 10 + (c - '0');
+	}
+
+	if (neg)
+		cls.forcetrack = -cls.forcetrack;
+}
 
 /*
 ====================
@@ -434,35 +518,41 @@ void CL_PlayDemo_f (void)
 //
 	CL_Disconnect ();
 	
-//
+	// added by joe, but FIXME!
+	if (cl_demorewind.value)
+	{
+		Con_Printf ("ERROR: rewind is on\n");
+		cls.demonum = -1;
+		return;
+	}
+
 // open the demo file
 //
 	strcpy (name, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".dem");
 
-	Con_Printf ("Playing demo from %s.\n", name);
+	/*if (!strncmp(name, "../", 3) || !strncmp(name, "..\\", 3))
+		cls.demofile = fopen (va("%s/%s", com_basedir, name + 3), "rb");
+	else
+		COM_FOpenFile (name, &cls.demofile); */
+	
 	COM_FOpenFile (name, &cls.demofile);
 	if (!cls.demofile)
 	{
-		Con_Printf ("ERROR: couldn't open.\n");
+		// Baker 3.76 - Check outside the demos folder!
+		cls.demofile = fopen(name, "rb"); // Baker 3.76 - check DarkPlaces file system
+
+		if (!cls.demofile)  // Baker 3.76 - still failed
+		{
+			Con_Printf ("ERROR: couldn't open %s\n", name);
 		cls.demonum = -1;		// stop demo loop
 		return;
 	}
+	}
 
-	cls.demoplayback = true;
-	cls.state = ca_connected;
-	cls.forcetrack = 0;
+	Con_Printf ("Playing demo from %s\n", COM_SkipPath(name));
 
-	while ((c = getc(cls.demofile)) != '\n')
-		if (c == '-')
-			neg = true;
-		else
-			cls.forcetrack = cls.forcetrack * 10 + (c - '0');
-
-	if (neg)
-		cls.forcetrack = -cls.forcetrack;
-// ZOID, fscanf is evil
-//	fscanf (cls.demofile, "%i\n", &cls.forcetrack);
+	StartPlayingOpenedDemo ();
 }
 
 /*

@@ -932,22 +932,22 @@ void NET_Init (void)
 	// allocate space for network message buffer
 	SZ_Alloc (&net_message, NET_MAXMESSAGE);
 
-	Cvar_RegisterVariable (&net_messagetimeout);
-	Cvar_RegisterVariable (&net_connecttimeout);	// JPG 2.01 - qkick/qflood protection
-	Cvar_RegisterVariable (&hostname);
-	Cvar_RegisterVariable (&pq_password);			// JPG 3.00 - password protection
-	Cvar_RegisterVariable (&rcon_password);			// JPG 3.00 - rcon password
-	Cvar_RegisterVariable (&rcon_server);			// JPG 3.00 - rcon server
-	Cvar_RegisterVariable (&config_com_port);
-	Cvar_RegisterVariable (&config_com_irq);
-	Cvar_RegisterVariable (&config_com_baud);
-	Cvar_RegisterVariable (&config_com_modem);
-	Cvar_RegisterVariable (&config_modem_dialtype);
-	Cvar_RegisterVariable (&config_modem_clear);
-	Cvar_RegisterVariable (&config_modem_init);
-	Cvar_RegisterVariable (&config_modem_hangup);
+	Cvar_RegisterVariable (&net_messagetimeout, NULL);
+	Cvar_RegisterVariable (&net_connecttimeout, NULL);	// JPG 2.01 - qkick/qflood protection
+	Cvar_RegisterVariable (&hostname, NULL);
+	Cvar_RegisterVariable (&pq_password, NULL);			// JPG 3.00 - password protection
+	Cvar_RegisterVariable (&rcon_password, NULL);			// JPG 3.00 - rcon password
+	Cvar_RegisterVariable (&rcon_server, NULL);			// JPG 3.00 - rcon server
+	Cvar_RegisterVariable (&config_com_port, NULL);
+	Cvar_RegisterVariable (&config_com_irq, NULL);
+	Cvar_RegisterVariable (&config_com_baud, NULL);
+	Cvar_RegisterVariable (&config_com_modem, NULL);
+	Cvar_RegisterVariable (&config_modem_dialtype, NULL);
+	Cvar_RegisterVariable (&config_modem_clear, NULL);
+	Cvar_RegisterVariable (&config_modem_init, NULL);
+	Cvar_RegisterVariable (&config_modem_hangup, NULL);
 #ifdef IDGODS
-	Cvar_RegisterVariable (&idgods);
+	Cvar_RegisterVariable (&idgods, NULL);
 #endif
 
 	Cmd_AddCommand ("slist", NET_Slist_f);

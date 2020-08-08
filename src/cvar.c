@@ -348,14 +348,6 @@ void Cvar_Reset (char *name)
 Cvar_Set
 ============
 */
-extern qboolean OnChange_vid_vsync (cvar_t *var, char *string);
-extern qboolean OnChange_m_directinput (cvar_t *var, char *string);
-extern qboolean OnChange_scr_fov (cvar_t *var, char *string);
-extern float OnChange_validate_default_fov (char *string);
-extern	cvar_t	m_directinput;
-extern  cvar_t  in_keymap;
-extern  cvar_t  default_fov;
-
 void Cvar_Set (char *var_name, char *value)
 {
 	cvar_t	*var;
@@ -391,32 +383,11 @@ void Cvar_Set (char *var_name, char *value)
 			SV_BroadcastPrintf ("\"%s\" changed to \"%s\"\n", var->name, var->string);
 	}
 
+	//johnfitz
+	if(var->callback && changed)
+		var->callback();
+	//johnfitz
 
-#ifdef GLQUAKE
-	// Baker 3.80x supervsync hack for a test
-	if ((var->server == 3) && changed)
-		OnChange_vid_vsync(&vid_vsync, var->string);
-#endif
-
-	// Baker 3.85x DirectInput change support
-	if ((var->server == 4) && changed)
-		OnChange_m_directinput(&m_directinput, var->string);
-
-	// Baker 3.85x International keyboard support ON|OFF capability
-	if ((var->server == 5) && changed)
-		OnChange_in_keymap(&m_directinput, var->string);
-
-	// Baker 3.85x Default FOV (Checking FOV)
-	if ((var->server == 6) && changed)
-		OnChange_scr_fov(&scr_fov, var->string);
-
-	// Baker 3.85x Default FOV (Checking Default FOV)
-	if (var->server == 7) {
-		float newfov = OnChange_validate_default_fov(var->string);
-		if (newfov == 0) {
-			Cvar_Set("default_fov", "90");
-		}
-	} 
 
 	// JPG 3.00 - rcon (64 doesn't mean anything special, but we need some extra space because NET_MAXMESSAGE == RCON_BUFF_SIZE)
 	if (rcon_active && (rcon_message.cursize < rcon_message.maxsize - strlen(var->name) - strlen(var->string) - 64))
@@ -463,7 +434,7 @@ Cvar_RegisterVariable
 Adds a freestanding variable to the variable list.
 ============
 */
-void Cvar_RegisterVariable (cvar_t *variable)
+void Cvar_RegisterVariable (cvar_t *variable, void *function)
 {
 	char	*oldstr;
 	cvar_t	*cursor,*prev; //johnfitz -- sorted list insert
@@ -512,6 +483,9 @@ void Cvar_RegisterVariable (cvar_t *variable)
         variable->next = prev->next;
         prev->next = variable;
     }
+	//johnfitz
+
+	variable->callback = function; //johnfitz
 }
 
 

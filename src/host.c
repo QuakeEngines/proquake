@@ -20,6 +20,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // host.c -- coordinates spawning and killing of local servers
 
 #include "quakedef.h"
+
+#ifdef _WIN32
+#include "movie.h"
+#endif
+
 #include "r_local.h"
 
 /*
@@ -54,9 +59,11 @@ jmp_buf 	host_abortserver;
 
 byte		*host_basepal;
 byte		*host_colormap;
+qboolean	nostartdemos = false;
 
 cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
 cvar_t	host_speeds = {"host_speeds","0"};			// set for running times
+cvar_t	host_timescale = {"host_timescale", "0"}; //johnfitz
 
 cvar_t	sys_ticrate = {"sys_ticrate","0.05"};
 cvar_t	serverprofile = {"serverprofile","0"};
@@ -275,36 +282,37 @@ void Host_InitLocal (void)
 {
 	Host_InitCommands ();
 	
-	Cvar_RegisterVariable (&host_framerate);
-	Cvar_RegisterVariable (&host_speeds);
+	Cvar_RegisterVariable (&host_framerate, NULL);
+	Cvar_RegisterVariable (&host_speeds, NULL);
+	Cvar_RegisterVariable (&host_timescale, NULL); //johnfitz
 
-	Cvar_RegisterVariable (&sys_ticrate);
-	Cvar_RegisterVariable (&serverprofile);
+	Cvar_RegisterVariable (&sys_ticrate, NULL);
+	Cvar_RegisterVariable (&serverprofile, NULL);
 
-	Cvar_RegisterVariable (&fraglimit);
-	Cvar_RegisterVariable (&timelimit);
-	Cvar_RegisterVariable (&teamplay);
-	Cvar_RegisterVariable (&samelevel);
-	Cvar_RegisterVariable (&noexit);
-	Cvar_RegisterVariable (&skill);
-	Cvar_RegisterVariable (&developer);
-	Cvar_RegisterVariable (&deathmatch);
-	Cvar_RegisterVariable (&coop);
+	Cvar_RegisterVariable (&fraglimit, NULL);
+	Cvar_RegisterVariable (&timelimit, NULL);
+	Cvar_RegisterVariable (&teamplay, NULL);
+	Cvar_RegisterVariable (&samelevel, NULL);
+	Cvar_RegisterVariable (&noexit, NULL);
+	Cvar_RegisterVariable (&skill, NULL);
+	Cvar_RegisterVariable (&developer, NULL);
+	Cvar_RegisterVariable (&deathmatch, NULL);
+	Cvar_RegisterVariable (&coop, NULL);
 
-	Cvar_RegisterVariable (&pausable);
+	Cvar_RegisterVariable (&pausable, NULL);
 
-	Cvar_RegisterVariable (&temp1);
+	Cvar_RegisterVariable (&temp1, NULL);
 
 	Cmd_AddCommand ("writeconfig", Host_WriteConfig_f);	// by joe
 
-	Cvar_RegisterVariable (&proquake);		// JPG - added this so QuakeC can find it
-	Cvar_RegisterVariable (&pq_spam_rate);	// JPG - spam protection
-	Cvar_RegisterVariable (&pq_spam_grace);	// JPG - spam protection
-	Cvar_RegisterVariable (&pq_tempmute);	// JPG 3.20 - temporary muting
-	Cvar_RegisterVariable (&pq_showedict);	// JPG 3.11 - feature request from Slot Zero
-	Cvar_RegisterVariable (&pq_dequake);	// JPG 1.05 - translate dedicated console output to plain text
-	Cvar_RegisterVariable (&pq_maxfps);		// JPG 1.05
-	Cvar_RegisterVariable (&pq_logbinds);	// JPG 3.20 - log player binds
+	Cvar_RegisterVariable (&proquake, NULL);		// JPG - added this so QuakeC can find it
+	Cvar_RegisterVariable (&pq_spam_rate, NULL);	// JPG - spam protection
+	Cvar_RegisterVariable (&pq_spam_grace, NULL);	// JPG - spam protection
+	Cvar_RegisterVariable (&pq_tempmute, NULL);	// JPG 3.20 - temporary muting
+	Cvar_RegisterVariable (&pq_showedict, NULL);	// JPG 3.11 - feature request from Slot Zero
+	Cvar_RegisterVariable (&pq_dequake, NULL);	// JPG 1.05 - translate dedicated console output to plain text
+	Cvar_RegisterVariable (&pq_maxfps, NULL);		// JPG 1.05
+	Cvar_RegisterVariable (&pq_logbinds, NULL);	// JPG 3.20 - log player binds
 
 	Host_FindMaxClients ();
 	
@@ -357,6 +365,8 @@ void Host_WriteConfig (char *cfgname)
 
 	Cvar_WriteVariables (f);
 	fprintf (f, "\n// *****************************************\n"); // Baker 3.60  */
+	//johnfitz -- extra commands to preserve state
+	fprintf (f, "vid_restart\n");
 	fclose (f);
 }
 
@@ -645,23 +655,35 @@ Returns false if the time is too short to run a frame
 */
 qboolean Host_FilterTime (float time)
 {
+	double	fps;
+
 	realtime += time;
 
-	if (!cls.timedemo && realtime - oldrealtime < 1.0 / pq_maxfps.value)
-		return false;		// framerate is too high
+	fps = max(10, pq_maxfps.value);
+
+	if (!cls.capturedemo && !cls.timedemo && realtime - oldrealtime < 1.0 / fps)
+		return false;
+
+#ifdef _WIN32
+	if (Movie_IsActive())
+		host_frametime = Movie_FrameTime ();
+	else
+#endif
 
 	host_frametime = realtime - oldrealtime;
+	if (cls.demoplayback)
+		host_frametime *= bound(0, cl_demospeed.value, 20);
 	oldrealtime = realtime;
 
-	if (host_framerate.value > 0)
+	//johnfitz -- host_timescale is more intuitive than host_framerate
+	if (host_timescale.value > 0)
+		host_frametime *= host_timescale.value;
+	//johnfitz
+	else if (host_framerate.value > 0)
 		host_frametime = host_framerate.value;
 	else
-	{	// don't allow really long or short frames
-		if (host_frametime > 0.1)
-			host_frametime = 0.1;
-		if (host_frametime < 0.001)
-			host_frametime = 0.001;
-	}
+	// don't allow really long or short frames
+		host_frametime = bound(0.001, host_frametime, 0.1);
 	
 	return true;
 }
@@ -877,8 +899,13 @@ void _Host_Frame (float time)
 		time3 = Sys_FloatTime ();
 		pass2 = (time2 - time1)*1000;
 		pass3 = (time3 - time2)*1000;
-		Con_Printf ("%3i tot %3i server %3i gfx %3i snd\n",
-					pass1+pass2+pass3, pass1, pass2, pass3);
+		Con_Printf ("%3i tot %3i server %3i gfx %3i snd\n", pass1+pass2+pass3, pass1, pass2, pass3);
+	}
+	
+	if (!cls.demoplayback && cl_demorewind.value)
+	{
+		Cvar_Set ("cl_demorewind", "0");
+		Con_Printf ("Demorewind is only enabled during playback\n");
 	}
 	
 	host_framecount++;
@@ -908,8 +935,7 @@ void Host_Frame (float time)
 		return;
 
 	m = timetotal*1000/timecount;
-	timecount = 0;
-	timetotal = 0;
+	timecount = timetotal = 0;
 	c = 0;
 	for (i=0 ; i<svs.maxclients ; i++)
 	{
@@ -990,6 +1016,11 @@ void Host_InitVCR (quakeparms_t *parms)
 Host_Init
 ====================
 */
+
+//void CreateSetKeyExtension(void);
+//void CreateSetKeyDescription(void);
+//void CreateSetKeyCommandLine(const char* exeline);
+
 void Host_Init (quakeparms_t *parms)
 {
 
@@ -1029,7 +1060,7 @@ void Host_Init (quakeparms_t *parms)
 	Memory_Init (parms->membase, parms->memsize);
 	Cbuf_Init ();
 	Cmd_Init ();	
-	Cvar_Init ();
+	Cvar_Init (); //johnfitz
 	V_Init ();
 	Chase_Init ();
 	Host_InitVCR (parms);
@@ -1046,6 +1077,7 @@ void Host_Init (quakeparms_t *parms)
 	NET_Init ();
 	SV_Init ();
 	IPLog_Init ();	// JPG 1.05 - ip address logging
+
 
 	Con_Printf ("Exe: "__TIME__" "__DATE__"\n");
 	Con_Printf ("%4.1f megabyte heap\n",parms->memsize/ (1024*1024.0));
@@ -1087,6 +1119,29 @@ void Host_Init (quakeparms_t *parms)
 #ifdef _WIN32 // on non win32, mouse comes before video for security reasons
 		IN_Init ();
 #endif
+
+		// Baker 3.76 - Autoplay demo
+
+		if (com_argc >= 2)
+		{
+			char *infile = com_argv[1];
+
+			if (infile[0] && infile[0] != '-' && infile[0] != '+') {
+				char tmp[1024] = {0}, *ext = COM_FileExtension(infile);
+
+				if (!Q_strncasecmp(ext, "dem", sizeof("dem")))
+					Q_snprintfz(tmp, sizeof(tmp), "playdemo \"%s\"\n", infile);
+
+				if (tmp[0])
+				{
+					nostartdemos = true;
+					Cbuf_AddText(tmp);
+				}
+			}
+		}
+
+
+
 	}
 
 	Cbuf_InsertText ("exec quake.rc\n");

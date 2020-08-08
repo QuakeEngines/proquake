@@ -1,8 +1,38 @@
-Unofficial ProQuake 3.85 - Change Log - Baker   wwww.quakeone.com - December 7, 2007
+Unofficial ProQuake 3.90 - Change Log - Baker   wwww.quakeone.com - December 18, 2007
 ------------------------------------------------------------------------------------
 This is an effort to update the ProQuake engine with bug-fixes and some add modern conveniences without altering any of the look or feel of the ProQuake engine.  Conservative improvements like making the brightness controls work in GLPro, fixing major rendering bugs like the historical GLQuake FOV bug, and simple things like command completion are in the scope of this; things like adding 24-bit texture support, new particle effects or unnecessary things (like an MP3 player) are not in the scope of this project.  
 
 This is merely an attempt to improve the best engine for an authentic 1999-style deathmatch experience.  
+
+V3.90 (Beta):
+
+- Anti-wallhack code added, sv_cullplayers_trace (1=on by default, set to 0 to turn it off).
+- sv_cullplayers_notify 1/0; for testing only.  Prints whether or not a player is visible to server console.
+- Small (say_team) display issue fixed; 3.89 had changed messagemode2 prompt from "(say)" to "(say_team)" for clarity.
+
+V3.89 (Beta):
+
+- Automatically play demos (.dem) by clicking on them (in your Quake folder, in a zip file, on the internet, etc.)
+- Demo rewind/fast forward
+- Todo Fix list:  international keyboard + keypad; finish in-client video mode changing to completion; don't allow FF/rewind during pause.
+
+V3.88 (Beta):
+
+- Fixed AVI capture audio bug
+- Software renderer (wqpro) now supports AVI capture as well
+- Possible fix for an uncommon "mystery characters printing on scoreboard" in deathmatch problem. (Needs verification, since I don't have the problem).
+- Fix for international keyboard issue with keypad.
+
+V3.87 (Beta):
+
+- Added AVI capture capability from JoeQuake Build 1862.
+- Resolved situation where ctrl/alt/shift state was not reset upon switching in and out of client.
+
+V3.86:
+
+- Ability to change video mode in-game in glpro via Video Options. (From FitzQuake/Qrack).  I want to refine the startup more like Qrack does, instead of setting the video state twice like FitzQuake does.
+- Set the console width in realtime with vid_conwidth and vid_conheight.  (From Qrack/FitzQuake).
+- TODO:  Make video mode options unavailable in -window mode or implement full FitzQuake texture manager process so color depth can be changed.
 
 V3.85:
 

@@ -192,7 +192,11 @@ void R_ClearParticles (void)
 	particles[r_numparticles-1].next = NULL;
 }
 
-
+/*
+===============
+R_ReadPointFile_f
+===============
+*/
 void R_ReadPointFile_f (void)
 {
 	FILE	*f;
@@ -534,6 +538,11 @@ void R_TeleportSplash (vec3_t org)
 			}
 }
 
+/*
+===============
+R_RocketTrail
+===============
+*/
 void R_RocketTrail (vec3_t start, vec3_t end, int type)
 {
 	vec3_t		vec;

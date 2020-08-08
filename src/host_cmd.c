@@ -508,7 +508,7 @@ void Host_SavegameComment (char *text)
 
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
 		text[i] = ' ';
-	memcpy (text, cl.levelname, strlen(cl.levelname));
+	memcpy (text, cl.levelname, min(strlen(cl.levelname),22)); //johnfitz -- only copy 22 chars. 
 	sprintf (kills,"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	memcpy (text+22, kills, strlen(kills));
 // convert space to _ to make stdio happy
@@ -1697,7 +1697,7 @@ Host_Give_f
 void Host_Give_f (void)
 {
 	char	*t;
-	int		v /*, w*/;
+	int		v;
 	eval_t	*val;
 
 	if (cmd_source == src_command)
@@ -2011,6 +2011,14 @@ void Host_Startdemos_f (void)
 {
 	int		i, c;
 
+	if (nostartdemos)
+	{
+		// Baker 3.76
+		// This is hack to prevent demo auto-play from having demos in queue play
+		// after a file associated demo plays
+		return;
+	}
+
 	if (cls.state == ca_dedicated)
 	{
 		if (!sv.active)
@@ -2321,5 +2329,5 @@ void Host_InitCommands (void)
 	Cmd_AddCommand ("identify", Host_Identify_f);	// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipdump", IPLog_Dump);			// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipmerge", IPLog_Import);		// JPG 3.00 - import an IP data file
-	Cvar_RegisterVariable (&cl_confirmquit); // Baker 3.60
+	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
 }

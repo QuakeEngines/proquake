@@ -28,6 +28,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern cvar_t   _windowed_mouse;    /* CSR */
 #endif                              /* CSR */
 
+#ifdef GLQUAKE
+void (*vid_menucmdfn)(void); //johnfitz
+#endif
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
@@ -86,6 +89,7 @@ void M_NameMaker_Draw (void);//JQ1.5Dev
 		void M_Net_Draw (void);
 	void M_Options_Draw (void);
 		void M_Keys_Draw (void);
+//void M_VideoModes_Draw (void);
 		void M_Video_Draw (void);
 	void M_Help_Draw (void);
 	void M_Quit_Draw (void);
@@ -329,7 +333,7 @@ void M_Main_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/mainmenu.lmp") );
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;
 
 	M_DrawTransPic (54, 32 + m_main_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
@@ -412,7 +416,7 @@ void M_SinglePlayer_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/sp_menu.lmp") );
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;
 
 	M_DrawTransPic (54, 32 + m_singleplayer_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
@@ -445,7 +449,7 @@ void M_SinglePlayer_Key (int key, int ascii)
 		{
 		case 0:
 			if (sv.active)
-				if (!SCR_ModalMessage("Are you sure you want to\nstart a new game?\n"))
+				if (!SCR_ModalMessage("Are you sure you want to\nstart a new game?\n",0.0f))
 					break;
 			key_dest = key_game;
 			if (sv.active)
@@ -657,7 +661,7 @@ void M_MultiPlayer_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/mp_menu.lmp") );
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;
 
 	M_DrawTransPic (54, 32 + m_multiplayer_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 
@@ -1152,7 +1156,7 @@ void M_Net_Draw (void)
 	M_Print (f, 158, net_helpMessage[m_net_cursor*4+2]);
 	M_Print (f, 166, net_helpMessage[m_net_cursor*4+3]);
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;
 	M_DrawTransPic (54, 32 + m_net_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
 
@@ -1477,7 +1481,7 @@ void M_Options_Key (int key, int ascii)
 			Con_ToggleConsole_f ();
 			break;
 		case 2:
-			if (!SCR_ModalMessage("Are you sure you want to reset\nall settings?\n"))
+			if (!SCR_ModalMessage("Are you sure you want to reset\nall settings?\n",0.0f))
 					break;
 			
 			Cbuf_AddText ("resetall\n"); //johnfitz
@@ -2011,7 +2015,6 @@ void M_Pref_Options_Draw (void)
 {
 	int i = 32;
 	char *title;
-//	float		r;
 	qpic_t	*p;
 
 	M_DrawTransPic (16, 4, Draw_CachePic ("gfx/qplaque.lmp") );
@@ -2127,9 +2130,13 @@ void M_Pref_Options_Key (int key, int ascii)
 
 void M_Menu_Video_f (void)
 {
+#ifdef GLQUAKE
+	(*vid_menucmdfn) (); //johnfitz	
+#else
 	key_dest = key_menu;
 	m_state = m_video;
-	m_entersound = true;
+	m_entersound = true; 
+#endif
 }
 
 
@@ -2179,7 +2186,7 @@ void M_Help_Draw (void)
 		M_Print		(28, 120,  " http://planetquake.com/proquake  ");
 		M_Print     (32, 136, "<-- Previous            Next -->");
 
-		f = (int)(host_time * 8)%6;
+		f = (int)(realtime * 8)%6;
 		M_DrawTransPic (48, 40 ,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 		M_DrawTransPic (248, 40 ,Draw_CachePic( va("gfx/menudot%i.lmp", f?7-f:1) ) );
 	}

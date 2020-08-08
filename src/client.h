@@ -101,11 +101,21 @@ typedef struct
 	vec3_t	start, end;
 } beam_t;
 
+
+// added by joe
+typedef struct framepos_s
+{
+	long		baz;
+	struct framepos_s *next;
+} framepos_t;
+
+extern	framepos_t	*dem_framepos;		// by joe
+
 #define	MAX_EFRAGS		640
 
 #define	MAX_MAPSTRING	2048
-#define	MAX_DEMOS		8
-#define	MAX_DEMONAME	16
+#define	MAX_DEMOS	32
+#define	MAX_DEMONAME	64
 
 typedef enum {
 ca_dedicated, 		// a dedicated server with no ability to start a client
@@ -146,6 +156,7 @@ typedef struct
 	struct qsocket_s	*netcon;
 	sizebuf_t	message;		// writing buffer to send to server
 	
+	qboolean	capturedemo;
 } client_static_t;
 
 extern client_static_t	cls;
@@ -208,6 +219,7 @@ typedef struct
 								// a lerp point for other data
 	double		oldtime;		// previous cl.time, time-oldtime is used
 								// to decay light values and smooth step ups
+	double		ctime;			// Baker 3.75 - joe: copy of cl.time, to avoid incidents caused by rewind
 	
 
 	float		last_received_message;	// (realtime) for net trouble icon
@@ -289,6 +301,8 @@ extern	cvar_t	m_yaw;
 extern	cvar_t	m_forward;
 extern	cvar_t	m_side;
 
+extern	cvar_t	cl_demorewind;
+extern	cvar_t	cl_demospeed;
 
 #define	MAX_TEMP_ENTITIES	64			// lightning bolts, etc
 #define	MAX_STATIC_ENTITIES	128			// torches, etc

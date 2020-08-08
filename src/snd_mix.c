@@ -21,6 +21,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
+
+#ifdef _WIN32
+#include "movie.h"
+#endif
+
+
 #ifdef _WIN32
 #include "winquake.h"
 #else
@@ -128,6 +134,11 @@ void S_TransferStereo16 (int endtime)
 
 		snd_p += snd_linear_count;
 		lpaintedtime += (snd_linear_count>>1);
+
+#ifdef _WIN32
+		Movie_TransferStereo16 ();
+#endif
+
 	}
 
 #ifdef _WIN32

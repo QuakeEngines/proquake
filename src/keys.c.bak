@@ -57,9 +57,16 @@ qboolean	keydown[256];
 
 
 static qboolean key_international = true;
+
+cvar_t	    cl_bindprotect = {"cl_bindprotect","2", true};
 cvar_t		in_keymap = {"in_keymap", "1", true, 5};
-qboolean OnChange_in_keymap (cvar_t *var, char *string) {
-	
+
+void Key_ClearAllStates (void);
+
+void KEY_Keymap_f (void) {
+	// called when in_keymap changes
+	Key_ClearAllStates();
+
 	if (in_keymap.value) {
 		key_international = true;
 		Con_Printf("International Keyboard is ON\n");
@@ -67,9 +74,15 @@ qboolean OnChange_in_keymap (cvar_t *var, char *string) {
 		key_international = false;
 		Con_Printf("International Keyboard is OFF\n");
 	}
-		
-	return false;
 }
+
+qboolean Key_InternationalON(void) {
+	if (key_international)
+		return true;
+	else
+		return false;
+}
+
 
 typedef struct
 {
@@ -256,7 +269,7 @@ void Key_Console (int key, int ascii)
 #endif
 	// end mod
 
-	Con_Printf ("Key Console ... k is %d a is %d\n", key, ascii);
+	//Con_Printf ("Key Console ... k is %d a is %d\n", key, ascii);
 
 	switch (key)
 	{
@@ -306,6 +319,9 @@ void Key_Console (int key, int ascii)
 		key = '.';
 		break;
 	}
+
+	if (!key_international)
+		ascii = key; // Baker 3.88: Fix for if international keyboard mapping is off?
 
 	if (key == K_ENTER || key == KP_ENTER) // Baker 3.60 - keypad enter
 	{
@@ -713,9 +729,26 @@ void Key_Unbind_f (void)
 	Key_SetBinding (b, "");
 }
 
+
+extern  keydest_t		key_dest;
 void Key_Unbindall_f (void)
 {
 	int		i;
+	
+	if (cls.state == ca_connected && (cl_bindprotect.value!=0) && (key_dest!=key_menu)) {
+
+		if (cl_bindprotect.value==2) {
+			// Prompt
+			if (!SCR_ModalMessage("Unbindall keys entered, allow? y/n\n",0.0f))
+				return;
+		} else {
+			// Deny And Notify
+			Con_Printf("unbindall keys command entered and denied by cl_bindprotect.\n");
+			return;
+		}
+	}
+			
+	
 	
 	for (i=0 ; i<256 ; i++)
 		if (keybindings[i])
@@ -905,6 +938,8 @@ void Key_Init (void)
 //
 // register our functions
 //
+	Cvar_RegisterVariable(&cl_bindprotect, NULL);
+	
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
 	Cmd_AddCommand ("bind",Key_Bind_f);
 	Cmd_AddCommand ("unbind",Key_Unbind_f);
@@ -926,11 +961,13 @@ void Key_Event (int key, int ascii, qboolean down)
 {
 	char	*kb;
 	char	cmd[1024];
-	unsigned char	flex_ascii;
+	int	flex_ascii;
 
 	if (!key_international) {
 		flex_ascii = (key & 255);
-		Con_Printf("Default keyboard translation k %d a %d \n", key, flex_ascii);
+		if (flex_ascii > 127)
+			flex_ascii = 0;
+		//Con_Printf("Default keyboard translation k %d a %d k_shift %d \n", key, flex_ascii, K_SHIFT);
 	} else {
 		flex_ascii = ascii;
 	}
@@ -1071,7 +1108,18 @@ void Key_Event (int key, int ascii, qboolean down)
 	if (shift_down)
 	{
 		key = keyshift[key];
+
+		if (!key_international) {
+			flex_ascii = (key & 255);
+			if (flex_ascii > 127)
+				flex_ascii = 0;
+			//Con_Printf("Default keyboard translation k %d a %d k_shift %d \n", key, flex_ascii, K_SHIFT);
+		} else {
+			flex_ascii = ascii;
+		}
 	}
+
+
 
 	switch (key_dest)
 	{
@@ -1108,6 +1156,12 @@ void Key_ClearAllStates (void)
 
 	Key_ClearStates ();
  	//IN_ClearStates ();  //Baker 3.71 - DP doesn~t do this
+	
+	
+	// Baker 3.87: Clear the shift/ctrl/alt status as well!
+	shift_down=false;
+	ctrl_down=false;
+	alt_down=false;
 }
 
 /*

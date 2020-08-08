@@ -733,7 +733,7 @@ CL_ParseProQuakeMessage
 */
 void CL_ParseProQuakeMessage (void)
 {
-	int cmd, i, j;
+	int cmd, i /*, j*/;
 	int team, frags, shirt, ping;
 
 	MSG_ReadByte();
@@ -822,9 +822,9 @@ char *VersionString (void)
 {
 	static char str[32];
 #ifdef GLQUAKE
-	Q_snprintfz (str, sizeof(str), "glpro %s", PROQUAKE_VERSION /*, build_number()*/ );
+	Q_snprintfz (str, sizeof(str), "glpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
 #else
-	Q_snprintfz (str, sizeof(str), "wqpro %s", PROQUAKE_VERSION /*, build_number()*/ );
+	Q_snprintfz (str, sizeof(str), "wqpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
 #endif
 
 	return str;
@@ -841,8 +841,8 @@ void Q_Version(char *s)
 	{					
 		if (!strncmp(t, "q_version", 9))
 		{
-				//Cbuf_AddText (va("say ProQuake version %s\n", VersionString()));
-				Cbuf_AddText("say ProQuake version\n");
+				Cbuf_AddText (va("say ProQuake version %s\n", VersionString()));
+
 				Cbuf_Execute ();
 		}
 		n += 1;t += 1;

@@ -22,6 +22,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
+#ifdef _WIN32
+#include "movie.h"
+#endif
+
 /*
 
 background clear
@@ -80,6 +84,8 @@ float		scr_con_current;
 float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
+cvar_t		vid_conwidth = {"vid_conwidth", "0", true}; //johnfitz
+cvar_t		vid_conheight = {"vid_conheight", "0", true}; //johnfitz
 cvar_t		scr_viewsize = {"viewsize","100", true};
 cvar_t		scr_fov = {"fov","90", true, 6};	// 10 - 170  // Baker 3.60 - Save to config
 cvar_t		default_fov = {"default_fov","0", true, 7};	// Baker 3.85 - Default_fov from FuhQuake
@@ -262,7 +268,6 @@ Internal use only
 */
 static void SCR_CalcRefdef (void)
 {
-//	vrect_t		vrect;
 	float		size;
 	int		h;
 	qboolean		full = false;
@@ -334,9 +339,20 @@ static void SCR_CalcRefdef (void)
 	else
 		r_refdef.vrect.y = (h - r_refdef.vrect.height)/2;
 
-	r_refdef.fov_x = scr_fov.value;
-	r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
+	//r_refdef.fov_x = scr_fov.value;
+	//r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
 
+	if ((glwidth/glheight) > 1.34)
+    {
+        r_refdef.fov_y = CalcFov (oldfov, r_refdef.vrect.height * (320.0f / 240.0f), r_refdef.vrect.height);
+        r_refdef.fov_x = CalcFov (r_refdef.fov_y, vid.height, r_refdef.vrect.width);
+    }
+
+	else
+	{
+		r_refdef.fov_x = oldfov;
+		r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
+	} 
 	scr_vrect = r_refdef.vrect;
 }
 
@@ -368,6 +384,69 @@ void SCR_SizeDown_f (void)
 	vid.recalc_refdef = 1;
 }
 
+/*
+==================
+VID_Conwidth_f -- johnfitz -- called when vid_conwidth changes
+==================
+*/
+extern qpic_t *conback;
+void VID_Conheight_f (void)
+{
+	vid.height = CLAMP (200, vid_conheight.value, glheight);
+	//bound(200, (atoi(string)), vid_height.value);
+	
+	Cvar_SetValue("vid_conheight", vid.height);
+	
+	conback->height = vid.conheight = vid.height;
+	
+	vid.recalc_refdef = 1;
+}
+
+void VID_Conwidth_f (void)
+{
+	float startwidth = vid.width;
+	vid.width = (vid_conwidth.value > 0) ? (int)vid_conwidth.value : glwidth;
+	vid.width = CLAMP (320, vid.width, glwidth);
+	vid.width &= 0xFFFFFFF8;
+	vid.height = vid.width * glheight / glwidth;
+	vid.height &= 0xFFFFFFF8;
+
+	if (startwidth != vid.width) {
+		Cvar_SetValue("vid_conwidth", vid.width);
+		return; 
+	}
+
+	if (vid.height != vid_conheight.value)
+		Cvar_SetValue("vid_conheight", vid.height);
+
+	// From Qrack as test
+	conback->width = vid.conwidth = vid.width;
+	conback->height = vid.conheight = vid.height;
+
+	vid.recalc_refdef = 1;
+
+}
+
+void VID_Conwidth_f_Old (void)
+{
+	float startconwidth = vid.conwidth;
+	vid.conwidth = (vid_conwidth.value > 0) ? (int)vid_conwidth.value : glwidth;
+	vid.conwidth = CLAMP (320, vid.conwidth, glwidth);
+	vid.conwidth &= 0xFFFFFFF8;
+	vid.conheight = vid.conwidth * glheight / glwidth;
+	if (startconwidth != vid.conwidth) {
+		Cvar_SetValue("vid_conwidth", vid.conwidth);
+		return; 
+	}
+
+	// From Qrack as test
+	conback->width = vid.conwidth = vid.width;
+	conback->height = vid.conheight = vid.height;
+
+	vid.recalc_refdef = 1;
+
+}
+
 //============================================================================
 
 /*
@@ -375,22 +454,29 @@ void SCR_SizeDown_f (void)
 SCR_Init
 ==================
 */
+void CL_Default_fov_f(void);
+void CL_Fov_f(void);
 void SCR_Init (void)
 {
+	//johnfitz -- new cvars
+	Cvar_RegisterVariable (&vid_conwidth, &VID_Conwidth_f);
+	Cvar_RegisterVariable (&vid_conheight, &VID_Conheight_f);
+	//johnfitz
+	
 
-	Cvar_RegisterVariable (&default_fov);
-	Cvar_RegisterVariable (&scr_fov);
-	Cvar_RegisterVariable (&scr_viewsize);
-	Cvar_RegisterVariable (&scr_conspeed);
-	Cvar_RegisterVariable (&scr_showram);
-	Cvar_RegisterVariable (&scr_showturtle);
-	Cvar_RegisterVariable (&scr_showpause);
-	Cvar_RegisterVariable (&scr_centertime);
-	Cvar_RegisterVariable (&scr_printspeed);
-	Cvar_RegisterVariable (&gl_triplebuffer);
+	Cvar_RegisterVariable (&default_fov, &CL_Default_fov_f);
+	Cvar_RegisterVariable (&scr_fov, &CL_Fov_f);
+	Cvar_RegisterVariable (&scr_viewsize, NULL);
+	Cvar_RegisterVariable (&scr_conspeed, NULL);
+	Cvar_RegisterVariable (&scr_showram, NULL);
+	Cvar_RegisterVariable (&scr_showturtle, NULL);
+	Cvar_RegisterVariable (&scr_showpause, NULL);
+	Cvar_RegisterVariable (&scr_centertime, NULL);
+	Cvar_RegisterVariable (&scr_printspeed, NULL);
+	Cvar_RegisterVariable (&gl_triplebuffer, NULL);
 
-	Cvar_RegisterVariable (&pq_drawfps); // JPG - draw frames per second
-	Cvar_RegisterVariable (&show_speed); // Baker 3.67
+	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
+	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
 //
 // register our commands
 //
@@ -402,6 +488,9 @@ void SCR_Init (void)
 	scr_net = Draw_PicFromWad ("net");
 	scr_turtle = Draw_PicFromWad ("turtle");
 
+#ifdef _WIN32
+	Movie_Init ();
+#endif
 	scr_initialized = true;
 }
 
@@ -510,7 +599,7 @@ void SCR_DrawSpeed (void)
 	int		x;
 	char buff[10];
 	char *ch;
-	float		speed, vspeed /*, speedunits*/;
+	float		speed, vspeed;
 	vec3_t		vel;
 	static	float	maxspeed = 0, display_speed = -1;
 	static	double	lastrealtime = 0;
@@ -607,6 +696,11 @@ SCR_SetUpToDrawConsole
 */
 void SCR_SetUpToDrawConsole (void)
 {
+	//johnfitz -- let's hack away the problem of slow console when host_timescale is <0
+	extern cvar_t host_timescale;
+	float timescale;
+	//johnfitz
+
 	Con_CheckResize ();
 
 	if (scr_drawloading)
@@ -625,16 +719,18 @@ void SCR_SetUpToDrawConsole (void)
 	else
 		scr_conlines = 0;				// none visible
 
+	timescale = (host_timescale.value > 0) ? host_timescale.value : 1; //johnfitz -- timescale
+
 	if (scr_conlines < scr_con_current)
 	{
-		scr_con_current -= scr_conspeed.value*host_frametime;
+		scr_con_current -= scr_conspeed.value*host_frametime/timescale; //johnfitz -- timescale
 		if (scr_conlines > scr_con_current)
 			scr_con_current = scr_conlines;
 
 	}
 	else if (scr_conlines > scr_con_current)
 	{
-		scr_con_current += scr_conspeed.value*host_frametime;
+		scr_con_current += scr_conspeed.value*host_frametime/timescale; //johnfitz -- timescale
 		if (scr_conlines < scr_con_current)
 			scr_con_current = scr_conlines;
 	}
@@ -835,29 +931,42 @@ Displays a text string in the center of the screen and waits for a Y or N
 keypress.
 ==================
 */
-int SCR_ModalMessage (char *text)
+int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
+	double time1, time2; //johnfitz -- timeout
+
 	if (cls.state == ca_dedicated)
 		return true;
 
 	scr_notifystring = text;
 
 // draw a fresh screen
-	scr_fullupdate = 0;
+//	scr_fullupdate = 0;
 	scr_drawdialog = true;
 	SCR_UpdateScreen ();
 	scr_drawdialog = false;
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
+	time1 = Sys_FloatTime () + timeout; //johnfitz -- timeout
+	time2 = 0.0f; //johnfitz -- timeout
+
 	do
 	{
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
-	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE);
+		if (timeout) time2 = Sys_FloatTime (); //johnfitz -- zero timeout means wait forever.
+	} while (key_lastpress != 'y' &&
+			 key_lastpress != 'n' &&
+			 key_lastpress != K_ESCAPE &&
+			 time2 <= time1);
 
-	scr_fullupdate = 0;
-	SCR_UpdateScreen ();
+//	SCR_UpdateScreen (); //johnfitz -- commented out
+
+	//johnfitz -- timeout
+	if (time2 > time1)
+		return false;
+	//johnfitz
 
 	return key_lastpress == 'y';
 }
@@ -923,7 +1032,6 @@ needs almost the entire 256k of stack space!
 void SCR_UpdateScreen (void)
 {
 	static float	oldscr_viewsize;
-//	vrect_t		vrect;
 
 	if (block_drawing)
 		return;
@@ -1036,6 +1144,9 @@ void SCR_UpdateScreen (void)
 
 	V_UpdatePalette ();
 
+#ifdef _WIN32
+	Movie_UpdateScreen ();
+#endif
 	GL_EndRendering ();
 }
 

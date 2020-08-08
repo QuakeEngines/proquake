@@ -194,9 +194,9 @@ void Sbar_Init (void)
 	Cmd_AddCommand ("+showscores", Sbar_ShowScores);
 	Cmd_AddCommand ("-showscores", Sbar_DontShowScores);
 
-	Cvar_RegisterVariable (&pq_teamscores); // JPG - status bar teamscores
-	Cvar_RegisterVariable (&pq_timer); // JPG - status bar timer
-	Cvar_RegisterVariable (&pq_scoreboard_pings); // JPG - ping times in the scoreboard
+	Cvar_RegisterVariable (&pq_teamscores, NULL); // JPG - status bar teamscores
+	Cvar_RegisterVariable (&pq_timer, NULL); // JPG - status bar timer
+	Cvar_RegisterVariable (&pq_scoreboard_pings, NULL); // JPG - ping times in the scoreboard
 
 	sb_sbar = Draw_PicFromWad ("sbar");
 	sb_ibar = Draw_PicFromWad ("ibar");
@@ -496,6 +496,38 @@ void Sbar_SoloScoreboard (void)
 	char	str[80];
 	int		minutes, seconds, tens, units;
 	int		l;
+	int		current_skill;
+
+
+	if ((!cls.demoplayback) && cl.gametype != GAME_DEATHMATCH) // Baker 3.75 - do not display skill if demo is playing, because we don't know!
+	{
+		current_skill = (int)(skill.value);
+		if (current_skill < 0)
+			current_skill = 0;
+		if (current_skill > 3)
+			current_skill = 3;
+		
+		switch (current_skill)
+		{
+		case 0:
+			sprintf (str, "skill: åáóù", current_skill);
+			break;
+		case 1:
+			sprintf (str, "skill: îïòíáì", current_skill);
+			break;
+		case 2:
+			sprintf (str, "skill: èáòä", current_skill);
+			break;
+		case 3:
+			sprintf (str, "skill: îéçèôíáòå", current_skill);
+			break;
+		}
+		
+		Draw_String (vid.width - (24 + strlen(str) * 8), 8 + (pq_drawfps.value ? 8:0) + (show_speed.value ? 8:0), str);
+	}
+
+	
+
 
 	sprintf (str,"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	Sbar_DrawString (8, 4, str);
@@ -1025,8 +1057,13 @@ void Sbar_Draw (void)
 	if (scr_con_current == vid.height)
 		return;		// console is full screen
 
-	if (sb_updates >= vid.numpages)
+#ifdef	GLQUAKE
+	if (sb_updates >= vid.numpages && !gl_clear.value) //Baker 3.60 - gl_clear fix with sbar
 		return;
+#else
+	if (sb_updates >= vid.numpages) //Baker 3.60 - gl_clear fix with sbar
+		return;
+#endif
 
 	scr_copyeverything = 1;
 
@@ -1304,7 +1341,7 @@ Sbar_DeathmatchOverlay
 */
 void Sbar_MiniDeathmatchOverlay (void)
 {
-	qpic_t			*pic;
+//	qpic_t			*pic;
 	int				i, k, l;
 	int				top, bottom;
 	int				x, y, f;

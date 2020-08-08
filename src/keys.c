@@ -62,8 +62,9 @@ cvar_t	    cl_bindprotect = {"cl_bindprotect","2", true};
 cvar_t		in_keymap = {"in_keymap", "1", true, 5};
 
 void Key_ClearAllStates (void);
-qboolean OnChange_in_keymap (cvar_t *var, char *string) {
 
+void KEY_Keymap_f (void) {
+	// called when in_keymap changes
 	Key_ClearAllStates();
 
 	if (in_keymap.value) {
@@ -73,8 +74,6 @@ qboolean OnChange_in_keymap (cvar_t *var, char *string) {
 		key_international = false;
 		Con_Printf("International Keyboard is OFF\n");
 	}
-		
-	return false;
 }
 
 qboolean Key_InternationalON(void) {
@@ -263,13 +262,6 @@ void Key_Console (int key, int ascii)
 	char	*cmd;
 	qboolean     passed=false;
 	
-	// JPG - modified FrikaC's code for pasting from clipboard
-#ifdef _WIN32
-	HANDLE  th;
-	char	*s;
-#endif
-	// end mod
-
 	//Con_Printf ("Key Console ... k is %d a is %d\n", key, ascii);
 
 	switch (key)
@@ -320,6 +312,9 @@ void Key_Console (int key, int ascii)
 		key = '.';
 		break;
 	}
+
+	if (!key_international)
+		ascii = key; // Baker 3.88: Fix for if international keyboard mapping is off?
 
 	if (key == K_ENTER || key == KP_ENTER) // Baker 3.60 - keypad enter
 	{
@@ -408,8 +403,7 @@ void Key_Console (int key, int ascii)
 		{
 			history_line = (history_line + 1) & 31;
 		}
-		while (history_line != edit_line
-			&& !key_lines[history_line][1]);
+		while (history_line != edit_line && !key_lines[history_line][1]);
 		if (history_line == edit_line)
 		{
 			key_lines[edit_line][0] = ']';
@@ -457,14 +451,16 @@ void Key_Console (int key, int ascii)
 	{
 		if (OpenClipboard(NULL)) 
 		{
+			HANDLE	th;
+			char	*clipText;
 			th = GetClipboardData(CF_TEXT);
 			if (th) 
 			{
-				s = GlobalLock(th);
-				if (s) 
+				clipText = GlobalLock(th);
+				if (clipText) 
 				{
-					while (*s && *s != '\n' && *s != '\r' && *s != '\b' && key_linepos < MAXCMDLINE - 1)
-						key_lines[edit_line][key_linepos++] = *s++;
+					while (*clipText && *clipText != '\n' && *clipText != '\r' && *clipText != '\b' && key_linepos < MAXCMDLINE - 1)
+						key_lines[edit_line][key_linepos++] = *clipText++;
 					key_lines[edit_line][key_linepos] = 0;
 				}
 				GlobalUnlock(th);
@@ -688,8 +684,7 @@ void Key_SetBinding (int keynum, char *binding)
 		return;
 
 // free old bindings
-	if (keybindings[keynum])
-	{
+	if (keybindings[keynum]) {
 		Z_Free (keybindings[keynum]);
 		keybindings[keynum] = NULL;
 	}
@@ -737,7 +732,7 @@ void Key_Unbindall_f (void)
 
 		if (cl_bindprotect.value==2) {
 			// Prompt
-			if (!SCR_ModalMessage("Unbindall keys entered, allow? y/n\n"))
+			if (!SCR_ModalMessage("Unbindall keys entered, allow? y/n\n",0.0f))
 				return;
 		} else {
 			// Deny And Notify
@@ -936,7 +931,7 @@ void Key_Init (void)
 //
 // register our functions
 //
-	Cvar_RegisterVariable(&cl_bindprotect);
+	Cvar_RegisterVariable(&cl_bindprotect, NULL);
 	
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
 	Cmd_AddCommand ("bind",Key_Bind_f);
@@ -989,8 +984,7 @@ void Key_Event (int key, int ascii, qboolean down)
 
 		// JPG 1.05 - added K_PGUP, K_PGDN, K_TAB and check to make sure that key_dest isn't key_game
 		// JPG 3.02 - added con_forcedup check
-		if ((key_repeats[key] > 1) && ((key != K_BACKSPACE && key != K_PAUSE && key != K_PGUP && key != K_PGDN && key != K_TAB) || 
-			((key_dest == key_game) && !con_forcedup)))
+		if ((key_repeats[key] > 1) && ((key != K_BACKSPACE && key != K_PAUSE && key != K_PGUP && key != K_PGDN && key != K_TAB) || ((key_dest == key_game) && !con_forcedup)))  // JPG 1.05 - added K_PGUP, K_PGDN, K_TAB and check to make sure that key_dest isn't key_game  // JPG 3.02 - added con_forcedup check
 		{
 			return;	// ignore most autorepeats
 		}
@@ -1075,6 +1069,46 @@ void Key_Event (int key, int ascii, qboolean down)
 		M_ToggleMenu_f ();
 		return;
 	}
+// Baker 3.76 - Modified demo play keys adapted from QRack but with different scheme
+	
+	if ((cls.demoplayback) && (cl_inconsole == false))
+	{
+		switch (key)
+		{	
+			case K_PGUP:
+				if (cl_demospeed.value != 1 || cl_demorewind.value !=0)
+				{
+					// If fast forwarding or rewinding then reset to default
+					Cvar_Set ("cl_demorewind", "0");
+					Cvar_SetValue ("cl_demospeed", 1);
+				}
+				else
+				{
+					// Fast forward
+					Cvar_Set ("cl_demorewind", "0");
+					Cvar_SetValue ("cl_demospeed", 5);
+				}
+				break;
+
+			case K_PGDN:
+				if (cl_demospeed.value == 1)
+				{
+					// If running normal, then rewind
+					Cvar_Set ("cl_demorewind", "1");
+					Cvar_SetValue ("cl_demospeed", 5);
+				}
+				else
+				{
+					// If not running normal then go normal speed
+					Cvar_Set ("cl_demorewind", "0");
+					Cvar_SetValue ("cl_demospeed", 1);
+				}
+				break;
+				
+			default:
+				break;
+		}
+	}
 
 //
 // if not a consolekey, send to the interpreter no matter what mode is
@@ -1154,6 +1188,12 @@ void Key_ClearAllStates (void)
 
 	Key_ClearStates ();
  	//IN_ClearStates ();  //Baker 3.71 - DP doesn~t do this
+	
+	
+	// Baker 3.87: Clear the shift/ctrl/alt status as well!
+	shift_down=false;
+	ctrl_down=false;
+	alt_down=false;
 }
 
 /*
@@ -1171,5 +1211,4 @@ void Key_ClearStates (void)
 		key_repeats[i] = 0;
 	}
 }
-
 

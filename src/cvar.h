@@ -1,5 +1,6 @@
 /*
-Copyright (C) 1996-1997 Id Software, Inc.
+Copyright (C) 1996-2001 Id Software, Inc.
+Copyright (C) 2002-2005 John Fitzgibbons and others
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -54,7 +55,7 @@ interface from being ambiguous.
 */
 
 // ICH BIN EIN HACK!!!!  I changed 'server' from qboolean to int so that I can
-// have more that two values: non-server, server, server-mute
+// have more that two values: non-server, server, server-mute ... jpg
 typedef struct cvar_s
 {
 	char	*name;
@@ -64,9 +65,10 @@ typedef struct cvar_s
 	float	value;
 	struct cvar_s *next;
 	char	*default_string; //Baker 3.76 - johnfitz -- remember defaults for reset function
+	void (*callback) (void); //johnfitz
 } cvar_t;
 
-void 	Cvar_RegisterVariable (cvar_t *variable);
+void 	Cvar_RegisterVariable (cvar_t *variable, void *function); //johnfitz -- cvar callback
 // registers a cvar that allready has the name, string, and optionally the
 // archive elements set.
 

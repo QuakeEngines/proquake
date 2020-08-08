@@ -20,11 +20,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sv_main.c -- server main program
 
 #include "quakedef.h"
-
 #include <time.h> // JPG - needed for console log
 
 server_t		sv;
 server_static_t	svs;
+
+
+cvar_t	sv_cullplayers_trace = {"sv_cullplayers_trace", "1"};
+cvar_t	sv_cullplayers_notify = {"sv_cullplayers_notify", "0"};
 
 char	localmodels[MAX_MODELS][5];			// inline model names for precache
 
@@ -48,18 +51,23 @@ void SV_Init (void)
 	extern	cvar_t	sv_accelerate;
 	extern	cvar_t	sv_idealpitchscale;
 	extern	cvar_t	sv_aim;
+	extern	cvar_t  sv_cullplayers_trace;
+	extern	cvar_t  sv_cullplayers_notify;
 
-	Cvar_RegisterVariable (&sv_maxvelocity);
-	Cvar_RegisterVariable (&sv_gravity);
-	Cvar_RegisterVariable (&sv_friction);
-	Cvar_RegisterVariable (&sv_edgefriction);
-	Cvar_RegisterVariable (&sv_stopspeed);
-	Cvar_RegisterVariable (&sv_maxspeed);
-	Cvar_RegisterVariable (&sv_accelerate);
-	Cvar_RegisterVariable (&sv_idealpitchscale);
-	Cvar_RegisterVariable (&sv_aim);
-	Cvar_RegisterVariable (&sv_nostep);
-	Cvar_RegisterVariable (&pq_fullpitch);	// JPG 2.01
+	Cvar_RegisterVariable (&sv_maxvelocity, NULL);
+	Cvar_RegisterVariable (&sv_gravity, NULL);
+	Cvar_RegisterVariable (&sv_friction, NULL);
+	Cvar_RegisterVariable (&sv_edgefriction, NULL);
+	Cvar_RegisterVariable (&sv_stopspeed, NULL);
+	Cvar_RegisterVariable (&sv_maxspeed, NULL);
+	Cvar_RegisterVariable (&sv_accelerate, NULL);
+	Cvar_RegisterVariable (&sv_idealpitchscale, NULL);
+	Cvar_RegisterVariable (&sv_aim, NULL);
+	Cvar_RegisterVariable (&sv_nostep, NULL);
+	Cvar_RegisterVariable (&pq_fullpitch, NULL);	// JPG 2.01
+
+	Cvar_RegisterVariable (&sv_cullplayers_trace, NULL);	// JPG 2.01
+	Cvar_RegisterVariable (&sv_cullplayers_notify, NULL);	// JPG 2.01
 
 	for (i=0 ; i<MAX_MODELS ; i++)
 		sprintf (localmodels[i], "*%i", i);
@@ -440,8 +448,277 @@ byte *SV_FatPVS (vec3_t org)
 	return fatpvs;
 }
 
+
+#define VectorNegate(a,b)		((b)[0]=-(a)[0],(b)[1]=-(a)[1],(b)[2]=-(a)[2])
+
+/*
+==================
+SV_HullPointContents
+
+==================
+*/
+static int Q1_HullPointContents (hull_t *hull, int num, vec3_t p)
+{
+	float		d;
+	dclipnode_t	*node;
+	mplane_t	*plane;
+
+	while (num >= 0)
+	{
+		if (num < hull->firstclipnode || num > hull->lastclipnode)
+			Sys_Error ("SV_HullPointContents: bad node number");
+
+		node = hull->clipnodes + num;
+		plane = hull->planes + node->planenum;
+
+		if (plane->type < 3)
+			d = p[plane->type] - plane->dist;
+		else
+			d = DotProduct (plane->normal, p) - plane->dist;
+		if (d < 0)
+			num = node->children[1];
+		else
+			num = node->children[0];
+	}
+
+	return num;
+}
+
+#define	DIST_EPSILON	(0.03125)
+#define	Q1CONTENTS_EMPTY	-1
+#define	Q1CONTENTS_SOLID	-2
+#define	Q1CONTENTS_WATER	-3
+#define	Q1CONTENTS_SLIME	-4
+#define	Q1CONTENTS_LAVA		-5
+#define	Q1CONTENTS_SKY		-6
+qboolean Q1BSP_RecursiveHullCheck (hull_t *hull, int num, float p1f, float p2f, vec3_t p1, vec3_t p2, trace_t *trace)
+{
+	dclipnode_t	*node;
+	mplane_t	*plane;
+	float		t1, t2;
+	float		frac;
+	int			i;
+	vec3_t		mid;
+	int			side;
+	float		midf;
+
+// check for empty
+	if (num < 0)
+	{
+		if (num != Q1CONTENTS_SOLID)
+		{
+			trace->allsolid = false;
+			if (num == Q1CONTENTS_EMPTY)
+				trace->inopen = true;
+			else
+				trace->inwater = true;
+		}
+		else
+			trace->startsolid = true;
+		return true;		// empty
+	}
+
+	if (num < hull->firstclipnode || num > hull->lastclipnode)
+		Sys_Error ("Q1BSP_RecursiveHullCheck: bad node number");
+
+//
+// find the point distances
+//
+	node = hull->clipnodes + num;
+	plane = hull->planes + node->planenum;
+
+	if (plane->type < 3)
+	{
+		t1 = p1[plane->type] - plane->dist;
+		t2 = p2[plane->type] - plane->dist;
+	}
+	else
+	{
+		t1 = DotProduct (plane->normal, p1) - plane->dist;
+		t2 = DotProduct (plane->normal, p2) - plane->dist;
+	}
+
+#if 1
+	if (t1 >= 0 && t2 >= 0)
+		return Q1BSP_RecursiveHullCheck (hull, node->children[0], p1f, p2f, p1, p2, trace);
+	if (t1 < 0 && t2 < 0)
+		return Q1BSP_RecursiveHullCheck (hull, node->children[1], p1f, p2f, p1, p2, trace);
+#else
+	if ( (t1 >= DIST_EPSILON && t2 >= DIST_EPSILON) || (t2 > t1 && t1 >= 0) )
+		return Q1BSP_RecursiveHullCheck (hull, node->children[0], p1f, p2f, p1, p2, trace);
+	if ( (t1 <= -DIST_EPSILON && t2 <= -DIST_EPSILON) || (t2 < t1 && t1 <= 0) )
+		return Q1BSP_RecursiveHullCheck (hull, node->children[1], p1f, p2f, p1, p2, trace);
+#endif
+
+// put the crosspoint DIST_EPSILON pixels on the near side
+	if (t1 < 0)
+		frac = (t1 + DIST_EPSILON)/(t1-t2);
+	else
+		frac = (t1 - DIST_EPSILON)/(t1-t2);
+	if (frac < 0)
+		frac = 0;
+	if (frac > 1)
+		frac = 1;
+
+	midf = p1f + (p2f - p1f)*frac;
+	for (i=0 ; i<3 ; i++)
+		mid[i] = p1[i] + frac*(p2[i] - p1[i]);
+
+	side = (t1 < 0);
+
+// move up to the node
+	if (!Q1BSP_RecursiveHullCheck (hull, node->children[side], p1f, midf, p1, mid, trace) )
+		return false;
+
+#ifdef PARANOID
+	if (Q1BSP_RecursiveHullCheck (sv_hullmodel, mid, node->children[side])
+	== Q1CONTENTS_SOLID)
+	{
+		Con_Printf ("mid PointInHullSolid\n");
+		return false;
+	}
+#endif
+
+	if (Q1_HullPointContents (hull, node->children[side^1], mid)
+	!= Q1CONTENTS_SOLID)
+// go past the node
+		return Q1BSP_RecursiveHullCheck (hull, node->children[side^1], midf, p2f, mid, p2, trace);
+
+	if (trace->allsolid)
+		return false;		// never got out of the solid area
+
+//==================
+// the other side of the node is solid, this is the impact point
+//==================
+	if (!side)
+	{
+		VectorCopy (plane->normal, trace->plane.normal);
+		trace->plane.dist = plane->dist;
+	}
+	else
+	{
+		VectorNegate (plane->normal, trace->plane.normal);
+		trace->plane.dist = -plane->dist;
+	}
+
+	while (Q1_HullPointContents (hull, hull->firstclipnode, mid)
+	== Q1CONTENTS_SOLID)
+	{ // shouldn't really happen, but does occasionally
+		frac -= 0.1;
+		if (frac < 0)
+		{
+			trace->fraction = midf;
+			VectorCopy (mid, trace->endpos);
+			Con_DPrintf ("backup past 0\n");
+			return false;
+		}
+		midf = p1f + (p2f - p1f)*frac;
+		for (i=0 ; i<3 ; i++)
+			mid[i] = p1[i] + frac*(p2[i] - p1[i]);
+	}
+
+	trace->fraction = midf;
+	VectorCopy (mid, trace->endpos);
+
+	return false;
+}
+
 //=============================================================================
 
+qboolean Q1BSP_Trace(model_t *model, int forcehullnum, int frame, vec3_t start, vec3_t end, vec3_t mins, vec3_t maxs, trace_t *trace)
+{
+	hull_t *hull;
+	vec3_t size;
+	vec3_t start_l, end_l;
+	vec3_t offset;
+
+	memset (trace, 0, sizeof(trace_t));
+	trace->fraction = 1;
+	trace->allsolid = true;
+
+	VectorSubtract (maxs, mins, size);
+	if (forcehullnum >= 1 && forcehullnum <= MAX_MAP_HULLS && model->hulls[forcehullnum-1].available)
+		hull = &model->hulls[forcehullnum-1];
+	else
+	{
+		if (model->hulls[5].available)
+		{	//choose based on hexen2 sizes.
+
+			if (size[0] < 3) // Point
+				hull = &model->hulls[0];
+			else if (size[0] <= 32 && size[2] <= 28)  // Half Player
+				hull = &model->hulls[3];
+			else if (size[0] <= 32)  // Full Player
+				hull = &model->hulls[1];
+			else // Golumn
+				hull = &model->hulls[5];
+		}
+		else
+		{
+			if (size[0] < 3 || !model->hulls[1].available)
+				hull = &model->hulls[0];
+			else if (size[0] <= 32)
+			{
+				if (size[2] < 54 && model->hulls[3].available)
+					hull = &model->hulls[3]; // 32x32x36 (half-life's crouch)
+				else
+					hull = &model->hulls[1];
+			}
+			else
+				hull = &model->hulls[2];
+		}
+	}
+
+// calculate an offset value to center the origin
+	VectorSubtract (hull->clip_mins, mins, offset);
+	VectorSubtract(start, offset, start_l);
+	VectorSubtract(end, offset, end_l);
+	Q1BSP_RecursiveHullCheck(hull, hull->firstclipnode, 0, 1, start_l, end_l, trace);
+	if (trace->fraction == 1)
+	{
+		VectorCopy (end, trace->endpos);
+	}
+	else
+	{
+		VectorAdd (trace->endpos, offset, trace->endpos);
+	}
+
+	return trace->fraction != 1;
+}
+
+
+qboolean SV_InvisibleToClient(edict_t *viewer, edict_t *seen)
+{
+	int i;
+	trace_t tr;
+	vec3_t start;
+	vec3_t end;
+
+//	if (seen->v->solid == SOLID_BSP)
+//		return false;	//bsp ents are never culled this way
+
+	//stage 1: check against their origin
+	VectorAdd(viewer->v.origin, viewer->v.view_ofs, start);
+	tr.fraction = 1;
+	
+	if (!Q1BSP_Trace (sv.worldmodel, 1, 0, start, seen->v.origin, vec3_origin, vec3_origin, &tr))
+		return false;	//wasn't blocked
+	
+
+	//stage 2: check against their bbox
+	for (i = 0; i < 8; i++)
+	{
+		end[0] = seen->v.origin[0] + ((i&1)?seen->v.mins[0]:seen->v.maxs[0]);
+		end[1] = seen->v.origin[1] + ((i&2)?seen->v.mins[1]:seen->v.maxs[1]);
+		end[2] = seen->v.origin[2] + ((i&4)?seen->v.mins[2]+0.1:seen->v.maxs[2]);
+
+		tr.fraction = 1;
+		if (!Q1BSP_Trace (sv.worldmodel, 1, 0, start, end, vec3_origin, vec3_origin, &tr))
+			return false;	//this trace went through, so don't cull
+	}
+
+	return true;
+}
 
 /*
 =============
@@ -489,7 +766,24 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 			// JPG 3.30 - don't send updates if the client doesn't have the map
 			if (nomap)
 				continue;
+
+// Baker theoretical sv_cullentities_trace
+		
+			if (e<=svs.maxclients && sv_cullplayers_trace.value) {
+				if(SV_InvisibleToClient(clent, ent)) {
+					if (sv_cullplayers_notify.value)
+						Con_Printf("Not visible\n");
+					continue;
+				} else {
+					if (sv_cullplayers_notify.value)
+						Con_Printf("Visible\n"); 
+				}
+			}
+
+// End Baker theoretical
+			
 		}
+
 
 		if (msg->maxsize - msg->cursize < 16)
 		{

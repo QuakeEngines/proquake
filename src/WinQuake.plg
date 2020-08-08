@@ -6,9 +6,9 @@
 --------------------Configuration: winquake - Win32 GL Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP253.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP386.tmp" with contents
 [
-.\dxsdk\sdk7\lib\dxguid.lib comctl32.lib winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro380.exe" 
+.\dxsdk\sdk7\lib\dxguid.lib comctl32.lib winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro390.exe" 
 .\release_gl\cd_win.obj
 .\release_gl\chase.obj
 .\release_gl\cl_demo.obj
@@ -43,6 +43,8 @@ Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP253.tmp" with con
 .\release_gl\mathlib.obj
 .\release_gl\matrix.obj
 .\release_gl\menu.obj
+.\release_gl\movie.obj
+.\release_gl\movie_avi.obj
 .\release_gl\net_dgrm.obj
 .\release_gl\net_loop.obj
 .\release_gl\net_main.obj
@@ -54,6 +56,7 @@ Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP253.tmp" with con
 .\release_gl\pr_edict.obj
 .\release_gl\pr_exec.obj
 .\release_gl\r_part.obj
+.\release_gl\registry.obj
 .\release_gl\sbar.obj
 .\release_gl\security.obj
 .\release_gl\snd_dma.obj
@@ -75,14 +78,14 @@ Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP253.tmp" with con
 .\release_gl\sys_wina.obj
 .\release_gl\worlda.obj
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP253.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP386.tmp"
 <h3>Output Window</h3>
 Linking...
 
 
 
 <h3>Results</h3>
-glpro380.exe - 0 error(s), 0 warning(s)
+glpro390.exe - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>

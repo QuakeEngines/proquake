@@ -50,9 +50,9 @@ void D_Init (void)
 
 	r_skydirect = 1;
 
-	Cvar_RegisterVariable (&d_subdiv16);
-	Cvar_RegisterVariable (&d_mipcap);
-	Cvar_RegisterVariable (&d_mipscale);
+	Cvar_RegisterVariable (&d_subdiv16, NULL);
+	Cvar_RegisterVariable (&d_mipcap, NULL);
+	Cvar_RegisterVariable (&d_mipscale, NULL);
 
 	r_drawpolys = false;
 	r_worldpolysbacktofront = false;

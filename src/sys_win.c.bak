@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <sys/stat.h>
 
 #define MINIMUM_WIN_MEMORY		0x0880000
-#define MAXIMUM_WIN_MEMORY		0x1000000
+#define MAXIMUM_WIN_MEMORY		0x2000000 // Baker 3.75 - increase to 32MB minimum
 
 #define CONSOLE_ERROR_TIMEOUT	60.0	// # of seconds to wait on Sys_Error running
 										//  dedicated before exiting
@@ -72,7 +72,7 @@ Sys_PageIn
 void Sys_PageIn (void *ptr, int size)
 {
 	byte	*x;
-	int		j, m, n;
+	int		m, n;
 
 // touch all the memory to make sure it's there. The 16-page skip is to
 // keep Win 95 from thinking we're trying to page ourselves in (we are
@@ -625,8 +625,7 @@ char *Sys_ConsoleInput (void)
 	static char	text[256];
 	static int		len;
 	INPUT_RECORD	recs[1024];
-	int		count;
-	int		i, dummy;
+	int		dummy;
 	int		ch, numread, numevents;
 
 	if (!isDedicated)
@@ -759,7 +758,6 @@ HWND		hwnd_dialog;
 
 int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    MSG				msg;
 	quakeparms_t	parms;
 	double			time, oldtime, newtime;
 	MEMORYSTATUS	lpBuffer;
@@ -767,6 +765,9 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	int				t;
 	RECT			rect;
 	char			*ch;	// JPG 3.00 - for eliminating quotes from exe name
+	char			*e;
+	FILE			*fpak0;
+	char			fpaktest[1024];
 
     /* previous instances do not exist in Win32 */
     if (hPrevInstance)
@@ -783,6 +784,43 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 	if (cwd[Q_strlen(cwd)-1] == '/')
 		cwd[Q_strlen(cwd)-1] = 0;
+
+	// Baker 3.76 - Improvised stuff from ezQuake to eliminate gfx.wad error
+	// and to help playing demos via file association
+
+	Q_snprintfz (fpaktest, sizeof(fpaktest), "%s/id1/pak0.pak", cwd); // Baker 3.76 - Sure this isn't gfx.wad, but let's be realistic here
+	//MessageBox(NULL, fpaktest, "Pak0 test name", MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+	
+	if (fpak0 = fopen(fpaktest, "rb")) 
+	{ 
+		//MessageBox(NULL, "We have found pak0", "pak0 located", MB_OK);
+		fclose( fpak0 ); // Pak0 found so close it; we have a valid directory
+	} 
+	else
+	{
+		// Failed to find pak0.pak, use the dir the exe is in
+		// MessageBox(NULL, "Pak0 not found so we would want to change the dir", "pak0 located", MB_OK);
+		//MessageBox(NULL, "Time to get the path", "Hello", MB_OK);
+
+		if(!(i = GetModuleFileName(NULL, com_basedir, sizeof(com_basedir)-1)))
+			Sys_Error("FS_InitFilesystemEx: GetModuleFileName failed");
+
+		com_basedir[i] = 0; // ensure null terminator
+	
+		// strip exe name because we need only path
+		for (e = com_basedir+strlen(com_basedir)-1; e >= com_basedir; e--)
+			if (*e == '/' || *e == '\\')
+			{
+				*e = 0;
+				break;
+			}
+
+		//MessageBox(NULL, com_basedir, "Overriding wrong directory!", MB_OK);
+		// Assume success
+		Q_snprintfz (cwd, sizeof(cwd), "%s", com_basedir);
+		//cwd = com_basedir;
+	}
+	// End Baker 3.76 
 
 	parms.basedir = cwd;
 	parms.cachedir = NULL;
@@ -803,6 +841,32 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 		if (*lpCmdLine)
 		{
+			if (*lpCmdLine == '\"')
+			{
+				lpCmdLine++;
+
+				argv[parms.argc] = lpCmdLine;
+				parms.argc++;
+
+				while (*lpCmdLine && *lpCmdLine != '\"') // this include chars less that 32 and greate than 126... is that evil?
+					lpCmdLine++;
+			}
+			else
+			{
+			argv[parms.argc] = lpCmdLine;
+			parms.argc++;
+
+			while (*lpCmdLine && ((*lpCmdLine > 32) && (*lpCmdLine <= 126)))
+				lpCmdLine++;
+			}
+
+			if (*lpCmdLine)
+			{
+				*lpCmdLine = 0;
+				lpCmdLine++;
+			}
+			
+			/* old way
 			argv[parms.argc] = lpCmdLine;
 			parms.argc++;
 
@@ -813,8 +877,8 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 			{
 				*lpCmdLine = 0;
 				lpCmdLine++;
-			}
-			
+			}*/
+
 		}
 	}
 

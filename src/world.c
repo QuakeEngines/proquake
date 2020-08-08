@@ -283,6 +283,14 @@ void SV_TouchLinks ( edict_t *ent, areanode_t *node )
 // touch linked edicts
 	for (l = node->trigger_edicts.next ; l != &node->trigger_edicts ; l = next)
 	{
+		//johnfitz -- fixes a crash when a touch function deletes an entity which comes later in the list
+		if (!l)
+		{
+			Con_Printf ("SV_TouchLinks: null link\n");
+			break;
+		}
+		//johnfitz
+
 		next = l->next;
 		touch = EDICT_FROM_AREA(l);
 		if (touch == ent)
@@ -585,9 +593,9 @@ qboolean SV_RecursiveHullCheck (hull_t *hull, int num, float p1f, float p2f, vec
 	float		t1, t2;
 	float		frac;
 	int			i;
+	vec3_t		mid;
 	int			side;
 	float		midf;
-	vec3_t		mid;
 
 // check for empty
 	if (num < 0)

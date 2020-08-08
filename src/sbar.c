@@ -108,10 +108,10 @@ void Sbar_Changed (void)
 
 /*
 ===============
-Sbar_Init
+Sbar_LoadPics -- johnfitz -- load all the sbar pics
 ===============
 */
-void Sbar_Init (void)
+void Sbar_LoadPics (void)
 {
 	int		i;
 
@@ -191,12 +191,6 @@ void Sbar_Init (void)
 	sb_face_invis_invuln = Draw_PicFromWad ("face_inv2");
 	sb_face_quad = Draw_PicFromWad ("face_quad");
 
-	Cmd_AddCommand ("+showscores", Sbar_ShowScores);
-	Cmd_AddCommand ("-showscores", Sbar_DontShowScores);
-
-	Cvar_RegisterVariable (&pq_teamscores); // JPG - status bar teamscores
-	Cvar_RegisterVariable (&pq_timer); // JPG - status bar timer
-	Cvar_RegisterVariable (&pq_scoreboard_pings); // JPG - ping times in the scoreboard
 
 	sb_sbar = Draw_PicFromWad ("sbar");
 	sb_ibar = Draw_PicFromWad ("ibar");
@@ -254,6 +248,22 @@ void Sbar_Init (void)
 	}
 }
 
+/*
+===============
+Sbar_Init -- johnfitz -- rewritten
+===============
+*/
+void Sbar_Init (void)
+{
+	Cmd_AddCommand ("+showscores", Sbar_ShowScores);
+	Cmd_AddCommand ("-showscores", Sbar_DontShowScores);
+
+	Cvar_RegisterVariable (&pq_teamscores, NULL); // JPG - status bar teamscores
+	Cvar_RegisterVariable (&pq_timer, NULL); // JPG - status bar timer
+	Cvar_RegisterVariable (&pq_scoreboard_pings, NULL); // JPG - ping times in the scoreboard
+
+	Sbar_LoadPics ();
+}
 
 //=============================================================================
 
@@ -522,9 +532,11 @@ void Sbar_SoloScoreboard (void)
 			sprintf (str, "skill: מיחטפםבעו", current_skill);
 			break;
 		}
+		
+		Draw_String (vid.width - (24 + strlen(str) * 8), 8 + (pq_drawfps.value ? 8:0) + (show_speed.value ? 8:0), str);
 	}
 
-	Draw_String (vid.width - (24 + strlen(str) * 8), 8 + (pq_drawfps.value ? 8:0) + (show_speed.value ? 8:0), str);
+	
 
 
 	sprintf (str,"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
@@ -832,7 +844,7 @@ Sbar_DrawFrags
 */
 void Sbar_DrawFrags (void)
 {
-	int				i, k, l;
+	int				i, k, numscores;
 	int				top, bottom;
 	int				x, y, f;
 	int				xofs;
@@ -849,7 +861,7 @@ void Sbar_DrawFrags (void)
 		Sbar_SortFrags ();
 
 // draw the text
-	l = scoreboardlines <= 4 ? scoreboardlines : 4;
+	numscores = scoreboardlines <= 4 ? scoreboardlines : 4;
 
 	x = 23;
 	if (cl.gametype == GAME_DEATHMATCH)
@@ -861,8 +873,8 @@ void Sbar_DrawFrags (void)
 	// JPG - check to see if we need to draw the timer
 	if (pq_timer.value && (cl.minutes != 255))
 	{
-		if (l > 2)
-			l = 2;
+		if (numscores > 2)
+			numscores = 2;
 		mask = 0;
 		if (cl.minutes == 254)
 		{
@@ -898,7 +910,7 @@ void Sbar_DrawFrags (void)
 			Sbar_DrawCharacter ((x+9+i)*8, -24, num[i] + mask);
 	}
 
-	for (i=0 ; i<l ; i++)
+	for (i=0 ; i<numscores ; i++)
 	{
 		k = fragsort[i];
 
@@ -1339,7 +1351,6 @@ Sbar_DeathmatchOverlay
 */
 void Sbar_MiniDeathmatchOverlay (void)
 {
-//	qpic_t			*pic;
 	int				i, k, l;
 	int				top, bottom;
 	int				x, y, f;

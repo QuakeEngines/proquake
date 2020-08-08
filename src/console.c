@@ -372,9 +372,7 @@ void Con_CheckResize (void)
 		{
 			for (j=0 ; j<numchars ; j++)
 			{
-				con_text[(con_totallines - 1 - i) * con_linewidth + j] =
-						tbuf[((con_current - i + oldtotallines) %
-							  oldtotallines) * oldwidth + j];
+				con_text[(con_totallines - 1 - i) * con_linewidth + j] = tbuf[((con_current - i + oldtotallines) % oldtotallines) * oldwidth + j];
 			}
 		}
 
@@ -451,11 +449,11 @@ void Con_Init (void)
 //
 // register our commands
 //
-	Cvar_RegisterVariable (&con_notifytime);
-	Cvar_RegisterVariable (&_con_notifylines);
-	Cvar_RegisterVariable (&pq_confilter);	// JPG 1.05 - make "you got" messages temporary
-	Cvar_RegisterVariable (&pq_timestamp);	// JPG 1.05 - timestamp player binds during a match
-	Cvar_RegisterVariable (&pq_removecr);	// JPG 3.20 - timestamp player binds during a match
+	Cvar_RegisterVariable (&con_notifytime, NULL);
+	Cvar_RegisterVariable (&_con_notifylines, NULL);
+	Cvar_RegisterVariable (&pq_confilter, NULL);	// JPG 1.05 - make "you got" messages temporary
+	Cvar_RegisterVariable (&pq_timestamp, NULL);	// JPG 1.05 - timestamp player binds during a match
+	Cvar_RegisterVariable (&pq_removecr, NULL);	// JPG 3.20 - timestamp player binds during a match
 
 	Cmd_AddCommand ("toggleconsole", Con_ToggleConsole_f);
 	Cmd_AddCommand ("messagemode", Con_MessageMode_f);
@@ -862,7 +860,7 @@ void Con_DrawNotify (void)
 		// JPG - added support for team messages
 		if (team_message)
 		{
-			Draw_String (8, v, "(say):");
+			Draw_String (8, v, "(say team):");
 			x = 7;
 		}
 		else
@@ -880,7 +878,7 @@ void Con_DrawNotify (void)
 			i++;
 			if (x > con_linewidth)
 			{
-				x = team_message ? 7 : 5;
+				x = team_message ? 12 : 5; // Baker 3.90: 7 increased to 12 "(say)" ---> "(say_team)"
 				v += 8;
 			}
 		}

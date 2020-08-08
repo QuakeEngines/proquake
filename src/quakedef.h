@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define	QUAKE_GAME			// as opposed to utilities
 
-#define PROQUAKE_VERSION	3.85 // JPG - added this
+#define PROQUAKE_VERSION	3.90 // JPG - added this
 #define	VERSION				1.09
 #define	GLQUAKE_VERSION		1.00
 #define	D3DQUAKE_VERSION	0.01
@@ -308,6 +308,8 @@ extern	int			host_framecount;	// incremented every frame, never reset
 extern	double		realtime;			// not bounded in any way, changed at
 										// start of every frame, never reset
 extern double last_angle_time; // JPG - need this for smooth chasecam
+
+extern	qboolean	nostartdemos; // Baker 3.76 - for demo autoplay support
 
 // JPG 3.20
 #ifdef WIN32

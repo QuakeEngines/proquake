@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -110,7 +110,7 @@ Sys_GetLock
 void Sys_GetLock (void)
 {
 	int i;
-	
+
 	for (i = 0 ; i < 10 ; i++)
 	{
 		hlock = _open(va("%s/lock.dat",com_gamedir), _O_CREAT | _O_EXCL, _S_IREAD | _S_IWRITE);
@@ -148,7 +148,7 @@ FILE	*sys_handles[MAX_HANDLES];
 int		findhandle (void)
 {
 	int		i;
-	
+
 	for (i=1 ; i<MAX_HANDLES ; i++)
 		if (!sys_handles[i])
 			return i;
@@ -215,14 +215,14 @@ int Sys_FileOpenWrite (char *path)
 	int		t;
 
 	t = VID_ForceUnlockedAndReturnState ();
-	
+
 	i = findhandle ();
 
 	f = fopen(path, "wb");
 	if (!f)
 		Sys_Error ("Error opening %s: %s", path,strerror(errno));
 	sys_handles[i] = f;
-	
+
 	VID_ForceLockState (t);
 
 	return i;
@@ -273,7 +273,7 @@ int	Sys_FileTime (char *path)
 	int		t, retval;
 
 	t = VID_ForceUnlockedAndReturnState ();
-	
+
 	f = fopen(path, "rb");
 
 	if (f)
@@ -285,7 +285,7 @@ int	Sys_FileTime (char *path)
 	{
 		retval = -1;
 	}
-	
+
 	VID_ForceLockState (t);
 	return retval;
 }
@@ -476,7 +476,7 @@ void Sys_Printf (char *fmt, ...)
 	va_list		argptr;
 	char		text[2048];	// JPG - changed this from 1024 to 2048
 	DWORD		dummy;
-	
+
 	if (isDedicated)
 	{
 		va_start (argptr,fmt);
@@ -625,7 +625,6 @@ char *Sys_ConsoleInput (void)
 	static char	text[256];
 	static int		len;
 	INPUT_RECORD	recs[1024];
-//	int		count;
 	int		dummy;
 	int		ch, numread, numevents;
 
@@ -656,7 +655,7 @@ char *Sys_ConsoleInput (void)
 				switch (ch)
 				{
 					case '\r':
-						WriteFile(houtput, "\r\n", 2, &dummy, NULL);	
+						WriteFile(houtput, "\r\n", 2, &dummy, NULL);
 
 						if (len)
 						{
@@ -675,7 +674,7 @@ char *Sys_ConsoleInput (void)
 						break;
 
 					case '\b':
-						WriteFile(houtput, "\b \b", 3, &dummy, NULL);	
+						WriteFile(houtput, "\b \b", 3, &dummy, NULL);
 						if (len)
 						{
 							len--;
@@ -685,7 +684,7 @@ char *Sys_ConsoleInput (void)
 					default:
 						if (ch >= ' ')
 						{
-							WriteFile(houtput, &ch, 1, &dummy, NULL);	
+							WriteFile(houtput, &ch, 1, &dummy, NULL);
 							text[len] = ch;
 							len = (len + 1) & 0xff;
 						}
@@ -759,14 +758,16 @@ HWND		hwnd_dialog;
 
 int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-//    MSG				msg;
 	quakeparms_t	parms;
 	double			time, oldtime, newtime;
 	MEMORYSTATUS	lpBuffer;
 	static	char	cwd[1024];
-	int				t;
+	int				t, i;
 	RECT			rect;
 	char			*ch;	// JPG 3.00 - for eliminating quotes from exe name
+	char			*e;
+	FILE			*fpak0;
+	char			fpaktest[1024], exeline[MAX_OSPATH];
 
     /* previous instances do not exist in Win32 */
     if (hPrevInstance)
@@ -784,6 +785,44 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	if (cwd[Q_strlen(cwd)-1] == '/')
 		cwd[Q_strlen(cwd)-1] = 0;
 
+	// Baker 3.76 - playing demos via file association
+
+	Q_snprintfz (fpaktest, sizeof(fpaktest), "%s/id1/pak0.pak", cwd); // Baker 3.76 - Sure this isn't gfx.wad, but let's be realistic here
+
+	if(!(i = GetModuleFileName(NULL, com_basedir, sizeof(com_basedir)-1)))
+		Sys_Error("FS_InitFilesystemEx: GetModuleFileName failed");
+
+	com_basedir[i] = 0; // ensure null terminator
+
+	sprintf(exeline, "%s %%1", com_basedir);
+
+	// Build registry entries
+	CreateSetKeyExtension();
+	CreateSetKeyDescription();
+	CreateSetKeyCommandLine(exeline);
+	Con_Printf("Registry Init\n");
+	// End build entries
+
+	// Strip to the bare path; needed for demos started outside Quake folder
+	for (e = com_basedir+strlen(com_basedir)-1; e >= com_basedir; e--)
+			if (*e == '/' || *e == '\\')
+			{
+				*e = 0;
+				break;
+			}
+
+	Q_snprintfz (cwd, sizeof(cwd), "%s", com_basedir);
+
+
+
+	if (fpak0 = fopen(fpaktest, "rb"))  {
+		fclose( fpak0 ); // Pak0 found so close it; we have a valid directory
+	} else {
+		// Failed to find pak0.pak, use the dir the exe is in
+		Q_snprintfz (cwd, sizeof(cwd), "%s", com_basedir);
+	}
+	// End Baker 3.76
+
 	parms.basedir = cwd;
 	parms.cachedir = NULL;
 
@@ -794,7 +833,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		argv[0]++;
 	if (ch = strchr(argv[0], '\"'))
 		*ch = 0;
-	
+
 
 	while (*lpCmdLine && (parms.argc < MAX_NUM_ARGVS))
 	{
@@ -803,6 +842,32 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 		if (*lpCmdLine)
 		{
+			if (*lpCmdLine == '\"')
+			{
+				lpCmdLine++;
+
+				argv[parms.argc] = lpCmdLine;
+				parms.argc++;
+
+				while (*lpCmdLine && *lpCmdLine != '\"') // this include chars less that 32 and greate than 126... is that evil?
+					lpCmdLine++;
+			}
+			else
+			{
+			argv[parms.argc] = lpCmdLine;
+			parms.argc++;
+
+			while (*lpCmdLine && ((*lpCmdLine > 32) && (*lpCmdLine <= 126)))
+				lpCmdLine++;
+			}
+
+			if (*lpCmdLine)
+			{
+				*lpCmdLine = 0;
+				lpCmdLine++;
+			}
+
+			/* old way
 			argv[parms.argc] = lpCmdLine;
 			parms.argc++;
 
@@ -813,8 +878,8 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 			{
 				*lpCmdLine = 0;
 				lpCmdLine++;
-			}
-			
+			}*/
+
 		}
 	}
 
@@ -900,13 +965,13 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 			if (t < com_argc)
 				hFile = (HANDLE)Q_atoi (com_argv[t+1]);
 		}
-			
+
 		if ((t = COM_CheckParm ("-HPARENT")) > 0)
 		{
 			if (t < com_argc)
 				heventParent = (HANDLE)Q_atoi (com_argv[t+1]);
 		}
-			
+
 		if ((t = COM_CheckParm ("-HCHILD")) > 0)
 		{
 			if (t < com_argc)
