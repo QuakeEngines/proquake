@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -21,11 +21,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 #include "movie.h"
 #endif
-
-#include "r_local.h"
+#ifdef PSP
+#include "psp/sysmem_module.h"
+#endif
 
 /*
 
@@ -47,6 +48,7 @@ double		host_time;
 double		realtime;				// without any filtering or bounding
 double		oldrealtime;			// last frame run
 double		last_angle_time;		// JPG - for smooth chasecam
+
 int			host_framecount;
 
 int			host_hunklevel;
@@ -59,13 +61,18 @@ jmp_buf 	host_abortserver;
 
 byte		*host_basepal;
 byte		*host_colormap;
+#ifdef SUPPORTS_DEMO_AUTOPLAY
 qboolean	nostartdemos = false;
+#endif
 
 cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
 cvar_t	host_speeds = {"host_speeds","0"};			// set for running times
 cvar_t	host_timescale = {"host_timescale", "0"}; //johnfitz
+#ifdef SUPPORTS_SYSSLEEP
+cvar_t	host_sleep = {"host_sleep", "0"};
+#endif
 
-cvar_t	sys_ticrate = {"sys_ticrate","0.05"};
+cvar_t	sys_ticrate = {"sys_ticrate","0.05", false, true};
 cvar_t	serverprofile = {"serverprofile","0"};
 
 cvar_t	fraglimit = {"fraglimit","0",false,true};
@@ -75,11 +82,7 @@ cvar_t	teamplay = {"teamplay","0",false,true};
 cvar_t	samelevel = {"samelevel","0"};
 cvar_t	noexit = {"noexit","0",false,true};
 
-#ifdef QUAKE2
-cvar_t	developer = {"developer","1"};	// should be 0 for release!
-#else
 cvar_t	developer = {"developer","0"};
-#endif
 
 cvar_t	skill = {"skill","1"};						// 0 - 3
 cvar_t	deathmatch = {"deathmatch","0"};			// 0, 1, or 2
@@ -100,6 +103,9 @@ cvar_t	proquake = {"proquake", "L33T"}; // JPG - added this
 // message per pq_spam_rate seconds.
 cvar_t	pq_spam_rate = {"pq_spam_rate", "0"};  // Baker 3.80x - Set to default of 0; was 1.5 -- bad for coop
 cvar_t	pq_spam_grace = {"pq_spam_grace", "999"}; // Baker 3.80x - Set to default of 999; was 10 -- bad for coop
+
+// Baker 3.99g - from Rook ... protect against players connecting and spamming before banfile can kick in
+cvar_t	pq_connectmute = {"pq_connectmute", "0", false, true};  // (value in seconds)
 
 // JPG 3.20 - control muting of players that change colour/name
 cvar_t	pq_tempmute = {"pq_tempmute", "0"};  // Baker 3.80x - Changed default to 0; was 1 -- interfered with coop
@@ -123,19 +129,19 @@ void Host_EndGame (char *message, ...)
 {
 	va_list		argptr;
 	char		string[1024];
-	
+
 	va_start (argptr,message);
-	vsprintf (string,message,argptr);
+	vsnprintf (string,sizeof(string),message,argptr);
 	va_end (argptr);
 	Con_DPrintf ("Host_EndGame: %s\n",string);
-	
+
 	if (sv.active)
 		Host_ShutdownServer (false);
 
 	if (cls.state == ca_dedicated)
 		Sys_Error ("Host_EndGame: %s\n",string);	// dedicated servers exit
-	
-	if (cls.demonum != -1)
+
+if (cls.demonum != -1)
 	{
 		CL_StopPlayback ();	// JPG 1.05 - patch by CSR to fix crash
 		CL_NextDemo ();
@@ -158,18 +164,18 @@ void Host_Error (char *error, ...)
 	va_list		argptr;
 	char		string[1024];
 	static	qboolean inerror = false;
-	
+
 	if (inerror)
 		Sys_Error ("Host_Error: recursively entered");
 	inerror = true;
-	
+
 	SCR_EndLoadingPlaque ();		// reenable screen updates
 
 	va_start (argptr,error);
-	vsprintf (string,error,argptr);
+	vsnprintf (string,sizeof(string),error,argptr);
 	va_end (argptr);
 	Con_Printf ("Host_Error: %s\n",string);
-	
+
 	if (sv.active)
 		Host_ShutdownServer (false);
 
@@ -189,12 +195,12 @@ void Host_Error (char *error, ...)
 Host_FindMaxClients
 ================
 */
-void Host_FindMaxClients (void)
+void	Host_FindMaxClients (void)
 {
 	int		i;
 
 	svs.maxclients = 1;
-		
+
 	i = COM_CheckParm ("-dedicated");
 	if (i)
 	{
@@ -281,11 +287,13 @@ Host_InitLocal
 void Host_InitLocal (void)
 {
 	Host_InitCommands ();
-	
+
 	Cvar_RegisterVariable (&host_framerate, NULL);
 	Cvar_RegisterVariable (&host_speeds, NULL);
 	Cvar_RegisterVariable (&host_timescale, NULL); //johnfitz
-
+#ifdef SUPPORTS_SYSSLEEP
+	Cvar_RegisterVariable (&host_sleep, NULL);
+#endif
 	Cvar_RegisterVariable (&sys_ticrate, NULL);
 	Cvar_RegisterVariable (&serverprofile, NULL);
 
@@ -308,6 +316,7 @@ void Host_InitLocal (void)
 	Cvar_RegisterVariable (&proquake, NULL);		// JPG - added this so QuakeC can find it
 	Cvar_RegisterVariable (&pq_spam_rate, NULL);	// JPG - spam protection
 	Cvar_RegisterVariable (&pq_spam_grace, NULL);	// JPG - spam protection
+	Cvar_RegisterVariable (&pq_connectmute, NULL);	// Baker 3.99g: from Rook, protection against repeatedly connecting + spamming
 	Cvar_RegisterVariable (&pq_tempmute, NULL);	// JPG 3.20 - temporary muting
 	Cvar_RegisterVariable (&pq_showedict, NULL);	// JPG 3.11 - feature request from Slot Zero
 	Cvar_RegisterVariable (&pq_dequake, NULL);	// JPG 1.05 - translate dedicated console output to plain text
@@ -315,7 +324,7 @@ void Host_InitLocal (void)
 	Cvar_RegisterVariable (&pq_logbinds, NULL);	// JPG 3.20 - log player binds
 
 	Host_FindMaxClients ();
-	
+
 	host_time = 1.0;		// so a think at time 0 won't get called
 
 	last_angle_time = 0.0;  // JPG - smooth chasecam
@@ -334,19 +343,27 @@ Host_WriteConfig
 void Host_WriteConfig (char *cfgname)
 {
 	FILE	*f;
+	extern cvar_t cmdline;
 
+#ifdef FLASH_FILE_SYSTEM
+	const char* path = va("%s/config.cfg",com_gamedir);
+	f = as3OpenWriteFile(path);
+
+	if (!f)
+#else
 	if (!(f = fopen(va("%s/%s", com_gamedir, cfgname), "w")))
+#endif
 	{
 		Con_Printf ("Couldn't write %s\n", cfgname);
 		return;
 	}
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
 	VID_SyncCvars (); //johnfitz -- write actual current mode to config file, in case cvars were messed with
 #endif
 
 	fprintf (f, "// *****************************************\n"); // Baker 3.60
-	fprintf (f, "// Generated by ProQuake %4.2f \n", (float)PROQUAKE_VERSION); // Baker 3.60  /*
+	fprintf (f, "// Generated by %s %s \n", ENGINE_NAME, ENGINE_VERSION); // Baker 3.60
 	fprintf (f, "// *****************************************\n"); // Baker 3.60
 #ifdef GLQUAKE
 	fprintf (f, "// Video Information:\n\n"); // Baker 3.60
@@ -371,11 +388,14 @@ void Host_WriteConfig (char *cfgname)
 	Cvar_WriteVariables (f);
 	fprintf (f, "\n// *****************************************\n"); // Baker 3.60  */
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
 	//johnfitz -- extra commands to preserve state
 	fprintf (f, "vid_restart\n");
 #endif
 	fclose (f);
+#ifdef FLASH_FILE_SYSTEM
+		as3UpdateFileSharedObject(path);
+#endif
 }
 
 /*
@@ -388,7 +408,7 @@ Writes key bindings and archived cvars to config.cfg
 void Host_WriteConfiguration (void)
 {
 // dedicated servers initialize the host but don't parse and set the config.cfg cvars
-	if (host_initialized & !isDedicated)
+	if (host_initialized && !isDedicated) // 1999-12-24 logical correction by Maddes
 		Host_WriteConfig ("config.cfg");
 }
 
@@ -408,7 +428,7 @@ void Host_WriteConfig_f (void)
 		Con_Printf ("Usage: writeconfig <filename>\n");
 			return;
 		}
-		
+
 	Q_strncpyz (name, Cmd_Argv(1), sizeof(name));
 	COM_ForceExtension (name, ".cfg");
 
@@ -422,7 +442,7 @@ void Host_WriteConfig_f (void)
 =================
 SV_ClientPrintf
 
-Sends text across to be displayed 
+Sends text across to be displayed
 FIXME: make this just a stuffed echo?
 =================
 */
@@ -430,11 +450,11 @@ void SV_ClientPrintf (char *fmt, ...)
 {
 	va_list		argptr;
 	char		string[1024];
-	
+
 	va_start (argptr,fmt);
-	vsprintf (string, fmt,argptr);
+	vsnprintf (string, sizeof(string),fmt,argptr);
 	va_end (argptr);
-	
+
 	MSG_WriteByte (&host_client->message, svc_print);
 	MSG_WriteString (&host_client->message, string);
 }
@@ -451,11 +471,11 @@ void SV_BroadcastPrintf (char *fmt, ...)
 	va_list		argptr;
 	char		string[1024];
 	int			i;
-	
+
 	va_start (argptr,fmt);
-	vsprintf (string, fmt,argptr);
+	vsnprintf (string, sizeof(string),fmt,argptr);
 	va_end (argptr);
-	
+
 	for (i=0 ; i<svs.maxclients ; i++)
 		if (svs.clients[i].active && svs.clients[i].spawned)
 		{
@@ -475,11 +495,11 @@ void Host_ClientCommands (char *fmt, ...)
 {
 	va_list		argptr;
 	char		string[1024];
-	
+
 	va_start (argptr,fmt);
-	vsprintf (string, fmt,argptr);
+	vsnprintf (string, sizeof(string), fmt,argptr);
 	va_end (argptr);
-	
+
 	MSG_WriteByte (&host_client->message, svc_stufftext);
 	MSG_WriteString (&host_client->message, string);
 }
@@ -498,7 +518,7 @@ void SV_DropClient (qboolean crash)
 	int		i;
 	client_t *client;
 
-	// JPG 3.00 - don't drop a client that's already been dropped!
+// JPG 3.00 - don't drop a client that's already been dropped!
 	if (!host_client->active)
 		return;
 
@@ -510,7 +530,7 @@ void SV_DropClient (qboolean crash)
 			MSG_WriteByte (&host_client->message, svc_disconnect);
 			NET_SendMessage (host_client->netconnection, &host_client->message);
 		}
-	
+
 		if (host_client->edict && host_client->spawned)
 		{
 		// call the prog function for removing a client
@@ -564,11 +584,10 @@ This only happens at the end of a game, not between levels
 */
 void Host_ShutdownServer(qboolean crash)
 {
-	int		i;
-	int		count;
-	sizebuf_t	buf;
-	char		message[4];
-	double	start;
+	int		i, count;
+	sizebuf_t		buf;
+	unsigned char	message[4];
+	double			start;
 
 	if (!sv.active)
 		return;
@@ -580,9 +599,8 @@ void Host_ShutdownServer(qboolean crash)
 		CL_Disconnect ();
 
 // flush any pending messages - like the score!!!
-	start = Sys_FloatTime();
-	do
-	{
+	start = Sys_DoubleTime();
+	do {
 		count = 0;
 		for (i=0, host_client = svs.clients ; i<svs.maxclients ; i++, host_client++)
 		{
@@ -600,7 +618,7 @@ void Host_ShutdownServer(qboolean crash)
 				}
 			}
 		}
-		if ((Sys_FloatTime() - start) > 3.0)
+		if ((Sys_DoubleTime() - start) > 3.0)
 			break;
 	}
 	while (count);
@@ -661,7 +679,7 @@ Host_FilterTime
 Returns false if the time is too short to run a frame
 ===================
 */
-qboolean Host_FilterTime (float time)
+qboolean Host_FilterTime (double time)
 {
 	double	fps;
 
@@ -669,10 +687,15 @@ qboolean Host_FilterTime (float time)
 
 	fps = max(10, pq_maxfps.value);
 
-	if (!cls.capturedemo && !cls.timedemo && realtime - oldrealtime < 1.0 / fps)
-		return false;
+	if (!cls.capturedemo && !cls.timedemo && realtime - oldrealtime < 1.0 / fps) {
+#ifdef SUPPORTS_SYSSLEEP
+		if (host_sleep.value)
+			Sys_Sleep (); // Lower cpu
+#endif
+		return false;		// framerate is too high
+	}
 
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 	if (Movie_IsActive())
 		host_frametime = Movie_FrameTime ();
 	else
@@ -689,13 +712,11 @@ qboolean Host_FilterTime (float time)
 	//johnfitz
 	else if (host_framerate.value > 0)
 		host_frametime = host_framerate.value;
-	else
-	// don't allow really long or short frames
+	else // don't allow really long or short frames
 		host_frametime = bound(0.001, host_frametime, 0.1);
-	
+
 	return true;
 }
-
 
 /*
 ===================
@@ -717,60 +738,11 @@ void Host_GetConsoleCommands (void)
 	}
 }
 
-
 /*
 ==================
 Host_ServerFrame
-
 ==================
 */
-#ifdef FPS_20
-
-void _Host_ServerFrame (void)
-{
-// run the world state	
-	pr_global_struct->frametime = host_frametime;
-
-// read client messages
-	SV_RunClients ();
-	
-// move things around and think
-// always pause in single player if in console or menus
-	if (!sv.paused && (svs.maxclients > 1 || key_dest == key_game) )
-		SV_Physics ();
-}
-
-void Host_ServerFrame (void)
-{
-	float	save_host_frametime;
-	float	temp_host_frametime;
-
-// run the world state	
-	pr_global_struct->frametime = host_frametime;
-
-// set the time and clear the general datagram
-	SV_ClearDatagram ();
-	
-// check for new clients
-	SV_CheckForNewClients ();
-
-	temp_host_frametime = save_host_frametime = host_frametime;
-	while(temp_host_frametime > (1.0/72.0))
-	{
-		if (temp_host_frametime > 0.05)
-			host_frametime = 0.05;
-		else
-			host_frametime = temp_host_frametime;
-		temp_host_frametime -= host_frametime;
-		_Host_ServerFrame ();
-	}
-	host_frametime = save_host_frametime;
-
-// send all messages to the clients
-	SV_SendClientMessages ();
-}
-
-#else
 
 void Host_ServerFrame (void)
 {
@@ -783,18 +755,18 @@ void Host_ServerFrame (void)
 		Cmd_ExecuteString(va("port %d\n", net_hostport), src_command);
 	}
 
-// run the world state	
+// run the world state
 	pr_global_struct->frametime = host_frametime;
 
 // set the time and clear the general datagram
 	SV_ClearDatagram ();
-	
+
 // check for new clients
 	SV_CheckForNewClients ();
 
 // read client messages
 	SV_RunClients ();
-	
+
 // move things around and think
 // always pause in single player if in console or menus
 	if (!sv.paused && (svs.maxclients > 1 || key_dest == key_game) )
@@ -804,8 +776,6 @@ void Host_ServerFrame (void)
 	SV_SendClientMessages ();
 }
 
-#endif
-
 /*
 ==================
 Host_Frame
@@ -813,7 +783,7 @@ Host_Frame
 Runs all active servers
 ==================
 */
-void _Host_Frame (float time)
+void _Host_Frame (double time)
 {
 	static double		time1 = 0;
 	static double		time2 = 0;
@@ -825,7 +795,7 @@ void _Host_Frame (float time)
 
 // keep the random time dependent
 	rand ();
-	
+
 // decide the simulation time
 	if (!Host_FilterTime (time))
 	{
@@ -833,10 +803,13 @@ void _Host_Frame (float time)
 		if (!sv.active && (cl.movemessages > 2))
 			CL_SendLagMove();
 		return;			// don't run too fast, or packets will flood out
+
 	}
-		
+
 // get new key events
+#if !defined(MACOSX)
 	Sys_SendKeyEvents ();
+#endif // This is done in Windows and Linux.  Confirmed from pq350src
 
 // allow mice or other external controllers to add commands
 	IN_Commands ();
@@ -849,7 +822,7 @@ void _Host_Frame (float time)
 // if running the server locally, make intentions now
 	if (sv.active)
 		CL_SendCmd ();
-	
+
 //-------------------
 //
 // server operations
@@ -858,7 +831,7 @@ void _Host_Frame (float time)
 
 // check for commands typed to the host
 	Host_GetConsoleCommands ();
-	
+
 	if (sv.active)
 		Host_ServerFrame ();
 
@@ -877,49 +850,49 @@ void _Host_Frame (float time)
 
 // fetch results from server
 	if (cls.state == ca_connected)
-	{
-		CL_ReadFromServer ();
-	}
+                CL_ReadFromServer ();
+
+	if (host_speeds.value)
+		time1 = Sys_DoubleTime ();
 
 // update video
-	if (host_speeds.value)
-		time1 = Sys_FloatTime ();
-		
 	SCR_UpdateScreen ();
 
 	if (host_speeds.value)
-		time2 = Sys_FloatTime ();
-		
-// update audio
+		time2 = Sys_DoubleTime ();
+
 	if (cls.signon == SIGNONS)
 	{
+		// update audio
 		S_Update (r_origin, vpn, vright, vup);
 		CL_DecayLights ();
 	}
 	else
+	{
 		S_Update (vec3_origin, vec3_origin, vec3_origin, vec3_origin);
-	
+	}
+
 	CDAudio_Update();
 
 	if (host_speeds.value)
 	{
 		pass1 = (time1 - time3)*1000;
-		time3 = Sys_FloatTime ();
+		time3 = Sys_DoubleTime ();
 		pass2 = (time2 - time1)*1000;
 		pass3 = (time3 - time2)*1000;
 		Con_Printf ("%3i tot %3i server %3i gfx %3i snd\n", pass1+pass2+pass3, pass1, pass2, pass3);
 	}
-	
+
 	if (!cls.demoplayback && cl_demorewind.value)
 	{
 		Cvar_Set ("cl_demorewind", "0");
 		Con_Printf ("Demorewind is only enabled during playback\n");
 	}
-	
+
 	host_framecount++;
 }
 
-void Host_Frame (float time)
+void Host_Frame (double time)
 {
 	double	time1, time2;
 	static double	timetotal;
@@ -931,14 +904,14 @@ void Host_Frame (float time)
 		_Host_Frame (time);
 		return;
 	}
-	
-	time1 = Sys_FloatTime ();
+
+	time1 = Sys_DoubleTime ();
 	_Host_Frame (time);
-	time2 = Sys_FloatTime ();	
-	
+	time2 = Sys_DoubleTime ();
+
 	timetotal += time2 - time1;
 	timecount++;
-	
+
 	if (timecount < 1000)
 		return;
 
@@ -965,7 +938,7 @@ void Host_InitVCR (quakeparms_t *parms)
 {
 	int		i, len, n;
 	char	*p;
-	
+
 	if (COM_CheckParm("-playback"))
 	{
 		if (com_argc != 2)
@@ -980,12 +953,12 @@ void Host_InitVCR (quakeparms_t *parms)
 			Sys_Error("Invalid signature in vcr file\n");
 
 		Sys_FileRead (vcrFile, &com_argc, sizeof(int));
-		com_argv = malloc(com_argc * sizeof(char *));
+		com_argv = Q_malloc(com_argc * sizeof(char *));
 		com_argv[0] = parms->argv[0];
 		for (i = 0; i < com_argc; i++)
 		{
 			Sys_FileRead (vcrFile, &len, sizeof(int));
-			p = malloc(len);
+			p = Q_malloc(len);
 			Sys_FileRead (vcrFile, p, len);
 			com_argv[i+1] = p;
 		}
@@ -1011,12 +984,12 @@ void Host_InitVCR (quakeparms_t *parms)
 				Sys_FileWrite(vcrFile, "-playback", len);
 				continue;
 			}
-			len = Q_strlen(com_argv[i]) + 1;
+			len = strlen(com_argv[i]) + 1;
 			Sys_FileWrite(vcrFile, &len, sizeof(int));
 			Sys_FileWrite(vcrFile, com_argv[i], len);
 		}
 	}
-	
+
 }
 
 /*
@@ -1024,23 +997,16 @@ void Host_InitVCR (quakeparms_t *parms)
 Host_Init
 ====================
 */
-
-//void CreateSetKeyExtension(void);
-//void CreateSetKeyDescription(void);
-//void CreateSetKeyCommandLine(const char* exeline);
-
 void Host_Init (quakeparms_t *parms)
 {
-
-#ifdef GLQUAKE
+#if defined(_WIN32) && defined(GLQUAKE)
 	FILE *fp = fopen("opengl32.dll","r");
 	if (fp) {
 		// exists
 		fclose(fp);
 		Sys_Error ("OpenGL32.dll found in Quake folder.  You must delete this file from your Quake folder to run this engine.");
 	}
-#endif
-
+#endif // Windows only
 
 	if (standard_quake)
 		minimum_memory = MINIMUM_MEMORY;
@@ -1057,18 +1023,19 @@ void Host_Init (quakeparms_t *parms)
 
 	com_argc = parms->argc;
 	com_argv = parms->argv;
-
-	// JPG 3.00 - moved this here
-#ifdef WIN32
+#ifdef SUPPORTS_CHEATFREE
+		// JPG 3.00 - moved this here
+#if defined(_WIN32)
 	srand(time(NULL) ^ _getpid());
 #else
 	srand(time(NULL) ^ getpid());
 #endif
+#endif
 
 	Memory_Init (parms->membase, parms->memsize);
 	Cbuf_Init ();
-	Cmd_Init ();	
-	Cvar_Init (); //johnfitz
+	Cmd_Init ();
+	Cvar_Init ();
 	V_Init ();
 	Chase_Init ();
 	Host_InitVCR (parms);
@@ -1077,8 +1044,9 @@ void Host_Init (quakeparms_t *parms)
 
 	W_LoadWadFile ("gfx.wad");
 	Key_Init ();
-	Con_Init ();	
-	M_Init ();	
+
+	Con_Init ();
+	M_Init ();
 	PR_Init ();
 	Mod_Init ();
 	Security_Init ();	// JPG 3.20 - cheat free
@@ -1086,12 +1054,33 @@ void Host_Init (quakeparms_t *parms)
 	SV_Init ();
 	IPLog_Init ();	// JPG 1.05 - ip address logging
 
-
 	Con_Printf ("Exe: "__TIME__" "__DATE__"\n");
+#ifdef PSP
+	Con_Printf ("PSP Kurok Engine v 0.4\n"); //(EBOOT: "__TIME__" "__DATE__")\n");
+
+	int currentCPU = scePowerGetCpuClockFrequency();
+	int currentVRAM = sceGeEdramGetSize();
+    int currentVRAMADD = sceGeEdramGetAddr();
+
+#ifdef NORMAL_MODEL
+	Con_Printf ("PSP Normal 32MB RAM Mode \n");
+#endif
+#ifdef SLIM_MODEL
+	Con_Printf ("PSP Slim 64MB RAM Mode \n");
+#endif
+
 	Con_Printf ("%4.1f megabyte heap\n",parms->memsize/ (1024*1024.0));
-	
+	Con_Printf ("%4.1f PSP application heap \n",1.0f*PSP_HEAP_SIZE_MB);
+	Con_Printf ("%d VRAM \n",currentVRAM);
+    Con_Printf ("%d VRAM Address \n",currentVRAMADD);
+
+	Con_Printf ("CPU Speed %d MHz\n", currentCPU);
+
 	R_InitTextures ();		// needed even for dedicated servers
- 
+#else
+	Con_Printf ("%4.1f megabyte heap\n",parms->memsize/ (1024*1024.0));
+#endif
+
 	if (cls.state != ca_dedicated)
 	{
 		host_basepal = (byte *)COM_LoadHunkFile ("gfx/palette.lmp");
@@ -1128,6 +1117,11 @@ void Host_Init (quakeparms_t *parms)
 		IN_Init ();
 #endif
 
+#ifdef _WIN32
+		// Baker: 3.99m to get sys info
+		// must be AFTER video init stuff
+		Sys_InfoInit();  // We don't care about dedicated servers for this
+
 		// Baker 3.76 - Autoplay demo
 
 		if (com_argc >= 2)
@@ -1147,23 +1141,28 @@ void Host_Init (quakeparms_t *parms)
 				}
 			}
 		}
-
+#endif
 
 
 	}
 
 	Cbuf_InsertText ("exec quake.rc\n");
-	
+
 	// Baker 3.80x: this is a hack
-	Cbuf_AddText ("savefov\n");
-	Cbuf_AddText ("savesensitivity\n");
+
+	if (!isDedicated) {
+
+		Cbuf_AddText ("\nsavefov\n");
+		Cbuf_AddText ("savesensitivity\n");
+	}
 
 	Hunk_AllocName (0, "-HOST_HUNKLEVEL-");
 	host_hunklevel = Hunk_LowMark ();
 
 	host_initialized = true;
+
 	Con_Printf ("Host Initialized\n");
-	Sys_Printf ("========Quake Initialized=========\n");	
+	Sys_Printf ("========Quake Initialized=========\n");
 }
 
 
@@ -1178,7 +1177,7 @@ to run quit through here before the final handoff to the sys code.
 void Host_Shutdown(void)
 {
 	static qboolean isdown = false;
-	
+
 	if (isdown)
 	{
 		printf ("recursive shutdown\n");
@@ -1191,6 +1190,9 @@ void Host_Shutdown(void)
 
 	Host_WriteConfiguration ();
 	IPLog_WriteLog ();	// JPG 1.05 - ip loggging
+
+	if (con_initialized)
+		History_Shutdown ();
 
 	CDAudio_Shutdown ();
 	NET_Shutdown ();

@@ -33,7 +33,6 @@ void R_AnimateLight (void)
 {
 	int			i,j,k;
 	
-//
 // light animations
 // 'm' is normal light, 'a' is no light, 'z' is double bright
 	i = (int)(cl.time*10);
@@ -44,6 +43,7 @@ void R_AnimateLight (void)
 			d_lightstylevalue[j] = 256;
 			continue;
 		}
+
 		k = i % cl_lightstyle[j].length;
 		k = cl_lightstyle[j].map[k] - 'a';
 		k = k*22;
@@ -82,7 +82,7 @@ void R_RenderDlight (dlight_t *light)
 	rad = light->radius * 0.35;
 
 	VectorSubtract (light->origin, r_origin, v);
-	if (Length (v) < rad)
+	if (VectorLength (v) < rad)
 	{	// view is inside the dlight
 		AddLightBlend (1, 0.5, 0, light->radius * 0.0003);
 		return;
@@ -120,6 +120,12 @@ void R_RenderDlights (void)
 
 	r_dlightframecount = r_framecount + 1;	// because the count hasn't
 											//  advanced yet for this frame
+#ifdef SUPPORTS_FOG
+  // NATAS - BramBo - Disable drawing fog on lights - looks better
+        if (gl_fogenable.value) {
+            glDisable(GL_FOG);
+        }
+#endif
 	glDepthMask (0);
 	glDisable (GL_TEXTURE_2D);
 	glShadeModel (GL_SMOOTH);
@@ -134,13 +140,19 @@ void R_RenderDlights (void)
 		R_RenderDlight (l);
 	}
 
-	glColor3f (1,1,1);
+		glColor3ubv (color_white);
 	glDisable (GL_BLEND);
 	glEnable (GL_TEXTURE_2D);
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDepthMask (1);
+#ifdef SUPPORTS_FOG
+    // NATAS - BramBo - re-enable fog again
+        if (gl_fogenable.value) {
+        	glEnable(GL_FOG);
+        }
+    // END
+#endif
 }
-
 
 /*
 =============================================================================
@@ -195,7 +207,6 @@ void R_MarkLights (dlight_t *light, int bit, mnode_t *node)
 	R_MarkLights (light, bit, node->children[1]);
 }
 
-
 /*
 =============
 R_PushDlights
@@ -221,7 +232,6 @@ void R_PushDlights (void)
 	}
 }
 
-
 /*
 =============================================================================
 
@@ -235,18 +245,14 @@ vec3_t			lightspot;
 
 int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
 {
-	int			r;
-	float		front, back, frac;
-	int			side;
-	mplane_t	*plane;
-	vec3_t		mid;
-	msurface_t	*surf;
-	int			s, t, ds, dt;
-	int			i;
-	mtexinfo_t	*tex;
-	byte		*lightmap;
+	int			i, r, s, t, ds, dt, side, maps;
 	unsigned	scale;
-	int			maps;
+	float		front, back, frac;
+	byte		*lightmap;
+	vec3_t		mid;
+	mplane_t	*plane;
+	msurface_t	*surf;
+	mtexinfo_t	*tex;
 
 	if (node->contents < 0)
 		return -1;		// didn't hit anything

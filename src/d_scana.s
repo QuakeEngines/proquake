@@ -85,5 +85,5 @@ Llp:
 	popl	%ebp				// restore caller's stack frame pointer
 	ret
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 

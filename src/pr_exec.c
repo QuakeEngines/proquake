@@ -21,10 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 
 
-/*
-
-*/
-
 typedef struct
 {
 	int				s;
@@ -160,7 +156,9 @@ void PR_PrintStatement (dstatement_t *s)
 	}
 		
 	if (s->op == OP_IF || s->op == OP_IFNOT)
+	{
 		Con_Printf ("%sbranch %i",PR_GlobalString(s->a),s->b);
+	}
 	else if (s->op == OP_GOTO)
 	{
 		Con_Printf ("branch %i",s->a);
@@ -204,9 +202,7 @@ void PR_StackTrace (void)
 		f = pr_stack[i].f;
 		
 		if (!f)
-		{
 			Con_Printf ("<NO FUNCTION>\n");
-		}
 		else
 			Con_Printf ("%12s : %s\n", pr_strings + f->s_file, pr_strings + f->s_name);		
 	}
@@ -222,11 +218,12 @@ PR_Profile_f
 void PR_Profile_f (void)
 {
 	dfunction_t	*f, *best;
-	int			max;
-	int			num;
-	int			i;
+	int		i, max, num = 0;
 	
-	num = 0;	
+	// Baker: the fix for the profile command
+	if (!sv.active) 
+		return;
+	
 	do
 	{
 		max = 0;
@@ -264,7 +261,7 @@ void PR_RunError (char *error, ...)
 	char		string[1024];
 
 	va_start (argptr,error);
-	vsprintf (string,error,argptr);
+	vsnprintf (string,sizeof(string),error,argptr);
 	va_end (argptr);
 
 	PR_PrintStatement (pr_statements + pr_xstatement);
@@ -360,15 +357,11 @@ PR_ExecuteProgram
 */
 void PR_ExecuteProgram (func_t fnum)
 {
-	eval_t	*a, *b, *c;
-	int			s;
+	eval_t	*a, *b, *c, *ptr;
+	int			i, s, runaway, exitdepth;
 	dstatement_t	*st;
 	dfunction_t	*f, *newf;
-	int		runaway;
-	int		i;
 	edict_t	*ed;
-	int		exitdepth;
-	eval_t	*ptr;
 
 	if (!fnum || fnum >= progs->numfunctions)
 	{

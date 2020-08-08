@@ -7,14 +7,12 @@ void CreateSetKeyDescription(void);
 void CreateSetKeyCommandLine(const char*  exeline);
 
 };
-
  
 void CreateSetKeyExtension(void)
 {
  
  unsigned long IsNew = 0;
  HKEY hregkey;
-
 
  long res = RegCreateKeyEx(HKEY_CLASSES_ROOT, ".dem", 
 						   NULL, NULL, NULL, KEY_WRITE, NULL, &hregkey, &IsNew);
@@ -52,8 +50,6 @@ void CreateSetKeyDescription(void)
  }
 
 }
-
-
 
 void CreateSetKeyCommandLine(const char* exeline)
 {

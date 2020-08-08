@@ -21,7 +21,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 struct qsockaddr
 {
+#ifdef PSP_NETWORKING_CODE
+	unsigned char sa_len;
+	unsigned char sa_family;
+#else
 	short sa_family;
+#endif
 	unsigned char sa_data[14];
 };
 
@@ -259,7 +264,7 @@ typedef struct
 extern int hostCacheCount;
 extern hostcache_t hostcache[HOSTCACHESIZE];
 
-#if !defined(_WIN32 ) && !defined (__linux__) && !defined (__sun__)
+#if !defined(_WIN32 ) && !defined (LINUX)
 #ifndef htonl
 extern unsigned long htonl (unsigned long hostlong);
 #endif
@@ -272,10 +277,6 @@ extern unsigned long ntohl (unsigned long netlong);
 #ifndef ntohs
 extern unsigned short ntohs (unsigned short netshort);
 #endif
-#endif
-
-#ifdef IDGODS
-qboolean IsID(struct qsockaddr *addr);
 #endif
 
 //============================================================================
@@ -344,6 +345,9 @@ void SchedulePollProcedure(PollProcedure *pp, double timeOffset);
 extern	qboolean	serialAvailable;
 extern	qboolean	ipxAvailable;
 extern	qboolean	tcpipAvailable;
+#ifdef PSP_NETWORKING_CODE
+extern	qboolean	tcpipAdhoc;
+#endif
 extern	char		my_ipx_address[NET_NAMELEN];
 extern	char		my_tcpip_address[NET_NAMELEN];
 extern void (*GetComPortConfig) (int portNumber, int *port, int *irq, int *baud, qboolean *useModem);

@@ -20,13 +20,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // common.c -- misc functions used in client and server
 
 #include "quakedef.h"
+#include <assert.h>
+
 
 #define NUM_SAFE_ARGVS  7
 
 static char     *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
 static char     *argvdummy = " ";
 
-static char     *safeargvs[NUM_SAFE_ARGVS] = {"-stdvid", "-nolan", "-nosound", "-cdaudio", "-joy", "-nomouse", "-dibonly"};
+static char     *safeargvs[NUM_SAFE_ARGVS] = {"-stdvid", "-nolan", "-nosound", "-nocdaudio", "-joystick", "-nomouse", "-dibonly"};
 
 cvar_t  registered = {"registered","0"};
 cvar_t  cmdline = {"cmdline","0", false, true};
@@ -47,6 +49,7 @@ void COM_InitFilesystem (void);
 
 char	com_token[1024];
 char	com_basedir[MAX_OSPATH];	// c:/quake
+
 int		com_argc;
 char	**com_argv;
 
@@ -54,6 +57,20 @@ char	**com_argv;
 char	com_cmdline[CMDLINE_LENGTH];
 
 qboolean		standard_quake = true, rogue, hipnotic;
+
+// Special command line options
+
+
+
+qboolean		mod_deeplair = false;		// Deep lair mod: alternate HUD
+
+qboolean		mod_conhide  = false;		// Conceal the console more
+
+qboolean		mod_nosoundwarn = false;	// Don't warn about missing sounds
+
+
+
+
 
 // this graphic needs to be in the pak file to use registered features
 unsigned short pop[] =
@@ -127,6 +144,46 @@ void InsertLinkAfter (link_t *l, link_t *after)
 	l->next->prev = l;
 }
 
+#ifdef BUILD_MP3_VERSION
+
+// fast safe printbuffers courtesy of lord havoc.
+int va_snprintf (char *function, char *buffer, size_t buffersize, const char *format, ...)
+{
+	va_list args;
+	int		result;
+	
+	va_start (args, format);
+	result = va_vsnprintf (function, buffer, buffersize, format, args);
+	va_end (args);
+	
+	return result;
+}
+
+int va_vsnprintf (char *function, char *buffer, size_t buffersize, const char *format, va_list args)
+{
+	size_t result;
+	
+	result = vsnprintf (buffer, buffersize, format, args);
+	
+	if (result < 0 || result >= buffersize)
+	{
+		static qboolean inside;
+		
+		// Beware recursion here
+		if (!inside)
+		{
+			inside = true;
+			Con_SafePrintf ("%s: excessive string length, max = %d\n", function, buffersize);
+		}		
+		inside = false;
+		buffer[buffersize - 1] = '\0';
+		return -1;
+	}	
+	return result;
+}
+#endif
+
+
 /*
 ============================================================================
 
@@ -135,7 +192,8 @@ void InsertLinkAfter (link_t *l, link_t *after)
 ============================================================================
 */
 
-void Q_memset (void *dest, int fill, int count)
+/*void Q_memset (void *dest, int fill, int count)
+
 {
 	int             i;
 
@@ -149,9 +207,11 @@ void Q_memset (void *dest, int fill, int count)
 	else
 		for (i=0 ; i<count ; i++)
 			((byte *)dest)[i] = fill;
-}
+}*/
 
-void Q_memcpy (void *dest, void *src, int count)
+
+/*void Q_memcpy (void *dest, void *src, int count)
+
 {
 	int             i;
 
@@ -164,9 +224,11 @@ void Q_memcpy (void *dest, void *src, int count)
 	else
 		for (i=0 ; i<count ; i++)
 			((byte *)dest)[i] = ((byte *)src)[i];
-}
+}*/
 
-int Q_memcmp (void *m1, void *m2, int count)
+
+/*int Q_memcmp (void *m1, void *m2, int count)
+
 {
 	while(count)
 	{
@@ -175,9 +237,13 @@ int Q_memcmp (void *m1, void *m2, int count)
 			return -1;
 	}
 	return 0;
-}
+}*/
+
+
+/*
 
 void Q_strcpy (char *dest, char *src)
+
 {
 	while (*src)
 	{
@@ -195,8 +261,57 @@ void Q_strncpy (char *dest, char *src, int count)
 	if (count)
 		*dest++ = 0;
 }
+*/
 
-int Q_strlen (char *str)
+
+
+
+/*
+
+================
+
+COM_Quakebar 
+
+================
+
+*/
+
+char *COM_Quakebar (int len)
+
+{
+
+	static char bar[42];
+
+	int i;
+
+
+
+	len = min(len, sizeof(bar) - 2);
+
+
+
+	bar[0] = '\36';
+
+	for (i = 1; i < len - 1; i++)
+
+		bar[i] = '\36';
+
+	bar[len-1] = '\36';
+
+	bar[len] = 0;
+
+
+
+	return bar;
+
+}
+
+
+
+
+
+/*int Q_strlen (char *str)
+
 {
 	int             count;
 
@@ -205,24 +320,31 @@ int Q_strlen (char *str)
 		count++;
 
 	return count;
-}
+}*/
 
-char *Q_strrchr(char *s, char c)
+
+/*char *strrchr(char *s, char c)
+
 {
-    int len = Q_strlen(s);
+    int len = strlen(s);
     s += len;
     while (len--)
 	if (*--s == c) return s;
     return 0;
-}
+}*/
 
-void Q_strcat (char *dest, char *src)
+
+/*void Q_strcat (char *dest, char *src)
+
 {
-	dest += Q_strlen(dest);
+	dest += strlen(dest);
 	Q_strcpy (dest, src);
-}
 
-int Q_strcmp (char *s1, char *s2)
+}*/
+
+
+/*int Q_strcmp (char *s1, char *s2)
+
 {
 	while (1)
 	{
@@ -235,9 +357,11 @@ int Q_strcmp (char *s1, char *s2)
 	}
 
 	return -1;
-}
+}*/
 
-int Q_strncmp (char *s1, char *s2, int count)
+
+/*int Q_strncmp (char *s1, char *s2, int count)
+
 {
 	while (1)
 	{
@@ -252,7 +376,8 @@ int Q_strncmp (char *s1, char *s2, int count)
 	}
 
 	return -1;
-}
+}*/
+
 
 int Q_strncasecmp (char *s1, char *s2, int n)
 {
@@ -350,7 +475,8 @@ int Q_atoi (char *str)
 
 float Q_atof (char *str)
 {
-	double			val;
+	float			val;
+
 	int             sign;
 	int             c;
 	int             decimal, total;
@@ -423,12 +549,15 @@ float Q_atof (char *str)
 	return val*sign;
 }
 
+// Always ensures string is terminated
+
 void Q_strncpyz (char *dest, char *src, size_t size)
 {
 	strncpy (dest, src, size - 1);
 	dest[size-1] = 0;
 }
 
+// Always ensures string is terminated
 void Q_snprintfz (char *dest, size_t size, char *fmt, ...)
 {
 	va_list		argptr;
@@ -439,7 +568,6 @@ void Q_snprintfz (char *dest, size_t size, char *fmt, ...)
 
 	dest[size - 1] = 0;
 }
-
 
 /*
 ============================================================================
@@ -596,7 +724,7 @@ void MSG_WriteString (sizebuf_t *sb, char *s)
 	if (!s)
 		SZ_Write (sb, "", 1);
 	else
-		SZ_Write (sb, s, Q_strlen(s)+1);
+		SZ_Write (sb, s, strlen(s)+1);
 }
 
 void MSG_WriteCoord (sizebuf_t *sb, float f)
@@ -604,16 +732,45 @@ void MSG_WriteCoord (sizebuf_t *sb, float f)
 	MSG_WriteShort (sb, (int)(f*8));
 }
 
+
+// Baker: we are using this for super-smooth floats for angles in pure single player
+//        with no demos recording or being played with the server running with maxplayers of 1
+//        This means our little private protocol will not be interfering with any Quake standards
+//        of any importance because no interaction with other clients and/or demos is occurring
+
+#define PRIVATE_PROTOCOL_OK	(sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)   
+//#define SINGLE_PLAYER_ACTIVE (sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)   
+#undef SMOOTH_SINGLEPLAYER_TEST
+
 void MSG_WriteAngle (sizebuf_t *sb, float f)
-{
+{  
+	//MSG_WriteByte (sb, (int)floor(f * 256 / 360 + 0.5) & 255); // Baker 3.76 - LordHavoc precision aiming fix
+#ifdef SMOOTH_SINGLEPLAYER_TEST
+	if (PRIVATE_PROTOCOL_OK)
+		MSG_WriteFloat (sb, f);
+	else
+#endif	
 	MSG_WriteByte (sb, ((int)f*256/360) & 255);
+}
+
+// joe: added from FuhQuake
+void R_PreMapLoad (char *mapname)
+{
+	Cvar_Set ("cl_mapname", mapname);	
 }
 
 // JPG - precise aim for ProQuake!
 void MSG_WritePreciseAngle (sizebuf_t *sb, float f)
 {
+#ifdef SMOOTH_SINGLEPLAYER_TEST
+	if (PRIVATE_PROTOCOL_OK)
+		MSG_WriteFloat (sb, f);
+	else
+#endif
+	{
 	int val = (int)f*65536/360;
 	MSG_WriteShort (sb, val & 65535);
+	}
 }
 
 //
@@ -758,14 +915,26 @@ float MSG_ReadCoord (void)
 
 float MSG_ReadAngle (void)
 {
+#ifdef SMOOTH_SINGLEPLAYER_TEST
+	if (PRIVATE_PROTOCOL_OK)
+		return MSG_ReadFloat();
+	else
+#endif
 	return MSG_ReadChar() * (360.0/256);
 }
 
 // JPG - exact aim for proquake!
 float MSG_ReadPreciseAngle (void)
 {
+#ifdef SMOOTH_SINGLEPLAYER_TEST
+	if (PRIVATE_PROTOCOL_OK)
+		return MSG_ReadFloat();
+	else
+#endif
+	{
 	int val = MSG_ReadShort();
 	return val * (360.0/65536);
+	}
 }
 
 //===========================================================================
@@ -818,20 +987,20 @@ void *SZ_GetSpace (sizebuf_t *buf, int length)
 
 void SZ_Write (sizebuf_t *buf, void *data, int length)
 {
-	Q_memcpy (SZ_GetSpace(buf,length),data,length);
+	memcpy (SZ_GetSpace(buf,length),data,length);
 }
 
 void SZ_Print (sizebuf_t *buf, char *data)
 {
 	int             len;
 
-	len = Q_strlen(data)+1;
+	len = strlen(data)+1;
 
 // byte * cast to keep VC++ happy
 	if (buf->data[buf->cursize-1])
-		Q_memcpy ((byte *)SZ_GetSpace(buf, len),data,len); // no trailing 0
+		memcpy ((byte *)SZ_GetSpace(buf, len),data,len); // no trailing 0
 	else
-		Q_memcpy ((byte *)SZ_GetSpace(buf, len-1)-1,data,len); // write over trailing 0
+		memcpy ((byte *)SZ_GetSpace(buf, len-1)-1,data,len); // write over trailing 0
 }
 
 
@@ -880,7 +1049,8 @@ void COM_StripExtension (char *in, char *out)
 
 /*
 ============
-COM_FileExtension - Baker 3.76 - Stronger version from ezQuake 1.8
+COM_FileExtension
+
 ============
 */
 char *COM_FileExtension (char *in)
@@ -889,6 +1059,7 @@ char *COM_FileExtension (char *in)
 	int             i;
 
 	if (!(in = strrchr(in, '.')))
+
 		return "";
 	in++;
 	for (i=0 ; i<7 && *in ; i++,in++)
@@ -896,6 +1067,33 @@ char *COM_FileExtension (char *in)
 	exten[i] = 0;
 	return exten;
 }
+
+#ifdef HTTP_DOWNLOAD
+
+/*
+============
+COM_GetFolder
+============
+*/
+void COM_GetFolder (char *in, char *out)
+{
+	char *last = NULL;
+
+	while (*in)
+	{
+		if (*in == '/')
+			last = out;
+		*out++ = *in++;
+	}
+	if (last)
+		*last = 0;
+	else
+		*out = 0;
+}
+#endif
+
+
+
 
 /*
 ============
@@ -1071,7 +1269,7 @@ int COM_CheckParm (char *parm)
 	{
 		if (!com_argv[i])
 			continue;               // NEXTSTEP sometimes clears appkit vars.
-		if (!Q_strcmp (parm,com_argv[i]))
+		if (!strcmp (parm,com_argv[i]))
 			return i;
 	}
 
@@ -1115,8 +1313,9 @@ void COM_CheckRegistered (void)
 		if (pop[i] != (unsigned short)BigShort (check[i]))
 			Sys_Error ("Corrupted data file.");
 
-//	Cvar_Set ("cmdline", com_cmdline);
-	cmdline.string = com_cmdline;
+	Cvar_Set ("cmdline", com_cmdline);
+	// Baker: 3.99k this is horrible!!!!! Never do that again -> cmdline.string = com_cmdline;
+
 	Cvar_Set ("registered", "1");
 	static_registered = 1;
 	Con_Printf ("Playing registered version.\n");
@@ -1162,7 +1361,7 @@ void COM_InitArgv (int argc, char **argv)
 		 com_argc++)
 	{
 		largv[com_argc] = argv[com_argc];
-		if (!Q_strcmp ("-safe", argv[com_argc]))
+		if (!strcmp ("-safe", argv[com_argc]))
 			safe = true;
 	}
 
@@ -1191,6 +1390,20 @@ void COM_InitArgv (int argc, char **argv)
 		hipnotic = true;
 		standard_quake = false;
 	}
+
+
+	//ProQuake 4.10 new extras
+
+
+
+	if (COM_CheckParm ("-deeplair")) 		mod_deeplair = true;
+
+	if (COM_CheckParm ("-conhide"))  		mod_conhide = true;
+
+	if (COM_CheckParm ("-nosoundwarn"))  	mod_nosoundwarn = true;
+
+
+
 }
 
 
@@ -1226,7 +1439,7 @@ void COM_Init (char *basedir)
 	}
 
 	Cvar_RegisterVariable (&registered, NULL);
-//	Cvar_RegisterVariable (&cmdline);
+	Cvar_RegisterVariable (&cmdline, NULL);  // Baker 3.99c: needed for test2 command
 	Cmd_AddCommand ("path", COM_Path_f);
 
 	COM_InitFilesystem ();
@@ -1249,10 +1462,29 @@ char    *va(char *format, ...)
 	static char             string[1024];
 
 	va_start (argptr, format);
-	vsprintf (string, format,argptr);
+	vsnprintf (string, sizeof(string), format,argptr);
+
 	va_end (argptr);
 
 	return string;
+}
+
+char *CopyString (char *in)
+
+{
+
+	char	*out;
+
+
+
+	out = Z_Malloc (strlen(in)+1);
+
+	strcpy (out, in);
+
+
+
+	return out;
+
 }
 
 
@@ -1312,7 +1544,8 @@ typedef struct
 	int             dirlen;
 } dpackheader_t;
 
-#define MAX_FILES_IN_PACK       2048
+#define MAX_FILES_IN_PACK       4096 // Baker: HL Support as Half-Life Pak0.pak has a lot of files
+
 
 char    com_cachedir[MAX_OSPATH];
 char    com_gamedir[MAX_OSPATH] = "";	// JPG 3.20 - added initialization
@@ -1330,7 +1563,6 @@ searchpath_t	*com_verifypaths = NULL;	// JPG 3.20 - use original game directory 
 /*
 ============
 COM_Path_f
-
 ============
 */
 void COM_Path_f (void)
@@ -1363,7 +1595,8 @@ void COM_WriteFile (char *filename, void *data, int len)
 
 	Sys_mkdir (com_gamedir); //johnfitz -- if we've switched to a nonexistant gamedir, create it now so we don't crash
 
-	sprintf (name, "%s/%s", com_gamedir, filename);
+
+	snprintf (name, sizeof(name), "%s/%s", com_gamedir, filename);
 
 	handle = Sys_FileOpenWrite (name);
 	if (handle == -1)
@@ -1399,7 +1632,6 @@ void    COM_CreatePath (char *path)
 		}
 	}
 }
-
 
 /*
 ===========
@@ -1501,7 +1733,7 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 					continue;
 			}
 
-			sprintf (netpath, "%s/%s",search->filename, filename);
+			snprintf (netpath, sizeof(netpath), "%s/%s",search->filename, filename);
 
 			findtime = Sys_FileTime (netpath);
 			if (findtime == -1)
@@ -1514,12 +1746,17 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 			{
 #if defined(_WIN32)
 				if ((strlen(netpath) < 2) || (netpath[1] != ':'))
-					sprintf (cachepath,"%s%s", com_cachedir, netpath);
+					snprintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath);
+
 				else
-					sprintf (cachepath,"%s%s", com_cachedir, netpath+2);
-#else
-				sprintf (cachepath,"%s%s", com_cachedir, netpath);
-#endif
+					snprintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath+2);
+
+//#elif defined (MACOSX) || defined (LINUX)
+#else // Above line is insufficient since we do PSP and Flash now too
+
+				snprintf (cachepath,sizeof(cachepath),"%s%s", com_cachedir, netpath);
+#endif //^^ Windows prefixes drive names (no idea what OSX or Linux do for multiple drives).  In truth the above needs work for Windows networked drives prefixes (see aguirRe Quake for solution)
+
 
 				cachetime = Sys_FileTime (cachepath);
 
@@ -1690,6 +1927,7 @@ byte *COM_LoadStackFile (char *path, void *buffer, int bufsize)
 =================
 COM_LoadPackFile -- johnfitz -- modified based on topaz's tutorial
 
+
 Takes an explicit (not game tree related) path to a pak file.
 
 Loads the header and directory, adding the files at the beginning
@@ -1708,10 +1946,12 @@ pack_t *COM_LoadPackFile (char *packfile)
 	unsigned short          crc;
 
 	if (Sys_FileOpenRead (packfile, &packhandle) == -1)
+	{
+//              Con_Printf ("Couldn't open %s\n", packfile);
 		return NULL;
-
+	}
 	Sys_FileRead (packhandle, (void *)&header, sizeof(header));
-	if (header.id[0] != 'P' || header.id[1] != 'A' || header.id[2] != 'C' || header.id[3] != 'K')
+	if (header.id[0] != 'P' || header.id[1] != 'A'|| header.id[2] != 'C' || header.id[3] != 'K')
 		Sys_Error ("%s is not a packfile", packfile);
 	header.dirofs = LittleLong (header.dirofs);
 	header.dirlen = LittleLong (header.dirlen);
@@ -1725,9 +1965,13 @@ pack_t *COM_LoadPackFile (char *packfile)
 		com_modified = true;    // not the original file
 
 	//johnfitz -- dynamic gamedir loading
+
     //Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
+
 	newfiles = Z_Malloc(numpackfiles * sizeof(packfile_t));
+
 	//johnfitz
+
 
 	Sys_FileSeek (packhandle, header.dirofs);
 	Sys_FileRead (packhandle, (void *)info, header.dirlen);
@@ -1748,14 +1992,21 @@ pack_t *COM_LoadPackFile (char *packfile)
 	}
 
 	//johnfitz -- dynamic gamedir loading
+
 	//pack = Hunk_Alloc (sizeof (pack_t));
+
 	pack = Z_Malloc (sizeof (pack_t));
+
 	//johnfitz
+
+
 
 	strcpy (pack->filename, packfile);
 	pack->handle = packhandle;
 	pack->numfiles = numpackfiles;
 	pack->files = newfiles;
+
+	// FitzQuake has this commented out
 
 	Con_Printf ("Added packfile %s (%i files)\n", packfile, numpackfiles);
 	return pack;
@@ -1763,9 +2014,13 @@ pack_t *COM_LoadPackFile (char *packfile)
 
 
 /*
-=================
+================
 COM_AddGameDirectory -- johnfitz -- modified based on topaz's tutorial
-=================
+
+
+Sets com_gamedir, adds the directory to the head of the path,
+then loads and adds pak1.pak pak2.pak ...
+================
 */
 void COM_AddGameDirectory (char *dir)
 {
@@ -1778,6 +2033,7 @@ void COM_AddGameDirectory (char *dir)
 
 // add the directory to the search path
 	search = Z_Malloc(sizeof(searchpath_t));
+
 	strcpy (search->filename, dir);
 	search->next = com_searchpaths;
 	com_searchpaths = search;
@@ -1785,11 +2041,12 @@ void COM_AddGameDirectory (char *dir)
 // add any pak files in the format pak0.pak pak1.pak, ...
 	for (i=0 ; ; i++)
 	{
-		sprintf (pakfile, "%s/pak%i.pak", dir, i);
+		snprintf (pakfile, sizeof(pakfile), "%s/pak%i.pak", dir, i);
 		pak = COM_LoadPackFile (pakfile);
 		if (!pak)
 			break;
 		search = Z_Malloc(sizeof(searchpath_t));
+
 		search->pack = pak;
 		search->next = com_searchpaths;
 		com_searchpaths = search;
@@ -1798,15 +2055,23 @@ void COM_AddGameDirectory (char *dir)
 
 /*
 =================
+
 COM_InitFilesystem
 =================
+
 */
 void COM_InitFilesystem () //johnfitz -- modified based on topaz's tutorial
+
 {
 	int             i, j;
 	char    basedir[MAX_OSPATH];
 	searchpath_t    *search;
 
+
+//
+// -basedir <path>
+// Overrides the system supplied base directory (under GAMENAME)
+//
 	i = COM_CheckParm ("-basedir");
 	if (i && i < com_argc-1)
 		strcpy (basedir, com_argv[i+1]);
@@ -1821,6 +2086,11 @@ void COM_InitFilesystem () //johnfitz -- modified based on topaz's tutorial
 			basedir[j-1] = 0;
 	}
 
+//
+// -cachedir <path>
+// Overrides the system supplied cache directory (NULL or /qcache)
+// -cachedir - will disable caching.
+//
 	i = COM_CheckParm ("-cachedir");
 	if (i && i < com_argc-1)
 	{
@@ -1834,9 +2104,10 @@ void COM_InitFilesystem () //johnfitz -- modified based on topaz's tutorial
 	else
 		com_cachedir[0] = 0;
 
-	// start up with GAMENAME by default (id1)
+// start up with GAMENAME by default (id1)
 	COM_AddGameDirectory (va("%s/"GAMENAME, basedir) );
-	strcpy (com_gamedir, va("%s/"GAMENAME, basedir));
+	strcpy (com_gamedir, va("%s/"GAMENAME, basedir));   // Baker 3.60 - From FitzQuake
+
 
 	if (COM_CheckParm ("-rogue"))
 		COM_AddGameDirectory (va("%s/rogue", basedir) );
@@ -1856,6 +2127,10 @@ void COM_InitFilesystem () //johnfitz -- modified based on topaz's tutorial
 		COM_AddGameDirectory (va("%s/%s", basedir, com_argv[i+1]));
 	}
 
+//
+// -path <dir or packfile> [<dir or packfile>] ...
+// Fully specifies the exact serach path, overriding the generated one
+//
 	i = COM_CheckParm ("-path");
 	if (i)
 	{
@@ -1911,4 +2186,278 @@ void COM_ModelCRC (void)
 	com_searchpaths = search;
 }
 
+//======================================
 
+
+
+// snprintf and vsnprintf are NOT portable. Use their DP counterparts instead
+
+
+
+int dpsnprintf (char *buffer, size_t buffersize, const char *format, ...)
+
+{
+
+	va_list args;
+
+	int result;
+
+
+
+	va_start (args, format);
+
+	result = dpvsnprintf (buffer, buffersize, format, args);
+
+	va_end (args);
+
+
+
+	return result;
+
+}
+
+
+
+
+int dpvsnprintf (char *buffer, size_t buffersize, const char *format, va_list args)
+
+{
+
+	int result;
+
+
+
+	result = vsnprintf (buffer, buffersize, format, args);
+
+	if (result < 0 || (size_t)result >= buffersize)
+
+	{
+
+		buffer[buffersize - 1] = '\0';
+
+		return -1;
+
+	}
+
+
+
+	return result;
+
+}
+
+
+
+//========================================================
+
+// strlcat and strlcpy, from OpenBSD
+
+
+
+/*
+
+ * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
+
+ *
+
+ * Permission to use, copy, modify, and distribute this software for any
+
+ * purpose with or without fee is hereby granted, provided that the above
+
+ * copyright notice and this permission notice appear in all copies.
+
+ *
+
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+ */
+
+
+
+/*	$OpenBSD: strlcat.c,v 1.11 2003/06/17 21:56:24 millert Exp $	*/
+
+/*	$OpenBSD: strlcpy.c,v 1.8 2003/06/17 21:56:24 millert Exp $	*/
+
+
+
+#if !defined(FLASH)
+
+#ifndef HAVE_STRLCAT
+
+size_t
+
+strlcat(char *dst, const char *src, size_t siz)
+
+{
+
+	register char *d = dst;
+
+	register const char *s = src;
+
+	register size_t n = siz;
+
+	size_t dlen;
+
+
+
+	/* Find the end of dst and adjust bytes left but don't go past end */
+
+	while (n-- != 0 && *d != '\0')
+
+		d++;
+
+	dlen = d - dst;
+
+	n = siz - dlen;
+
+
+
+	if (n == 0)
+
+		return(dlen + strlen(s));
+
+	while (*s != '\0') {
+
+		if (n != 1) {
+
+			*d++ = *s;
+
+			n--;
+
+		}
+
+		s++;
+
+	}
+
+	*d = '\0';
+
+
+
+	return(dlen + (s - src));	/* count does not include NUL */
+
+}
+
+#endif  // #ifndef HAVE_STRLCAT
+
+
+
+
+#ifndef HAVE_STRLCPY
+
+size_t
+
+strlcpy(char *dst, const char *src, size_t siz)
+
+{
+
+	register char *d = dst;
+
+	register const char *s = src;
+
+	register size_t n = siz;
+
+
+
+	/* Copy as many bytes as will fit */
+
+	if (n != 0 && --n != 0) {
+
+		do {
+
+			if ((*d++ = *s++) == 0)
+
+				break;
+
+		} while (--n != 0);
+
+	}
+
+
+
+	/* Not enough room in dst, add NUL and traverse rest of src */
+
+	if (n == 0) {
+
+		if (siz != 0)
+
+			*d = '\0';		/* NUL-terminate dst */
+
+		while (*s++)
+
+			;
+
+	}
+
+
+	return(s - src - 1);	/* count does not include NUL */
+
+}
+
+
+#endif  // #ifndef HAVE_STRLCPY
+
+#endif
+
+
+#if !defined(FLASH)
+
+// Baker: strip leading spaces from string
+
+char *strltrim(char *s) {
+
+	char *t;
+
+
+	assert(s != NULL);
+
+	for (t = s; isspace(*t); ++t)
+
+		continue;
+
+	memmove(s, t, strlen(t)+1);	/* +1 so that '\0' is moved too */
+
+	return s;
+
+}
+
+#endif
+
+
+
+//======================================
+
+// LordHavoc: added these because they are useful
+
+
+
+void COM_ToLowerString(char *in, char *out)
+
+{
+
+	while (*in)
+
+	{
+
+		if (*in >= 'A' && *in <= 'Z')
+
+			*out++ = *in++ + 'a' - 'A';
+
+		else
+
+			*out++ = *in++;
+
+	}
+
+}

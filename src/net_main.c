@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -29,6 +29,9 @@ int			net_numsockets = 0;
 qboolean	serialAvailable = false;
 qboolean	ipxAvailable = false;
 qboolean	tcpipAvailable = false;
+#ifdef PSP_NETWORKING_CODE
+qboolean	tcpipAdhoc = false;
+#endif
 
 int			net_hostport;
 int			DEFAULTnet_hostport = 26000;
@@ -53,7 +56,6 @@ static void Slist_Send(void);
 static void Slist_Poll(void);
 PollProcedure	slistSendProcedure = {NULL, 0.0, Slist_Send};
 PollProcedure	slistPollProcedure = {NULL, 0.0, Slist_Poll};
-
 
 sizebuf_t		net_message;
 int				net_activeconnections = 0;
@@ -105,13 +107,12 @@ double			net_time;
 
 double SetNetTime(void)
 {
-	net_time = Sys_FloatTime();
+	net_time = Sys_DoubleTime();
 	return net_time;
 }
 
-
 // JPG 3.00 - need this for linux build
-#ifndef WIN32
+#ifndef _WIN32
 unsigned _lrotl (unsigned x, int s)
 {
 	s &= 31;
@@ -153,7 +154,7 @@ qsocket_t *NET_NewQSocket (void)
 
 	sock->disconnected = false;
 	sock->connecttime = net_time;
-	Q_strcpy (sock->address,"UNSET ADDRESS");
+	strcpy (sock->address,"UNSET ADDRESS");
 	sock->driver = net_driverlevel;
 	sock->socket = 0;
 	sock->driverdata = NULL;
@@ -329,7 +330,7 @@ void NET_Slist_f (void)
 	}
 
 	slistInProgress = true;
-	slistStartTime = Sys_FloatTime();
+	slistStartTime = Sys_DoubleTime();
 
 	SchedulePollProcedure(&slistSendProcedure, 0.0);
 	SchedulePollProcedure(&slistPollProcedure, 0.1);
@@ -349,7 +350,7 @@ static void Slist_Send(void)
 		dfunc.SearchForHosts (true);
 	}
 
-	if ((Sys_FloatTime() - slistStartTime) < 0.5)
+	if ((Sys_DoubleTime() - slistStartTime) < 0.5)
 		SchedulePollProcedure(&slistSendProcedure, 0.75);
 }
 
@@ -368,7 +369,7 @@ static void Slist_Poll(void)
 	if (! slistSilent)
 		PrintSlist();
 
-	if ((Sys_FloatTime() - slistStartTime) < 1.5)
+	if ((Sys_DoubleTime() - slistStartTime) < 1.5)
 	{
 		SchedulePollProcedure(&slistPollProcedure, 0.1);
 		return;
@@ -394,8 +395,7 @@ hostcache_t hostcache[HOSTCACHESIZE];
 qsocket_t *NET_Connect (char *host)
 {
 	qsocket_t		*ret;
-	int				n;
-	int				numdrivers = net_numdrivers;
+	int				n, numdrivers = net_numdrivers;
 
 	SetNetTime();
 
@@ -451,11 +451,13 @@ JustDoIt:
 		if (net_drivers[net_driverlevel].initialized == false)
 			continue;
 		ret = dfunc.Connect (host);
+#ifdef SUPPORTS_CHEATFREE_MODE
 		if (!sv.active && pq_cheatfree)
 			Security_SetSeed(_lrotr(net_seed, 17), argv[0]);
+#endif
 		if (ret)
 			return ret;
-	}
+		}
 
 	/* JPG 3.20 - this has always annoyed me so I commented it out
 	if (host)
@@ -466,7 +468,7 @@ JustDoIt:
 		PrintSlistTrailer();
 	}
 	*/
-	
+
 	return NULL;
 }
 
@@ -510,7 +512,7 @@ qsocket_t *NET_CheckNewConnections (void)
 			return ret;
 		}
 	}
-	
+
 	if (recording)
 	{
 		vcrConnect.time = host_time;
@@ -594,14 +596,13 @@ int	NET_GetMessage (qsocket_t *sock)
 		}
 
 		// JPG 2.01 - qflood/qkick protection
-		if (net_time - sock->lastMessageTime > net_connecttimeout.value && sv.active && 
+		if (net_time - sock->lastMessageTime > net_connecttimeout.value && sv.active &&
 			host_client && sock == host_client->netconnection && !strcmp(host_client->name, "unconnected"))
 		{
 			NET_Close(sock);
 			return -1;
 		}
 	}
-
 
 	if (ret > 0)
 	{
@@ -622,6 +623,9 @@ int	NET_GetMessage (qsocket_t *sock)
 		}
 
 		if (recording)
+
+
+
 		{
 			vcrGetMessage.time = host_time;
 			vcrGetMessage.op = VCR_OP_GETMESSAGE;
@@ -674,7 +678,7 @@ sizebuf_t newdata;
 int NET_SendMessage (qsocket_t *sock, sizebuf_t *data)
 {
 	int		r;
-	
+
 	if (!sock)
 		return -1;
 
@@ -714,14 +718,14 @@ int NET_SendMessage (qsocket_t *sock, sizebuf_t *data)
 		vcrSendMessage.r = r;
 		Sys_FileWrite (vcrFile, &vcrSendMessage, 20);
 	}
-	
+
 	return r;
 }
 
 int NET_SendUnreliableMessage (qsocket_t *sock, sizebuf_t *data)
 {
 	int		r;
-	
+
 	if (!sock)
 		return -1;
 
@@ -761,7 +765,7 @@ int NET_SendUnreliableMessage (qsocket_t *sock, sizebuf_t *data)
 		vcrSendMessage.r = r;
 		Sys_FileWrite (vcrFile, &vcrSendMessage, 20);
 	}
-	
+
 	return r;
 }
 
@@ -777,7 +781,7 @@ message to be transmitted.
 qboolean NET_CanSendMessage (qsocket_t *sock)
 {
 	int		r;
-	
+
 	if (!sock)
 		return false;
 
@@ -787,7 +791,7 @@ qboolean NET_CanSendMessage (qsocket_t *sock)
 	SetNetTime();
 
 	r = sfunc.CanSendMessage(sock);
-	
+
 	if (recording)
 	{
 		vcrSendMessage.time = host_time;
@@ -796,16 +800,14 @@ qboolean NET_CanSendMessage (qsocket_t *sock)
 		vcrSendMessage.r = r;
 		Sys_FileWrite (vcrFile, &vcrSendMessage, 20);
 	}
-	
+
 	return r;
 }
-
 
 int NET_SendToAll(sizebuf_t *data, int blocktime)
 {
 	double		start;
-	int			i;
-	int			count = 0;
+	int		i, count = 0;
 	qboolean	state1 [MAX_SCOREBOARD];
 	qboolean	state2 [MAX_SCOREBOARD];
 
@@ -833,7 +835,7 @@ int NET_SendToAll(sizebuf_t *data, int blocktime)
 		}
 	}
 
-	start = Sys_FloatTime();
+	start = Sys_DoubleTime();
 	while (count)
 	{
 		count = 0;
@@ -857,23 +859,19 @@ int NET_SendToAll(sizebuf_t *data, int blocktime)
 			if (! state2[i])
 			{
 				if (NET_CanSendMessage (host_client->netconnection))
-				{
 					state2[i] = true;
-				}
 				else
-				{
 					NET_GetMessage (host_client->netconnection);
-				}
+
 				count++;
 				continue;
 			}
 		}
-		if ((Sys_FloatTime() - start) > blocktime)
+		if ((Sys_DoubleTime() - start) > blocktime)
 			break;
 	}
 	return count;
 }
-
 
 //=============================================================================
 
@@ -882,11 +880,9 @@ int NET_SendToAll(sizebuf_t *data, int blocktime)
 NET_Init
 ====================
 */
-
 void NET_Init (void)
 {
-	int			i;
-	int			controlSocket;
+	int		i, controlSocket;
 	qsocket_t	*s;
 
 	if (COM_CheckParm("-playback"))
@@ -946,14 +942,16 @@ void NET_Init (void)
 	Cvar_RegisterVariable (&config_modem_clear, NULL);
 	Cvar_RegisterVariable (&config_modem_init, NULL);
 	Cvar_RegisterVariable (&config_modem_hangup, NULL);
-#ifdef IDGODS
-	Cvar_RegisterVariable (&idgods, NULL);
-#endif
 
-	Cmd_AddCommand ("slist", NET_Slist_f);
-	Cmd_AddCommand ("listen", NET_Listen_f);
-	Cmd_AddCommand ("maxplayers", MaxPlayers_f);
-	Cmd_AddCommand ("port", NET_Port_f);
+#ifdef PSP_NETWORKING_CODE
+	if(!host_initialized)
+#endif
+	{
+		Cmd_AddCommand ("slist", NET_Slist_f);
+		Cmd_AddCommand ("listen", NET_Listen_f);
+		Cmd_AddCommand ("maxplayers", MaxPlayers_f);
+		Cmd_AddCommand ("port", NET_Port_f);
+	}
 
 	// initialize all the drivers
 	for (net_driverlevel=0 ; net_driverlevel<net_numdrivers ; net_driverlevel++)
@@ -972,7 +970,7 @@ void NET_Init (void)
 	if (*my_tcpip_address)
 		Con_DPrintf("TCP/IP address %s\n", my_tcpip_address);
 
-	// JPG 3.20 - cheat free
+			// JPG 3.20 - cheat free
 	if (pq_cheatfreeEnabled)
 	{
 		net_seed = rand() ^ (rand() << 10) ^ (rand() << 20);
@@ -982,7 +980,9 @@ void NET_Init (void)
 		net_seed |= 1;
 		if (net_seed <= 1)
 			net_seed = 0x34719;
+#ifdef SUPPORTS_CHEATFREE_MODE
 		Security_SetSeed(net_seed, argv[0]);
+#endif
 	}
 }
 
@@ -992,7 +992,7 @@ NET_Shutdown
 ====================
 */
 
-void NET_Shutdown (void)
+void		NET_Shutdown (void)
 {
 	qsocket_t	*sock;
 
@@ -1001,9 +1001,7 @@ void NET_Shutdown (void)
 	for (sock = net_activeSockets; sock; sock = sock->next)
 		NET_Close(sock);
 
-//
 // shutdown the drivers
-//
 	for (net_driverlevel = 0; net_driverlevel < net_numdrivers; net_driverlevel++)
 	{
 		if (net_drivers[net_driverlevel].initialized == true)
@@ -1032,7 +1030,7 @@ void NET_Poll(void)
 	{
 		if (serialAvailable)
 		{
-			if (config_com_modem.value == 1.0)
+			if (config_com_modem.value != 0) // Baker 3.99: changed from == 1.0 to != 0
 				useModem = true;
 			else
 				useModem = false;
@@ -1058,7 +1056,7 @@ void SchedulePollProcedure(PollProcedure *proc, double timeOffset)
 {
 	PollProcedure *pp, *prev;
 
-	proc->nextTime = Sys_FloatTime() + timeOffset;
+	proc->nextTime = Sys_DoubleTime() + timeOffset;
 	for (pp = pollProcedureList, prev = NULL; pp; pp = pp->next)
 	{
 		if (pp->nextTime >= proc->nextTime)

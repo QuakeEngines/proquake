@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_light.c
 
 #include "quakedef.h"
-#include "r_local.h"
+//#include "r_local.h"
 
 int	r_dlightframecount;
 
@@ -34,7 +34,6 @@ void R_AnimateLight (void)
 {
 	int			i,j,k;
 	
-//
 // light animations
 // 'm' is normal light, 'a' is no light, 'z' is double bright
 	i = (int)(cl.time*10);
@@ -140,18 +139,14 @@ LIGHT SAMPLING
 
 int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
 {
-	int			r;
+	int			r, side, s, t, ds, dt, i, maps;
 	float		front, back, frac;
-	int			side;
 	mplane_t	*plane;
 	vec3_t		mid;
 	msurface_t	*surf;
-	int			s, t, ds, dt;
-	int			i;
 	mtexinfo_t	*tex;
 	byte		*lightmap;
 	unsigned	scale;
-	int			maps;
 
 	if (node->contents < 0)
 		return -1;		// didn't hit anything
@@ -216,13 +211,11 @@ int RecursiveLightPoint (mnode_t *node, vec3_t start, vec3_t end)
 
 			lightmap += dt * ((surf->extents[0]>>4)+1) + ds;
 
-			for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-					maps++)
+			for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ; maps++)
 			{
 				scale = d_lightstylevalue[surf->styles[maps]];
 				r += *lightmap * scale;
-				lightmap += ((surf->extents[0]>>4)+1) *
-						((surf->extents[1]>>4)+1);
+				lightmap += ((surf->extents[0]>>4)+1) * ((surf->extents[1]>>4)+1);
 			}
 			
 			r >>= 8;
@@ -257,4 +250,3 @@ int R_LightPoint (vec3_t p)
 
 	return r;
 }
-

@@ -364,9 +364,9 @@ void TTY_GetModemConfig (int portNumber, char *dialType, char *clear, char *init
 
 	p = handleToPort[portNumber];
 	*dialType = p->dialType;
-	Q_strcpy(clear, p->clear);
-	Q_strcpy(init, p->startup);
-	Q_strcpy(hangup, p->shutdown);
+	strcpy(clear, p->clear);
+	strcpy(init, p->startup);
+	strcpy(hangup, p->shutdown);
 }
 
 void TTY_SetModemConfig (int portNumber, char *dialType, char *clear, char *init, char *hangup)
@@ -375,9 +375,9 @@ void TTY_SetModemConfig (int portNumber, char *dialType, char *clear, char *init
 
 	p = handleToPort[portNumber];
 	p->dialType = dialType[0];
-	Q_strcpy(p->clear, clear);
-	Q_strcpy(p->startup, init);
-	Q_strcpy(p->shutdown, hangup);
+	strcpy(p->clear, clear);
+	strcpy(p->startup, init);
+	strcpy(p->shutdown, hangup);
 
 	p->modemInitialized = false;
 
@@ -397,9 +397,9 @@ static void ResetComPortConfig (ComPort *p)
 	p->modemStatusIgnore = MSR_CD | MSR_CTS | MSR_DSR;
 	p->baudBits = 115200 / 57600;
 	p->lineControl = LCR_DATA_BITS_8 | LCR_STOP_BITS_1 | LCR_PARITY_NONE;
-	Q_strcpy(p->clear, "ATZ");
-	Q_strcpy(p->startup, "");
-	Q_strcpy(p->shutdown, "AT H");
+	strcpy(p->clear, "ATZ");
+	strcpy(p->startup, "");
+	strcpy(p->shutdown, "AT H");
 	p->modemRang = false;
 	p->modemConnected = false;
 	p->statusUpdated = false;
@@ -432,8 +432,7 @@ static void ComPort_Enable(ComPort *p)
 	p->lineStatus = inportb (p->uart + LINE_STATUS_REGISTER);
 
 	// clear any UART interrupts
-	do
-	{
+	do {
 		n = inportb (p->uart + INTERRUPT_ID_REGISTER) & 7;
 		if (n == IIR_RX_DATA_READY_INTERRUPT)
 			inportb (p->uart + RECEIVE_BUFFER_REGISTER);
@@ -584,21 +583,21 @@ static void Modem_Init(ComPort *p)
 	// write 0 to MCR, wait 1/2 sec, then write the real value back again
 	// I got this from the guys at head-to-head who say it's necessary.
 	outportb(p->uart + MODEM_CONTROL_REGISTER, 0);
-	start = Sys_FloatTime();
-	while ((Sys_FloatTime() - start) < 0.5)
+	start = Sys_DoubleTime();
+	while ((Sys_DoubleTime() - start) < 0.5)
 		;
 	outportb(p->uart + MODEM_CONTROL_REGISTER, MCR_OUT2 | MCR_RTS | MCR_DTR);
-	start = Sys_FloatTime();
-	while ((Sys_FloatTime() - start) < 0.25)
+	start = Sys_DoubleTime();
+	while ((Sys_DoubleTime() - start) < 0.25)
 		;
 
 	if (*p->clear)
 	{
 		Modem_Command (p, p->clear);
-		start = Sys_FloatTime();
+		start = Sys_DoubleTime();
 		while(1)
 		{
-			if ((Sys_FloatTime() - start) > 3.0)
+			if ((Sys_DoubleTime() - start) > 3.0)
 			{
 				Con_Printf("No response - clear failed\n");
 				p->enabled = false;
@@ -607,9 +606,9 @@ static void Modem_Init(ComPort *p)
 			response = Modem_Response(p);
 			if (!response)
 				continue;
-			if (Q_strncmp(response, "OK", 2) == 0)
+			if (!strncmp(response, "OK", 2))
 				break;
-			if (Q_strncmp(response, "ERROR", 5) == 0)
+			if (!strncmp(response, "ERROR", 5))
 			{
 				p->enabled = false;
 				goto failed;
@@ -620,10 +619,10 @@ static void Modem_Init(ComPort *p)
 	if (*p->startup)
 	{
 		Modem_Command (p, p->startup);
-		start = Sys_FloatTime();
+		start = Sys_DoubleTime();
 		while(1)
 		{
-			if ((Sys_FloatTime() - start) > 3.0)
+			if ((Sys_DoubleTime() - start) > 3.0)
 			{
 				Con_Printf("No response - init failed\n");
 				p->enabled = false;
@@ -632,9 +631,9 @@ static void Modem_Init(ComPort *p)
 			response = Modem_Response(p);
 			if (!response)
 				continue;
-			if (Q_strncmp(response, "OK", 2) == 0)
+			if (!strncmp(response, "OK", 2))
 				break;
-			if (Q_strncmp(response, "ERROR", 5) == 0)
+			if (!strncmp(response, "ERROR", 5))
 			{
 				p->enabled = false;
 				goto failed;
@@ -651,7 +650,7 @@ failed:
 		key_dest = key_menu;
 		m_state = m_return_state;
 		m_return_onerror = false;
-		Q_strcpy(m_return_reason, "Initialization Failed");
+		strcpy(m_return_reason, "Initialization Failed");
 	}
 	return;
 }
@@ -685,8 +684,8 @@ void TTY_Close(int handle)
 
 	p = handleToPort [handle];
 
-	startTime = Sys_FloatTime();
-	while ((Sys_FloatTime() - startTime) < 1.0)
+	startTime = Sys_DoubleTime();
+	while ((Sys_DoubleTime() - startTime) < 1.0)
 		if (EMPTY(p->outputQueue))
 			break;
 
@@ -783,10 +782,10 @@ int TTY_Connect(int handle, char *host)
 		Con_Printf ("Dialing...\n");
 		sprintf(dialstring, "AT D%c %s\r", p->dialType, host);
 		Modem_Command (p, dialstring);
-		start = Sys_FloatTime();
+		start = Sys_DoubleTime();
 		while(1)
 		{
-			if ((Sys_FloatTime() - start) > 60.0)
+			if ((Sys_DoubleTime() - start) > 60.0)
 			{
 				Con_Printf("Dialing failure!\n");
 				break;
@@ -801,15 +800,15 @@ int TTY_Connect(int handle, char *host)
 					continue;
 				}
 				Con_Printf("Aborting...\n");
-				while ((Sys_FloatTime() - start) < 5.0)
+				while ((Sys_DoubleTime() - start) < 5.0)
 					;
 				disable();
 				p->outputQueue.head = p->outputQueue.tail = 0;
 				p->inputQueue.head = p->inputQueue.tail = 0;
 				outportb(p->uart + MODEM_CONTROL_REGISTER, inportb(p->uart + MODEM_CONTROL_REGISTER) & ~MCR_DTR);
 				enable();
-				start = Sys_FloatTime();
-				while ((Sys_FloatTime() - start) < 0.75)
+				start = Sys_DoubleTime();
+				while ((Sys_DoubleTime() - start) < 0.75)
 					;
 				outportb(p->uart + MODEM_CONTROL_REGISTER, inportb(p->uart + MODEM_CONTROL_REGISTER) | MCR_DTR);
 				response = "Aborted";
@@ -819,7 +818,7 @@ int TTY_Connect(int handle, char *host)
 			response = Modem_Response(p);
 			if (!response)
 				continue;
-			if (Q_strncmp(response, "CONNECT", 7) == 0)
+			if (!strncmp(response, "CONNECT", 7))
 			{
 				disable();
 				p->modemRang = true;
@@ -832,17 +831,17 @@ int TTY_Connect(int handle, char *host)
 				m_return_onerror = false;
 				return 0;
 			}
-			if (Q_strncmp(response, "NO CARRIER", 10) == 0)
+			if (!strncmp(response, "NO CARRIER", 10))
 				break;
-			if (Q_strncmp(response, "NO DIALTONE", 11) == 0)
+			if (!strncmp(response, "NO DIALTONE", 11))
 				break;
-			if (Q_strncmp(response, "NO DIAL TONE", 12) == 0)
+			if (!strncmp(response, "NO DIAL TONE", 12))
 				break;
-			if (Q_strncmp(response, "NO ANSWER", 9) == 0)
+			if (!strncmp(response, "NO ANSWER", 9))
 				break;
-			if (Q_strncmp(response, "BUSY", 4) == 0)
+			if (!strncmp(response, "BUSY", 4))
 				break;
-			if (Q_strncmp(response, "ERROR", 5) == 0)
+			if (!strncmp(response, "ERROR", 5))
 				break;
 		}
 		key_dest = save_key_dest;
@@ -852,7 +851,7 @@ int TTY_Connect(int handle, char *host)
 			key_dest = key_menu;
 			m_state = m_return_state;
 			m_return_onerror = false;
-			Q_strncpy(m_return_reason, response, 31);
+			strncpy(m_return_reason, response, 31);
 		}
 		return -1;
 	}
@@ -887,7 +886,7 @@ qboolean TTY_CheckForConnection(int handle)
 			if (!Modem_Response(p))
 				return false;
 
-			if (Q_strncmp(p->buffer, "RING", 4) == 0)
+			if (!strncmp(p->buffer, "RING", 4))
 			{
 				Modem_Command (p, "ATA");
 				p->modemRang = true;
@@ -907,7 +906,7 @@ qboolean TTY_CheckForConnection(int handle)
 			if (!Modem_Response(p))
 				return false;
 
-			if (Q_strncmp (p->buffer, "CONNECT", 7) != 0)
+			if (strncmp(p->buffer, "CONNECT", 7))
 				return false;
 
 			disable();
@@ -949,9 +948,7 @@ qboolean TTY_OutputQueueIsEmpty(int handle)
 void Com_f (void)
 {
 	ComPort	*p;
-	int		portNumber;
-	int		i;
-	int		n;
+	int		portNumber, i, n;
 
 	// first, determine which port they're messing with
 	portNumber = Q_atoi(Cmd_Argv (0) + 3) - 1;
@@ -989,7 +986,6 @@ void Com_f (void)
 		return;
 	}
 
-
 	if (Cmd_CheckParm ("disable"))
 	{
 		if (p->enabled)
@@ -1005,7 +1001,7 @@ void Com_f (void)
 		return;
 	}
 
-	if ((i = Cmd_CheckParm ("port")) != 0)
+	if ((i = Cmd_CheckParm("port")))
 	{
 		if (p->enabled)
 			{
@@ -1015,7 +1011,7 @@ void Com_f (void)
 		p->uart = Q_atoi (Cmd_Argv (i+1));
 	}
 
-	if ((i = Cmd_CheckParm ("irq")) != 0)
+	if ((i = Cmd_CheckParm("irq")))
 	{
 		if (p->enabled)
 			{
@@ -1025,15 +1021,14 @@ void Com_f (void)
 		p->irq = Q_atoi (Cmd_Argv (i+1));
 	}
 
-	if ((i = Cmd_CheckParm ("baud")) != 0)
+	if ((i = Cmd_CheckParm("baud")))
 	{
 		if (p->enabled)
 			{
 				Con_Printf("COM port must be disabled to change baud\n");
 				return;
 			}
-		n = Q_atoi (Cmd_Argv (i+1));
-		if (n == 0)
+		if (!(n = Q_atoi(Cmd_Argv (i+1))))
 			Con_Printf("Invalid baud rate specified\n");
 		else
 			p->baudBits = 115200 / n;
@@ -1077,21 +1072,17 @@ void Com_f (void)
 	if (Cmd_CheckParm ("modem"))
 		p->useModem = true;
 
-	if ((i = Cmd_CheckParm ("clear")) != 0)
-	{
-		Q_strncpy (p->clear, Cmd_Argv (i+1), 16);
-	}
+	if ((i = Cmd_CheckParm("clear")))
+		strncpy (p->clear, Cmd_Argv (i+1), 16);
 
-	if ((i = Cmd_CheckParm ("startup")) != 0)
+	if ((i = Cmd_CheckParm("startup")))
 	{
-		Q_strncpy (p->startup, Cmd_Argv (i+1), 32);
+		strncpy (p->startup, Cmd_Argv (i+1), 32);
 		p->modemInitialized = false;
 	}
 
-	if ((i = Cmd_CheckParm ("shutdown")) != 0)
-	{
-		Q_strncpy (p->shutdown, Cmd_Argv (i+1), 16);
-	}
+	if ((i = Cmd_CheckParm("shutdown")))
+		strncpy (p->shutdown, Cmd_Argv (i+1), 16);
 
 	if (Cmd_CheckParm ("-cts"))
 	{
@@ -1146,8 +1137,7 @@ int TTY_Init(void)
 
 	for (n = 0; n < NUM_COM_PORTS; n++)
 	{
-		p = (ComPort *)Hunk_AllocName(sizeof(ComPort), "comport");
-		if (p == NULL)
+		if (!(p = (ComPort *)Hunk_AllocName(sizeof(ComPort), "comport")))
 			Sys_Error("Hunk alloc failed for com port\n");
 		p->next = portList;
 		portList = p;

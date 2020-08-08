@@ -130,6 +130,7 @@ void SNDDMA_Shutdown(void);
 #define	MAX_CHANNELS			128
 #define	MAX_DYNAMIC_CHANNELS	8
 
+#define	MAX_SFX		512
 
 extern	channel_t   channels[MAX_CHANNELS];
 // 0 to MAX_DYNAMIC_CHANNELS-1	= normal entity sounds
@@ -155,10 +156,16 @@ extern volatile dma_t *shm;
 extern volatile dma_t sn;
 extern vec_t sound_nominal_clip_dist;
 
+#ifdef BUILD_MP3_VERSION
+extern int				sound_started;
+#endif
+
 extern	cvar_t loadas8bit;
 extern	cvar_t bgmvolume;
+#ifdef PSP_MP3_SUPPORT
+extern	cvar_t bgmtype;  // Type of background source
+#endif
 extern	cvar_t volume;
-extern	cvar_t ambient_level; // Baker 3.60 - so it can be in menu
 
 extern qboolean	snd_initialized;
 

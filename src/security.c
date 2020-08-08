@@ -6,7 +6,7 @@
 
 #include "quakedef.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <dlfcn.h>
@@ -27,7 +27,7 @@ Security_CRC_t Security_CRC = NULL;
 Security_CRC_File_t Security_CRC_File = NULL;
 Security_Verify_t Security_Verify = NULL;
 
-#ifdef WIN32
+#ifdef _WIN32
 #define PROCADDRESS GetProcAddress
 #else
 #define PROCADDRESS dlsym
@@ -37,14 +37,15 @@ Security_Verify_t Security_Verify = NULL;
 
 void Security_Init (void)
 {
-#ifdef WIN32
-	HINSTANCE h = LoadLibrary("qsecurity.dll");
+#ifdef SUPPORTS_CHEATFREE_MODE
+#ifdef _WIN32
+	HINSTANCE h = LoadLibrary(TEXT("qsecurity.dll"));
 #else
 	void *h = dlopen("./qsecurity.so", RTLD_LAZY);
 #endif
-
 	if (!h)
 		goto error;
+
 
 	GETFUNC(InitCRC);
 	GETFUNC(SetSeed);
@@ -57,6 +58,21 @@ void Security_Init (void)
 	Security_InitCRC(0x3915c28b);
 
 	pq_cheatfreeEnabled = true;
+
+	if (!isDedicated) {
+		// Baker 3.99q: We are just going to assume
+		//              that if we aren't in dedicated mode
+		//              that cheat-free isn't going to be
+		//              used for single player mod
+		// 				compatibility
+		if (COM_CheckParm ("-game"))
+			pq_cheatfreeEnabled = false; // Baker: 3.99n -- disallow cheat-free if gamedir is switched (revisit this later, is not ideal at all).
+
+	}
+
+#else
+	goto error;
+#endif
 
 #ifndef STEST
 	Cvar_RegisterVariable (&pq_cvar_cheatfree, NULL);

@@ -17,14 +17,18 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+// cl_demo.c
 
 #include "quakedef.h"
-#ifdef _WIN32
+#include <time.h> // easyrecord stats
+
+#ifdef SUPPORTS_AVI_CAPTURE
 #include "movie.h"
 #endif
-#include <time.h>
+
 // added by joe
 framepos_t	*dem_framepos = NULL;
+
 qboolean	start_of_demo = false;
 cvar_t	cl_demorewind = {"cl_demorewind", "0"};
 
@@ -67,8 +71,7 @@ void CL_StopPlayback (void)
 	if (cls.timedemo)
 		CL_FinishTimeDemo ();
 		
-
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 	Movie_StopPlayback ();
 #endif
 
@@ -183,6 +186,7 @@ int CL_GetMessage (void)
 {
 	int		r, i;
 	float	f;
+
 	if (cl.paused & 2)		// by joe: pause during demo
 		return 0;
 	
@@ -233,6 +237,7 @@ int CL_GetMessage (void)
 		net_message.cursize = LittleLong (net_message.cursize);
 		if (net_message.cursize > MAX_MSGLEN)
 			Sys_Error ("Demo message > MAX_MSGLEN");
+
 		r = fread (net_message.data, net_message.cursize, 1, cls.demofile);
 		if (r != 1)
 		{
@@ -283,7 +288,7 @@ int CL_GetMessage (void)
 			len = strlen(demo_head[0]);
 			ch = strstr(demo_head[0] + len + 1, "ProQuake Server Version");
 			if (ch)
-				memcpy(ch, va("ProQuake \217Demo\217 Version %4.2f", PROQUAKE_VERSION), 28);
+				memcpy(ch, va("ProQuake \217Demo\217 Version %4.2f", PROQUAKE_SERIES_VERSION), 28);
 			else
 			{
 				ch = demo_head[0] + demo_head_size[0];
@@ -293,7 +298,7 @@ int CL_GetMessage (void)
 				*ch++ = svc_print;
 				ch += 1 + sprintf(ch, "\02\n   \04ProQuake \217Demo\217 Version %4.2f\06"
 								      "\n   \07\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\11"
-							          "\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n", PROQUAKE_VERSION);
+							          "\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n", PROQUAKE_SERIES_VERSION);
 				demo_head_size[0] = ch - (char *) demo_head[0];
 			}
 		}
@@ -340,18 +345,24 @@ CL_Record_f
 record <demoname> <map> [cd track]
 ====================
 */
+
 void CL_Record_f (void)
 {
-	int		c;
+	int		c, track;
 	char	name[MAX_OSPATH];
-	int		track;
 
-	if (cmd_source != src_command)
+	if (cmd_source != src_command) // Apparently, it is not allow for the server to force a client to record
 		return;
 
+	if (cls.demoplayback) {
+		Con_Printf ("Can't record during demo playback\n");
+		return;
+	}
+
 	c = Cmd_Argc();
-	if (c != 2 && c != 3 && c != 4)
-	{
+	// Baker: demo parameters = 2 thru 4
+	// Not supporting autoname yet (==1)
+	if (c <2 || c>4) {
 		Con_Printf ("record <demoname> [<map> [cd track]]\n");
 		return;
 	}
@@ -381,6 +392,10 @@ void CL_Record_f (void)
 		return;
 	}
 
+	// JPG 3.00 - consecutive demo bug
+	if (cls.demorecording)
+		CL_Stop_f();
+
 	// write the forced cd track number, or -1
 	if (c == 4)
 	{
@@ -388,26 +403,29 @@ void CL_Record_f (void)
 		Con_Printf ("Forcing CD track to %i\n", cls.forcetrack);
 	}
 	else
+	{
 		track = -1;	
+	}
 
-	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
+	snprintf(name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 	
-//
 // start the map up
-//
 	if (c > 2)
+	{
 		Cmd_ExecuteString ( va("map %s", Cmd_Argv(2)), src_command);
+	// joe: if couldn't find the map, don't start recording
+		if (cls.state != ca_connected)
+			return;
+	}
 	
-//
 // open the demo file
-//
-	COM_DefaultExtension (name, ".dem");
+	COM_ForceExtension (name, ".dem");
 
 	Con_Printf ("recording to %s.\n", name);
 	cls.demofile = fopen (name, "wb");
 	if (!cls.demofile)
 	{
-		Con_Printf ("ERROR: couldn't open.\n");
+		Con_Printf ("ERROR: couldn't open demo for writing.\n");
 		return;
 	}
 
@@ -420,7 +438,7 @@ void CL_Record_f (void)
 	if (c < 3 && cls.state == ca_connected)
 	{
 		byte *data = net_message.data;
-		int	i, cursize = net_message.cursize;
+		int i, cursize = net_message.cursize;
 
 		for (i = 0 ; i < 2 ; i++)
 		{
@@ -501,21 +519,17 @@ playdemo [demoname]
 void CL_PlayDemo_f (void)
 {
 	char	name[256];
-	int c;
-	qboolean neg = false;
 
 	if (cmd_source != src_command)
 		return;
 
 	if (Cmd_Argc() != 2)
 	{
-		Con_Printf ("play <demoname> : plays a demo\n");
+		Con_Printf ("playdemo <demoname> : plays a demo\n");
 		return;
 	}
 
-//
 // disconnect from server
-//
 	CL_Disconnect ();
 	
 	// added by joe, but FIXME!
@@ -527,7 +541,6 @@ void CL_PlayDemo_f (void)
 	}
 
 // open the demo file
-//
 	strcpy (name, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".dem");
 
@@ -537,17 +550,18 @@ void CL_PlayDemo_f (void)
 		COM_FOpenFile (name, &cls.demofile); */
 	
 	COM_FOpenFile (name, &cls.demofile);
-	if (!cls.demofile)
-	{
+	if (!cls.demofile) {
+#ifdef SUPPORTS_DEMO_AUTOPLAY
 		// Baker 3.76 - Check outside the demos folder!
 		cls.demofile = fopen(name, "rb"); // Baker 3.76 - check DarkPlaces file system
 
 		if (!cls.demofile)  // Baker 3.76 - still failed
+#endif
 		{
 			Con_Printf ("ERROR: couldn't open %s\n", name);
-		cls.demonum = -1;		// stop demo loop
-		return;
-	}
+			cls.demonum = -1;		// stop demo loop
+			return;
+		}
 	}
 
 	Con_Printf ("Playing demo from %s\n", COM_SkipPath(name));
@@ -558,7 +572,6 @@ void CL_PlayDemo_f (void)
 /*
 ====================
 CL_FinishTimeDemo
-
 ====================
 */
 void CL_FinishTimeDemo (void)
@@ -603,4 +616,3 @@ void CL_TimeDemo_f (void)
 	cls.td_startframe = host_framecount;
 	cls.td_lastframe = -1;		// get a new message this frame
 }
-

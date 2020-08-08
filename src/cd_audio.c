@@ -806,7 +806,7 @@ int CDAudio_Init(void)
 	if (cls.state == ca_dedicated)
 		return -1;
 
-	if (!COM_CheckParm("-cdaudio")) // Baker 3.83: Must now explicitly indicate -cdaudio, instead of using -nocdaudio
+	if (COM_CheckParm("-nocdaudio")) 
 		return -1;
 
 	if (COM_CheckParm("-cdmediacheck"))

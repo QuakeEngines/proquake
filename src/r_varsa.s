@@ -60,5 +60,5 @@ FloatMinus2ToThe31nd:	.long	0xcf000000
 .globl	C(r_bmodelactive)
 C(r_bmodelactive):	.long	0
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 

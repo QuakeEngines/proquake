@@ -35,27 +35,138 @@ HRESULT (WINAPI *pDirectInputCreate)(HINSTANCE hinst, DWORD dwVersion,
 
 // mouse variables
 cvar_t	m_filter = {"m_filter","0"};
+qboolean commandline_dinput = false; // Is dinput on the command line?
 
 //Baker 3.60 -- johnfitz -- compatibility with old Quake -- setting to 0 disables KP_* codes
 cvar_t	cl_keypad = {"cl_keypad","0", true};
 
 //Baker 3.85 -- DirectInput ON|OFF cvar!
-cvar_t  m_directinput = {"m_directinput", "0", true, 4};
+cvar_t  m_directinput = {"m_directinput", "0", true};
+
+qboolean flex_firstinit;
+qboolean flex_firstjoyinit;
+static qboolean	flex_dinput_acquired;
+static qboolean	flex_dinput; // Baker 3.99n: this stores whether or not we have successfully loaded the dinput library!  Make it reflect that!
 
 void IN_StartupMouse (void);
 void IN_DeactivateMouse (void);
+static qboolean	mouse_is_showing = true; // Baker 3.99n: we start with mouse showing
+static qboolean mouse_lockedto_quakewindow = false;
+static qboolean	restore_spi;
+qboolean		flex_mouseinitialized;
+qboolean		flex_mouseactive;
+qboolean		m_dinput_skiponce=false;
+
+static LPDIRECTINPUTDEVICE	g_pMouse;  //Baker 3.99n: is a mouse device of directinput?
+static LPDIRECTINPUT		g_pdi;     //Baker 3.99n: is an instance of directinput?
+
+void IN_PrintStatus(char *caption) {
+
+	Con_SafePrintf("\nAt %s\n",caption);
+	Con_SafePrintf("------------------------\n");
+	Con_SafePrintf("commandline_dinput         = %d \n", commandline_dinput);
+	Con_SafePrintf("restore_spi                = %d \n", restore_spi);
+	Con_SafePrintf("flex_firstinit             = %d \n", flex_firstinit);
+	Con_SafePrintf("flex_mouseinitialized      = %d \n", flex_mouseinitialized);
+	Con_SafePrintf("flex_dinput                = %d \n", flex_dinput);
+	Con_SafePrintf("flex_mouseactive           = %d \n", flex_mouseactive);
+	Con_SafePrintf("flex_dinputacquired        = %d \n", flex_dinput_acquired);
+	Con_SafePrintf("g_pmouse                   = %d \n", g_pMouse);
+	Con_SafePrintf("g_pdi                      = %d \n", g_pdi);
+	Con_SafePrintf("mouse_is_showing           = %d \n", mouse_is_showing);
+	Con_SafePrintf("mouse_lockedto_quakewindow = %d \n\n", mouse_lockedto_quakewindow);
+
+}
+
+void IN_SetGlobals (void);
+
+void IN_Restart(void) {
+	// Restart the mouse like if the video mode changes
+	
+//	Con_SafePrintf("Mouse Restarted Called\n");
+	
+	// We have a problem!
+	// M_directinput value is wrong going into this!  
+	// But that's ok now, we use g_pmouse to determine if directinput needs released
+	
+//	IN_PrintStatus("IN_Restart Start");
+
+	IN_DeactivateMouse(); // I think this always needs to happen before shutdown
+	IN_ShowMouse();
+	
+	IN_Shutdown ();
+	
+	// Reset vars
+
+	IN_SetGlobals();
+
+	// End reset vars	
+	
+//	IN_PrintStatus("IN_Restart Middle");
+	
+	IN_Init ();
+
+//	IN_SetGlobals();
+	// Baker 3.85: This must be based on
+	// whether windowed or not, etc.
+	
+	// Maybe this should be based on whether or not the mouse should be seen?
+	
+	//IN_StartupMouse();
+	// What is the normal clipcursor?????
+	// How do we know whether or not to do this?
+	// For now, let's just do it no matter what!
+	IN_ActivateMouse (); 
+//	Con_SafePrintf("MarkJ\n");
+	IN_HideMouse ();
+
+//	IN_PrintStatus("IN_Restart End");
+}
+
 
 void IN_DirectInput_f(void) {
-	// Called when m_directinput changes
-	if (host_initialized) {
-		IN_Shutdown ();
-		IN_Init ();
-		Con_Printf("Mouse DirectInput Change\n");
-		// Baker 3.85: This must be based on
-		// whether windowed or not, etc.
-		IN_ActivateMouse ();
-		IN_HideMouse ();
+// Baker: the intent of this is to turn dinput on if it is off
+//                                 turn it off it is on
+//                                 do nothing if there is no change
+//                                 but sync the cvar if it isn't
+
+// This is called when
+// ... the menu is used
+// ... the config is exec'd
+// ... the cvar is used
+
+// Needs to be ignored if host isn't init'd AND
+// cmdline is the same as this value
+
+	if (m_dinput_skiponce) {
+		// Workaround to avoid cvar goofiness on config load
+		m_dinput_skiponce = false;
+		return;
 	}
+
+	if (commandline_dinput && !m_directinput.value) {
+		// If cvar is forced, do not allow it to be changed
+		m_dinput_skiponce = true; // And don't re-trigger it!
+		Cvar_Set("m_directinput", "1");
+		return;
+	}
+
+
+//	Con_SafePrintf("Mouse: IN_DirectInput_f 1\n");
+	// Called when m_directinput changes
+	
+	if (m_directinput.value && flex_dinput) { 
+		// Let's not turn dinput on twice!
+		return;
+	}
+		
+	if (!m_directinput.value && !flex_dinput) {
+		// Let's not reinit unnecessarily during initialization
+		return;
+	}
+
+	IN_Restart();	
+
 }
 
 
@@ -65,28 +176,32 @@ POINT		current_pos;
 double		mouse_x, mouse_y;
 int		old_mouse_x, old_mouse_y, mx_accum, my_accum;
 
-static qboolean	restore_spi;
 static int		originalmouseparms[3], newmouseparms[3] = {0, 0, 1};
 
-
-static qboolean	mouseparmsvalid, mouseactivatetoggle;
-static qboolean	mouseshowtoggle = 1;
+static qboolean	mouseparmsvalid;
 
 // Baker 3.85: Need to restructure so mouse can be restarted
-static qboolean flex_firstinit;
-static qboolean	flex_dinput_acquired;
-qboolean		flex_mouseinitialized;
-qboolean		flex_mouseactive;
-static qboolean	flex_dinput;
 
 qboolean IN_DirectInputON(void) {
+	if (mouse_is_showing) {
+		// Mouse is deactivated for the menu so
+		// guess
+		if (flex_dinput) 
+			return true;
+		else
+			return false;
+	}
+
+	// Mouse is being used; use true state.
 	if (flex_dinput_acquired)
 		return true;
 	else
 		return false;
 }
 
-
+void IN_DirectInput_Status_f (void) {
+	Con_SafePrintf("DirectInput Acquired = %s", IN_DirectInputON() ? "true" : "false");
+}
 
 static unsigned int		mstate_di;
 unsigned int	uiWheelMessage;
@@ -149,8 +264,6 @@ int			joy_id;
 DWORD		joy_flags;
 DWORD		joy_numbuttons;
 
-static LPDIRECTINPUT		g_pdi;
-static LPDIRECTINPUTDEVICE	g_pMouse;
 
 static JOYINFOEX	ji;
 
@@ -203,7 +316,7 @@ void IN_JoyMove (usercmd_t *cmd);
 
 cvar_t	m_forcewheel	= {"m_forcewheel", "0"};
 
-cvar_t	m_rate		= {"m_rate",	"60"};
+cvar_t	m_rate		= {"m_rate",	"60", true};
 cvar_t	m_showrate	= {"m_showrate", "0"};
 
 qboolean	use_m_smooth;
@@ -234,8 +347,6 @@ int	wheel_dn_count = 0;
 			mstate_di &= ~(1 << NUM);	\
 		break;
 
-
-
 #define INPUT_CASE_DINPUT_MOUSE_BUTTONS			\
 		INPUT_CASE_DIMOFS_BUTTON(0);		\
 		INPUT_CASE_DIMOFS_BUTTON(1);		\
@@ -245,7 +356,6 @@ int	wheel_dn_count = 0;
 		INPUT_CASE_DIMOFS_BUTTON(5);	\
 		INPUT_CASE_DIMOFS_BUTTON(6);	\
 		INPUT_CASE_DIMOFS_BUTTON(7);		\
-
 
 DWORD WINAPI IN_SMouseProc (void *lpParameter) {
 	// read	mouse events and generate history tables
@@ -262,8 +372,7 @@ DWORD WINAPI IN_SMouseProc (void *lpParameter) {
 				continue;
 			}
 
-
-			time = Sys_FloatTime ();
+			time = Sys_DoubleTime ();
 
 			while (1) {
 				DWORD	dwElements = 1;
@@ -271,6 +380,7 @@ DWORD WINAPI IN_SMouseProc (void *lpParameter) {
 				hr = IDirectInputDevice_GetDeviceData (g_pMouse, sizeof(DIDEVICEOBJECTDATA), &od, &dwElements, 0);
 
 				if ((hr	== DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED)) {
+//					Con_SafePrintf("Dinput acquire lost #1\n");
 					flex_dinput_acquired	= false;
 					break;
 				}
@@ -294,12 +404,12 @@ DWORD WINAPI IN_SMouseProc (void *lpParameter) {
 						break;
 
 					case DIMOFS_Z:
-						if (m_forcewheel.value) {
+						//if (m_forcewheel.value) {
 						if (od.dwData &	0x80)
 							wheel_dn_count++;
 						else
 							wheel_up_count++;
-						}
+						//}
 						break;
 
 				INPUT_CASE_DINPUT_MOUSE_BUTTONS;
@@ -318,6 +428,7 @@ void IN_SMouseRead (int *mx, int *my) {
 
 	// acquire device
 	IDirectInputDevice_Acquire (g_pMouse);
+//	Con_SafePrintf("Dinput acquire gained #1\n");
 	flex_dinput_acquired = true;
 
 	// gather data from last read seq to now
@@ -359,7 +470,7 @@ void IN_SMouseRead (int *mx, int *my) {
 		double vel = m_history_x[(m_history_x_rseq - 1)	& M_HIST_MASK].data / (t2 - t1);
 
 		t1 = t2;
-		t2 = Sys_FloatTime ();
+		t2 = Sys_DoubleTime ();
 
 		if (t2 - t1 < maxtime)
 			acc_x =	vel * (t2 - t1);
@@ -373,7 +484,7 @@ void IN_SMouseRead (int *mx, int *my) {
 		double vel = m_history_y[(m_history_y_rseq-1) &	M_HIST_MASK].data / (t2 - t1);
 
 		t1 = t2;
-		t2 = Sys_FloatTime ();
+		t2 = Sys_DoubleTime ();
 
 		if (t2 - t1 < maxtime)
 			acc_y =	vel * (t2 - t1);
@@ -390,8 +501,6 @@ void IN_SMouseRead (int *mx, int *my) {
 	bound(0, wheel_dn_count, 10);
 	bound(0, wheel_up_count, 10);
 
-//	Con_Printf("Serve wheel\n");
-
 	while (wheel_dn_count >	0) {
 		Key_Event (K_MWHEELDOWN, 0, true);
 		Key_Event (K_MWHEELDOWN, 0, false);
@@ -404,11 +513,13 @@ void IN_SMouseRead (int *mx, int *my) {
 	}
 }
 
+qboolean flex_firstmsinit = false;
 void IN_SMouseInit (void) {
 	HRESULT	res;
 	DWORD	threadid;
 	HANDLE	thread;
 
+//	Con_SafePrintf("Mouse: IN_SMouseInit 1\n");
 	use_m_smooth = false;
 	if (!COM_CheckParm("-m_smooth"))
 		return;
@@ -441,8 +552,11 @@ void IN_SMouseInit (void) {
 	SetThreadPriority (thread, THREAD_PRIORITY_HIGHEST);
 	ResumeThread (thread);
 
-	Cvar_RegisterVariable (&m_rate, NULL);
-	Cvar_RegisterVariable (&m_showrate, NULL);
+	if (!flex_firstmsinit) {
+		Cvar_RegisterVariable (&m_rate, NULL);
+		Cvar_RegisterVariable (&m_showrate, NULL);
+		flex_firstmsinit = true;
+	}
 	use_m_smooth = true;
 }
 
@@ -453,38 +567,61 @@ void Force_CenterView_f (void) {
 }
 
 void IN_UpdateClipCursor (void) {
-	if (flex_mouseinitialized && flex_mouseactive && !m_directinput.value) // Baker 3.85
+// Baker: this is placing limits on the mousecursor movement
+//        and locking it to the window, right?
+
+// ProQuake 3.50 logic is ...
+// (mouseinitialized && mouseactive && !dinput)
+
+	// Baker: my guess is that DirectInput does not need clipcursor
+	// my guess is that dinput by necessity has to be turned "off"
+	// to move the mouse cursor around
+	// By what process is the mouse made to freemove in 3.50 if dinput is on?
+	if (flex_mouseinitialized && flex_mouseactive && !flex_dinput) // Baker 3.85
 		ClipCursor (&window_rect);
 }
 
 void IN_ShowMouse (void) {
-	if (!mouseshowtoggle) {
+//Baker notes: Harmless, 100% 3.50 equivalent	
+//	Con_SafePrintf("Mouse: IN_ShowMouse 1\n");
+	if (!mouse_is_showing) {
 		ShowCursor (TRUE);
-		mouseshowtoggle = 1;
+		mouse_is_showing = true;
 	}
 }
 
 void IN_HideMouse (void) {
-	if (mouseshowtoggle) {
+//Baker notes: Harmless, 100% 3.50 equivalent
+	//Con_SafePrintf("Mouse: IN_HideMouse 1\n");
+	if (mouse_is_showing) {
 		ShowCursor (FALSE);
-		mouseshowtoggle = 0;
+		mouse_is_showing = false;
 	}
 }
 
 void IN_ActivateMouse (void) {
-	mouseactivatetoggle = true;
-
+// Baker notes:
+// This causes Quake to "absorb the mouse input"
+// i.e. if you hit this, there is no mouse cursor
+// So hide mouse is this procedure's buddy
+	mouse_lockedto_quakewindow = true;
+//	Con_SafePrintf("Mouse: IN_ActivateMouse 1\n");
 	if (flex_mouseinitialized) {
 		if (flex_dinput) {
+			//Con_SafePrintf("Mouse: IN_ActivateMouse 3\n");
 			if (g_pMouse) {
+			//	Con_SafePrintf("Mouse: IN_ActivateMouse 4\n");
 				if (!flex_dinput_acquired) {
+			//		Con_SafePrintf("Mouse: IN_ActivateMouse 5\n");
 					IDirectInputDevice_Acquire(g_pMouse);
+			//		Con_SafePrintf("Dinput acquire gained #1\n");
 					flex_dinput_acquired = true;
 				}
 			} else {
 				return;
 			}
 		} else {
+			//Con_SafePrintf("Mouse: IN_ActivateMouse 6\n");
 			if (mouseparmsvalid)
 				restore_spi = SystemParametersInfo (SPI_SETMOUSE, 0, newmouseparms, 0);
 
@@ -498,22 +635,30 @@ void IN_ActivateMouse (void) {
 }
 
 void IN_SetQuakeMouseState (void) {
-	if (mouseactivatetoggle)
+//Baker notes: Harmless, 100% 3.50 equivalent
+// 
+//	Con_SafePrintf("Mouse: IN_SetQuakeMouseState 1\n");
+	if (mouse_lockedto_quakewindow)
 		IN_ActivateMouse ();
 }
 
 void IN_DeactivateMouse (void) {
-	mouseactivatetoggle = false;
+//Baker notes: 100% 3.50 equivalent
+//This code just frees the mouse to Windows
+//	Con_SafePrintf("Mouse: IN_DeactivateMouse 1\n");
+	mouse_lockedto_quakewindow = false;
 
 	if (flex_mouseinitialized) {
 		if (flex_dinput) {
 			if (g_pMouse) {
 				if (flex_dinput_acquired) {
 					IDirectInputDevice_Unacquire(g_pMouse);
+//					Con_SafePrintf("Dinput acquire removed #1\n");
 					flex_dinput_acquired = false;
 				}
 			}
 		} else {
+//			Con_SafePrintf("Mouse: IN_DeactivateMouse 6\n");
 			if (restore_spi)
 				SystemParametersInfo (SPI_SETMOUSE, 0, originalmouseparms, 0);
 
@@ -521,14 +666,17 @@ void IN_DeactivateMouse (void) {
 			ReleaseCapture ();
 		}
 
-		flex_mouseactive = false;
+		flex_mouseactive = false; // Baker: flex_quake_has_mouse_control
 	}
 }
 
 void IN_RestoreOriginalMouseState (void) {
-	if (mouseactivatetoggle) {
+// Baker notes: 100% equivalent to PQ 3.50
+//	Con_SafePrintf("Mouse: IN_RestoreOriginalMouseState 1\n");
+	// Despite the weirdness of the following, the logic is correct
+	if (mouse_lockedto_quakewindow) {
 		IN_DeactivateMouse ();
-		mouseactivatetoggle = true;
+		mouse_lockedto_quakewindow = true;
 	}
 
 	// try to redraw the cursor so it gets reinitialized, because sometimes it has garbage after the mode switch
@@ -537,6 +685,8 @@ void IN_RestoreOriginalMouseState (void) {
 }
 
 qboolean IN_InitDInput (void) {
+// Baker notes: 100% equivalent to PQ 3.50
+// Check when this is called, however!
     HRESULT		hr;
 	DIPROPDWORD	dipdw = {
 		{
@@ -548,11 +698,12 @@ qboolean IN_InitDInput (void) {
 		DINPUT_BUFFERSIZE,              // dwData
 	};
 
+//	Con_SafePrintf("Mouse: IN_InitDInput 1\n");
 	if (!hInstDI) {
 		hInstDI = LoadLibrary(TEXT("dinput.dll")); // Baker 3.70D3D - Direct3D Quake change?
 
 		if (hInstDI == NULL) {
-			Con_Printf ("Couldn't load dinput.dll\n");
+//			Con_SafePrintf ("Couldn't load dinput.dll\n");
 			return false;
 		}
 	}
@@ -561,7 +712,7 @@ qboolean IN_InitDInput (void) {
 		pDirectInputCreate = (void *)GetProcAddress(hInstDI,"DirectInputCreateA");
 
 		if (!pDirectInputCreate) {
-			Con_Printf ("Couldn't get DI proc addr\n");
+//			Con_SafePrintf ("Couldn't get DI proc addr\n");
 			return false;
 		}
 	}
@@ -576,7 +727,7 @@ qboolean IN_InitDInput (void) {
 	hr = IDirectInput_CreateDevice(g_pdi, &GUID_SysMouse, &g_pMouse, NULL);
 
 	if (FAILED(hr)) {
-		Con_Printf ("Couldn't open DI mouse device\n");
+//		Con_SafePrintf ("Couldn't open DI mouse device\n");
 		return false;
 	}
 
@@ -584,7 +735,7 @@ qboolean IN_InitDInput (void) {
 	hr = IDirectInputDevice_SetDataFormat(g_pMouse, &df);
 
 	if (FAILED(hr)) {
-		Con_Printf ("Couldn't set DI mouse format\n");
+//		Con_SafePrintf ("Couldn't set DI mouse format\n");
 		return false;
 	}
 
@@ -592,7 +743,7 @@ qboolean IN_InitDInput (void) {
 	hr = IDirectInputDevice_SetCooperativeLevel(g_pMouse, mainwindow, DISCL_EXCLUSIVE | DISCL_FOREGROUND);
 
 	if (FAILED(hr)) {
-		Con_Printf ("Couldn't set DI coop level\n");
+//		Con_SafePrintf ("Couldn't set DI coop level\n");
 		return false;
 	}
 
@@ -602,7 +753,7 @@ qboolean IN_InitDInput (void) {
 	hr = IDirectInputDevice_SetProperty(g_pMouse, DIPROP_BUFFERSIZE, &dipdw.diph);
 
 	if (FAILED(hr)) {
-		Con_Printf ("Couldn't set DI buffersize\n");
+//		Con_SafePrintf ("Couldn't set DI buffersize\n");
 		return false;
 	}
 
@@ -612,6 +763,16 @@ qboolean IN_InitDInput (void) {
 }
 
 void IN_StartupMouse (void) {
+//Baker notes: this is not pq 3.50 equivalent
+//We want to decide if to use dinput based
+// on not just the commandline but also
+// the cvar
+//	Con_SafePrintf("Mouse: IN_StartupMouse 1\n");
+// This can be called before mouse initialization
+// But should it be???
+
+// Baker 3.99n: experiment
+
 	if ( COM_CheckParm ("-nomouse") )
 		return;
 
@@ -623,11 +784,11 @@ void IN_StartupMouse (void) {
 		flex_dinput = IN_InitDInput ();
 
 		if (flex_dinput) {
-			Con_Printf ("DirectInput initialized\n");
+			Con_SafePrintf ("DirectInput initialized\n");
 			if (use_m_smooth)
-				Con_Printf ("Mouse smoothing initialized\n");
+				Con_SafePrintf ("Mouse smoothing initialized\n");
 		} else {
-			Con_Printf ("DirectInput not initialized\n");
+			Con_SafePrintf ("DirectInput not initialized\n");
 		}
 	}
 
@@ -655,7 +816,7 @@ void IN_StartupMouse (void) {
 
 
 // if a fullscreen video mode was set before the mouse was initialized, set the mouse state appropriately
-	if (mouseactivatetoggle)
+	if (mouse_lockedto_quakewindow)
 		IN_ActivateMouse ();
 
 	// Baker 3.85: Moved to here.  It makes more sense
@@ -672,37 +833,24 @@ void IN_StartupMouse (void) {
 	}
 
 }
-
 void IN_SetGlobals(void) {
-
-/*
-    input_initialized = false;
-
-	// reset to default params, like global variables have
-	mouse_buttons = mouse_oldbuttonstate = 0;
-	mx_accum      = my_accum = 0;
+//	mouse_buttons = mouse_oldbuttonstate = 0;
+//	flex_input_initialized = false;
+//	mx_accum      = my_accum = 0;
 	restore_spi   = false;
-	memset(&current_pos,       0, sizeof(current_pos));
-	memset(originalmouseparms, 0, sizeof(originalmouseparms));
-	memset(newmouseparms,      0, sizeof(newmouseparms));
+//	memset(&current_pos,       0, sizeof(current_pos));
+//	memset(originalmouseparms, 0, sizeof(originalmouseparms));
+//	originalmouseparms[0] =0;
+//	originalmouseparms[1] =0;
+//	originalmouseparms[2] =1;
+//	newmouseparms[0] =0;
+//	newmouseparms[1] =0;
+//	newmouseparms[2] =1;
 
-	mouseparmsvalid  = mouseactivatetoggle = false;
-	dinput_acquired  = false;
+//	mouseparmsvalid  = mouseactivatetoggle = false;
+
 	mstate_di        = 0;
 	uiWheelMessage   = 0;
-
-	mouseactive      = false;
-	mouseinitialized = false;
-
-	// Some drivers send DIMOFS_Z, some send WM_MOUSEWHEEL, and some send both.
-	// To get the mouse wheel to work in any case but avoid duplicate events,
-	// we will only use one event source, wherever we receive the first event.
-	in_mwheeltype = MWHEEL_UNKNOWN;
-
-#if DIRECTINPUT_VERSION	>= 0x0700
-	use_m_smooth  = false;
-	m_event       = NULL;
-	smooth_thread = NULL;
 
 	memset(m_history_x, 0, sizeof(m_history_x));	// history
 	memset(m_history_y, 0, sizeof(m_history_y));
@@ -713,23 +861,13 @@ void IN_SetGlobals(void) {
 	wheel_up_count	 =  0;
 	wheel_dn_count	 =  0;
 
-	last_wseq_printed=  0;
-
-	dinput = false;
-#endif
-*/
-	
-	// Baker 3.85: Reset everything!
-
-
-	
+//	last_wseq_printed=  0;
 	uiWheelMessage   = 0;
 
 	flex_dinput_acquired = false;
 	flex_mouseinitialized = false;
 	flex_mouseactive = false;
 	flex_dinput = false;
-	
 }
 
 extern cvar_t in_keymap;
@@ -737,23 +875,32 @@ void KEY_Keymap_f(void);
 
 void IN_Init (void) {
 	
-
+//	Con_SafePrintf("Mouse: IN_Init 1\n");
 	// Baker 3.85:  This occurs BEFORE running quake.rc and if manually restarting mouse, such as
 	//              changing m_directinput cvar, which occurs in quake.rc
 	//              So this normally happens twice!
 
 	if (!flex_firstinit) {
+		
+//		Con_SafePrintf("Very first init\n");
 		// Baker 3.85: Very first input initialization
 
+		if (COM_CheckParm("-dinput") || COM_CheckParm("-m_smooth"))
+			commandline_dinput = true;
+		else
+			commandline_dinput = false;
+			
 		// mouse variables
 		Cvar_RegisterVariable (&m_filter, NULL);
 		Cvar_RegisterVariable (&m_forcewheel, NULL);
 		Cvar_RegisterVariable (&m_accel, NULL);
 		Cvar_RegisterVariable (&m_directinput, &IN_DirectInput_f);
-		
-		if (COM_CheckParm("-dinput")) {
+		//Con_SafePrintf("Did we re-init dinput below this point but ..\n");
+		if (commandline_dinput) {
+			m_dinput_skiponce=true;
 			Cvar_SetValue("m_directinput", 1);
 		}
+//		Con_SafePrintf("... above this point\n");
 
 		// keyboard variables
 		Cvar_RegisterVariable (&cl_keypad, NULL);
@@ -764,18 +911,28 @@ void IN_Init (void) {
 
 
 		Cmd_AddCommand ("force_centerview", Force_CenterView_f);
-		Con_Printf("Input startup initialized\n");
+		Cmd_AddCommand ("dinput_status", IN_DirectInput_Status_f);
+		
+//		Con_SafePrintf("Input startup initialized\n");
+		
 	}
 
-	IN_SetGlobals ();
+	IN_SetGlobals (); // Baker risk
 	IN_StartupMouse ();
 	IN_StartupJoystick ();
 
+	
+	flex_firstinit = true;	// Baker: the placement of this is in question
 
-	flex_firstinit = true;
+	
 }
 
 void IN_Shutdown (void) {
+// Baker: IN_RESTART calls this but is it appropriate
+//        to deactivate the mouse if that has already
+//        been done?
+	
+//	Con_SafePrintf("Mouse: IN_Shutdown 1\n");
 	IN_DeactivateMouse ();
 	IN_ShowMouse ();
 
@@ -789,7 +946,18 @@ void IN_Shutdown (void) {
 		g_pdi = NULL;
 	}
 
-	flex_dinput_acquired = false; // Baker 3.85 -- right?
+//	if (hInstDI) {
+//		FreeLibrary(hInstDI);
+//		hInstDI = NULL;
+		flex_dinput = false;
+//		Con_SafePrintf("Dinput acquire lost by turn off #8\n");
+//		if (flex_dinput_acquired != false) 
+//			Con_SafePrintf("This should have turned off already!\n");
+//		flex_dinput_acquired = false; // Baker 3.85 -- right?
+//	}
+
+	
+
 }
 
 void IN_MouseEvent (int mstate) {
@@ -832,6 +1000,7 @@ void IN_MouseMove (usercmd_t *cmd) {
 				hr = IDirectInputDevice_GetDeviceData (g_pMouse, sizeof(DIDEVICEOBJECTDATA), &od, &dwElements, 0);
 
 				if ((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED)) {
+//				Con_SafePrintf("Dinput acquired in mousemove #1\n");
 				flex_dinput_acquired = true;
 				IDirectInputDevice_Acquire(g_pMouse);
 				break;
@@ -857,16 +1026,19 @@ void IN_MouseMove (usercmd_t *cmd) {
 					break;
 
 				case DIMOFS_Z:
-						// Con_Printf("Mousewheel event\n");
-						if (m_forcewheel.value) {
+						//Con_Printf("Mousewheel event\n");
+						if (flex_dinput) {
 							if (od.dwData & 0x80) {
-						Key_Event(K_MWHEELDOWN, 0, true);
-						Key_Event(K_MWHEELDOWN, 0, false);
+								Key_Event(K_MWHEELDOWN, 0, true);
+								Key_Event(K_MWHEELDOWN, 0, false);
+								//Con_Printf("Mousewheelkey up event\n");
 							} else {
-						Key_Event(K_MWHEELUP, 0, true);
-						Key_Event(K_MWHEELUP, 0, false);
-					}
+								Key_Event(K_MWHEELUP, 0, true);
+								Key_Event(K_MWHEELUP, 0, false);
+								//Con_Printf("Mousewheelkey down event\n");
+							}
 						}
+						//Con_Printf("Exit in_mousewheel\n");
 					break;
 
 					INPUT_CASE_DINPUT_MOUSE_BUTTONS
@@ -989,10 +1161,10 @@ void IN_StartupJoystick (void)  {
 	joy_avail = false;
 
 	// abort startup if user requests no joystick
-	if (!COM_CheckParm ("-joy") ) // Baker 3.83: Must explicitly indicate joystick, instead of explicitly not
+	if (!COM_CheckParm ("-joystick") ) // Baker 3.83: Must explicitly indicate joystick, instead of explicitly not
 		return;
 
- 	if (!flex_firstinit) {
+ 	if (!flex_firstjoyinit) {
 		// Baker 3.85: Only do this once!
 
 		Cvar_RegisterVariable (&joy_name, NULL);
@@ -1016,6 +1188,7 @@ void IN_StartupJoystick (void)  {
 		Cvar_RegisterVariable (&joy_wwhack1, NULL);
 		Cvar_RegisterVariable (&joy_wwhack2, NULL);
 		Cmd_AddCommand ("joyadvancedupdate", Joy_AdvancedUpdate_f);
+		flex_firstjoyinit = true;
 	}
 
 	// verify joystick driver is present
@@ -1346,8 +1519,7 @@ void IN_JoyMove (usercmd_t *cmd) {
 			cl.viewangles[PITCH] = 90.0;
 		if (cl.viewangles[PITCH] < -90.0)
 			cl.viewangles[PITCH] = -90.0;
-	}
-	else {
+	} else {
 		if (cl.viewangles[PITCH] > 80.0)
 			cl.viewangles[PITCH] = 80.0;
 		if (cl.viewangles[PITCH] < -70.0)

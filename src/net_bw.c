@@ -241,7 +241,7 @@ static int net_controlsocket = 0;
 
 static int BW_ioctl(int s, char *msg, int msglen)
 {
-	Q_memcpy(lowmem_buffer, msg, msglen);
+	memcpy(lowmem_buffer, msg, msglen);
 
 	regs.x.ax = 0x4403;
 	regs.x.bx = s;
@@ -278,7 +278,7 @@ static int GetEthdevinfo(void)
 {
 	int fd;
 
-	Q_strcpy((char *)lowmem_buffer, "ETHDEV27");
+	strcpy((char *)lowmem_buffer, "ETHDEV27");
 	regs.x.ax = 0x3d42;
 	regs.x.ds = lowmem_bufseg;
 	regs.x.dx = lowmem_bufoff;
@@ -298,7 +298,7 @@ static int GetEthdevinfo(void)
 	regs.x.bx = fd;
 	if (dos_int86(0x21))
 		return -1;
-	Q_memcpy(&ethdevinfo, lowmem_buffer, regs.x.ax);
+	memcpy(&ethdevinfo, lowmem_buffer, regs.x.ax);
 
 	regs.h.ah = 0x3e;
 	regs.x.bx = fd;
@@ -340,8 +340,8 @@ int BW_Init(void)
 	}
 
 	BW_GetSocketAddr (net_controlsocket, &addr);
-	Q_strcpy(my_tcpip_address,  BW_AddrToString (&addr));
-	colon = Q_strrchr (my_tcpip_address, ':');
+	strcpy(my_tcpip_address,  BW_AddrToString (&addr));
+	colon = strrchr (my_tcpip_address, ':');
 	if (colon)
 		*colon = 0;
 
@@ -401,7 +401,7 @@ int BW_OpenSocket(int port)
 	static char nonblock_msg[2] = {BW_IOCTL_CLEAROPTIONS, BW_OPTION_BLOCKING};
 
 	// allocate a UDP socket
-	Q_strcpy((char *)lowmem_buffer, "UDP-IP10");
+	strcpy((char *)lowmem_buffer, "UDP-IP10");
 	regs.x.ax = 0x3d42;
 	regs.x.ds = lowmem_bufseg;
 	regs.x.dx = lowmem_bufoff;
@@ -537,7 +537,7 @@ int BW_Read(int s, byte *buf, int len, struct qsockaddr *from)
 		Con_Printf("BW UDP read packet too large: %u\n", len);
 		return -1;
 	}
-	Q_memcpy(buf, info2->data, len);
+	memcpy(buf, info2->data, len);
 
 	return len;
 }
@@ -562,7 +562,7 @@ int BW_Broadcast(int s, byte *msg, int len)
 	writeInfo->dataLen = len;
 	if (len > NET_DATAGRAMSIZE)
 		Sys_Error("BW UDP write packet too large: %u\n", len);
-	Q_memcpy(writeInfo->data, msg, len);
+	memcpy(writeInfo->data, msg, len);
 	writeInfo->data[len] = 0;
 	regs.h.ah = 0x40;
 	regs.x.bx = s;
@@ -598,7 +598,7 @@ int BW_Write(int s, byte *msg, int len, struct qsockaddr *to)
 	writeInfo->dataLen = len;
 	if (len > NET_DATAGRAMSIZE)
 		Sys_Error("BW UDP write packet too large: %u\n", len);
-	Q_memcpy(writeInfo->data, msg, len);
+	memcpy(writeInfo->data, msg, len);
 	writeInfo->data[len] = 0;
 	regs.h.ah = 0x40;
 	regs.x.bx = s;
@@ -669,7 +669,7 @@ int BW_GetSocketAddr (int socket, struct qsockaddr *addr)
 
 int BW_GetNameFromAddr (struct qsockaddr *addr, char *name)
 {
-	Q_strcpy(name, BW_AddrToString(addr));
+	strcpy(name, BW_AddrToString(addr));
 	return 0;
 }
 
@@ -690,7 +690,7 @@ int BW_GetAddrFromName (char *name, struct qsockaddr *hostaddr)
 
 	buff[0] = '.';
 	b = buff;
-	Q_strcpy(buff+1, name);
+	strcpy(buff+1, name);
 	if (buff[1] == '.')
 		b++;
 

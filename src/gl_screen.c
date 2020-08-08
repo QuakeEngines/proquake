@@ -17,12 +17,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
-// screen.c -- master for refresh, status bar, console, chat, notify, etc
+// gl_screen.c -- master for refresh, status bar, console, chat, notify, etc
 
 #include "quakedef.h"
 
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 #include "movie.h"
 #endif
 
@@ -84,13 +83,10 @@ float		scr_con_current;
 float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
-//cvar_t		vid_conwidth = {"vid_conwidth", "0", true}; //johnfitz
-//cvar_t		vid_conheight = {"vid_conheight", "0", true}; //johnfitz
-cvar_t		vid_consize = {"vid_consize", "0", true}; //Baker 3.97
+cvar_t		vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
 cvar_t		scr_viewsize = {"viewsize","100", true};
-cvar_t		scr_fov = {"fov","90", true, 6};	// 10 - 170  // Baker 3.60 - Save to config
+cvar_t		scr_fov = {"fov","90", true};	// 10 - 170  // Baker 3.60 - Save to config
 cvar_t		default_fov = {"default_fov","0", true, 7};	// Baker 3.85 - Default_fov from FuhQuake
-
 cvar_t		scr_conspeed = {"scr_conspeed","99999", true};  // Baker 3.60 - Save to config
 cvar_t		scr_centertime = {"scr_centertime","2"};
 cvar_t		scr_showram = {"showram","1"};
@@ -104,6 +100,7 @@ cvar_t      show_speed = {"show_speed", "0", false}; // JPG - draw frames per se
 
 extern	cvar_t	crosshair;
 extern  cvar_t	cl_crosshaircentered; // Baker 3.60 - centered crosshair
+//extern  cvar_t  cl_colorshow; // Baker 3.99n - show color @ top/left of screen
 extern	cvar_t	cl_crossx;	// JPG - added this
 extern	cvar_t	cl_crossy;  // JPG - added this
 extern  cvar_t  cl_sbar;
@@ -118,8 +115,6 @@ int			scr_fullupdate;
 
 int			clearconsole;
 int			clearnotify;
-
-int			sb_lines;
 
 viddef_t	vid;				// global video state
 
@@ -216,6 +211,8 @@ void SCR_DrawCenterString (void)
 	} while (1);
 }
 
+extern cvar_t cl_scoreboard_clean;
+extern qboolean sb_showscores;
 void SCR_CheckDrawCenterString (void)
 {
 	scr_copytop = 1;
@@ -226,13 +223,19 @@ void SCR_CheckDrawCenterString (void)
 
 	if (scr_centertime_off <= 0 && !cl.intermission)
 		return;
+
 	if (key_dest != key_game)
 		return;
+
+	if (sb_showscores && cl_scoreboard_clean.value)
+		return;
+
 
 	SCR_DrawCenterString ();
 }
 
 //=============================================================================
+
 
 /*
 ====================
@@ -246,12 +249,9 @@ float CalcFov (float fov_x, float width, float height)
         if (fov_x < 1 || fov_x > 179)
                 Sys_Error ("Bad fov: %f", fov_x);
 
-        x = width/tan(fov_x/360*M_PI);
-
-        a = atan (height/x);
-
+        x = width/tanf(fov_x/360*M_PI);
+        a = atanf (height/x);
         a = a*360/M_PI;
-
         return a;
 }
 
@@ -325,14 +325,14 @@ static void SCR_CalcRefdef (void)
 		h = vid.height;
 	}
 
-	r_refdef.vrect.width = vid.width * size;
+	r_refdef.vrect.width = (int)(vid.width * size);
 	if (r_refdef.vrect.width < 96)
 	{
 		size = 96.0 / r_refdef.vrect.width;
 		r_refdef.vrect.width = 96;	// min for icons
 	}
 
-	r_refdef.vrect.height = vid.height * size;
+	r_refdef.vrect.height = (int)(vid.height * size);
 	if (cl_sbar.value >= 1.0) {
 		 // Baker 3.97: Only if we are displaying the sbar
 		if (r_refdef.vrect.height > vid.height - sb_lines)
@@ -351,14 +351,14 @@ static void SCR_CalcRefdef (void)
 	//r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
 
 	if ((glwidth/glheight) > 1.34) {
-        r_refdef.fov_y = CalcFov (oldfov, r_refdef.vrect.height * (320.0f / 240.0f), r_refdef.vrect.height);
+        r_refdef.fov_y = CalcFov (scr_fov.value, r_refdef.vrect.height * (320.0f / 240.0f), r_refdef.vrect.height);
         r_refdef.fov_x = CalcFov (r_refdef.fov_y, vid.height, r_refdef.vrect.width);
     } else {
-		r_refdef.fov_x = oldfov;
+		r_refdef.fov_x = scr_fov.value;
 		r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
-	} 
+	}
 	scr_vrect = r_refdef.vrect;
-} 
+}
 
 
 /*
@@ -388,7 +388,6 @@ void SCR_SizeDown_f (void)
 	vid.recalc_refdef = 1;
 }
 
-
 //============================================================================
 
 /*
@@ -400,10 +399,9 @@ void CL_Default_fov_f(void);
 void CL_Fov_f(void);
 void SCR_Init (void)
 {
-	
-
 	Cvar_RegisterVariable (&default_fov, &CL_Default_fov_f);
 	Cvar_RegisterVariable (&scr_fov, &CL_Fov_f);
+
 	Cvar_RegisterVariable (&scr_viewsize, NULL);
 	Cvar_RegisterVariable (&scr_conspeed, NULL);
 	Cvar_RegisterVariable (&scr_showram, NULL);
@@ -426,12 +424,12 @@ void SCR_Init (void)
 	scr_net = Draw_PicFromWad ("net");
 	scr_turtle = Draw_PicFromWad ("turtle");
 
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 	Movie_Init ();
 #endif
+
 	scr_initialized = true;
 }
-
 
 
 /*
@@ -484,6 +482,7 @@ void SCR_DrawNet (void)
 {
 	if (realtime - cl.last_received_message < 0.3)
 		return;
+
 	if (cls.demoplayback)
 		return;
 
@@ -514,7 +513,7 @@ void SCR_DrawFPS (void)
 	if (!pq_drawfps.value)
 		return;
 
-	sprintf(buff, "%3d", fps);
+	snprintf (buff, sizeof(buff), "%3d", fps);
 	x = vid.width - 48;
 
 	ch = buff;
@@ -522,6 +521,34 @@ void SCR_DrawFPS (void)
 	while (*ch)
 	{
 		Draw_Character(x, (!show_speed.value ? 8 : 16), *ch);
+		x += 8;
+		ch++;
+	}
+}
+
+/* 
+==============
+SCR_DrawWebPercent
+==============
+*/
+void SCR_DrawWebPercent (void)
+{
+	int x;
+	char buff[20];
+	char *ch;
+
+	snprintf (buff, sizeof(buff), "download: %2.1f%%", (float)(cls.download.percent*100));
+	x = vid.width - (16*8); //64; // 16 x 3 = 48 ... we need 16 x 4 = 64
+
+	Draw_Fill (0, 20, vid.width, 2, 0);
+	Draw_Fill (0, 0, vid.width, 20, 98);
+	Draw_Fill (0, 6, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
+
+	ch = buff;
+
+	while (*ch)
+	{
+		Draw_Character(x, 8, (*ch)+128);
 		x += 8;
 		ch++;
 	}
@@ -562,7 +589,7 @@ void SCR_DrawSpeed (void)
 
 	if (display_speed >= 0)
 	{
-		sprintf (buff, "%3d", (int)display_speed);
+		snprintf (buff, sizeof(buff), "%3d", (int)display_speed);
 	ch = buff;
 	x = vid.width - 48;
 	while (*ch)
@@ -582,7 +609,6 @@ void SCR_DrawSpeed (void)
 }
 
 
-
 /*
 ==============
 DrawPause
@@ -599,10 +625,8 @@ void SCR_DrawPause (void)
 		return;
 
 	pic = Draw_CachePic ("gfx/pause.lmp");
-	Draw_Pic ( (vid.width - pic->width)/2,
-		(vid.height - 48 - pic->height)/2, pic);
+	Draw_Pic ( (vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
-
 
 
 /*
@@ -618,10 +642,8 @@ void SCR_DrawLoading (void)
 		return;
 
 	pic = Draw_CachePic ("gfx/loading.lmp");
-	Draw_Pic ( (vid.width - pic->width)/2,
-		(vid.height - 48 - pic->height)/2, pic);
+	Draw_Pic ( (vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
-
 
 
 //=============================================================================
@@ -674,12 +696,16 @@ void SCR_SetUpToDrawConsole (void)
 	}
 
 	if (clearconsole++ < vid.numpages)
+	{
 		Sbar_Changed ();
+	}
 	else if (clearnotify++ < vid.numpages)
 	{
 	}
 	else
+	{
 		con_notifylines = 0;
+	}
 }
 
 /*
@@ -731,25 +757,26 @@ void SCR_ScreenShot_f (void)
 	char		tganame[16];  //johnfitz -- was [80]
 	char		checkname[MAX_OSPATH];
 	int			i, c, temp;
-//
+
 // find a file name to save it to
-//
+
 	//johnfitz -- changed name format from quake00 to fitz0000
 	for (i=0; i<10000; i++)
 	{
-		sprintf (tganame, "quake%04i.tga", i);
-		sprintf (checkname, "%s/%s", com_gamedir, tganame);
+		snprintf (tganame, sizeof(tganame), "quake%04i.tga", i);
+		snprintf (checkname, sizeof(checkname), "%s/%s", com_gamedir, tganame);
 		if (Sys_FileTime(checkname) == -1)
 			break;	// file doesn't exist
 	}
+
 	if (i == 10000)
 	{
-		Con_Printf ("SCR_ScreenShot_f: Couldn't create a TGA file\n"); //johnfitz -- TGA, not PCX!
+		Con_Printf ("Error: Cannot create more than 10000 screenshots\n");
 		return;
  	}
 
 
-	buffer = malloc(glwidth*glheight*3 + 18);
+	buffer = Q_malloc(glwidth*glheight*3 + 18);
 	memset (buffer, 0, 18);
 	buffer[2] = 2;		// uncompressed type
 	buffer[12] = glwidth&255;
@@ -781,7 +808,6 @@ void SCR_ScreenShot_f (void)
 /*
 ===============
 SCR_BeginLoadingPlaque
-
 ================
 */
 void SCR_BeginLoadingPlaque (void)
@@ -812,7 +838,6 @@ void SCR_BeginLoadingPlaque (void)
 /*
 ===============
 SCR_EndLoadingPlaque
-
 ================
 */
 void SCR_EndLoadingPlaque (void)
@@ -834,7 +859,7 @@ void SCR_DrawNotifyString (void)
 
 	start = scr_notifystring;
 
-	y = vid.height*0.35;
+	y = (int)(vid.height*0.35f);
 
 	do {
 	// scan the width of the line
@@ -881,17 +906,14 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
-	time1 = Sys_FloatTime () + timeout; //johnfitz -- timeout
+	time1 = Sys_DoubleTime () + timeout; //johnfitz -- timeout
 	time2 = 0.0f; //johnfitz -- timeout
 
 	do {
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
-		if (timeout) time2 = Sys_FloatTime (); //johnfitz -- zero timeout means wait forever.
-	} while (key_lastpress != 'y' &&
-			 key_lastpress != 'n' &&
-			 key_lastpress != K_ESCAPE &&
-			 time2 <= time1);
+		if (timeout) time2 = Sys_DoubleTime (); //johnfitz -- zero timeout means wait forever.
+	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE && time2 <= time1);
 
 //	SCR_UpdateScreen (); //johnfitz -- commented out
 
@@ -930,17 +952,16 @@ void SCR_TileClear (void)
 {
 	if (r_refdef.vrect.x > 0) {
 		// left
-		Draw_TileClear (0, 0, r_refdef.vrect.x, vid.height - sb_lines);
+		Draw_TileClear (0, 0, r_refdef.vrect.x,  vid.height - sb_lines);
 		// right
-		Draw_TileClear (r_refdef.vrect.x + r_refdef.vrect.width, 0,
-			vid.width - r_refdef.vrect.x + r_refdef.vrect.width, vid.height - sb_lines);
+		Draw_TileClear (r_refdef.vrect.x + r_refdef.vrect.width, 0, vid.width - r_refdef.vrect.x + r_refdef.vrect.width, vid.height - sb_lines);
 	}
+
 	if (r_refdef.vrect.y > 0) {
 		// top
 		Draw_TileClear (r_refdef.vrect.x, 0, r_refdef.vrect.x + r_refdef.vrect.width, r_refdef.vrect.y);
 		// bottom
-		Draw_TileClear (r_refdef.vrect.x, r_refdef.vrect.y + r_refdef.vrect.height,
-			r_refdef.vrect.width, vid.height - sb_lines - (r_refdef.vrect.height + r_refdef.vrect.y));
+		Draw_TileClear (r_refdef.vrect.x, r_refdef.vrect.y + r_refdef.vrect.height, r_refdef.vrect.width, vid.height - sb_lines - (r_refdef.vrect.height + r_refdef.vrect.y));
 	}
 }
 
@@ -955,27 +976,18 @@ WARNING: be very careful calling this from elsewhere, because the refresh
 needs almost the entire 256k of stack space!
 ==================
 */
-
-
 void SCR_UpdateScreen (void)
 {
-	static float	oldscr_viewsize;
+	if (cls.state == ca_dedicated)
+		return;				// stdout only
 
 	if (block_drawing)
 		return;
 
-	vid.numpages = 2 + gl_triplebuffer.value;
-
-	scr_copytop = 0;
-	scr_copyeverything = 0;
-
 	if (scr_disabled_for_loading)
 	{
 		if (realtime - scr_disabled_time > 60)
-		{
-			scr_disabled_for_loading = false;
-			Con_Printf ("load failed.\n");
-		}
+			scr_disabled_for_loading = false; // Con_Printf ("load failed.\n");
 		else
 			return;
 	}
@@ -983,10 +995,23 @@ void SCR_UpdateScreen (void)
 	if (!scr_initialized || !con_initialized)
 		return;				// not initialized yet
 
+#ifdef _WIN32
+	{	// don't suck up any cpu if minimized
+		extern	int	Minimized;
+
+		if (Minimized)
+			return;
+	}
+#endif
+
+	vid.numpages = 2 + (gl_triplebuffer.value ? 1 : 0); //johnfitz -- in case gl_triplebuffer is not 0 or 1
+	scr_copytop = 0;
+	scr_copyeverything = 0;
 
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 
 	// determine size of refresh window
+
 	if (oldfov != scr_fov.value)
 	{
 		oldfov = scr_fov.value;
@@ -1000,8 +1025,10 @@ void SCR_UpdateScreen (void)
 	}
 
 	if (vid.recalc_refdef)
+	{
+		// something changed, so reorder the screen
 		SCR_CalcRefdef ();
-
+	}
 
 // do 3D refresh drawing, and then update the screen
 	SCR_SetUpToDrawConsole ();
@@ -1010,35 +1037,36 @@ void SCR_UpdateScreen (void)
 
 	GL_Set2D ();
 
-// added by joe - IMPORTANT: this _must_ be here so that 
+// added by joe - IMPORTANT: this _must_ be here so that
 //			     palette flashes take effect in windowed mode too.
+#ifdef SUPPORTS_ENHANCED_GAMMA
 	if (using_hwgamma) // Baker begin hwgamma support
 		R_PolyBlend (); // Baker end hwgamma support
-
+#endif
 
 	// draw any areas not covered by the refresh
 
 	if (cl_sbar.value >=1.0 || scr_viewsize.value < 100.0)
 		SCR_TileClear ();
 
-	if (scr_drawdialog)
+
+	if (scr_drawdialog) //new game confirm
 	{
 		Sbar_Draw ();
 		Draw_FadeScreen ();
 		SCR_DrawNotifyString ();
 		scr_copyeverything = true;
 	}
-	else if (scr_drawloading)
+	else if (scr_drawloading) //loading
 	{
 		SCR_DrawLoading ();
 		Sbar_Draw ();
 	}
-	else if (cl.intermission == 1 && key_dest == key_game)
+	else if (cl.intermission == 1 && key_dest == key_game) //end of level
 	{
 		Sbar_IntermissionOverlay ();
-		SCR_DrawVolume (); // Baker 3.60 - Draw volume
 	}
-	else if (cl.intermission == 2 && key_dest == key_game)
+	else if (cl.intermission == 2 && key_dest == key_game) //end of episode
 	{
 		Sbar_FinaleOverlay ();
 		SCR_CheckDrawCenterString ();
@@ -1046,48 +1074,47 @@ void SCR_UpdateScreen (void)
 	}
 	else
 	{
-		if (crosshair.value)
-		{
-			if (!cl_crosshaircentered.value)  // Baker 3.60 - centered crosshair
-			{
-				// Standard off-center Quake crosshair
-			Draw_Character (scr_vrect.x + scr_vrect.width/2 + cl_crossx.value, scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+');
-			} else
-			{
-				// Baker 3.60 - Centered crosshair (FuhQuake)
-				Draw_Character (scr_vrect.x + scr_vrect.width / 2 - 4 + cl_crossx.value, scr_vrect.y + scr_vrect.height / 2 - 4 + cl_crossy.value, '+');
-			}
-		}
-
 		SCR_DrawRam ();
 		SCR_DrawNet ();
 		SCR_DrawTurtle ();
 		SCR_DrawPause ();
-		SCR_DrawFPS (); // JPG - draw FPS
-		SCR_DrawSpeed (); // JPG - draw FPS
-		SCR_CheckDrawCenterString ();
-		SCR_DrawVolume (); // Baker 3.60 - JoeQuake 0.15
-		Sbar_Draw ();
-		SCR_DrawConsole ();
+
+		if (cls.state == ca_connected) {
+			Draw_Crosshair ();
+			SCR_DrawFPS (); // JPG - draw FPS
+			SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
+			SCR_CheckDrawCenterString ();
+			SCR_DrawVolume (); // Baker 3.60 - JoeQuake 0.15
+			Sbar_Draw ();
+		}
+
+		if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
+			SCR_DrawConsole ();
+
+#ifdef HTTP_DOWNLOAD
+		if (cls.download.web)
+			SCR_DrawWebPercent ();
+#endif
+
 		M_Draw ();
 		Mat_Update ();	// JPG
 	}
 
 	// Baker hwgamma support
-#ifndef D3DQUAKE
+#ifdef SUPPORTS_ENHANCED_GAMMA
 	if (using_hwgamma) {
 		R_BrightenScreen ();
 		V_UpdatePaletteNew ();
-	} else 
+	} else
 #endif
 	{
-		V_UpdatePaletteOld ();	
+		V_UpdatePaletteOld ();
 	}
 	// Baker end hwgamma support
 
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 	Movie_UpdateScreen ();
 #endif
+
 	GL_EndRendering ();
 }
-

@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -20,8 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_misc.c
 
 #include "quakedef.h"
-#include "r_local.h"
-
+//#include "r_local.h"
 
 /*
 ===============
@@ -38,7 +37,6 @@ void R_CheckVariables (void)
 		D_FlushCaches ();	// so all lighting changes
 	}
 }
-
 
 /*
 ============
@@ -58,7 +56,6 @@ void Show (void)
 	VID_Update (&vr);
 }
 
-
 /*
 ====================
 R_TimeRefresh_f
@@ -68,14 +65,13 @@ For program optimization
 */
 void R_TimeRefresh_f (void)
 {
-	int			i;
+	int			i, startangle;
 	float		start, stop, time;
-	int			startangle;
 	vrect_t		vr;
 
 	startangle = r_refdef.viewangles[1];
-	
-	start = Sys_FloatTime ();
+
+	start = Sys_DoubleTime ();
 	for (i=0 ; i<128 ; i++)
 	{
 		r_refdef.viewangles[1] = i/128.0*360.0;
@@ -93,13 +89,12 @@ void R_TimeRefresh_f (void)
 		vr.pnext = NULL;
 		VID_Update (&vr);
 	}
-	stop = Sys_FloatTime ();
+	stop = Sys_DoubleTime ();
 	time = stop-start;
 	Con_Printf ("%f seconds (%f fps)\n", time, 128/time);
-	
+
 	r_refdef.viewangles[1] = startangle;
 }
-
 
 /*
 ================
@@ -110,22 +105,21 @@ Only called by R_DisplayTime
 */
 void R_LineGraph (int x, int y, int h)
 {
-	int		i;
+	int		i, s;
 	byte	*dest;
-	int		s;
 
 // FIXME: should be disabled on no-buffer adapters, or should be in the driver
-	
+
 	x += r_refdef.vrect.x;
 	y += r_refdef.vrect.y;
-	
+
 	dest = vid.buffer + vid.rowbytes*y + x;
-	
+
 	s = r_graphheight.value;
-	
+
 	if (h>s)
 		h = s;
-		
+
 	for (i=0 ; i<h ; i++, dest -= vid.rowbytes*2)
 	{
 		dest[0] = 0xff;
@@ -150,12 +144,11 @@ extern float mouse_x, mouse_y;
 void R_TimeGraph (void)
 {
 	static	int		timex;
-	int		a;
+	int		a, x;
 	float	r_time2;
 	static byte	r_timings[MAX_TIMINGS];
-	int		x;
-	
-	r_time2 = Sys_FloatTime ();
+
+	r_time2 = Sys_DoubleTime ();
 
 	a = (r_time2-r_time1)/0.01;
 //a = fabs(mouse_y * 0.05);
@@ -169,12 +162,10 @@ void R_TimeGraph (void)
 	if (r_refdef.vrect.width <= MAX_TIMINGS)
 		x = r_refdef.vrect.width-1;
 	else
-		x = r_refdef.vrect.width -
-				(r_refdef.vrect.width - MAX_TIMINGS)/2;
-	do
-	{
+		x = r_refdef.vrect.width - (r_refdef.vrect.width - MAX_TIMINGS)/2;
+	do {
 		R_LineGraph (x, r_refdef.vrect.height-2, r_timings[a]);
-		if (x==0)
+		if (!x)
 			break;		// screen too small to hold entire thing
 		x--;
 		a--;
@@ -185,7 +176,6 @@ void R_TimeGraph (void)
 	timex = (timex+1)%MAX_TIMINGS;
 }
 
-
 /*
 =============
 R_PrintTimes
@@ -193,18 +183,16 @@ R_PrintTimes
 */
 void R_PrintTimes (void)
 {
-	float	r_time2;
-	float		ms;
+	double	r_time2;
+	double	ms;
 
-	r_time2 = Sys_FloatTime ();
+	r_time2 = Sys_DoubleTime ();
 
 	ms = 1000* (r_time2 - r_time1);
-	
-	Con_Printf ("%5.1f ms %3i/%3i/%3i poly %3i surf\n",
-				ms, c_faceclip, r_polycount, r_drawnpolycount, c_surf);
+
+	Con_Printf ("%5.1f ms %3i/%3i/%3i poly %3i surf\n", ms, c_faceclip, r_polycount, r_drawnpolycount, c_surf);
 	c_surf = 0;
 }
-
 
 /*
 =============
@@ -213,9 +201,9 @@ R_PrintDSpeeds
 */
 void R_PrintDSpeeds (void)
 {
-	float	ms, dp_time, r_time2, rw_time, db_time, se_time, de_time, dv_time;
+	double	ms, dp_time, r_time2, rw_time, db_time, se_time, de_time, dv_time;
 
-	r_time2 = Sys_FloatTime ();
+	r_time2 = Sys_DoubleTime ();
 
 	dp_time = (dp_time2 - dp_time1) * 1000;
 	rw_time = (rw_time2 - rw_time1) * 1000;
@@ -226,10 +214,8 @@ void R_PrintDSpeeds (void)
 	ms = (r_time2 - r_time1) * 1000;
 
 	Con_Printf ("%3i %4.1fp %3iw %4.1fb %3is %4.1fe %4.1fv\n",
-				(int)ms, dp_time, (int)rw_time, db_time, (int)se_time, de_time,
-				dv_time);
+				(int)ms, dp_time, (int)rw_time, db_time, (int)se_time, de_time, dv_time);
 }
-
 
 /*
 =============
@@ -241,13 +227,11 @@ void R_PrintAliasStats (void)
 	Con_Printf ("%3i polygon model drawn\n", r_amodels_drawn);
 }
 
-
 void WarpPalette (void)
 {
-	int		i,j;
+	int		i, j, basecolor[3];
 	byte	newpalette[768];
-	int		basecolor[3];
-	
+
 	basecolor[0] = 130;
 	basecolor[1] = 80;
 	basecolor[2] = 50;
@@ -260,10 +244,9 @@ void WarpPalette (void)
 			newpalette[i*3+j] = (host_basepal[i*3+j] + basecolor[j])/2;
 		}
 	}
-	
+
 	VID_ShiftPaletteOld (newpalette);
 }
-
 
 /*
 ===================
@@ -274,7 +257,7 @@ void R_TransformFrustum (void)
 {
 	int		i;
 	vec3_t	v, v2;
-	
+
 	for (i=0 ; i<4 ; i++)
 	{
 		v[0] = screenedge[i].normal[2];
@@ -291,9 +274,7 @@ void R_TransformFrustum (void)
 	}
 }
 
-
 #if	!id386
-
 /*
 ================
 TransformVector
@@ -303,11 +284,9 @@ void TransformVector (vec3_t in, vec3_t out)
 {
 	out[0] = DotProduct(in,vright);
 	out[1] = DotProduct(in,vup);
-	out[2] = DotProduct(in,vpn);		
+	out[2] = DotProduct(in,vpn);
 }
-
 #endif
-
 
 /*
 ================
@@ -317,13 +296,12 @@ R_TransformPlane
 void R_TransformPlane (mplane_t *p, float *normal, float *dist)
 {
 	float	d;
-	
+
 	d = DotProduct (r_origin, p->normal);
 	*dist = p->dist - d;
 // TODO: when we have rotating entities, this will need to use the view matrix
 	TransformVector (p->normal, normal);
 }
-
 
 /*
 ===============
@@ -358,7 +336,6 @@ void R_SetUpFrustumIndexes (void)
 	}
 }
 
-
 /*
 ===============
 R_SetupFrame
@@ -384,8 +361,7 @@ void R_SetupFrame (void)
 		if ((surface_p - surfaces) > r_maxsurfsseen)
 			r_maxsurfsseen = surface_p - surfaces;
 
-		Con_Printf ("Used %d of %d surfs; %d max\n", surface_p - surfaces,
-				surf_max - surfaces, r_maxsurfsseen);
+		Con_Printf ("Used %d of %d surfs; %d max\n", surface_p - surfaces, surf_max - surfaces, r_maxsurfsseen);
 	}
 
 	if (r_numedges.value)
@@ -395,8 +371,7 @@ void R_SetupFrame (void)
 		if (edgecount > r_maxedgesseen)
 			r_maxedgesseen = edgecount;
 
-		Con_Printf ("Used %d of %d edges; %d max\n", edgecount,
-				r_numallocatededges, r_maxedgesseen);
+		Con_Printf ("Used %d of %d edges; %d max\n", edgecount, r_numallocatededges, r_maxedgesseen);
 	}
 
 	r_refdef.ambientlight = r_ambient.value;
@@ -406,24 +381,14 @@ void R_SetupFrame (void)
 
 	if (!sv.active)
 		r_draworder.value = 0;	// don't let cheaters look behind walls
-		
+
 	R_CheckVariables ();
-	
+
 	R_AnimateLight ();
 
 	r_framecount++;
 
 	numbtofpolys = 0;
-
-// debugging
-#if 0
-r_refdef.vieworg[0]=  80;
-r_refdef.vieworg[1]=      64;
-r_refdef.vieworg[2]=      40;
-r_refdef.viewangles[0]=    0;
-r_refdef.viewangles[1]=    46.763641357;
-r_refdef.viewangles[2]=    0;
-#endif
 
 // build the transformation matrix for the given view angles
 	VectorCopy (r_refdef.vieworg, modelorg);
@@ -442,8 +407,7 @@ r_refdef.viewangles[2]=    0;
 	{
 		if (r_dowarp)
 		{
-			if ((vid.width <= vid.maxwarpwidth) &&
-				(vid.height <= vid.maxwarpheight))
+			if ((vid.width <= vid.maxwarpwidth) && (vid.height <= vid.maxwarpheight))
 			{
 				vrect.x = 0;
 				vrect.y = 0;
@@ -474,10 +438,8 @@ r_refdef.viewangles[2]=    0;
 				vrect.width = (int)w;
 				vrect.height = (int)h;
 
-				R_ViewChanged (&vrect,
-							   (int)((float)sb_lines * (h/(float)vid.height)),
-							   vid.aspect * (h / w) *
-								 ((float)vid.width / (float)vid.height));
+				R_ViewChanged (&vrect, (int)((float)sb_lines * (h/(float)vid.height)),
+							   vid.aspect * (h / w) * ((float)vid.width / (float)vid.height));
 			}
 		}
 		else
@@ -520,4 +482,3 @@ r_refdef.viewangles[2]=    0;
 
 	D_SetupFrame ();
 }
-

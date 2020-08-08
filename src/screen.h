@@ -44,30 +44,9 @@ extern	int			clearnotify;	// set to 0 whenever notify text is drawn
 extern	qboolean	scr_disabled_for_loading;
 extern	qboolean	scr_skipupdate;
 
-// Baker 3.60 - begin menu cvars - todo: classify and put them in proper location(s)
 extern	cvar_t		scr_viewsize;
-extern	cvar_t		scr_fov; // Baker 3.60 - FOV in menu
-extern	cvar_t		pq_drawfps; 
-extern	cvar_t		show_speed; 
-extern	cvar_t		pq_maxfps; 
-extern	cvar_t		vid_vsync; 
-extern  cvar_t      m_directinput;
-extern  cvar_t      in_keymap;
-extern	cvar_t		crosshair;
-extern	cvar_t		cl_crosshaircentered;
-extern	cvar_t		scr_conspeed;
-extern	cvar_t		pq_moveup;
-extern	cvar_t		cl_bob;
-extern	cvar_t		cl_keypad;
-extern	cvar_t		r_drawviewmodel;
-extern	cvar_t		r_truegunangle;
-extern	cvar_t		cl_rollangle;
-extern	cvar_t		pq_ringblend;
-extern	cvar_t		pq_pentblend;
-extern	cvar_t		pq_quadblend;
-extern	cvar_t		pq_suitblend;
+extern  cvar_t		pq_drawfps;
 
-// Baker 3.60 - end  menu cvars
 
 // only the refresh window will be updated unless these variables are flagged 
 extern	int			scr_copytop;
@@ -76,4 +55,3 @@ extern	int			scr_copyeverything;
 extern qboolean		block_drawing;
 
 void SCR_UpdateWholeScreen (void);
-extern	cvar_t		vid_consize;

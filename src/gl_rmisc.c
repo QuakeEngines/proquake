@@ -17,9 +17,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-// r_misc.c
+// gl_rmisc.c
 
 #include "quakedef.h"
+
+#ifdef MACOSX
+extern qboolean gl_palettedtex;
+#endif /* MACOSX */
+
 
 
 
@@ -88,6 +93,9 @@ void R_InitParticleTexture (void)
 			data[y][x][3] = dottexture[x][y]*255;
 		}
 	}
+#ifdef MACOSX_TEXRAM_CHECK
+        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_alpha_format, 8, 8, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
+#endif /* MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_alpha_format, 8, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -105,6 +113,7 @@ Grab six views for environment mapping tests
 */
 void R_Envmap_f (void)
 {
+#if !defined(DX8QUAKE_NO_FRONT_BACK_BUFFER)
 	byte	buffer[256*256*4];
 
 	glDrawBuffer  (GL_FRONT);
@@ -160,73 +169,9 @@ void R_Envmap_f (void)
 	glDrawBuffer  (GL_BACK);
 	glReadBuffer  (GL_BACK);
 	GL_EndRendering ();
-}
-
-cvar_t r_waterwarp = {"r_waterwarp", "0", true}; // Baker 3.60 - Save this to config now
-
-/*
-===============
-R_Init
-===============
-*/
-void R_Init (void)
-{
-	extern byte *hunk_base;
-	extern cvar_t gl_finish;
-
-	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);
-	Cmd_AddCommand ("envmap", R_Envmap_f);
-	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);
-
-	Cvar_RegisterVariable (&r_norefresh, NULL);
-	Cvar_RegisterVariable (&r_lightmap, NULL);
-	Cvar_RegisterVariable (&r_fullbright, NULL);
-	Cvar_RegisterVariable (&r_drawentities, NULL);
-	Cvar_RegisterVariable (&r_drawviewmodel, NULL);
-	Cvar_RegisterVariable (&gl_ringalpha, NULL);
-	Cvar_RegisterVariable (&r_truegunangle, NULL);
-	Cvar_RegisterVariable (&r_shadows, NULL);
-	Cvar_RegisterVariable (&r_mirroralpha, NULL);
-	Cvar_RegisterVariable (&r_wateralpha, NULL);
-	Cvar_RegisterVariable (&r_dynamic, NULL);
-	Cvar_RegisterVariable (&r_novis, NULL);
-	Cvar_RegisterVariable (&r_speeds, NULL);
-	Cvar_RegisterVariable (&r_waterwarp, NULL);
-	Cvar_RegisterVariable (&gl_interpolate_animation, NULL);
-	Cvar_RegisterVariable (&gl_interpolate_transform, NULL);
-	Cvar_RegisterVariable (&gl_interpolate_weapon, NULL);
-	Cvar_RegisterVariable (&r_farclip, NULL);
-
-	Cvar_RegisterVariable (&gl_finish, NULL);
-	Cvar_RegisterVariable (&gl_clear, NULL);
-	Cvar_RegisterVariable (&gl_texsort, NULL);
-
- 	if (gl_mtexable)
-		Cvar_SetValue ("gl_texsort", 0.0);
-
-	Cvar_RegisterVariable (&gl_cull, NULL);
-	Cvar_RegisterVariable (&gl_smoothmodels, NULL);
-	Cvar_RegisterVariable (&gl_affinemodels, NULL);
-	Cvar_RegisterVariable (&gl_polyblend, NULL);
-	Cvar_RegisterVariable (&gl_flashblend, NULL);
-	Cvar_RegisterVariable (&gl_playermip, NULL);
-	Cvar_RegisterVariable (&gl_nocolors, NULL);
-
-	Cvar_RegisterVariable (&gl_keeptjunctions, NULL);
-	Cvar_RegisterVariable (&gl_reporttjunctions, NULL);
-
-	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
-
-	R_InitParticles ();
-	R_InitParticleTexture ();
-
-#ifdef GLTEST
-	Test_Init ();
 #endif
-
-	playertextures = texture_extension_number;
-	texture_extension_number += 16;
 }
+
 
 /*
 ===============
@@ -235,21 +180,27 @@ R_TranslatePlayerSkin
 Translates a skin texture by the per-player color lookup
 ===============
 */
+
+#ifdef MACOSX
+static unsigned int	pixels[512*256];
+#endif /* MACOSX */
+
 void R_TranslatePlayerSkin (int playernum)
 {
-	int		top, bottom;
-	byte	translate[256];
+	int			top, bottom, i, j, size;
+	byte		translate[256];
 	unsigned	translate32[256];
-	int		i, j, s;
-	model_t	*model;
-	aliashdr_t *paliashdr;
-	byte	*original;
-	unsigned	pixels[512*256], *out;
+	model_t		*model;
+	aliashdr_t 	*paliashdr;
+	byte		*original;
+#if !defined(MACOSX)
+	unsigned	pixels[512*256];
+#endif // Baker: play with this and remove this discrepancy
+        unsigned	*out;
 	unsigned	scaled_width, scaled_height;
-	int			inwidth, inheight;
+	int		inwidth, inheight;
 	byte		*inrow;
 	unsigned	frac, fracstep;
-	extern	byte		**player_8bit_texels_tbl;
 
 	GL_DisableMultitexture();
 
@@ -261,36 +212,29 @@ void R_TranslatePlayerSkin (int playernum)
 
 	for (i=0 ; i<16 ; i++)
 	{
-		if (top < 128)	// the artists made some backwards ranges.  sigh.
-			translate[TOP_RANGE+i] = top+i;
-		else
-			translate[TOP_RANGE+i] = top+15-i;
-
-		if (bottom < 128)
-			translate[BOTTOM_RANGE+i] = bottom+i;
-		else
-			translate[BOTTOM_RANGE+i] = bottom+15-i;
+		// the artists made some backwards ranges. sigh.
+		translate[TOP_RANGE+i] = (top < 128) ? top + i : top + 15 - i;
+		translate[BOTTOM_RANGE+i] = (bottom < 128) ? bottom + i : bottom + 15 - i;
 	}
 
-	//
 	// locate the original skin pixels
-	//
 	currententity = &cl_entities[1+playernum];
-	model = currententity->model;
-	if (!model)
+	if (!(model = currententity->model))
 		return;		// player doesn't have a model yet
 	if (model->type != mod_alias)
 		return; // only translate skins on alias models
 
 	paliashdr = (aliashdr_t *)Mod_Extradata (model);
-	s = paliashdr->skinwidth * paliashdr->skinheight;
+	size = paliashdr->skinwidth * paliashdr->skinheight;
 	if (currententity->skinnum < 0 || currententity->skinnum >= paliashdr->numskins) {
 		Con_Printf("(%d): Invalid player skin #%d\n", playernum, currententity->skinnum);
 		original = (byte *)paliashdr + paliashdr->texels[0];
-	} else
+	} else {
 		original = (byte *)paliashdr + paliashdr->texels[currententity->skinnum];
-	if (s & 3)
-		Sys_Error ("R_TranslateSkin: s&3");
+	}
+
+	if (size & 3)
+		Sys_Error ("R_TranslatePlayerSkin: bad size (%d)", size);
 
 	inwidth = paliashdr->skinwidth;
 	inheight = paliashdr->skinheight;
@@ -314,14 +258,24 @@ void R_TranslatePlayerSkin (int playernum)
 	// don't mipmap these, because it takes too long
 	GL_Upload8 (translated, paliashdr->skinwidth, paliashdr->skinheight, false, false, true);
 #else
+#ifdef DX8QUAKE_GL_MAX_SIZE_FAKE
+	scaled_width = gl_max_size < 512 ? gl_max_size : 512;
+	scaled_height = gl_max_size < 256 ? gl_max_size : 256;
+#else
 	scaled_width = gl_max_size.value < 512 ? gl_max_size.value : 512;
 	scaled_height = gl_max_size.value < 256 ? gl_max_size.value : 256;
+#endif
 
 	// allow users to crunch sizes down even more if they want
 	scaled_width >>= (int)gl_playermip.value;
 	scaled_height >>= (int)gl_playermip.value;
 
-	if (VID_Is8bit()) { // 8bit texture upload
+#if !defined(DX8QUAKE_NO_8BIT)
+	if (VID_Is8bit()
+#ifdef MACOSX
+            && gl_palettedtex
+#endif /* MACOSX */
+        ) { // 8bit texture upload
 		byte *out2;
 
 		out2 = (byte *)pixels;
@@ -344,9 +298,10 @@ void R_TranslatePlayerSkin (int playernum)
 			}
 		}
 
-		GL_Upload8_EXT ((byte *)pixels, scaled_width, scaled_height, false, false);
+		GL_Upload8_EXT ((byte *)pixels, scaled_width, scaled_height, TEX_NOFLAGS);
 		return;
 	}
+#endif
 
 	for (i=0 ; i<256 ; i++)
 		translate32[i] = d_8to24table[translate[i]];
@@ -369,6 +324,9 @@ void R_TranslatePlayerSkin (int playernum)
 			frac += fracstep;
 		}
 	}
+#ifdef MACOSX_TEXRAM_CHECK
+        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
+#endif /* MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -378,7 +336,7 @@ void R_TranslatePlayerSkin (int playernum)
 
 }
 
-#ifdef D3DQUAKE
+#ifdef D3DQ_WORKAROUND
 void d3dEvictTextures();
 #endif
 
@@ -391,7 +349,7 @@ void R_NewMap (void)
 {
 	int		i;
 
-#ifdef D3DQUAKE
+#ifdef D3DQ_WORKAROUND
 	d3dEvictTextures();
 #endif
 
@@ -418,15 +376,16 @@ void R_NewMap (void)
 	{
 		if (!cl.worldmodel->textures[i])
 			continue;
-		if (!Q_strncmp(cl.worldmodel->textures[i]->name,"sky",3) )
+		if (!strncmp(cl.worldmodel->textures[i]->name,"sky",3) )
 			skytexturenum = i;
-		if (!Q_strncmp(cl.worldmodel->textures[i]->name,"window02_1",10) )
+		if (!strncmp(cl.worldmodel->textures[i]->name,"window02_1",10) )
 			mirrortexturenum = i;
  		cl.worldmodel->textures[i]->texturechain = NULL;
 	}
-#ifdef QUAKE2
-	R_LoadSkys ();
+#ifdef SUPPORTS_SKYBOX
+	R_LoadSkys (NULL);
 #endif
+	R_Sky_NewMap ();
 }
 
 
@@ -437,32 +396,41 @@ R_TimeRefresh_f
 For program optimization
 ====================
 */
+#ifdef INTEL_OPENGL_DRIVER_WORKAROUND
+extern qboolean IntelDisplayAdapter;
+#endif
 void R_TimeRefresh_f (void)
 {
-	int			i;
+#if !defined(DX8QUAKE_NO_FRONT_BACK_BUFFER)
+	int		i;
 	float		start, stop, time;
 
-	glDrawBuffer  (GL_FRONT);
+	if (cls.state != ca_connected)
+		return;
+
+#ifdef INTEL_OPENGL_DRIVER_WORKAROUND
+	if (!IntelDisplayAdapter) // Baker: ruins screen
+#endif
+		glDrawBuffer  (GL_FRONT);
 	glFinish ();
 
-	start = Sys_FloatTime ();
+	start = Sys_DoubleTime ();
 	for (i=0 ; i<128 ; i++)
 	{
-		r_refdef.viewangles[1] = i/128.0*360.0;
+		r_refdef.viewangles[1] = i * (360.0 / 128.0);
 		R_RenderView ();
 	}
 
 	glFinish ();
-	stop = Sys_FloatTime ();
+	stop = Sys_DoubleTime ();
 	time = stop-start;
-	Con_Printf ("%f seconds (%f fps)\n", time, 128/time);
+	Con_Printf ("%f seconds (%f fps)\n", time, 128.0/time);
 
 	glDrawBuffer  (GL_BACK);
 	GL_EndRendering ();
+#endif
 }
 
 void D_FlushCaches (void)
 {
 }
-
-

@@ -897,4 +897,4 @@ LNextSpan:
 	popl	%ebp				// restore the caller's stack frame
 	ret
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)

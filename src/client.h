@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -65,7 +65,6 @@ typedef struct
 #define	CSHIFT_POWERUP	3
 #define	NUM_CSHIFTS		4
 
-#define	NAME_LENGTH	64
 
 // client_state_t should hold all pieces of the client state
 
@@ -80,9 +79,6 @@ typedef struct
 	float	decay;				// drop this each second
 	float	minlight;			// don't add when contributing less
 	int		key;
-#ifdef QUAKE2
-	qboolean	dark;			// subtracts light instead of adding
-#endif
 } dlight_t;
 
 #define	MAX_BEAMS	24
@@ -116,13 +112,23 @@ ca_disconnected, 	// full screen console with no connection
 ca_connected		// valid netcon, talking to a server
 } cactive_t;
 
+#ifdef HTTP_DOWNLOAD
+typedef struct
+{
+	qboolean		web;
+	char			*name;	
+	double			percent;	
+	qboolean		disconnect;			// set when user tries to disconnect, to allow cleaning up webdownload	
+} download_t;
+#endif
+
 // the client_static_t structure is persistant through an arbitrary number
 // of server connections
 typedef struct
 {
 	cactive_t	state;
 
-// personalization data sent to server	
+// personalization data sent to server
 	char		mapstring[MAX_QPATH];
 	char		spawnparms[MAX_MAPSTRING];	// to restart a level
 
@@ -146,7 +152,10 @@ typedef struct
 	int			signon;			// 0 to SIGNONS
 	struct qsocket_s	*netcon;
 	sizebuf_t	message;		// writing buffer to send to server
-	
+#ifdef HTTP_DOWNLOAD
+	download_t	download;
+#endif
+
 	qboolean	capturedemo;
 } client_static_t;
 
@@ -158,7 +167,7 @@ typedef struct
 {
 	int			movemessages;	// since connecting to this server
 								// throw out the first couple, so the player
-								// doesn't accidentally do something the 
+								// doesn't accidentally do something the
 								// first frame
 	usercmd_t	cmd;			// last command sent to the server
 
@@ -178,13 +187,13 @@ typedef struct
 	vec3_t		mviewangles[2];	// during demo playback viewangles is lerped
 								// between these
 	vec3_t		viewangles;
-	
+
 	vec3_t		mvelocity[2];	// update by server, used for lean+bob
 								// (0 is newest)
 	vec3_t		velocity;		// lerped between mvelocity[0] and [1]
 
 	vec3_t		punchangle;		// temporary offset
-	
+
 // pitch drifting vars
 	float		idealpitch;
 	float		pitchvel;
@@ -198,18 +207,18 @@ typedef struct
 	qboolean	paused;			// send over by server
 	qboolean	onground;
 	qboolean	inwater;
-	
+
 	int			intermission;	// don't change view angle, full screen, etc
 	int			completed_time;	// latched at intermission start
-	
-	double		mtime[2];		// the timestamp of last two messages	
+
+	double		mtime[2];		// the timestamp of last two messages
 	double		time;			// clients view of time, should be between
 								// servertime and oldservertime to generate
 								// a lerp point for other data
 	double		oldtime;		// previous cl.time, time-oldtime is used
 								// to decay light values and smooth step ups
-	double		ctime;			// Baker 3.75 - joe: copy of cl.time, to avoid incidents caused by rewind
-	
+	double		ctime;			// joe: copy of cl.time, to avoid incidents caused by rewind
+
 
 	float		last_received_message;	// (realtime) for net trouble icon
 
@@ -218,12 +227,12 @@ typedef struct
 	struct sfx_s		*sound_precache[MAX_SOUNDS];
 
 	char		levelname[40];	// for display on solo scoreboard
-	int			viewentity;		// cl_entitites[cl.viewentity] = player
+	int			viewentity;		// cl_entities[cl.viewentity] = player
 	int			maxclients;
 	int			gametype;
 
 // refresh related state
-	struct model_s	*worldmodel;	// cl_entitites[0].model
+	struct model_s	*worldmodel;	// cl_entities[0].model
 	struct efrag_s	*free_efrags;
 	int			num_entities;	// held in cl_entities array
 	int			num_statics;	// held in cl_staticentities array
@@ -245,15 +254,9 @@ typedef struct
 	double			match_pause_time;	// JPG - time that match was paused (or 0)
 	vec3_t			lerpangles;			// JPG - angles now used by view.c so that smooth chasecam doesn't fuck up demos
 	vec3_t			death_location;		// JPG 3.20 - used for %d formatting
-
-#ifdef QUAKE2
-// light level at player's position including dlights
-// this is sent back to the server each frame
-// architectually ugly but it works
-	int			light_level;
-#endif
 } client_state_t;
 
+extern	client_state_t	cl;
 
 // cvars
 extern	cvar_t	cl_name;
@@ -270,8 +273,6 @@ extern	cvar_t	cl_yawspeed;
 extern	cvar_t	cl_pitchspeed;
 
 extern	cvar_t	cl_anglespeedkey;
-
-extern	cvar_t	cl_autofire;
 
 extern	cvar_t	cl_shownet;
 extern	cvar_t	cl_nolerp;
@@ -293,8 +294,6 @@ extern	cvar_t	cl_demospeed;
 #define	MAX_TEMP_ENTITIES	64			// lightning bolts, etc
 #define	MAX_STATIC_ENTITIES	128			// torches, etc
 
-extern	client_state_t	cl;
-
 // FIXME, allocate dynamically
 extern	efrag_t			cl_efrags[MAX_EFRAGS];
 extern	entity_t		cl_entities[MAX_EDICTS];
@@ -306,9 +305,7 @@ extern	beam_t			cl_beams[MAX_BEAMS];
 
 //=============================================================================
 
-//
-// cl_main
-//
+// cl_main.c
 dlight_t *CL_AllocDlight (int key);
 void	CL_DecayLights (void);
 
@@ -328,9 +325,7 @@ void CL_NextDemo (void);
 extern	int				cl_numvisedicts;
 extern	entity_t		*cl_visedicts[MAX_VISEDICTS];
 
-//
-// cl_input
-//
+// cl_input.c
 typedef struct
 {
 	int		down[2];		// key nums holding it down
@@ -348,55 +343,44 @@ void CL_SendCmd (void);
 void CL_SendMove (usercmd_t *cmd);
 void CL_SendLagMove (void); // JPG - synthetic lag
 
-void CL_ParseTEnt (void);
-void CL_UpdateTEnts (void);
-
 void CL_ClearState (void);
-
 
 int  CL_ReadFromServer (void);
 void CL_WriteToServer (usercmd_t *cmd);
 void CL_BaseMove (usercmd_t *cmd);
 
-
 float CL_KeyState (kbutton_t *key);
 char *Key_KeynumToString (int keynum);
 
-//
 // cl_demo.c
-//
 void CL_StopPlayback (void);
 int CL_GetMessage (void);
-
 void CL_Stop_f (void);
 void CL_Record_f (void);
 void CL_PlayDemo_f (void);
 void CL_TimeDemo_f (void);
 
-//
 // cl_parse.c
-//
 void CL_ParseServerMessage (void);
 void CL_NewTranslation (int slot);
 
-//
-// view
-//
+// view.c
 void V_StartPitchDrift (void);
 void V_StopPitchDrift (void);
 
 void V_RenderView (void);
-#if defined(GLQUAKE) && !defined(D3DQUAKE)
+
+#ifdef SUPPORTS_ENHANCED_GAMMA
 void V_UpdatePaletteNew (void);
-#endif
+#endif // ^^ Only applies to vid_wgl at moment.  Linux and MACOSX should be able to support in future
+
 void V_UpdatePaletteOld (void);
 void V_Register (void);
 void V_ParseDamage (void);
 void V_SetContentsColor (int contents);
 
-
-//
-// cl_tent
-//
+// cl_tent.c
 void CL_InitTEnts (void);
+void CL_ParseTEnt (void);
+void CL_UpdateTEnts (void);
 void CL_SignonReply (void);

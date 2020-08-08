@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -23,28 +23,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 //#define GLQUAKE	1
 
-#if defined(_WIN32) && !defined(WINDED)
+//#include "version.h" // System defines
 
-#if defined(_M_IX86)
-#define __i386__	1
-#endif
-
-#endif
+#define id386 1
 
 #ifdef NO_ASSEMBLY
-#define id386 0
+#define USE_ASM 0
 #else
-#ifdef __i386__
-#define id386	1
-#else
-#define id386	0
+#define USE_ASM 1
 #endif
-#endif // NO_ASSEMBLY
 
 // !!! must be kept the same as in d_iface.h !!!
 #define TRANSPARENT_COLOR	255
 
-#ifndef NeXT
+#if USE_ASM
 #ifndef GLQUAKE
 	.extern C(d_zistepu)
 	.extern C(d_pzbuffer)
@@ -231,7 +223,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 	.extern fp_64k
 	.extern fp_1m
 	.extern fp_1m_minus_1
-	.extern fp_8 
+	.extern fp_8
 	.extern entryvec_table
 	.extern advancetable
 	.extern sstep

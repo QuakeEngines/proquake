@@ -169,4 +169,4 @@ LPatchLoop16:
 	ret
 
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)

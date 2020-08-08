@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -27,6 +27,9 @@ cvar_t	chase_right = {"chase_right", "0"};
 cvar_t	chase_active = {"chase_active", "0"};
 cvar_t	chase_yaw	= {"chase_yaw"	, "0"};//R00k
 
+cvar_t  chase_roll = {"chase_roll", "0"};
+cvar_t  chase_pitch = {"chase_pitch", "45"}; 
+
 vec3_t	chase_pos;
 vec3_t	chase_angles;
 
@@ -39,7 +42,10 @@ void Chase_Init (void)
 	Cvar_RegisterVariable (&chase_back, NULL);
 	Cvar_RegisterVariable (&chase_up, NULL);
 	Cvar_RegisterVariable (&chase_right, NULL);
-	Cvar_RegisterVariable (&chase_yaw, NULL);//R00k
+	Cvar_RegisterVariable (&chase_pitch, NULL);
+	Cvar_RegisterVariable (&chase_yaw, NULL);
+	Cvar_RegisterVariable (&chase_roll, NULL);//R00k
+	
 	Cvar_RegisterVariable (&chase_active, NULL);
 }
 
@@ -65,8 +71,14 @@ void Chase_Update (void)
 	float	dist;
 	vec3_t	forward, up, right, dest, stop;
 
+    if ((int)chase_active.value != 2)
+    {
 	// if can't see player, reset
+#ifdef PSP
+	AngleVectors (cl.viewangles, forward, right, up);
+#else
 	AngleVectors (cl.lerpangles, forward, right, up);
+#endif
 
 	// calc exact destination
 	for (i=0 ; i<3 ; i++)
@@ -87,7 +99,11 @@ void Chase_Update (void)
 		dist = 1;	// should never happen
 	}
   
+#if !defined(FLASH)
 	r_refdef.viewangles[PITCH] = -180 / M_PI * atan2( stop[2], dist );
+#else
+	r_refdef.viewangles[PITCH] = -180 / M_PI * myAtan2( stop[2], dist );
+#endif
 	r_refdef.viewangles[YAW] -= chase_yaw.value;
 
 	TraceLine (r_refdef.vieworg, chase_dest, stop);
@@ -97,4 +113,23 @@ void Chase_Update (void)
 	// move towards destination
 	VectorCopy (chase_dest, r_refdef.vieworg);
 }
+    else
+    {
+        chase_dest[0] = r_refdef.vieworg[0] + chase_back.value;
+        chase_dest[1] = r_refdef.vieworg[1] + chase_right.value;
+        chase_dest[2] = r_refdef.vieworg[2] + chase_up.value;
 
+        // this is from the chasecam fix - start
+        TraceLine (r_refdef.vieworg, chase_dest, stop);     
+        if (VectorLength (stop) != 0)
+        {
+            VectorCopy (stop, chase_dest);
+        }
+        // this is from the chasecam fix - end
+
+        VectorCopy (chase_dest, r_refdef.vieworg);
+        r_refdef.viewangles[ROLL] = chase_roll.value;
+        r_refdef.viewangles[YAW] = chase_yaw.value;
+        r_refdef.viewangles[PITCH] = chase_pitch.value;
+    }
+} 

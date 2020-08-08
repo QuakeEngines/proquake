@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "asm_draw.h"
 #include "d_ifacea.h"
 
-#if	id386
+#if id386
 
 // !!! if this is changed, it must be changed in d_polyse.c too !!!
 #define DPS_MAXSPANS			MAXHEIGHT+1	
@@ -1740,5 +1740,5 @@ LNextTri:
 	ret
 
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 

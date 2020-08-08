@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -20,11 +20,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // sbar.c -- status bar code
 
 #include "quakedef.h"
-
+#ifdef PSP
+#include <pspgu.h>
+#endif
 cvar_t	pq_teamscores = {"pq_teamscores", "1", false}; // JPG - show teamscores
 cvar_t	pq_timer = {"pq_timer", "1", false}; // JPG - show timer
 cvar_t	pq_scoreboard_pings = {"pq_scoreboard_pings", "1", false};	// JPG - show ping times in the scoreboard
 cvar_t  cl_sbar = {"cl_sbar", "1", true}; // Baker 3.97: transparent sbar capability
+//cvar_t  cl_scoreboardback = {"cl_scoreboardback", "0", true}; // Baker 3.99n: "easy read scoreboard" derived from Qrack
+cvar_t  cl_scoreboard_clean = {"cl_scoreboard_clean", "0", true}; // Baker 3.99q: idea from FitzQuake's don't draw centerprint while paused
 
 void SBAR_cl_sbar_f (void) {
 	// Baker 3.97: if transparent sbar is turned on/off
@@ -262,6 +266,8 @@ void Sbar_LoadPics (void)
 Sbar_Init -- johnfitz -- rewritten
 ===============
 */
+
+extern cvar_t cl_scoreboard_clean;
 void Sbar_Init (void)
 {
 	Cmd_AddCommand ("+showscores", Sbar_ShowScores);
@@ -272,6 +278,7 @@ void Sbar_Init (void)
 	Cvar_RegisterVariable (&pq_scoreboard_pings, NULL); // JPG - ping times in the scoreboard
 
 	Cvar_RegisterVariable (&cl_sbar, SBAR_cl_sbar_f);
+	Cvar_RegisterVariable (&cl_scoreboard_clean, NULL);
 
 	Sbar_LoadPics ();
 }
@@ -310,7 +317,7 @@ Sbar_DrawTransPic
 =============
 */
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_2DPICS_ALPHA
 void Draw_AlphaPic (int x, int y, qpic_t *pic, float alpha);
 void Sbar_DrawAlphaPic (int x, int y, qpic_t *pic, float alpha)
 {
@@ -327,7 +334,6 @@ void Sbar_DrawTransPic (int x, int y, qpic_t *pic)
 	else
 		Draw_TransPic (x + ((vid.width - 320)>>1), y + (vid.height-SBAR_HEIGHT), pic);
 }
-
 
 /*
 ================
@@ -511,7 +517,7 @@ void Sbar_UpdateScoreboard (void)
 	{
 		k = fragsort[i];
 		s = &cl.scores[k];
-		sprintf (&scoreboardtext[i][1], "%3i %s", s->frags, s->name);
+		snprintf (&scoreboardtext[i][1], sizeof(&scoreboardtext[i][1]), "%3i %s", s->frags, s->name);
 
 		top = s->colors & 0xf0;
 		bottom = (s->colors & 15) <<4;
@@ -526,10 +532,11 @@ void Sbar_UpdateScoreboard (void)
 Sbar_SoloScoreboard
 ===============
 */
+extern cvar_t show_speed;
 void Sbar_SoloScoreboard (void)
 {
 	char	str[80];
-	int	l, minutes, seconds, tens, units;
+	int		len, minutes, seconds, tens, units;
 	int		current_skill;
 
 
@@ -540,31 +547,30 @@ void Sbar_SoloScoreboard (void)
 			current_skill = 0;
 		if (current_skill > 3)
 			current_skill = 3;
-		
+
 		switch (current_skill)
 		{
 		case 0:
-			sprintf (str, "skill: åáóù", current_skill);
+			snprintf (str, sizeof(str), "skill: åáóù", current_skill);
 			break;
 		case 1:
-			sprintf (str, "skill: îïòíáì", current_skill);
+			snprintf (str, sizeof(str), "skill: îïòíáì", current_skill);
 			break;
 		case 2:
-			sprintf (str, "skill: èáòä", current_skill);
+			snprintf (str, sizeof(str), "skill: èáòä", current_skill);
 			break;
 		case 3:
-			sprintf (str, "skill: îéçèôíáòå", current_skill);
+			snprintf (str, sizeof(str), "skill: îéçèôíáòå", current_skill);
 			break;
 		}
-		
+
 		Draw_String (vid.width - (24 + strlen(str) * 8), 8 + (pq_drawfps.value ? 8:0) + (show_speed.value ? 8:0), str);
 	}
 
-
-	sprintf (str,"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
+	snprintf (str, sizeof(str),"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	Sbar_DrawString (8, 4, str);
 
-	sprintf (str,"Secrets :%3i /%3i", cl.stats[STAT_SECRETS], cl.stats[STAT_TOTALSECRETS]);
+	snprintf (str, sizeof(str),"Secrets :%3i /%3i", cl.stats[STAT_SECRETS], cl.stats[STAT_TOTALSECRETS]);
 	Sbar_DrawString (8, 12, str);
 
 // time
@@ -572,12 +578,12 @@ void Sbar_SoloScoreboard (void)
 	seconds = cl.time - 60*minutes;
 	tens = seconds / 10;
 	units = seconds - 10*tens;
-	sprintf (str,"Time :%3i:%i%i", minutes, tens, units);
+	snprintf (str, sizeof(str),"Time :%3i:%i%i", minutes, tens, units);
 	Sbar_DrawString (184, 4, str);
 
 // draw level name
-	l = strlen (cl.levelname);
-	Sbar_DrawString (232 - l*4, 12, cl.levelname);
+	len = strlen (cl.levelname);
+	Sbar_DrawString (232 - len*4, 12, cl.levelname);
 }
 
 /*
@@ -612,21 +618,21 @@ void Sbar_DrawInventory (void)
 	if (!headsup) {
 		if (rogue) {
 			if (cl.stats[STAT_ACTIVEWEAPON] >= RIT_LAVA_NAILGUN )
-#ifdef GLQUAKE
-				Sbar_DrawAlphaPic (0, -24, rsb_invbar[0], cl_sbar.value);				
+#ifdef SUPPORTS_2DPICS_ALPHA
+				Sbar_DrawAlphaPic (0, -24, rsb_invbar[0], cl_sbar.value);
 #else
 				Sbar_DrawPic (0, -24, rsb_invbar[0]);
 #endif
 			else
-#ifdef GLQUAKE
-				Sbar_DrawAlphaPic (0, -24, rsb_invbar[1], cl_sbar.value);				
+#ifdef SUPPORTS_2DPICS_ALPHA
+				Sbar_DrawAlphaPic (0, -24, rsb_invbar[1], cl_sbar.value);
 #else
 				Sbar_DrawPic (0, -24, rsb_invbar[1]);
 #endif
 
 		} else {
-	
-	#ifdef GLQUAKE
+
+	#ifdef SUPPORTS_2DPICS_ALPHA
 			Sbar_DrawAlphaPic (0, -24, sb_ibar, cl_sbar.value);
 	#else
 			Sbar_DrawPic (0, -24, sb_ibar);
@@ -653,12 +659,13 @@ void Sbar_DrawInventory (void)
 			if (i || vid.height>200)
 					Sbar_DrawSubPic ((vid.width-24), ystart - (7-i)*16, sb_weapons[flashon][i], 0, 0, 24, 16);
 		} else {
-#ifdef GLQUAKE
+#ifdef SUPPORTS_2DPICS_ALPHA
          Sbar_DrawAlphaPic (i*24, -16, sb_weapons[flashon][i], cl_sbar.value);
 #else
 		 Sbar_DrawPic (i*24, -16, sb_weapons[flashon][i]);
 #endif
 			}
+
 			if (flashon > 1)
 				sb_updates = 0;		// force update to remove flash
 		}
@@ -747,13 +754,10 @@ void Sbar_DrawInventory (void)
 				}
             else
 				{
-					if (headsup)
-					{
+					if (headsup) {
 						if (i || vid.height>200)
 							Sbar_DrawSubPic ((vid.width-24), ystart + i*16, hsb_weapons[flashon][i], 0, 0, 24, 16);
-					}
-					else
-					{
+					} else {
                Sbar_DrawPic (176 + (i*24), -16, hsb_weapons[flashon][i]);
 					}
 				}
@@ -772,16 +776,15 @@ void Sbar_DrawInventory (void)
 			{
 				if (cl.stats[STAT_ACTIVEWEAPON] == (RIT_LAVA_NAILGUN << i))
 					Sbar_DrawPic ((i+2)*24, -16, rsb_weapons[i]);
-				}
 			}
 		}
+	}
 
 // ammo counts
 	for (i=0 ; i<4 ; i++)
 	{
-		sprintf (num, "%3i",cl.stats[STAT_SHELLS+i] );
-		if (headsup)
-		{
+		snprintf (num, sizeof(num), "%3i",cl.stats[STAT_SHELLS+i] );
+		if (headsup) {
 			Sbar_DrawSubPic ((vid.width-42), -24 - (4-i)*11, sb_ibar, 3+(i*48), 0, 42, 11);
 			if (num[0] != ' ')
 				Draw_Character ((vid.width - 35), vid.height-SBAR_HEIGHT-24 - (4-i)*11, 18 + num[0] - '0');
@@ -789,9 +792,7 @@ void Sbar_DrawInventory (void)
 				Draw_Character ((vid.width - 27), vid.height-SBAR_HEIGHT-24 - (4-i)*11, 18 + num[1] - '0');
 			if (num[2] != ' ')
 				Draw_Character ((vid.width - 19), vid.height-SBAR_HEIGHT-24 - (4-i)*11, 18 + num[2] - '0');
-		}
-		else
-		{
+		} else {
 			if (num[0] != ' ')
 				Sbar_DrawCharacter ( (6*i+1)*8 - 2, -24, 18 + num[0] - '0');
 			if (num[1] != ' ')
@@ -804,8 +805,7 @@ void Sbar_DrawInventory (void)
 	flashon = 0;
 
    // items
-   for (i=0 ; i<6 ; i++)
-   {
+   for (i=0 ; i<6 ; i++) {
 	      if (cl.items & (1<<(17+i)))
 	      {
 	         time = cl.item_gettime[17+i];
@@ -815,8 +815,9 @@ void Sbar_DrawInventory (void)
 	         }
 	         else
 	         { //MED 01/04/97 changed keys
-	            if (!hipnotic || (i>1))
+	            if (!hipnotic || (i>1)) {
 	               Sbar_DrawPic (192 + i*16, -16, sb_items[i]);
+	         	}
 	         }
 	         if (time && time > cl.time - 2)
 	            sb_updates = 0;
@@ -825,17 +826,15 @@ void Sbar_DrawInventory (void)
 
    //MED 01/04/97 added hipnotic items
    // hipnotic items
-   if (hipnotic)
-   {
-      for (i=0 ; i<2 ; i++)
-		{
-         if (cl.items & (1<<(24+i)))
-         {
+   if (hipnotic) {
+      for (i=0 ; i<2 ; i++) {
+         if (cl.items & (1<<(24+i))) {
             time = cl.item_gettime[24+i];
-				if (time && time > cl.time - 2 && flashon)	// flash frame
+			if (time && time > cl.time - 2 && flashon)	// flash frame
                sb_updates = 0;
             else
                Sbar_DrawPic (288 + i*16, -16, hsb_items[i]);
+
             if (time && time > cl.time - 2)
                sb_updates = 0;
          }
@@ -928,7 +927,7 @@ void Sbar_DrawFrags (void)
 		else if (cl.minutes || cl.seconds)
 		{
 			if (cl.seconds >= 128)
-				sprintf (num, " -0:%02d", cl.seconds - 128);
+				snprintf (num, sizeof(num), " -0:%02d", cl.seconds - 128);
 			else
 			{
 				if (cl.match_pause_time)
@@ -937,7 +936,7 @@ void Sbar_DrawFrags (void)
 					match_time = ceil(60.0 * cl.minutes + cl.seconds - (cl.time - cl.last_match_time));
 				minutes = match_time / 60;
 				seconds = match_time - 60 * minutes;
-				sprintf (num, "%3d:%02d", minutes, seconds);
+				snprintf (num, sizeof(num), "%3d:%02d", minutes, seconds);
 				if (!minutes)
 					mask = 128;
 			}
@@ -947,7 +946,7 @@ void Sbar_DrawFrags (void)
 			minutes = cl.time / 60;
 			seconds = cl.time - 60 * minutes;
 			minutes = minutes & 511;
-			sprintf (num, "%3d:%02d", minutes, seconds);
+			snprintf (num, sizeof(num), "%3d:%02d", minutes, seconds);
 		}
 
 		for (i = 0 ; i < 6 ; i++)
@@ -983,7 +982,7 @@ void Sbar_DrawFrags (void)
 		Draw_Fill (xofs + x*8 + 10, y+4, 28, 3, bottom);
 
 	// draw number
-		sprintf (num, "%3i",f);
+		snprintf (num, sizeof(num), "%3i",f);
 
 		Sbar_DrawCharacter ( (x+1)*8 , -24, num[0]);
 		Sbar_DrawCharacter ( (x+2)*8 , -24, num[1]);
@@ -991,6 +990,13 @@ void Sbar_DrawFrags (void)
 
 		// JPG - check for self's team
 		ent = cl.viewentity - 1;
+
+/*
+		// Baker 3.99n: show color
+//		if (cl_colorshow.value && cl.maxclients>1) {
+//			Draw_AlphaFill	(12, 12, 16, 16, Sbar_ColorForMap((cl.scores[ent].colors & 15) & 15<<4), 0.8);	// Baker 3.99n: display pants color in top/left
+*/
+
 		if ((teamscores && ((colors & 15) == (cl.scores[ent].colors & 15))) || (!teamscores && (k == ent)))
 		{
 			Sbar_DrawCharacter (x*8+2, -24, 16);
@@ -1018,7 +1024,7 @@ void Sbar_DrawFace (void)
 		int		top, bottom, xofs;
 		char			num[12];
 		scoreboard_t	*s;
-		
+
 		s = &cl.scores[cl.viewentity - 1];
 		// draw background
 		top = s->colors & 0xf0;
@@ -1034,7 +1040,7 @@ void Sbar_DrawFace (void)
 
 		// draw number
 		f = s->frags;
-		sprintf (num, "%3i",f);
+		snprintf (num, sizeof(num), "%3i",f);
 
 		if (top==8)
 		{
@@ -1051,7 +1057,7 @@ void Sbar_DrawFace (void)
 			Sbar_DrawCharacter ( 116, 3, num[1]);
 			Sbar_DrawCharacter ( 123, 3, num[2]);
 		}
-		
+
 		return;
 	}
 // PGM 01/19/97 - team color drawing
@@ -1115,6 +1121,16 @@ void Sbar_Draw (void)
 	if (scr_con_current == vid.height)
 		return;		// console is full screen
 
+#if 0
+	if (sb_updates >= vid.numpages)
+	{
+#ifdef GLQUAKE
+		if (!gl_clear.value)
+#endif
+			return;
+	}
+#endif
+
 #ifdef	GLQUAKE
 	if (cl_sbar.value >= 1.0) {
 		// Baker: 3.97 We don't do this with transparent sbar
@@ -1132,7 +1148,7 @@ void Sbar_Draw (void)
 	if (cl_sbar.value >=1.0 || scr_viewsize.value < 100.0) {
 		// Baker: For viewsize < 100 clear the tile
 		if (sb_lines && vid.width > 320) {
-			Draw_TileClear (0, vid.height - sb_lines, vid.width, sb_lines); 
+			Draw_TileClear (0, vid.height - sb_lines, vid.width, sb_lines);
 			//Con_Printf("Clearing sbar\n");
 		}
 	}
@@ -1146,7 +1162,7 @@ void Sbar_Draw (void)
 
 	if (sb_showscores || cl.stats[STAT_HEALTH] <= 0)
 	{
-#ifdef GLQUAKE
+#ifdef SUPPORTS_2DPICS_ALPHA
 		Sbar_DrawAlphaPic (0, 0, sb_scorebar, cl_sbar.value);
 #else
 		Sbar_DrawPic (0, 0, sb_scorebar);
@@ -1156,7 +1172,7 @@ void Sbar_Draw (void)
 	}
 	else if (sb_lines)
 	{
-#ifdef GLQUAKE
+#ifdef SUPPORTS_2DPICS_ALPHA
 		Sbar_DrawAlphaPic (0, 0, sb_sbar, cl_sbar.value);
 #else
 		if (cl_sbar.value || scr_viewsize.value < 100)
@@ -1294,7 +1310,7 @@ void Sbar_DeathmatchOverlay (void)
 	if ((cl.last_ping_time < cl.time - 5) && pq_scoreboard_pings.value)
 	{
 		MSG_WriteByte (&cls.message, clc_stringcmd);
-		SZ_Print (&cls.message, "ping\n");			
+		SZ_Print (&cls.message, "ping\n");
 		cl.last_ping_time = cl.time;
 	}
 
@@ -1322,6 +1338,14 @@ void Sbar_DeathmatchOverlay (void)
 	y = 40;
 
 	ping = 0;  // JPG - this will tell us if some client's ping is showing
+
+/*
+#ifdef SUPPORTS_2DPICS_ALPHA
+	if (cl_scoreboardback.value)
+		Draw_AlphaFill	(x - (56+1), y - 1, (15+15)*8+2 , 10*16+2, 16, 0.9);	//inside
+#endif
+*/
+
 	for (i=0 ; i<l ; i++)
 	{
 		k = fragsort[i];
@@ -1342,14 +1366,15 @@ void Sbar_DeathmatchOverlay (void)
 		if (s->ping && pq_scoreboard_pings.value)
 		{
 			ping = 1;
-			sprintf(num, "%4d", s->ping);
+			snprintf(num, sizeof(num), "%4d", s->ping);
+
 			for (j = 0 ; j < 4 ; j++)
 				Draw_Character(x-56+j*8, y, num[j]);
 		}
 
 	// draw number
 		f = s->frags;
-		sprintf (num, "%3i",f);
+		snprintf (num, sizeof(num), "%3i",f);
 
 		Draw_Character ( x+8 , y, num[0]);
 		Draw_Character ( x+16 , y, num[1]);
@@ -1360,6 +1385,7 @@ void Sbar_DeathmatchOverlay (void)
 			//Draw_Character ( x - 8, y, 12);
 			Draw_Character(x, y, 16);		// JPG 3.00 from katua - draw [ ] around our score in the
 			Draw_Character(x+32, y, 17);	// scoreboard overlay
+
 		}
 
 #if 0
@@ -1374,7 +1400,7 @@ void Sbar_DeathmatchOverlay (void)
 		tens = n/10;
 		units = n%10;
 
-		sprintf (num, "%3i:%i%i", minutes, tens, units);
+		snprintf (num, sizeof(num), "%3i:%i%i", minutes, tens, units);
 
 		Draw_String ( x+48 , y, num);
 }
@@ -1397,8 +1423,7 @@ void Sbar_DeathmatchOverlay (void)
 
 /*
 ==================
-Sbar_DeathmatchOverlay
-
+Sbar_MiniDeathmatchOverlay
 ==================
 */
 void Sbar_MiniDeathmatchOverlay (void)
@@ -1439,7 +1464,7 @@ void Sbar_MiniDeathmatchOverlay (void)
 		if (!s->name[0])
 			continue;
 
-	// draw background
+	// draw colors
 		top = s->colors & 0xf0;
 		bottom = (s->colors & 15)<<4;
 		top = Sbar_ColorForMap (top);
@@ -1450,12 +1475,13 @@ void Sbar_MiniDeathmatchOverlay (void)
 
 	// draw number
 		f = s->frags;
-		sprintf (num, "%3i",f);
+		snprintf (num, sizeof(num), "%3i",f);
 
 		Draw_Character ( x+8 , y, num[0]);
 		Draw_Character ( x+16 , y, num[1]);
 		Draw_Character ( x+24 , y, num[2]);
 
+	// brackets
 		if (k == cl.viewentity - 1) {
 			Draw_Character ( x, y, 16);
 			Draw_Character ( x + 32, y, 17);
@@ -1473,7 +1499,7 @@ void Sbar_MiniDeathmatchOverlay (void)
 		tens = n/10;
 		units = n%10;
 
-		sprintf (num, "%3i:%i%i", minutes, tens, units);
+		snprintf (num, sizeof(num), "%3i:%i%i", minutes, tens, units);
 
 		Draw_String ( x+48 , y, num);
 }
@@ -1489,7 +1515,6 @@ void Sbar_MiniDeathmatchOverlay (void)
 /*
 ==================
 Sbar_IntermissionOverlay
-
 ==================
 */
 void Sbar_IntermissionOverlay (void)

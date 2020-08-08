@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakeasm.h"
 #include "asm_draw.h"
 
-#if	id386
+#if id386
 
 	.data
 Ltemp:					.long	0
@@ -746,5 +746,5 @@ C(R_SurfacePatch):
 
 	ret
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 

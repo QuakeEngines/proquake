@@ -21,15 +21,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "winquake.h"
-#include "errno.h"
 #include "resource.h"
 #include "conproc.h"
+#include <limits.h>
+#include <errno.h>
+#include <direct.h>
 
 // JPG 3.30 - need these for synchronization
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#define MINIMUM_WIN_MEMORY		0x0880000
+#define MINIMUM_WIN_MEMORY		0x0c00000 // 12Mb
 #define MAXIMUM_WIN_MEMORY		0x2000000 // Baker 3.75 - increase to 32MB minimum
 
 #define CONSOLE_ERROR_TIMEOUT	60.0	// # of seconds to wait on Sys_Error running
@@ -37,9 +39,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define PAUSE_SLEEP		50				// sleep time on pause or minimization
 #define NOT_FOCUS_SLEEP	20				// sleep time when not focus
 
+//qboolean OnChange_sys_highpriority (cvar_t *, char *);
+cvar_t	sys_highpriority = {"sys_highpriority", "0", false}; // Baker 3.99r: sometimes this worsens online performance, so not saving this to config
+
 int			starttime;
 qboolean	ActiveApp, Minimized;
 qboolean	WinNT;
+
+//static	void		*memBasePtr = 0;//Reckless
 
 static double		pfreq;
 static double		curtime = 0.0;
@@ -57,9 +64,10 @@ static HANDLE	heventParent;
 static HANDLE	heventChild;
 
 void MaskExceptions (void);
-void Sys_InitFloatTime (void);
-void Sys_PushFPCW_SetHigh (void);
+void Sys_InitDoubleTime (void);
 void Sys_PopFPCW (void);
+void Sys_PushFPCW_SetHigh (void);
+
 
 volatile int					sys_checksum;
 
@@ -134,15 +142,103 @@ void Sys_ReleaseLock (void)
 	unlink(va("%s/lock.dat",com_gamedir));
 }
 
+#ifndef WITHOUT_WINKEYHOOK
+
+static HHOOK WinKeyHook;
+static qboolean WinKeyHook_isActive;
+
+LRESULT CALLBACK LLWinKeyHook(int Code, WPARAM wParam, LPARAM lParam);
+//qboolean OnChange_sys_disableWinKeys(cvar_t *var, char *string);
+cvar_t	sys_disableWinKeys = {"sys_disableWinKeys", "0", true};
+
+void OnChange_sys_disableWinKeys (void) /*(cvar_t *var, char *string)*/ {
+	if (sys_disableWinKeys.value) { //(Q_atof(string)) {
+		if (!WinKeyHook_isActive) {
+			if ((WinKeyHook = SetWindowsHookEx(13, LLWinKeyHook, global_hInstance, 0))) {
+				WinKeyHook_isActive = true;
+			} else {
+				Con_Printf("Failed to install winkey hook.\n");
+				Con_Printf("Microsoft Windows NT 4.0, 2000 or XP is required.\n");
+				return; // true;
+			}
+		}
+	} else {
+		if (WinKeyHook_isActive) {
+			UnhookWindowsHookEx(WinKeyHook);
+			WinKeyHook_isActive = false;
+		}
+	}
+	return; // false;
+}
+
+LRESULT CALLBACK LLWinKeyHook(int Code, WPARAM wParam, LPARAM lParam) {
+	PKBDLLHOOKSTRUCT p;
+
+	p = (PKBDLLHOOKSTRUCT) lParam;
+
+//	Baker 3.99r: we aren't allowing these to be bound, at least now right now
+	if (ActiveApp) {
+		switch(p->vkCode) {
+			case VK_LWIN: /*Key_Event (K_LWIN, !(p->flags & LLKHF_UP));*/ return 1;
+			case VK_RWIN: /*Key_Event (K_RWIN, !(p->flags & LLKHF_UP));*/ return 1;
+			case VK_APPS: /*Key_Event (K_MENU, !(p->flags & LLKHF_UP));*/ return 1;
+		}
+	}
+
+	return CallNextHookEx(NULL, Code, wParam, lParam);
+}
+
+#endif
+
+
+int Sys_SetPriority(int priority) {
+    DWORD p;
+
+	switch (priority) {
+		case 0:	p = IDLE_PRIORITY_CLASS; break;
+		case 1:	p = NORMAL_PRIORITY_CLASS; break;
+		case 2:	p = HIGH_PRIORITY_CLASS; break;
+		case 3:	p = REALTIME_PRIORITY_CLASS; break;
+		default: return 0;
+	}
+
+	return SetPriorityClass(GetCurrentProcess(), p);
+}
+
+void OnChange_sys_highpriority (void) /*(cvar_t *var, char *s)*/ {
+	int ok, q_priority;
+	char *desc;
+	float priority;
+
+	priority = (int)sys_highpriority.value; //Q_atof(s);
+	if (priority == 1) {
+		q_priority = 2;
+		desc = "high";
+	} else if (priority == -1) {
+		q_priority = 0;
+		desc = "low";
+	} else {
+		q_priority = 1;
+		desc = "normal";
+	}
+
+	if (!(ok = Sys_SetPriority(q_priority))) {
+		Con_Printf("Changing process priority failed\n");
+		return; // true;
+	}
+
+	Con_Printf("Process priority set to %s\n", (q_priority == 1) ? "normal" : ((q_priority == 2) ? "high" : "low"));
+	return; // false;
+}
+
+
 /*
 ===============================================================================
-
 FILE IO
-
 ===============================================================================
 */
 
-#define	MAX_HANDLES		10
+#define	MAX_HANDLES		10 //Baker 3.79 - FitzQuake uses 32, but I don't think we should ever have 32 file handles open // johnfitz -- was 10
 FILE	*sys_handles[MAX_HANDLES];
 
 int		findhandle (void)
@@ -182,8 +278,7 @@ int filelength (FILE *f)
 int Sys_FileOpenRead (char *path, int *hndl)
 {
 	FILE	*f;
-	int		i, retval;
-	int		t;
+	int	i, retval, t;
 
 	t = VID_ForceUnlockedAndReturnState ();
 
@@ -211,15 +306,13 @@ int Sys_FileOpenRead (char *path, int *hndl)
 int Sys_FileOpenWrite (char *path)
 {
 	FILE	*f;
-	int		i;
-	int		t;
+	int	i, t;
 
 	t = VID_ForceUnlockedAndReturnState ();
 
 	i = findhandle ();
 
-	f = fopen(path, "wb");
-	if (!f)
+	if (!(f = fopen(path, "wb")))
 		Sys_Error ("Error opening %s: %s", path,strerror(errno));
 	sys_handles[i] = f;
 
@@ -254,6 +347,7 @@ int Sys_FileRead (int handle, void *dest, int count)
 	t = VID_ForceUnlockedAndReturnState ();
 	x = fread (dest, 1, count, sys_handles[handle]);
 	VID_ForceLockState (t);
+
 	return x;
 }
 
@@ -264,19 +358,22 @@ int Sys_FileWrite (int handle, void *data, int count)
 	t = VID_ForceUnlockedAndReturnState ();
 	x = fwrite (data, 1, count, sys_handles[handle]);
 	VID_ForceLockState (t);
+
 	return x;
 }
 
 int	Sys_FileTime (char *path)
 {
 	FILE	*f;
-	int		t, retval;
+	int		retval;
+
+#ifndef GLQUAKE
+	int		t;
 
 	t = VID_ForceUnlockedAndReturnState ();
+#endif
 
-	f = fopen(path, "rb");
-
-	if (f)
+	if ((f = fopen(path, "rb")))
 	{
 		fclose(f);
 		retval = 1;
@@ -286,35 +383,27 @@ int	Sys_FileTime (char *path)
 		retval = -1;
 	}
 
+#ifndef GLQUAKE
 	VID_ForceLockState (t);
+#endif
 	return retval;
 }
 
-void Sys_mkdir (char *path)
-{
+void Sys_mkdir (char *path) {
 	_mkdir (path);
 }
 
-
 /*
 ===============================================================================
-
 SYSTEM IO
-
 ===============================================================================
 */
 
-/*
-================
-Sys_MakeCodeWriteable
-================
-*/
-void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length)
-{
+void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length) {
 	DWORD  flOldProtect;
 
 	if (!VirtualProtect((LPVOID)startaddr, length, PAGE_READWRITE, &flOldProtect))
-   		Sys_Error("Protection change failed\n");
+   		Sys_Error("Protection change failed");
 }
 
 
@@ -338,63 +427,13 @@ void MaskExceptions (void)
 
 #endif
 
-/*
-================
-Sys_Init
-================
-*/
-void Sys_Init (void)
-{
-	LARGE_INTEGER	PerformanceFreq;
-	unsigned int	lowpart, highpart;
-	OSVERSIONINFO	vinfo;
-
-	MaskExceptions ();
-	Sys_SetFPCW ();
-
-	if (!QueryPerformanceFrequency (&PerformanceFreq))
-		Sys_Error ("No hardware timer available");
-
-// get 32 out of the 64 time bits such that we have around
-// 1 microsecond resolution
-	lowpart = (unsigned int)PerformanceFreq.LowPart;
-	highpart = (unsigned int)PerformanceFreq.HighPart;
-	lowshift = 0;
-
-	while (highpart || (lowpart > 2000000.0))
-	{
-		lowshift++;
-		lowpart >>= 1;
-		lowpart |= (highpart & 1) << 31;
-		highpart >>= 1;
-	}
-
-	pfreq = 1.0 / (double)lowpart;
-
-	Sys_InitFloatTime ();
-
-	vinfo.dwOSVersionInfoSize = sizeof(vinfo);
-
-	if (!GetVersionEx (&vinfo))
-		Sys_Error ("Couldn't get OS info");
-
-	if ((vinfo.dwMajorVersion < 4) ||
-		(vinfo.dwPlatformId == VER_PLATFORM_WIN32s))
-	{
-		Sys_Error ("WinQuake requires at least Win95 or NT 4.0");
-	}
-
-	if (vinfo.dwPlatformId == VER_PLATFORM_WIN32_NT)
-		WinNT = true;
-	else
-		WinNT = false;
-}
 
 
-void Sys_Error (char *error, ...)
-{
+
+void Sys_Error (char *error, ...) {
 	va_list		argptr;
-	char		text[1024], text2[1024];
+	char		text[1024];
+	char		text2[1024];
 	char		*text3 = "Press Enter to exit\n";
 	char		*text4 = "***********************************\n";
 	char		*text5 = "\n";
@@ -405,35 +444,33 @@ void Sys_Error (char *error, ...)
 	static int	in_sys_error2 = 0;
 	static int	in_sys_error3 = 0;
 
-	if (!in_sys_error3)
-	{
+	if (!in_sys_error3) {
 		in_sys_error3 = 1;
+#ifndef GLQUAKE
 		VID_ForceUnlockedAndReturnState ();
+#endif
 	}
 
 	va_start (argptr, error);
-	vsprintf (text, error, argptr);
+	vsnprintf (text, sizeof(text), error, argptr);
 	va_end (argptr);
 
-	if (isDedicated)
-	{
+	if (isDedicated) {
 		va_start (argptr, error);
-		vsprintf (text, error, argptr);
+		vsnprintf (text, sizeof(text), error, argptr);
 		va_end (argptr);
 
-		sprintf (text2, "ERROR: %s\n", text);
+		snprintf (text2, sizeof(text2), "ERROR: %s\n", text);
 		WriteFile (houtput, text5, strlen (text5), &dummy, NULL);
 		WriteFile (houtput, text4, strlen (text4), &dummy, NULL);
 		WriteFile (houtput, text2, strlen (text2), &dummy, NULL);
 		WriteFile (houtput, text3, strlen (text3), &dummy, NULL);
 		WriteFile (houtput, text4, strlen (text4), &dummy, NULL);
 
-
-		starttime = Sys_FloatTime ();
+		starttime = Sys_DoubleTime ();
 		sc_return_on_enter = true;	// so Enter will get us out of here
 
-		while (!Sys_ConsoleInput () &&
-				((Sys_FloatTime () - starttime) < CONSOLE_ERROR_TIMEOUT))
+		while (!Sys_ConsoleInput () && ((Sys_DoubleTime () - starttime) < CONSOLE_ERROR_TIMEOUT))
 		{
 		}
 	}
@@ -449,12 +486,10 @@ void Sys_Error (char *error, ...)
 			{
 				TCHAR ttext[1024];
 				mbstowcs(ttext,text,strlen(text));
-				MessageBox(NULL, ttext, TEXT("Quake Error"),
-						   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+				MessageBox(NULL, ttext, TEXT("Quake Error"), MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 			}
 #else
-			MessageBox(NULL, text, TEXT("Quake Error"),
-					   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+			MessageBox(NULL, text, TEXT("Quake Error"), MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #endif
 		}
 		else
@@ -467,12 +502,10 @@ void Sys_Error (char *error, ...)
 						   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 			}
 #else
-			MessageBox(NULL, text, TEXT("Double Quake Error"),
-					   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+			MessageBox(NULL, text, TEXT("Double Quake Error"), MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
 #endif
 		}
 	}
-
 
 	if (!in_sys_error1)
 	{
@@ -481,51 +514,56 @@ void Sys_Error (char *error, ...)
 	}
 
 // shut down QHOST hooks if necessary
-	if (!in_sys_error2)
-	{
+	if (!in_sys_error2) {
 		in_sys_error2 = 1;
 		DeinitConProc ();
 	}
 
+/*	if (memBasePtr)
+	{
+		VirtualFree(memBasePtr, 0, MEM_RELEASE);
+	} */
+
 	exit (1);
 }
 
-void Sys_Printf (char *fmt, ...)
-{
+void Sys_Printf (char *fmt, ...) {
 	va_list		argptr;
 	char		text[2048];	// JPG - changed this from 1024 to 2048
 	DWORD		dummy;
 
-	if (isDedicated)
+	if (!isDedicated)
+		return;
+
+	va_start (argptr,fmt);
+	vsnprintf (text, sizeof(text), fmt, argptr);
+	va_end (argptr);
+
+	// JPG 1.05 - translate to plain text
+	if (pq_dequake.value)
 	{
-		va_start (argptr,fmt);
-		vsprintf (text, fmt, argptr);
-		va_end (argptr);
-
-		// JPG 1.05 - translate to plain text
-		if (pq_dequake.value)
-		{
-			unsigned char *ch;
-			for (ch = text ; *ch ; ch++)
-				*ch = dequake[*ch];
-		}
-
-		WriteFile(houtput, text, strlen (text), &dummy, NULL);
-
-		// JPG 3.00 - rcon (64 doesn't mean anything special, but we need some extra space because NET_MAXMESSAGE == RCON_BUFF_SIZE)
-		if (rcon_active  && (rcon_message.cursize < rcon_message.maxsize - strlen(text) - 64))
-		{
-			rcon_message.cursize--;
-			MSG_WriteString(&rcon_message, text);
-		}
+		unsigned char *ch;
+		for (ch = text ; *ch ; ch++)
+			*ch = dequake[*ch];
 	}
+
+	WriteFile(houtput, text, strlen (text), &dummy, NULL);
+
+	// JPG 3.00 - rcon (64 doesn't mean anything special, but we need some extra space because NET_MAXMESSAGE == RCON_BUFF_SIZE)
+	if (rcon_active  && (rcon_message.cursize < rcon_message.maxsize - strlen(text) - 64))
+	{
+		rcon_message.cursize--;
+		MSG_WriteString(&rcon_message, text);
+	}
+
 }
 
 extern char *hunk_base; // JPG - needed for Sys_Quit
 
-void Sys_Quit (void)
-{
+void Sys_Quit (void) {
+#ifndef GLQUAKE
 	VID_ForceUnlockedAndReturnState ();
+#endif
 
 	Host_Shutdown();
 
@@ -534,9 +572,17 @@ void Sys_Quit (void)
 
 	if (isDedicated)
 		FreeConsole ();
-
-// shut down QHOST hooks if necessary
+#ifndef WITHOUT_WINKEYHOOK
+	if (WinKeyHook_isActive)
+		UnhookWindowsHookEx(WinKeyHook);
+#endif
+	// shut down QHOST hooks if necessary
 	DeinitConProc ();
+
+/*	if (memBasePtr)//Reckless
+	{
+		VirtualFree(memBasePtr, 0, MEM_RELEASE);
+	}*/
 
 	// JPG - added this to see if it would fix the strange running out of system
 	// memory after running quake multiple times
@@ -545,111 +591,68 @@ void Sys_Quit (void)
 	exit (0);
 }
 
+// joe: not using just float for timing any more,
+// this is copied from ZQuake source to fix overspeeding.
 
-/*
-================
-Sys_FloatTime
-================
-*/
-double Sys_FloatTime (void)
-{
-	static int			sametimecount;
-	static unsigned int	oldtime;
-	static int			first = 1;
-	LARGE_INTEGER		PerformanceCount;
-	unsigned int		temp, t2;
-	double				time;
+static	double	pfreq;
+static qboolean	hwtimer = false;
 
-	Sys_PushFPCW_SetHigh ();
+void Sys_InitDoubleTime (void) {
+	__int64	freq;
 
-	QueryPerformanceCounter (&PerformanceCount);
-
-	temp = ((unsigned int)PerformanceCount.LowPart >> lowshift) |
-		   ((unsigned int)PerformanceCount.HighPart << (32 - lowshift));
-
-	if (first)
-	{
-		oldtime = temp;
-		first = 0;
+	if (!COM_CheckParm("-nohwtimer") && QueryPerformanceFrequency ((LARGE_INTEGER *)&freq) && freq > 0) {
+		// hardware timer available
+		pfreq = (double)freq;
+		hwtimer = true;
+	} else {
+		// make sure the timer is high precision, otherwise NT gets 18ms resolution
+		timeBeginPeriod (1);
 	}
-	else
-	{
-	// check for turnover or backward time
-		if ((temp <= oldtime) && ((oldtime - temp) < 0x10000000))
-		{
-			oldtime = temp;	// so we can't get stuck
-		}
-		else
-		{
-			t2 = temp - oldtime;
-
-			time = (double)t2 * pfreq;
-			oldtime = temp;
-
-			curtime += time;
-
-			if (curtime == lastcurtime)
-			{
-				sametimecount++;
-
-				if (sametimecount > 100000)
-				{
-					curtime += 1.0;
-					sametimecount = 0;
-				}
-			}
-			else
-			{
-				sametimecount = 0;
-			}
-
-			lastcurtime = curtime;
-		}
-	}
-
-	Sys_PopFPCW ();
-
-    return curtime;
 }
 
+double Sys_DoubleTime (void) {
+	__int64		pcount;
+	static	__int64	startcount;
+	static	DWORD	starttime;
+	static qboolean	first = true;
+	DWORD	now;
 
-/*
-================
-Sys_InitFloatTime
-================
-*/
-void Sys_InitFloatTime (void)
-{
-	int		j;
-
-	Sys_FloatTime ();
-
-	j = COM_CheckParm("-starttime");
-
-	if (j)
-	{
-		curtime = (double) (Q_atof(com_argv[j+1]));
-	}
-	else
-	{
-		curtime = 0.0;
+	if (hwtimer) {
+		QueryPerformanceCounter ((LARGE_INTEGER *)&pcount);
+		if (first) {
+			first = false;
+			startcount = pcount;
+			return 0.0;
+		}
+		// TODO: check for wrapping
+		return (pcount - startcount) / pfreq;
 	}
 
-	lastcurtime = curtime;
+	now = timeGetTime ();
+
+	if (first) {
+		first = false;
+		starttime = now;
+		return 0.0;
+	}
+
+	if (now < starttime) // wrapped?
+		return (now / 1000.0) + (LONG_MAX - starttime / 1000.0);
+
+	if (now - starttime == 0)
+		return 0.0;
+
+	return (now - starttime) / 1000.0;
 }
 
-
-char *Sys_ConsoleInput (void)
-{
+char *Sys_ConsoleInput (void) {
 	static char	text[256];
 	static int		len;
 	INPUT_RECORD	recs[1024];
-	int		dummy;
-	int		ch, numread, numevents;
+	int		dummy, ch, numread, numevents;
 
 	if (!isDedicated)
 		return NULL;
-
 
 	for ( ;; )
 	{
@@ -665,19 +668,14 @@ char *Sys_ConsoleInput (void)
 		if (numread != 1)
 			Sys_Error ("Couldn't read console input");
 
-		if (recs[0].EventType == KEY_EVENT)
-		{
-			if (!recs[0].Event.KeyEvent.bKeyDown)
-			{
+		if (recs[0].EventType == KEY_EVENT) {
+			if (!recs[0].Event.KeyEvent.bKeyDown) {
 				ch = recs[0].Event.KeyEvent.uChar.AsciiChar;
 
-				switch (ch)
-				{
+				switch (ch) {
 					case '\r':
 						WriteFile(houtput, "\r\n", 2, &dummy, NULL);
-
-						if (len)
-						{
+						if (len) {
 							text[len] = 0;
 							len = 0;
 							return text;
@@ -695,21 +693,16 @@ char *Sys_ConsoleInput (void)
 					case '\b':
 						WriteFile(houtput, "\b \b", 3, &dummy, NULL);
 						if (len)
-						{
 							len--;
-						}
 						break;
 
 					default:
-						if (ch >= ' ')
-						{
+						if (ch >= ' ') {
 							WriteFile(houtput, &ch, 1, &dummy, NULL);
 							text[len] = ch;
 							len = (len + 1) & 0xff;
 						}
-
 						break;
-
 				}
 			}
 		}
@@ -723,13 +716,10 @@ void Sys_Sleep (void)
 	Sleep (1);
 }
 
-
-void Sys_SendKeyEvents (void)
-{
+void Sys_SendKeyEvents (void) {
     MSG        msg;
 
-	while (PeekMessage (&msg, NULL, 0, 0, PM_NOREMOVE))
-	{
+	while (PeekMessage (&msg, NULL, 0, 0, PM_NOREMOVE)) {
 	// we always update if there are any event, even if we're paused
 		scr_skipupdate = 0;
 
@@ -742,27 +732,21 @@ void Sys_SendKeyEvents (void)
 }
 
 
+
 /*
 ==============================================================================
-
  WINDOWS CRAP
-
 ==============================================================================
 */
 
 
-/*
-==================
-WinMain
-==================
-*/
 void SleepUntilInput (int time)
 {
 
 	MsgWaitForMultipleObjects(1, &tevent, FALSE, time, QS_ALLINPUT);
 }
 
-#if !id386
+#ifdef NO_ASSEMBLY // Formerly:  !id386
 void Sys_HighFPPrecision (void)
 {
 }
@@ -789,6 +773,71 @@ void Sys_PushFPCW_SetHigh (void)
 
 #endif
 
+
+/********************************* CLIPBOARD *********************************/
+
+#define	SYS_CLIPBOARD_SIZE		256
+
+char *Sys_GetClipboardData (void) {
+	HANDLE		th;
+	char		*clipText, *s, *t;
+	static	char	clipboard[SYS_CLIPBOARD_SIZE];
+
+	if (!OpenClipboard(NULL))
+		return NULL;
+
+	if (!(th = GetClipboardData(CF_TEXT))) {
+		CloseClipboard ();
+		return NULL;
+	}
+
+	if (!(clipText = GlobalLock(th))) {
+		CloseClipboard ();
+		return NULL;
+	}
+
+	s = clipText;
+	t = clipboard;
+	while (*s && t - clipboard < SYS_CLIPBOARD_SIZE - 1 && *s != '\n' && *s != '\r' && *s != '\b')
+		*t++ = *s++;
+	*t = 0;
+
+	GlobalUnlock (th);
+	CloseClipboard ();
+
+	return clipboard;
+}
+
+// copies given text to clipboard
+void Sys_CopyToClipboard(char *text) {
+	char *clipText;
+	HGLOBAL hglbCopy;
+
+	if (!OpenClipboard(NULL))
+		return;
+
+	if (!EmptyClipboard()) {
+		CloseClipboard();
+		return;
+	}
+
+	if (!(hglbCopy = GlobalAlloc(GMEM_DDESHARE, strlen(text) + 1))) {
+		CloseClipboard();
+		return;
+	}
+
+	if (!(clipText = GlobalLock(hglbCopy))) {
+		CloseClipboard();
+		return;
+	}
+
+	strcpy((char *) clipText, text);
+	GlobalUnlock(hglbCopy);
+	SetClipboardData(CF_TEXT, hglbCopy);
+
+	CloseClipboard();
+}
+
 /*
 ==================
 WinMain
@@ -800,9 +849,7 @@ char		*argv[MAX_NUM_ARGVS];
 static char	*empty_string = "";
 HWND		hwnd_dialog;
 
-
-int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-{
+int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 	quakeparms_t	parms;
 	double			time, oldtime, newtime;
 	MEMORYSTATUS	lpBuffer;
@@ -813,7 +860,6 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	char			*e;
 	FILE			*fpak0;
 	char			fpaktest[1024], exeline[MAX_OSPATH];
-
     /* previous instances do not exist in Win32 */
     if (hPrevInstance)
         return 0;
@@ -836,8 +882,8 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		Sys_Error ("Couldn't determine current directory");
 #endif
 
-	if (cwd[Q_strlen(cwd)-1] == '/')
-		cwd[Q_strlen(cwd)-1] = 0;
+	if (cwd[strlen(cwd)-1] == '/')
+		cwd[strlen(cwd)-1] = 0;
 
 	// Baker 3.76 - playing demos via file association
 
@@ -848,9 +894,15 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 	com_basedir[i] = 0; // ensure null terminator
 
-	sprintf(exeline, "%s %%1", com_basedir);
+//	sprintf(exeline, "%s %%1", com_basedir);
+	snprintf(exeline, sizeof(exeline), "%s \"%%1\"", com_basedir);
 
 	if (COM_CheckParm ("-noassocdem") == 0) {
+		void CreateSetKeyExtension(void);
+		void CreateSetKeyDescription(void);
+		void CreateSetKeyCommandLine(const char*  exeline);
+
+
 		// Build registry entries
 		CreateSetKeyExtension();
 		CreateSetKeyDescription();
@@ -891,13 +943,11 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		*ch = 0;
 
 
-	while (*lpCmdLine && (parms.argc < MAX_NUM_ARGVS))
-	{
+	while (*lpCmdLine && (parms.argc < MAX_NUM_ARGVS)) {
 		while (*lpCmdLine && ((*lpCmdLine <= 32) || (*lpCmdLine > 126)))
 			lpCmdLine++;
 
-		if (*lpCmdLine)
-		{
+		if (*lpCmdLine) {
 			if (*lpCmdLine == '\"')
 			{
 				lpCmdLine++;
@@ -910,31 +960,17 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 			}
 			else
 			{
-			argv[parms.argc] = lpCmdLine;
-			parms.argc++;
+				argv[parms.argc] = lpCmdLine;
+				parms.argc++;
 
-			while (*lpCmdLine && ((*lpCmdLine > 32) && (*lpCmdLine <= 126)))
-				lpCmdLine++;
+				while (*lpCmdLine && ((*lpCmdLine > 32) && (*lpCmdLine <= 126)))
+					lpCmdLine++;
 			}
 
-			if (*lpCmdLine)
-			{
+			if (*lpCmdLine) {
 				*lpCmdLine = 0;
 				lpCmdLine++;
 			}
-
-			/* old way
-			argv[parms.argc] = lpCmdLine;
-			parms.argc++;
-
-			while (*lpCmdLine && ((*lpCmdLine > 32) && (*lpCmdLine <= 126)))
-				lpCmdLine++;
-
-			if (*lpCmdLine)
-			{
-				*lpCmdLine = 0;
-				lpCmdLine++;
-			}*/
 
 		}
 	}
@@ -946,8 +982,9 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	parms.argc = com_argc;
 	parms.argv = com_argv;
 
-	isDedicated = (COM_CheckParm ("-dedicated") != 0);
+	isDedicated = (COM_CheckParm ("-dedicated"));
 
+#if !defined(DX8QUAKE_NO_DIALOGS)
 	if (!isDedicated)
 	{
 		hwnd_dialog = CreateDialog(hInstance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, NULL);
@@ -970,10 +1007,10 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 			SetForegroundWindow (hwnd_dialog);
 		}
 	}
+#endif
 
 // take the greater of all the available memory or half the total memory,
-// but at least 8 Mb and no more than 16 Mb, unless they explicitly
-// request otherwise
+// but at least 8 Mb and no more than 16 Mb, unless they explicitly request otherwise
 	parms.memsize = lpBuffer.dwAvailPhys;
 
 	if (parms.memsize < MINIMUM_WIN_MEMORY)
@@ -985,32 +1022,26 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	if (parms.memsize > MAXIMUM_WIN_MEMORY)
 		parms.memsize = MAXIMUM_WIN_MEMORY;
 
-	if (COM_CheckParm ("-heapsize"))
-	{
-		t = COM_CheckParm("-heapsize") + 1;
+	if ((t = COM_CheckParm("-heapsize")) != 0 && t + 1 < com_argc)
+		parms.memsize = Q_atoi (com_argv[t+1]) * 1024;
 
-		if (t < com_argc)
-			parms.memsize = Q_atoi (com_argv[t]) * 1024;
-	}
+	if ((t = COM_CheckParm("-mem")) != 0 && t + 1 < com_argc)
+		parms.memsize = Q_atoi (com_argv[t+1]) * 1024 * 1024;
 
-	parms.membase = malloc (parms.memsize);
+	parms.membase = Q_malloc (parms.memsize);
 
-	if (!parms.membase)
-		Sys_Error ("Not enough memory free; check disk space\n");
-
+	// Baker 3.99n: JoeQuake doesn't do this next one
 	Sys_PageIn (parms.membase, parms.memsize);
 
-	tevent = CreateEvent(NULL, FALSE, FALSE, NULL);
-
-	if (!tevent)
+	if (!(tevent = CreateEvent(NULL, FALSE, FALSE, NULL)))
 		Sys_Error ("Couldn't create event");
+
+//	memBasePtr = parms.membase;
 
 	if (isDedicated)
 	{
 		if (!AllocConsole ())
-		{
 			Sys_Error ("Couldn't create dedicated server console");
-		}
 
 		hinput = GetStdHandle (STD_INPUT_HANDLE);
 		houtput = GetStdHandle (STD_OUTPUT_HANDLE);
@@ -1045,48 +1076,229 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	Sys_Printf ("Host_Init\n");
 	Host_Init (&parms);
 
-	oldtime = Sys_FloatTime ();
+	oldtime = Sys_DoubleTime ();
 
     /* main window message loop */
-	while (1)
-	{
-		if (isDedicated)
-		{
-			newtime = Sys_FloatTime ();
+	while (1) {
+		if (isDedicated) {
+			newtime = Sys_DoubleTime ();
 			time = newtime - oldtime;
 
 			while (time < sys_ticrate.value )
 			{
 				Sys_Sleep();
-				newtime = Sys_FloatTime ();
+				newtime = Sys_DoubleTime ();
 				time = newtime - oldtime;
 			}
 		}
 		else
 		{
-#ifdef D3DQUAKE
+#ifdef D3DQ_WORKAROUND
 			Sleep(1); // For NVIDIA drivers on Windows 2000
 #endif
 		// yield the CPU for a little while when paused, minimized, or not the focus
-			if ((cl.paused && (!ActiveApp && !DDActive)) || Minimized || block_drawing)
-			{
+			if ((cl.paused && (!ActiveApp && !DDActive)) || Minimized || block_drawing) {
 				SleepUntilInput (PAUSE_SLEEP);
 				scr_skipupdate = 1;		// no point in bothering to draw
-			}
-			else if (!ActiveApp && !DDActive)
-			{
+			} else if (!ActiveApp && !DDActive) {
 				SleepUntilInput (NOT_FOCUS_SLEEP);
 			}
 
-			newtime = Sys_FloatTime ();
+			newtime = Sys_DoubleTime ();
 			time = newtime - oldtime;
 		}
 
 		Host_Frame (time);
 		oldtime = newtime;
+
 	}
 
-    /* return success of application */
+    // return success of application
     return TRUE;
 }
 
+void Sys_OpenQuakeFolder_f(void)
+{
+	HINSTANCE			ret;
+/*	qboolean			switch_to_windowed = false;
+
+#ifdef GLQUAKE
+	if ((switch_to_windowed = VID_CanSwitchedToWindowed()))
+		VID_Windowed();
+#endif
+*/
+	ret = ShellExecute(0, "Open", com_basedir, NULL, NULL, SW_NORMAL);
+
+	if (ret==0)
+		Con_Printf("Opening Quake folder failed\n");
+	else
+		Con_Printf("Quake folder opened in Explorer\n");
+
+}
+
+void Sys_HomePage_f(void)
+{
+	HINSTANCE			ret;
+/*
+	qboolean			switch_to_windowed = false;
+
+	if ((switch_to_windowed = VID_CanSwitchedToWindowed()))
+		VID_Windowed();
+*/
+//	char	outstring[CON_TEXTSIZE]="";
+
+//	snprintf(outstring, size(outstring), "%s", ENGINE_HOMEPAGE_URL);
+
+	ret = ShellExecute(0, NULL, ENGINE_HOMEPAGE_URL, NULL, NULL, SW_NORMAL);
+
+	if (ret==0)
+		Con_Printf("Opening home page failed\n");
+	else
+		Con_Printf("%s home page opened in default browser\n", ENGINE_NAME);
+
+}
+
+char q_system_string[1024] = "";
+
+void Sys_InfoPrint_f(void) {
+	Con_Printf ("%s\n", q_system_string);
+}
+
+
+char * SYSINFO_GetString(void)
+{
+	return q_system_string;
+}
+int     SYSINFO_memory = 0;
+int     SYSINFO_MHz = 0;
+char *  SYSINFO_processor_description = NULL;
+char *  SYSINFO_3D_description        = NULL;
+
+qboolean	WinNT, Win2K, WinXP, Win2K3, WinVISTA;
+char WinVers[30];
+
+void Sys_InfoInit(void)
+{
+	MEMORYSTATUS    memstat;
+	LONG            ret;
+	HKEY            hKey;
+	OSVERSIONINFO	vinfo;
+	vinfo.dwOSVersionInfoSize = sizeof(vinfo);
+
+
+	if (!GetVersionEx(&vinfo))
+		Sys_Error ("Couldn't get OS info");
+
+	if ((vinfo.dwMajorVersion < 4) || (vinfo.dwPlatformId == VER_PLATFORM_WIN32s))
+		Sys_Error ("Qrack requires at least Win95 or greater.");
+
+	WinNT = (vinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) ? true : false;
+
+	if ((Win2K = WinNT && (vinfo.dwMajorVersion == 5) && (vinfo.dwMinorVersion == 0)))
+		dpsnprintf(WinVers, sizeof(WinVers),"Windows 2000");
+	else if ((WinXP = WinNT && (vinfo.dwMajorVersion == 5) && (vinfo.dwMinorVersion == 1)))
+		dpsnprintf(WinVers, sizeof(WinVers),"Windows XP");
+	else if ((Win2K3 = WinNT && (vinfo.dwMajorVersion == 5) && (vinfo.dwMinorVersion == 2)))
+		dpsnprintf(WinVers, sizeof(WinVers),"Windows 2003");
+	else if ((WinVISTA = WinNT && (vinfo.dwMajorVersion == 6) && (vinfo.dwMinorVersion == 0)))
+		dpsnprintf(WinVers, sizeof(WinVers),"Windows Vista");
+	else if (vinfo.dwMajorVersion >= 6)
+		dpsnprintf(WinVers, sizeof(WinVers),"Windows Vista or later");
+	else
+		dpsnprintf(WinVers, sizeof(WinVers),"Windows 95/98/ME");
+
+	Con_Printf("Operating System: %s\n", WinVers);
+
+	GlobalMemoryStatus(&memstat);
+	SYSINFO_memory = memstat.dwTotalPhys;
+
+	ret = RegOpenKey(
+	          HKEY_LOCAL_MACHINE,
+	          "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+	          &hKey);
+
+	if (ret == ERROR_SUCCESS) {
+		DWORD type;
+		byte  data[1024];
+		DWORD datasize;
+
+		datasize = 1024;
+		ret = RegQueryValueEx(
+		          hKey,
+		          "~MHz",
+		          NULL,
+		          &type,
+		          data,
+		          &datasize);
+
+		if (ret == ERROR_SUCCESS  &&  datasize > 0  &&  type == REG_DWORD)
+			SYSINFO_MHz = *((DWORD *)data);
+
+		datasize = 1024;
+		ret = RegQueryValueEx(
+		          hKey,
+		          "ProcessorNameString",
+		          NULL,
+		          &type,
+		          data,
+		          &datasize);
+
+		if (ret == ERROR_SUCCESS  &&  datasize > 0  &&  type == REG_SZ)
+			SYSINFO_processor_description = Q_strdup((char *) data);
+
+		RegCloseKey(hKey);
+	}
+
+#ifdef GLQUAKE
+	{
+		extern const char *gl_renderer;
+
+		if (gl_renderer  &&  gl_renderer[0])
+			SYSINFO_3D_description = Q_strdup(gl_renderer);
+	}
+#endif
+
+	dpsnprintf(q_system_string, sizeof(q_system_string), "%dMB", (int)(SYSINFO_memory / 1024. / 1024. + .5));
+
+
+
+	if (SYSINFO_processor_description) {
+		char	myprocessor[256];
+		dpsnprintf(myprocessor, 256, (const char*)strltrim(SYSINFO_processor_description));
+		strlcat(q_system_string, ", ", sizeof(q_system_string));
+		strlcat(q_system_string, myprocessor, sizeof(q_system_string));
+	}
+	if (SYSINFO_MHz) {
+		strlcat(q_system_string, va(" %dMHz", SYSINFO_MHz), sizeof(q_system_string));
+	}
+	if (SYSINFO_3D_description) {
+		strlcat(q_system_string, ", ", sizeof(q_system_string));
+		strlcat(q_system_string, SYSINFO_3D_description, sizeof(q_system_string));
+	}
+
+	//Con_Printf("sys: %s\n", q_system_string);
+	Cmd_AddCommand ("homepage", Sys_HomePage_f);
+	Cmd_AddCommand ("openquakefolder", Sys_OpenQuakeFolder_f);
+	Cmd_AddCommand ("sysinfo", Sys_InfoPrint_f);
+	Cvar_RegisterVariable(&sys_disableWinKeys, OnChange_sys_disableWinKeys);
+	Cvar_RegisterVariable(&sys_highpriority, OnChange_sys_highpriority);
+}
+
+void Sys_Init (void) {
+	OSVERSIONINFO	vinfo;
+
+	MaskExceptions ();
+	Sys_SetFPCW ();
+
+	Sys_InitDoubleTime ();
+
+	vinfo.dwOSVersionInfoSize = sizeof(vinfo);
+
+	if (!GetVersionEx (&vinfo))
+		Sys_Error ("Couldn't get OS info");
+
+	if ((vinfo.dwMajorVersion < 4) || (vinfo.dwPlatformId == VER_PLATFORM_WIN32s))
+		Sys_Error ("Quake requires at least Win95 or NT 4.0");
+
+	WinNT = (vinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) ? true:false;
+}

@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern cvar_t   _windowed_mouse;    /* CSR */
 #endif                              /* CSR */
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
 void (*vid_menucmdfn)(void); //johnfitz
 #endif
 void (*vid_menudrawfn)(void);
@@ -214,7 +214,6 @@ void M_DrawTransPicTranslate (int x, int y, qpic_t *pic)
 	Draw_TransPicTranslate (x + ((vid.width - 320)>>1), y, pic, translationTable);
 }
 
-
 void M_DrawTextBox (int x, int y, int width, int lines)
 {
 	qpic_t	*p;
@@ -335,7 +334,7 @@ void M_Main_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/mainmenu.lmp") );
 
-	f = (int)(realtime * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 
 	M_DrawTransPic (54, 32 + m_main_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
@@ -346,6 +345,13 @@ void M_Main_Key (int key, int ascii)
 	switch (key)
 	{
 	case K_ESCAPE:
+#ifdef FLASH_FILE_SYSTEM
+		//For FLASH, we write config.cfg every time we leave the main menu.
+		//This is because we cant do it when we quit (as is done originally),
+		//as you cant quit a flash app
+
+		Host_WriteConfiguration();
+#endif
 		key_dest = key_game;
 		m_state = m_none;
 		cls.demonum = m_save_demonum;
@@ -418,7 +424,7 @@ void M_SinglePlayer_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/sp_menu.lmp") );
 
-	f = (int)(realtime * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 
 	M_DrawTransPic (54, 32 + m_singleplayer_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
@@ -491,7 +497,10 @@ void M_ScanSaves (void)
 	{
 		strcpy (m_filenames[i], "--- UNUSED SLOT ---");
 		loadable[i] = false;
-		sprintf (name, "%s/s%i.sav", com_gamedir, i);
+		snprintf (name, sizeof(name), "%s/s%i.sav", com_gamedir, i);
+#ifdef FLASH_FILE_SYSTEM
+		as3ReadFileSharedObject(name);
+#endif
 		f = fopen (name, "r");
 		if (!f)
 			continue;
@@ -585,6 +594,7 @@ void M_Load_Key (int key, int ascii)
 
 	// issue the load command
 		Cbuf_AddText (va ("load s%i\n", load_cursor) );
+
 		return;
 
 	case K_UPARROW:
@@ -659,11 +669,13 @@ void M_MultiPlayer_Draw (void)
 	qpic_t	*p;
 
 	M_DrawTransPic (16, 4, Draw_CachePic ("gfx/qplaque.lmp") );
+
 	p = Draw_CachePic ("gfx/p_multi.lmp");
 	M_DrawPic ( (320-p->width)/2, 4, p);
+
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/mp_menu.lmp") );
 
-	f = (int)(realtime * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 
 	M_DrawTransPic (54, 32 + m_multiplayer_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 
@@ -852,9 +864,9 @@ forward:
 		}
 
 		// setup_cursor == 5 (OK)
-//		if (Q_strcmp(cl_name.string, setup_myname) != 0)
+//		if (strcmp(cl_name.string, setup_myname) != 0)
 			Cbuf_AddText ( va ("name \"%s\"\n", setup_myname) );
-//		if (Q_strcmp(hostname.string, setup_hostname) != 0)
+//		if (strcmp(hostname.string, setup_hostname) != 0)
 			Cvar_Set("hostname", setup_hostname);
 //		if (setup_top != setup_oldtop || setup_bottom != setup_oldbottom)
 			Cbuf_AddText( va ("color %i %i\n", setup_top, setup_bottom) );
@@ -1039,6 +1051,7 @@ void M_NameMaker_Key (int key, int ascii)
 		break;
 	}
 }
+
 //=============================================================================
 /* NET MENU */
 
@@ -1158,7 +1171,7 @@ void M_Net_Draw (void)
 	M_Print (f, 158, net_helpMessage[m_net_cursor*4+2]);
 	M_Print (f, 166, net_helpMessage[m_net_cursor*4+3]);
 
-	f = (int)(realtime * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 	M_DrawTransPic (54, 32 + m_net_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
 
@@ -1226,9 +1239,9 @@ again:
 
 // JPG 1.05 - changed from #ifdef _WIND32 by CSR
 #if defined(_WIN32) || defined(X11) || defined(_BSD)  /* CSR */
-#define	OPTIONS_ITEMS	16 // Baker 3.60 - New Menu
+#define	OPTIONS_ITEMS	17 // Baker 3.60 - New Menu; Baker 3.99e: CD player on/off from menu
 #else
-#define	OPTIONS_ITEMS	15 // Baker 3.60 - New Menu
+#define	OPTIONS_ITEMS	16 // Baker 3.60 - New Menu
 #endif
 
 #define	SLIDER_RANGE	10
@@ -1242,19 +1255,46 @@ void M_Menu_Options_f (void)
 	m_entersound = true;
 
 #ifdef _WIN32
-	if ((options_cursor == 15) && (modestate != MS_WINDOWED)) // Baker 3.60 - New menu items
+	if ((options_cursor == 16) && (modestate != MS_WINDOWED)) // Baker 3.60 - New menu items
 	{
 		options_cursor = 0;
 	}
 #endif
 }
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_ENHANCED_GAMMA
 extern cvar_t v_gamma; // <-- Baker hwgamma support
+#endif
+extern cvar_t cd_enabled; // <-- Baker: ability to shut off cd player from menu
+
+	extern cvar_t scr_fov;
+	extern cvar_t r_truegunangle;
+	extern cvar_t crosshair;
+	extern cvar_t cl_crosshaircentered;
+	extern cvar_t cl_rollangle;
+	extern cvar_t pq_moveup;
+	extern cvar_t cl_keypad;
+	extern cvar_t ambient_level;
+	extern cvar_t pq_maxfps;
+#ifdef SUPPORTS_DIRECTINPUT
+	extern cvar_t m_directinput;
+#endif
+#ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
+	extern cvar_t in_keymap;
+#endif
+	extern cvar_t vid_vsync;
+	extern cvar_t vid_consize;
+	extern cvar_t pq_ringblend;
+	extern cvar_t pq_suitblend;
+#ifndef GLQUAKE
+	extern cvar_t r_drawviewmodel;
 #endif
 
 void M_AdjustSliders (int dir)
 {
+
+
+
 	S_LocalSound ("misc/menu3.wav");
 
 	switch (options_cursor)
@@ -1277,7 +1317,7 @@ void M_AdjustSliders (int dir)
 		break;
 	case 5:	// gamma
 		// Baker hwgamma support
-#if defined(GLQUAKE) && !defined(D3DQUAKE)
+#ifdef SUPPORTS_ENHANCED_GAMMA
 		// D3DQUAKE should use hardware gamma
 		// at least for here!
 		if (using_hwgamma) {
@@ -1286,7 +1326,7 @@ void M_AdjustSliders (int dir)
 				v_gamma.value = 0.5;
 			if (v_gamma.value > 1)
 				v_gamma.value = 1;
-			Cvar_SetValue ("gl_gamma", v_gamma.value);
+			Cvar_SetValue ("gamma", v_gamma.value);
 		} else {
 			SCR_ModalMessage("Brightness adjustment cannot\nbe done in-game if using the\n-gamma command line parameter.\n\n\nRemove -gamma from your command\nline to use in-game brightness.\n\nPress Y or N to continue.",0.0f);
 		}
@@ -1310,10 +1350,10 @@ void M_AdjustSliders (int dir)
 		Cvar_SetValue ("sensitivity", sensitivity.value);
 		break;
 	case 7:	// music volume
-#ifdef _WIN32
-		bgmvolume.value += dir * 1.0;
-#else
+#ifdef FULL_BACKGROUND_VOLUME_CONTROL
 		bgmvolume.value += dir * 0.1;
+#else
+		bgmvolume.value += dir * 1.0;
 #endif
 		if (bgmvolume.value < 0)
 			bgmvolume.value = 0;
@@ -1364,13 +1404,24 @@ void M_AdjustSliders (int dir)
 		Cvar_SetValue ("lookspring", !lookspring.value);
 		break;
 
+	case 13:	// cd_enabled
+#ifdef SUPPORTS_CD_PLAYER
+		if (CDAudio_IsEnabled() != -1) {
+			// Only switch the value if cdaudio is init'ed
+			// otherwise we are just being confusing.
+
+			Cvar_SetValue ("cd_enabled", !cd_enabled.value);
+		}
+#endif
+			break;
+
 	/* case 13:	// lookstrafe
 		Cvar_SetValue ("lookstrafe", !lookstrafe.value);
 		break; // Baker 3.60 - Moved to preferences menu */
 
 // JPG 1.05 - changed from #ifdef _WIND32 by CSR
 #if defined(_WIN32) || defined(X11) || defined(_BSD)  /* CSR */
-	case 15:	// _windowed_mouse
+	case 16:	// _windowed_mouse
 		Cvar_SetValue ("_windowed_mouse", !_windowed_mouse.value);
 		break;
 #endif
@@ -1434,7 +1485,7 @@ void M_Options_Draw (void)
 	M_Print (16, 72, "            Brightness");
 
 	// Baker hwgamma support
-#if defined(GLQUAKE) && !defined(D3DQUAKE)
+#ifdef SUPPORTS_ENHANCED_GAMMA
 	if (using_hwgamma)
 		r = (1.0 - v_gamma.value) / 0.5;
 	else
@@ -1447,7 +1498,11 @@ void M_Options_Draw (void)
 	r = (sensitivity.value - 1)/20;
 	M_DrawSlider (220, 80, r);
 
+#ifdef BUILD_MP3_VERSION
+	M_Print (16, 88, "      MP3 Music Volume");
+#else
 	M_Print (16, 88, "       CD Music Volume");
+#endif
 	r = bgmvolume.value;
 	M_DrawSlider (220, 88, r);
 
@@ -1458,8 +1513,6 @@ void M_Options_Draw (void)
 	M_Print (16, 104,  "            Always Run");
 	//M_DrawCheckbox (220, 104, cl_forwardspeed.value > 200);
 	M_Print (220, 104, cl_upspeed.value > 200 ? "maximum" : cl_forwardspeed.value > 200 ? "on" : "off");
-
-
 
 	// Baker 3.60 - the "freelook" standard variable in Quake2, Quake3, etc.
 	M_Print (16, 112, "            Mouse Look");
@@ -1472,18 +1525,37 @@ void M_Options_Draw (void)
 	M_Print (16, 128, "            Lookspring");
 	M_DrawCheckbox (220, 128, lookspring.value);
 
-	M_Print (16, 136, "         Video Options");
+#ifdef BUILD_MP3_VERSION
+	M_Print (16, 136, "             MP3 Music");
+#else
+	M_Print (16, 136, "              CD Music");
+#endif
+
+#ifdef SUPPORTS_CD_PLAYER
+	switch (CDAudio_IsEnabled()) {
+		case -1: // Totally disabled
+			M_Print (220, 136, "[disabled]");
+			break;
+		case 0: // Totally disabled
+			M_Print (220, 136, "off");
+			break;
+		default: // Totally disabled
+			M_Print (220, 136, "on");
+			break;
+	}
+#endif
+	M_Print (16, 144, "     Advanced Settings");
+
+//	if (vid_menudrawfn)
+		M_Print (16, 152, "         Video Options");
 
 #ifdef GLQUAKE
 	{
 
 		if (video_options_disabled)
-			M_Print (220, 136, "[locked]");
+			M_Print (220, 152, "[locked]");
 	}
 #endif
-
-	if (vid_menudrawfn)
-	M_Print (16, 144, "     Advanced Settings");
 
 #ifdef _WIN32
 	if (modestate == MS_WINDOWED)
@@ -1492,8 +1564,8 @@ void M_Options_Draw (void)
 #if defined(_WIN32) || defined(X11) || defined(_BSD)	/* JPG 1.05 by CSR */
 
 	{
-		M_Print (16, 152, "             Use Mouse");
-		M_DrawCheckbox (220, 152, _windowed_mouse.value);
+		M_Print (16, 160, "             Use Mouse");
+		M_DrawCheckbox (220, 160, _windowed_mouse.value);
 	}
 #endif
 
@@ -1501,10 +1573,9 @@ void M_Options_Draw (void)
 	M_DrawCharacter (200, 32 + options_cursor*8, 12+((int)(realtime*4)&1));
 }
 
-
+void Cmd_Baker_Inject_Aliases ();
 void M_Options_Key (int key, int ascii)
 {
-
 
 	switch (key)
 	{
@@ -1524,27 +1595,33 @@ void M_Options_Key (int key, int ascii)
 			Con_ToggleConsole_f ();
 			break;
 		case 2:
-			if (!SCR_ModalMessage("Are you sure you want to reset\nall settings?\n",0.0f))
+			if (!SCR_ModalMessage("Are you sure you want to reset\nall keys and settings?",0.0f))
 					break;
 
 			Cbuf_AddText ("resetall\n"); //johnfitz
-			Cbuf_AddText ("exec default.cfg\n");
+			Cbuf_AddText ("exec default.cfg\n"); //Baker: this isn't quite gamedir neutral
+			Cmd_Baker_Inject_Aliases();
+			// Question: should everything be unaliased too?
+			// Question: what about instances where the default has been faked?
+			// To do:    Add Cvar_SetDefault
 			break;
-		case 13:
+
+		case 14:
+			M_Menu_Preferences_f ();
+			break;
+		case 15:
 #ifdef GLQUAKE
 			if (video_options_disabled)
-#ifdef D3DQUAKE
+#ifdef D3DQ_WORKAROUND // DVDQuake crashes if it loses focuses, a video mode change tends to do this.
 				SCR_ModalMessage("Direct3D version does not support\nin-game video mode changes.  Sorry.\n\nPress Y or N to continue.",0.0f);
 #else
 				SCR_ModalMessage("Video options are disabled when\nusing the -window command\nline parameter.\n\nRemove -window from your command\nline to enable in-game\nresolution changing.\n\nPress Y or N to continue.",0.0f);
 #endif
-			else
+				else
 #endif
+
 				M_Menu_Video_f ();
 
-			break;
-		case 14:
-			M_Menu_Preferences_f ();
 			break;
 		default:
 			M_AdjustSliders (1);
@@ -1575,16 +1652,16 @@ void M_Options_Key (int key, int ascii)
 		break;
 	}
 
-	if (options_cursor == 14 && vid_menudrawfn == NULL)
+	if (options_cursor == 15 && vid_menudrawfn == NULL)
 	{
 		if (key == K_UPARROW)
-			options_cursor = 13;
+			options_cursor = 14;
 		else
 
 	// JPG 1.05 - patch by CSR
 #if defined(X11) || defined(_BSD)	/* CSR - for _windowed_mouse */
 		if (key == K_DOWNARROW)		/* CSR */
-			options_cursor = 15;	/* CSR */
+			options_cursor = 16;	/* CSR */
 		else						/* CSR */
 #endif								/* CSR */
 
@@ -1592,10 +1669,10 @@ void M_Options_Key (int key, int ascii)
 	}
 
 #ifdef _WIN32
-	if ((options_cursor == 15) && (modestate != MS_WINDOWED))
+	if ((options_cursor == 16) && (modestate != MS_WINDOWED))
 	{
 		if (key == K_UPARROW)
-			options_cursor = 14;
+			options_cursor = 15;
 		else
 			options_cursor = 0;
 	}
@@ -1773,7 +1850,7 @@ void M_Keys_Key (int key, int ascii, qboolean down)
 		{
 			//Con_Printf("Trying to bind %d",key);
 			//Con_Printf("name is  %s",Key_KeynumToString (key));
-			sprintf (cmd, "bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
+			snprintf (cmd, sizeof(cmd), "bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
 			Cbuf_InsertText (cmd);
 		}
 
@@ -1835,8 +1912,10 @@ void M_Menu_Preferences_f (void)
 	m_state = m_preferences;  // Baker 3.60 - we are in the preferences menu
 	m_entersound = true;
 }
+#ifdef SUPPORTS_DIRECTINPUT
+extern qboolean commandline_dinput; // Baker 3.85 to support dinput switching
+#endif
 
-//extern cvar_t m_directinput; // Baker 3.85 to support dinput switching
 void M_Pref_AdjustSliders (int dir)
 {
 	int newval;
@@ -1877,7 +1956,7 @@ void M_Pref_AdjustSliders (int dir)
 
 		case 3:	// draw weapon  on | off | always
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_ENTITY_ALPHA
 			if (!r_drawviewmodel.value)
 				newval = (dir<0) ? 1 : 3;
 			else if (gl_ringalpha.value < 1)
@@ -1998,7 +2077,7 @@ void M_Pref_AdjustSliders (int dir)
 
 		case 13:
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_VSYNC
 
 			if (vid_vsync.value)
 				Cvar_Set("vid_vsync", "0");
@@ -2010,7 +2089,6 @@ void M_Pref_AdjustSliders (int dir)
 
 		case 14:
 
-#ifdef GLQUAKE
 			// 72 ON | 120 OFF | 200 OFF | 250 OFF
 			if (pq_maxfps.value <= 72)
 				newval = (dir<0) ? 4 : 2;
@@ -2041,7 +2119,6 @@ void M_Pref_AdjustSliders (int dir)
 			}
 
 
-#endif
 			break;
 
 
@@ -2052,25 +2129,35 @@ void M_Pref_AdjustSliders (int dir)
 
 		case 16:
 
-#ifdef GLQUAKE
+#ifdef SUPPORTS_CONSOLE_SCALING
 			// 72 ON | 120 OFF | 200 OFF | 250 OFF
-			newval = bound(1, vid_consize.value + 1, 3);
+			newval = bound(-2, vid_consize.value + (dir <0 ? -1 : 1), 3);
 			if (newval == 3) // We won't allow 320 selection except from console
-				newval = 0;
+				newval = -1;
+			else if (newval == -2)
+				newval = 2;
 
 			Cvar_SetValue("vid_consize", newval);
 #endif
 			break;
 
 		case 18:
-
+#ifdef SUPPORTS_DIRECTINPUT
+			if (commandline_dinput) {
+				SCR_ModalMessage("DirectInput is locked because the\n-dinput command line parameter\nwas used.\n\nPress Y or N to continue.",0.0f);
+				break;
+			}
 			Cvar_Set("m_directinput", m_directinput.value ? "0" : "1");
+#endif
 			break;
 
 		case 19:
 
+#ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
 			Cvar_Set("in_keymap", in_keymap.value ? "0" : "1");
+#endif
 			break;
+
 	}
 }
 
@@ -2090,7 +2177,7 @@ void M_Pref_Options_Draw (void)
 	title = "view setup"; M_PrintWhite ((320-8*strlen(title))/2, i, title); 	i += 8;								  // 0
 	i += 8;
 	M_Print     (16, i, "     crosshair      "); M_Print (220, i, crosshair.value ? (cl_crosshaircentered.value ? "centered" : "on" ) : "off"); i += 8; 	  // 2
-#ifdef GLQUAKE
+#ifdef SUPPORTS_ENTITY_ALPHA
 	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? (gl_ringalpha.value < 1 ? "always" : "on" ) : "off"); i += 8;     // 3
 #else
 	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? "on" : "off"); i += 8; //3
@@ -2105,26 +2192,37 @@ void M_Pref_Options_Draw (void)
 	M_Print     (16, i, "     keypad binding "); M_Print (220, i, cl_keypad.value ? "on" : "off"); i += 8; 	  // 10
 	M_Print     (16, i, "     jump is moveup "); M_Print (220, i, pq_moveup.value ? "on" : "off" ); i += 8; 	  // 11
 	M_Print     (16, i, "     ambient sound  "); M_Print (220, i, ambient_level.value ? "on" : "off" ); i += 8; 	  // 12
-#ifdef GLQUAKE
-#ifdef D3DQUAKE
-	M_Print     (16, i, "     vsync          "); M_Print (220, i, "[driver set]" ); i += 8; 	  // 13
-#else
+#ifdef SUPPORTS_VSYNC
 	M_Print     (16, i, "     vsync          "); M_Print (220, i, vid_vsync.value ? "on" : "off" ); i += 8; 	  // 13
+#else
+	M_Print     (16, i, "     vsync          "); M_Print (220, i, "[driver set]" ); i += 8; 	  // 13
 #endif
 	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, pq_maxfps.value == 72 ? "72 fps" : (pq_maxfps.value == 120 ? "120 fps" : (pq_maxfps.value == 200 ? "200 fps" : (pq_maxfps.value == 250 ? "250 fps" : "custom"))) ); i += 8; 	  // 14
-#else
-	M_Print     (16, i, "     vsync          "); M_Print (220, i, "n/a"); i += 8;	  // 13
-	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, "n/a"); i += 8;	  // 13
-#endif
 	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" );  i += 8;	  // 14
-#ifdef GLQUAKE
-	M_Print     (16, i, "     console width  "); M_Print (220, i, vid_consize.value == 0 ? "100%" : (vid_consize.value == 1 ? "50%" : (vid_consize.value == 2 ? "640 width" : "custom")) ); i += 16; 	  // 15
+#ifdef SUPPORTS_CONSOLE_SCALING // GLQuake + D3DQuake can resize the console;  WinQuake can't
+	M_Print     (16, i, "     console width  "); M_Print (220, i, vid_consize.value == 0 ? "100%" : (vid_consize.value == 1 ? "50%" : (vid_consize.value == 2 ? "640 width" : (vid_consize.value == -1 ? "auto" : "custom"))) ); i += 16; 	  // 15
 #else
 	M_Print     (16, i, "     console width  "); M_Print (220, i, "n/a"); i += 16; 	  // 13
 #endif
-	M_Print     (16, i, "     directinput mouse "); M_Print (220, i, IN_DirectInputON() ? "on" : "off" ); i += 8;
-	M_Print     (16, i, "     keyboard automap"); M_Print (220, i, Key_InternationalON() ? "on" : "off" );
 
+	M_Print     (16, i, "     directinput mouse ");
+
+#ifdef SUPPORTS_DIRECTINPUT
+	if (COM_CheckParm("-dinput"))
+		 M_Print (220, i, IN_DirectInputON() ? "[locked: on]" : "[locked: err]");
+	else
+		 M_Print (220, i, IN_DirectInputON() ? "on" : "off" );
+#else
+		 M_Print (220, i, "n/a");
+#endif
+	 i += 8;
+
+
+#ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
+	M_Print     (16, i, "     keyboard automap"); M_Print (220, i, Key_InternationalON() ? "on" : "off" );
+#else
+	M_Print     (16, i, "     keyboard automap"); M_Print (220, i, "n/a" );
+#endif
 	M_DrawCharacter (200, 32 + preferences_cursor *8, 12+((int)(realtime*4)&1));
 }
 
@@ -2203,7 +2301,7 @@ void M_Pref_Options_Key (int key, int ascii)
 
 void M_Menu_Video_f (void)
 {
-#ifdef GLQUAKE
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
 	(*vid_menucmdfn) (); //johnfitz
 #else
 	key_dest = key_menu;
@@ -2250,7 +2348,8 @@ void M_Help_Draw (void)
 	else
 	{
 		M_DrawTextBox (16, 16, 34, 16);
-		M_PrintWhite(32, 48,  va("     ProQuake version %4.2f        ", PROQUAKE_VERSION));
+		M_PrintWhite(32, 48,  va("     %s version %s", ENGINE_NAME, ENGINE_VERSION));
+// Baker: fixme this isn't going to line up properly ^^^^^
 		M_Print		(32, 72,  "          New Updates By Baker");
 		M_PrintWhite(32, 80,  "       http://www.quakeone.com");
 
@@ -2918,7 +3017,7 @@ void M_Menu_LanConfig_f (void)
 	if (StartingGame && lanConfig_cursor == 2)
 		lanConfig_cursor = 1;
 	lanConfig_port = DEFAULTnet_hostport;
-	sprintf(lanConfig_portname, "%u", lanConfig_port);
+	snprintf(lanConfig_portname,  sizeof(lanConfig_portname), "%u", lanConfig_port);
 
 	m_return_onerror = false;
 	m_return_reason[0] = 0;
@@ -3091,7 +3190,7 @@ void M_LanConfig_Key (int key, int ascii)
 		l = lanConfig_port;
 	else
 		lanConfig_port = l;
-	sprintf(lanConfig_portname, "%u", lanConfig_port);
+	snprintf(lanConfig_portname, sizeof(lanConfig_portname), "%u", lanConfig_port);
 }
 
 //=============================================================================
@@ -3645,9 +3744,9 @@ void M_ServerList_Draw (void)
 				for (j = i+1; j < hostCacheCount; j++)
 					if (strcmp(hostcache[j].name, hostcache[i].name) < 0)
 					{
-						Q_memcpy(&temp, &hostcache[j], sizeof(hostcache_t));
-						Q_memcpy(&hostcache[j], &hostcache[i], sizeof(hostcache_t));
-						Q_memcpy(&hostcache[i], &temp, sizeof(hostcache_t));
+						memcpy(&temp, &hostcache[j], sizeof(hostcache_t));
+						memcpy(&hostcache[j], &hostcache[i], sizeof(hostcache_t));
+						memcpy(&hostcache[i], &temp, sizeof(hostcache_t));
 					}
 		}
 		slist_sorted = true;
@@ -3658,9 +3757,9 @@ void M_ServerList_Draw (void)
 	for (n = 0; n < hostCacheCount; n++)
 	{
 		if (hostcache[n].maxusers)
-			sprintf(string, "%-15.15s %-15.15s %2u/%2u\n", hostcache[n].name, hostcache[n].map, hostcache[n].users, hostcache[n].maxusers);
+			snprintf(string, sizeof(string), "%-15.15s %-15.15s %2u/%2u\n", hostcache[n].name, hostcache[n].map, hostcache[n].users, hostcache[n].maxusers);
 		else
-			sprintf(string, "%-15.15s %-15.15s\n", hostcache[n].name, hostcache[n].map);
+			snprintf(string, sizeof(string), "%-15.15s %-15.15s\n", hostcache[n].name, hostcache[n].map);
 		M_Print (16, 32 + 8*n, string);
 	}
 	M_DrawCharacter (0, 32 + slist_cursor*8, 12+((int)(realtime*4)&1));
@@ -3893,6 +3992,7 @@ void M_Keydown (int key, int ascii, qboolean down)
 	case m_setup:
 		M_Setup_Key (key, ascii);
 		return;
+
 	case m_namemaker:
 		M_NameMaker_Key (key, ascii);
 		return;

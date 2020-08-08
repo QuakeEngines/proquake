@@ -17,8 +17,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+// host_cmd.c
 
 #include "quakedef.h"
+
 extern cvar_t	pausable;
 
 cvar_t	cl_confirmquit = {"cl_confirmquit", "1", true}; // Baker 3.60
@@ -26,6 +28,7 @@ cvar_t	cl_confirmquit = {"cl_confirmquit", "1", true}; // Baker 3.60
 // JPG - added these for spam protection
 extern cvar_t	pq_spam_rate;
 extern cvar_t	pq_spam_grace;
+extern cvar_t   pq_connectmute; // Baker 3.99f: from Rook
 
 // JPG 3.20 - control muting of players that change colour/name
 extern cvar_t	pq_tempmute;
@@ -55,10 +58,10 @@ void Host_Quit_f (void)
 {
 	if (cl_confirmquit.value)
 	{
-		if (key_dest != key_console && cls.state != ca_dedicated)
-		{
-			M_Menu_Quit_f ();
-			return;
+	if (key_dest != key_console && cls.state != ca_dedicated)
+	{
+		M_Menu_Quit_f ();
+		return;
 		}
 	}
 	CL_Disconnect ();
@@ -161,12 +164,13 @@ void Host_Game_f (void)
 		}
 
 		strcpy (pakfile, va("%s/%s", host_parms.basedir, Cmd_Argv(1)));
-		if (!stricmp(pakfile, com_gamedir)) //no change
+		if (!strcasecmp(pakfile, com_gamedir)) //no change
 		{
 			Con_Printf("\"game\" is already \"%s\"\n", COM_SkipPath(com_gamedir));
 			return;
 		}
 
+		Con_Printf("Cheatfree has been disabled\n");
 		pq_cheatfreeEnabled = false; // Baker: 3.94 -- disallow cheat-free if gamedir is switched (revisit this later, is not ideal at all).
 		com_modified = true;
 
@@ -183,7 +187,7 @@ void Host_Game_f (void)
 
 		strcpy (com_gamedir, pakfile);
 
-		if (stricmp(Cmd_Argv(1), GAMENAME)) //game is not id1
+		if (strcasecmp(Cmd_Argv(1), GAMENAME)) //game is not id1
 		{
 			search = Z_Malloc(sizeof(searchpath_t));
 			strcpy (search->filename, pakfile);
@@ -193,7 +197,7 @@ void Host_Game_f (void)
 			//Load the paks if any are found:
 			for (i = 0; ; i++)
 			{
-				sprintf (pakfile, "%s/pak%i.pak", com_gamedir, i);
+				snprintf(pakfile, sizeof(pakfile), "%s/pak%i.pak", com_gamedir, i);
 				pak = COM_LoadPackFile (pakfile);
 				if (!pak)
 				break;
@@ -239,14 +243,14 @@ void Modlist_Add (char *name)
 
 	//ingore duplicate
 	for (mod = modlist; mod; mod = mod->next)
-		if (!Q_strcmp (name, mod->name))
+		if (!strcmp (name, mod->name))
 			return;
 
 	mod = Z_Malloc(sizeof(mod_t));
 	strcpy (mod->name, name);
 
 	//insert each entry in alphabetical order
-    if (modlist == NULL || _stricmp(mod->name, modlist->name) < 0) //insert at front
+    if (modlist == NULL || strcasecmp(mod->name, modlist->name) < 0) //insert at front
 	{
         mod->next = modlist;
         modlist = mod;
@@ -255,7 +259,7 @@ void Modlist_Add (char *name)
 	{
         prev = modlist;
         cursor = modlist->next;
-        while (cursor && (_stricmp(mod->name, cursor->name) > 0))
+        while (cursor && (strcasecmp(mod->name, cursor->name) > 0))
 		{
             prev = cursor;
             cursor = cursor->next;
@@ -274,7 +278,7 @@ void Modlist_Init (void) //TODO: move win32 specific stuff to sys_win.c
 	char			filestring[MAX_OSPATH], childstring[MAX_OSPATH];
 	int				count=0, temp;
 
-	sprintf (filestring,"%s/*", host_parms.basedir);
+	snprintf(filestring, sizeof(filestring),"%s/*", host_parms.basedir);
 	Find = FindFirstFile(filestring, &FindFileData);
 	if (Find == INVALID_HANDLE_VALUE)
 	{
@@ -284,10 +288,10 @@ void Modlist_Init (void) //TODO: move win32 specific stuff to sys_win.c
 
 	do
 	{
-		sprintf (childstring,"%s/%s/progs.dat", host_parms.basedir, FindFileData.cFileName);
+		snprintf(childstring, sizeof(childstring),"%s/%s/progs.dat", host_parms.basedir, FindFileData.cFileName);
 		FindProgs = FindFirstFile(childstring, &FindChildData);
 
-		sprintf (childstring,"%s/%s/*.pak", host_parms.basedir, FindFileData.cFileName);
+		snprintf(childstring, sizeof(childstring),"%s/%s/*.pak", host_parms.basedir, FindFileData.cFileName);
 		FindPak = FindFirstFile(childstring, &FindChildData);
 
 		if (FindProgs == INVALID_HANDLE_VALUE && FindPak == INVALID_HANDLE_VALUE)
@@ -361,6 +365,8 @@ void Host_Mapname_f (void)
 Host_Status_f
 ==================
 */
+
+extern cvar_t sv_cullentities;
 void Host_Status_f (void)
 {
 	client_t	*client;
@@ -383,8 +389,8 @@ void Host_Status_f (void)
 	else
 		print = SV_ClientPrintf;
 
-	print ("host:    %s\n", Cvar_VariableString ("hostname"));
-	print ("version: ProQuake %4.2f %s\n", PROQUAKE_VERSION, pq_cheatfree ? "cheat-free" : ""); // JPG - added ProQuake
+	print ("host:    %s (anti-wallhack %s)\n", Cvar_VariableString ("hostname"), sv_cullentities.value ? "on [mode: players]" : "off");
+	print ("version: %s %4.2f %s\n", ENGINE_NAME, PROQUAKE_SERIES_VERSION, pq_cheatfree ? "cheat-free" : ""); // JPG - added ProQuake
 	if (tcpipAvailable)
 		print ("tcp/ip:  %s\n", my_tcpip_address);
 	if (ipxAvailable)
@@ -408,12 +414,45 @@ void Host_Status_f (void)
 			hours = 0;
 		print ("#%-2u %-16.16s  %3i  %2i:%02i:%02i\n", j+1, client->name, (int)client->edict->v.frags, hours, minutes, seconds);
 
-		if (cmd_source != src_command && sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3 && COM_CheckParm ("-noipmask") == 0 )  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
+		if (cmd_source != src_command && sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3 && sv_ipmasking.value )  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
          print ("   %d.%d.%d.xxx\n", a, b, c);  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
          else  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
 		print ("   %s\n", client->netconnection->address);
 	}
 }
+
+#ifdef QCEXEC
+/*
+==================
+Host_QC_Exec
+
+Execute QC commands from the console
+==================
+*/
+void Host_QC_Exec (void)
+{
+	dfunction_t *ED_FindFunction (char *name);
+	dfunction_t *f;
+
+	if (cmd_source == src_command)
+	{
+		Cmd_ForwardToServer ();
+		return;
+	}
+	if (!developer.value)
+		return;
+	f = 0;
+	if ((f = ED_FindFunction(Cmd_Argv(1))) != NULL)
+	{
+
+		pr_global_struct->self = EDICT_TO_PROG(sv_player);
+		PR_ExecuteProgram ((func_t)(f - pr_functions));
+	}
+	else
+		Con_Printf("bad function\n");
+
+}
+#endif
 
 /*
 ==================
@@ -443,7 +482,7 @@ void Host_God_f (void)
 		return;
 	}
 
-	if (pr_global_struct->deathmatch && !host_client->privileged)
+	if (pr_global_struct->deathmatch)
 		return;
 
 	//johnfitz -- allow user to explicitly set god mode to on or off
@@ -488,7 +527,7 @@ void Host_Notarget_f (void)
 		return;
 	}
 
-	if (pr_global_struct->deathmatch && !host_client->privileged)
+	if (pr_global_struct->deathmatch)
 		return;
 
 	//johnfitz -- allow user to explicitly set notarget to on or off
@@ -535,7 +574,7 @@ void Host_Noclip_f (void)
 		return;
 	}
 
-	if (pr_global_struct->deathmatch && !host_client->privileged)
+	if (pr_global_struct->deathmatch)
 		return;
 
 	//johnfitz -- allow user to explicitly set noclip to on or off
@@ -591,7 +630,7 @@ void Host_Fly_f (void)
 		return;
 	}
 
-	if (pr_global_struct->deathmatch && !host_client->privileged)
+	if (pr_global_struct->deathmatch)
 		return;
 
 	//johnfitz -- allow user to explicitly set noclip to on or off
@@ -632,7 +671,6 @@ void Host_Fly_f (void)
 /*
 ==================
 Host_Ping_f
-
 ==================
 */
 void Host_Ping_f (void)
@@ -703,7 +741,7 @@ void Host_Map_f (void)
 		return;
 
 	//johnfitz -- check for client having map before anything else
-	//	sprintf (name, "maps/%s.bsp", Cmd_Argv(1));
+	//	snprintf(name, sizeof(name), "maps/%s.bsp", Cmd_Argv(1));
 	//	if (COM_OpenFile (name, &i) == -1)
 	//	{
 	//		Con_Printf("Host_Map_f: cannot find map %s\n", name);
@@ -775,7 +813,7 @@ void Host_Changelevel_f (void)
 	}
 
 	//johnfitz -- check for client having map before anything else
-	//sprintf (level, "maps/%s.bsp", Cmd_Argv(1));
+	//snprintf(level, sizeof(level), "maps/%s.bsp", Cmd_Argv(1));
 	//if (COM_OpenFile (level, &i) == -1)
 	//{
 	//	Con_Printf("Host_Changelevel_f: cannot find map %s\n", level);
@@ -805,8 +843,11 @@ void Host_Restart_f (void)
 
 	if (cmd_source != src_command)
 		return;
-	strcpy (mapname, sv.name);	// must copy out, because it gets cleared
-								// in sv_spawnserver
+
+	// must copy out, because it gets cleared in sv_spawnserver
+	strcpy (mapname, sv.name);
+//	Q_strncpyz (mapname, sv.name, MAX_QPATH); // Baker: string safe unless the map is 64 chars long?
+
 	SV_SpawnServer (mapname);
 }
 
@@ -876,7 +917,7 @@ void Host_SavegameComment (char *text)
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
 		text[i] = ' ';
 	memcpy (text, cl.levelname, min(strlen(cl.levelname),22)); //johnfitz -- only copy 22 chars.
-	sprintf (kills,"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
+	snprintf (kills,sizeof(kills),"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	memcpy (text+22, kills, strlen(kills));
 // convert space to _ to make stdio happy
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
@@ -940,14 +981,18 @@ void Host_Savegame_f (void)
 		}
 	}
 
-	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
-	COM_DefaultExtension (name, ".sav");
+	snprintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
+	COM_ForceExtension (name, ".sav"); // joe: force to ".sav"
 
 	Con_Printf ("Saving game to %s...\n", name);
+#ifdef FLASH_FILE_SYSTEM
+	f = as3OpenWriteFile(name);
+#else
 	f = fopen (name, "w");
+#endif
 	if (!f)
 	{
-		Con_Printf ("ERROR: couldn't open.\n");
+		Con_Printf ("ERROR: couldn't open save file for writing.\n");
 		return;
 	}
 
@@ -978,6 +1023,11 @@ void Host_Savegame_f (void)
 		fflush (f);
 	}
 	fclose (f);
+
+#ifdef FLASH_FILE_SYSTEM
+	as3UpdateFileSharedObject(name);
+#endif
+
 	Con_Printf ("done.\n");
 }
 
@@ -1011,7 +1061,7 @@ void Host_Loadgame_f (void)
 
 	cls.demonum = -1;		// stop demo loop in case this fails
 
-	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
+	snprintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".sav");
 
 // we can't call SCR_BeginLoadingPlaque, because too much stack space has
@@ -1022,7 +1072,7 @@ void Host_Loadgame_f (void)
 	f = fopen (name, "r");
 	if (!f)
 	{
-		Con_Printf ("ERROR: couldn't open.\n");
+		Con_Printf ("ERROR: couldn't open save file for reading.\n");
 		return;
 	}
 
@@ -1031,8 +1081,10 @@ void Host_Loadgame_f (void)
 	{
 		fclose (f);
 		Con_Printf ("Savegame is version %i, not %i\n", version, SAVEGAME_VERSION);
+
 		return;
 	}
+
 	fscanf (f, "%s\n", str);
 	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
 		fscanf (f, "%f\n", &spawn_parms[i]);
@@ -1149,7 +1201,7 @@ void Host_Name_f (void)
 		newName = Cmd_Args();
 	newName[15] = 0;
 
-	// JPG 3.02 - remove bad characters
+// JPG 3.02 - remove bad characters
 	for (a = 0 ; newName[a] ; a++)
 	{
 		if (newName[a] == 10)
@@ -1160,7 +1212,7 @@ void Host_Name_f (void)
 
 	if (cmd_source == src_command)
 	{
-		if (Q_strcmp(cl_name.string, newName) == 0)
+		if (strcmp(cl_name.string, newName) == 0)
 			return;
 		Cvar_Set ("_cl_name", newName);
 		if (cls.state == ca_connected)
@@ -1169,9 +1221,9 @@ void Host_Name_f (void)
 	}
 
 	if (host_client->name[0] && strcmp(host_client->name, "unconnected") )
-		if (Q_strcmp(host_client->name, newName) != 0)
+		if (strcmp(host_client->name, newName) != 0)
 			Con_Printf ("%s renamed to %s\n", host_client->name, newName);
-	Q_strcpy (host_client->name, newName);
+	strcpy (host_client->name, newName);
 	host_client->edict->v.netname = host_client->name - pr_strings;
 
 	// JPG 1.05 - log the IP address
@@ -1187,65 +1239,6 @@ void Host_Name_f (void)
 	MSG_WriteByte (&sv.reliable_datagram, host_client - svs.clients);
 	MSG_WriteString (&sv.reliable_datagram, host_client->name);
 }
-
-
-void Host_Version_f (void)
-{
-	Con_Printf ("ProQuake Version %4.2f\n", PROQUAKE_VERSION); // JPG - added ProQuake
-	Con_Printf ("Exe: "__TIME__" "__DATE__"\n");
-}
-
-#ifdef IDGODS
-void Host_Please_f (void)
-{
-	client_t *cl;
-	int			j;
-
-	if (cmd_source != src_command)
-		return;
-
-	if ((Cmd_Argc () == 3) && Q_strcmp(Cmd_Argv(1), "#") == 0)
-	{
-		j = Q_atof(Cmd_Argv(2)) - 1;
-		if (j < 0 || j >= svs.maxclients)
-			return;
-		if (!svs.clients[j].active)
-			return;
-		cl = &svs.clients[j];
-		if (cl->privileged)
-		{
-			cl->privileged = false;
-			cl->edict->v.flags = (int)cl->edict->v.flags & ~(FL_GODMODE|FL_NOTARGET);
-			cl->edict->v.movetype = MOVETYPE_WALK;
-			noclip_anglehack = false;
-		}
-		else
-			cl->privileged = true;
-	}
-
-	if (Cmd_Argc () != 2)
-		return;
-
-	for (j=0, cl = svs.clients ; j<svs.maxclients ; j++, cl++)
-	{
-		if (!cl->active)
-			continue;
-		if (Q_strcasecmp(cl->name, Cmd_Argv(1)) == 0)
-		{
-			if (cl->privileged)
-			{
-				cl->privileged = false;
-				cl->edict->v.flags = (int)cl->edict->v.flags & ~(FL_GODMODE|FL_NOTARGET);
-				cl->edict->v.movetype = MOVETYPE_WALK;
-				noclip_anglehack = false;
-			}
-			else
-				cl->privileged = true;
-			break;
-		}
-	}
-}
-#endif
 
 
 void Host_Say(qboolean teamonly)
@@ -1277,16 +1270,22 @@ void Host_Say(qboolean teamonly)
 	save = host_client;
 
 	p = Cmd_Args();
+
 // remove quotes if present
 	if (*p == '"')
 	{
 		p++;
-		p[Q_strlen(p)-1] = 0;
+		p[strlen(p)-1] = 0;
 	}
+
 
 // turn on color set 1
 	if (!fromServer)
 	{
+		// R00k - dont allow new connecting players to spam obscenities...
+		if (pq_connectmute.value && (net_time - host_client->netconnection->connecttime) < pq_connectmute.value)
+			return;
+
 		// JPG - spam protection
 		if (sv.time - host_client->spam_time > pq_spam_rate.value * pq_spam_grace.value)
 			host_client->spam_time = sv.time - pq_spam_rate.value * pq_spam_grace.value;
@@ -1302,9 +1301,9 @@ void Host_Say(qboolean teamonly)
 		if (pq_showedict.value)
 			Sys_Printf("#%d ", NUM_FOR_EDICT(host_client->edict));
 		if (teamplay.value && teamonly) // JPG - added () for mm2
-			sprintf (text, "%c(%s): ", 1, save->name);
+			snprintf(text, sizeof(text), "%c(%s): ", 1, save->name);
 		else
-			sprintf (text, "%c%s: ", 1, save->name);
+			snprintf(text, sizeof(text), "%c%s: ", 1, save->name);
 
 		// JPG 3.20 - optionally remove '\r'
 		if (pq_removecr.value)
@@ -1316,12 +1315,12 @@ void Host_Say(qboolean teamonly)
 					*ch += 128;
 			}
 		}
+	} else {
+		snprintf (text, sizeof(text), "%c<%s> ", 1, hostname.string);
 	}
-	else
-		sprintf (text, "%c<%s> ", 1, hostname.string);
 
-	j = sizeof(text) - 2 - Q_strlen(text);  // -2 for /n and null terminator
-	if (Q_strlen(p) > j)
+	j = sizeof(text) - 2 - strlen(text);  // -2 for /n and null terminator
+	if (strlen(p) > j)
 		p[j] = 0;
 
 	strcat (text, p);
@@ -1382,8 +1381,8 @@ void Host_Tell_f(void)
 	if (Cmd_Argc () < 3)
 		return;
 
-	Q_strcpy(text, host_client->name);
-	Q_strcat(text, ": ");
+	strcpy(text, host_client->name);
+	strcat(text, ": ");
 
 	p = Cmd_Args();
 
@@ -1391,12 +1390,12 @@ void Host_Tell_f(void)
 	if (*p == '"')
 	{
 		p++;
-		p[Q_strlen(p)-1] = 0;
+		p[strlen(p)-1] = 0;
 	}
 
 // check length & truncate if necessary
-	j = sizeof(text) - 2 - Q_strlen(text);  // -2 for /n and null terminator
-	if (Q_strlen(p) > j)
+	j = sizeof(text) - 2 - strlen(text);  // -2 for /n and null terminator
+	if (strlen(p) > j)
 		p[j] = 0;
 
 	strcat (text, p);
@@ -1466,7 +1465,7 @@ void Host_Color_f(void)
 	host_client->colors = playercolor;
 	host_client->edict->v.team = bottom + 1;
 
-	// JPG 3.00 - prevent messages right after a colour/name change
+// JPG 3.00 - prevent messages right after a colour/name change
 	if (bottom)
 		host_client->change_time = sv.time;
 
@@ -1637,7 +1636,7 @@ void Host_Spawn_f (void)
 
 // run the entrance script
 	if (sv.loadgame)
-	{	// loaded games are fully inited allready
+	{	// loaded games are fully inited already
 		// if this is the last client to be connected, unpause
 		sv.paused = false;
 	}
@@ -1652,17 +1651,15 @@ void Host_Spawn_f (void)
 		ent->v.netname = host_client->name - pr_strings;
 
 		// copy spawn parms out of the client_t
-
 		for (i=0 ; i< NUM_SPAWN_PARMS ; i++)
 			(&pr_global_struct->parm1)[i] = host_client->spawn_parms[i];
 
 		// call the spawn function
-
 		pr_global_struct->time = sv.time;
 		pr_global_struct->self = EDICT_TO_PROG(sv_player);
 		PR_ExecuteProgram (pr_global_struct->ClientConnect);
 
-		if ((Sys_FloatTime() - host_client->netconnection->connecttime) <= sv.time)
+		if ((Sys_DoubleTime() - host_client->netconnection->connecttime) <= sv.time)
 			Sys_Printf ("%s entered the game\n", host_client->name);
 
 		PR_ExecuteProgram (pr_global_struct->PutClientInServer);
@@ -1697,9 +1694,7 @@ void Host_Spawn_f (void)
 		MSG_WriteString (&host_client->message, sv.lightstyles[i]);
 	}
 
-//
 // send some stats
-//
 	MSG_WriteByte (&host_client->message, svc_updatestat);
 	MSG_WriteByte (&host_client->message, STAT_TOTALSECRETS);
 	MSG_WriteLong (&host_client->message, pr_global_struct->total_secrets);
@@ -1734,7 +1729,7 @@ void Host_Spawn_f (void)
 	MSG_WriteByte (&host_client->message, 3);
 	host_client->sendsignon = true;
 
-	// JPG - added this for spam protection
+		// JPG - added this for spam protection
 	host_client->spam_time = 0;
 }
 
@@ -1782,12 +1777,12 @@ void Host_Kick_f (void)
 			return;
 		}
 	}
-	else if (pr_global_struct->deathmatch && !host_client->privileged)
+	else if (pr_global_struct->deathmatch)
 		return;
 
 	save = host_client;
 
-	if (Cmd_Argc() > 2 && Q_strcmp(Cmd_Argv(1), "#") == 0)
+	if (Cmd_Argc() > 2 && strcmp(Cmd_Argv(1), "#") == 0)
 	{
 		i = Q_atof(Cmd_Argv(2)) - 1;
 		if (i < 0 || i >= svs.maxclients)
@@ -1830,7 +1825,7 @@ void Host_Kick_f (void)
 				message++;							// skip the #
 				while (*message == ' ')				// skip white space
 					message++;
-				message += Q_strlen(Cmd_Argv(2));	// skip the number
+				message += strlen(Cmd_Argv(2));	// skip the number
 			}
 			while (*message && *message == ' ')
 				message++;
@@ -1861,7 +1856,7 @@ Host_Give_f
 void Host_Give_f (void)
 {
 	char	*t;
-	int		v;
+	int	v;
 	eval_t	*val;
 
 	if (cmd_source == src_command)
@@ -1870,7 +1865,7 @@ void Host_Give_f (void)
 		return;
 	}
 
-	if (pr_global_struct->deathmatch && !host_client->privileged)
+	if (pr_global_struct->deathmatch)
 		return;
 
 	t = Cmd_Argv(1);
@@ -1915,18 +1910,17 @@ void Host_Give_f (void)
     case 's':
 		if (rogue)
 		{
-	        val = GetEdictFieldValue(sv_player, "ammo_shells1");
-		    if (val)
+		    if ((val = GETEDICTFIELDVALUE(sv_player, eval_ammo_shells1)))
 			    val->_float = v;
 		}
 
         sv_player->v.ammo_shells = v;
         break;
+
     case 'n':
 		if (rogue)
 		{
-			val = GetEdictFieldValue(sv_player, "ammo_nails1");
-			if (val)
+			if ((val = GETEDICTFIELDVALUE(sv_player, eval_ammo_nails1)))
 			{
 				val->_float = v;
 				if (sv_player->v.weapon <= IT_LIGHTNING)
@@ -1938,11 +1932,11 @@ void Host_Give_f (void)
 			sv_player->v.ammo_nails = v;
 		}
         break;
+
     case 'l':
 		if (rogue)
 		{
-			val = GetEdictFieldValue(sv_player, "ammo_lava_nails");
-			if (val)
+			if ((val = GETEDICTFIELDVALUE(sv_player, eval_ammo_lava_nails)))
 			{
 				val->_float = v;
 				if (sv_player->v.weapon > IT_LIGHTNING)
@@ -1950,11 +1944,11 @@ void Host_Give_f (void)
 			}
 		}
         break;
+
     case 'r':
 		if (rogue)
 		{
-			val = GetEdictFieldValue(sv_player, "ammo_rockets1");
-			if (val)
+			if ((val = GETEDICTFIELDVALUE(sv_player, eval_ammo_rockets1)))
 			{
 				val->_float = v;
 				if (sv_player->v.weapon <= IT_LIGHTNING)
@@ -1966,11 +1960,11 @@ void Host_Give_f (void)
 			sv_player->v.ammo_rockets = v;
 		}
         break;
+
     case 'm':
 		if (rogue)
 		{
-			val = GetEdictFieldValue(sv_player, "ammo_multi_rockets");
-			if (val)
+			if ((val = GETEDICTFIELDVALUE(sv_player, eval_ammo_multi_rockets)))
 			{
 				val->_float = v;
 				if (sv_player->v.weapon > IT_LIGHTNING)
@@ -1978,14 +1972,15 @@ void Host_Give_f (void)
 			}
 		}
         break;
+
     case 'h':
         sv_player->v.health = v;
         break;
+
     case 'c':
 		if (rogue)
 		{
-			val = GetEdictFieldValue(sv_player, "ammo_cells1");
-			if (val)
+			if ((val = GETEDICTFIELDVALUE(sv_player, eval_ammo_cells1)))
 			{
 				val->_float = v;
 				if (sv_player->v.weapon <= IT_LIGHTNING)
@@ -1997,11 +1992,11 @@ void Host_Give_f (void)
 			sv_player->v.ammo_cells = v;
 		}
         break;
+
     case 'p':
 		if (rogue)
 		{
-			val = GetEdictFieldValue(sv_player, "ammo_plasma");
-			if (val)
+			if ((val = GETEDICTFIELDVALUE(sv_player, eval_ammo_plasma)))
 			{
 				val->_float = v;
 				if (sv_player->v.weapon > IT_LIGHTNING)
@@ -2175,6 +2170,7 @@ void Host_Startdemos_f (void)
 {
 	int		i, c;
 
+#ifdef SUPPORTS_DEMO_AUTOPLAY
 	if (nostartdemos)
 	{
 		// Baker 3.76
@@ -2182,6 +2178,7 @@ void Host_Startdemos_f (void)
 		// after a file associated demo plays
 		return;
 	}
+#endif
 
 	if (cls.state == ca_dedicated)
 	{
@@ -2226,8 +2223,10 @@ void Host_Demos_f (void)
 {
 	if (cls.state == ca_dedicated)
 		return;
+
 	if (cls.demonum == -1)
 		cls.demonum = 1;
+
 	CL_Disconnect_f ();
 	CL_NextDemo ();
 }
@@ -2245,6 +2244,7 @@ void Host_Stopdemo_f (void)
 		return;
 	if (!cls.demoplayback)
 		return;
+
 	CL_StopPlayback ();
 	CL_Disconnect ();
 }
@@ -2448,7 +2448,6 @@ void Host_InitCommands (void)
 		}
 	}
 
-
 	Cmd_AddCommand ("status", Host_Status_f);
 	Cmd_AddCommand ("gamedir", Host_Game_f); //johnfitz
 	Cmd_AddCommand ("cheatfree", Host_Cheatfree_f);	// JPG 3.50 - print cheat-free status
@@ -2459,9 +2458,6 @@ void Host_InitCommands (void)
 	Cmd_AddCommand ("map", Host_Map_f);
 	Cmd_AddCommand ("restart", Host_Restart_f);
 	Cmd_AddCommand ("changelevel", Host_Changelevel_f);
-#ifdef QUAKE2
-	Cmd_AddCommand ("changelevel2", Host_Changelevel2_f);
-#endif
 	Cmd_AddCommand ("connect", Host_Connect_f);
 	Cmd_AddCommand ("reconnect", Host_Reconnect_f);
 	Cmd_AddCommand ("name", Host_Name_f);
@@ -2496,8 +2492,13 @@ void Host_InitCommands (void)
 
 	Cmd_AddCommand ("mcache", Mod_Print);
 
+#ifdef QCEXEC
+	Cmd_AddCommand ("qcexec", Host_QC_Exec);
+#endif
+
 	Cmd_AddCommand ("identify", Host_Identify_f);	// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipdump", IPLog_Dump);			// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipmerge", IPLog_Import);		// JPG 3.00 - import an IP data file
+
 	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
 }

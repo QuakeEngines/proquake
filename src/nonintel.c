@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //
 
 #include "quakedef.h"
-#include "r_local.h"
+//#include "r_local.h"
 #include "d_local.h"
 
 #if	!id386
@@ -60,5 +60,5 @@ void R_SurfacePatch (void)
 }
 
 
-#endif	// !id386
+#endif // NO_ASSEMBLY (formerly !id386)
 

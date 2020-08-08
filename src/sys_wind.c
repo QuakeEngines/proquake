@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -40,7 +40,7 @@ FILE	*sys_handles[MAX_HANDLES];
 int		findhandle (void)
 {
 	int		i;
-	
+
 	for (i=1 ; i<MAX_HANDLES ; i++)
 		if (!sys_handles[i])
 			return i;
@@ -70,7 +70,7 @@ int Sys_FileOpenRead (char *path, int *hndl)
 {
 	FILE	*f;
 	int		i;
-	
+
 	i = findhandle ();
 
 	f = fopen(path, "rb");
@@ -81,7 +81,7 @@ int Sys_FileOpenRead (char *path, int *hndl)
 	}
 	sys_handles[i] = f;
 	*hndl = i;
-	
+
 	return filelength(f);
 }
 
@@ -89,14 +89,14 @@ int Sys_FileOpenWrite (char *path)
 {
 	FILE	*f;
 	int		i;
-	
+
 	i = findhandle ();
 
 	f = fopen(path, "wb");
 	if (!f)
 		Sys_Error ("Error opening %s: %s", path,strerror(errno));
 	sys_handles[i] = f;
-	
+
 	return i;
 }
 
@@ -124,14 +124,14 @@ int Sys_FileWrite (int handle, void *data, int count)
 int	Sys_FileTime (char *path)
 {
 	FILE	*f;
-	
+
 	f = fopen(path, "rb");
 	if (f)
 	{
 		fclose(f);
 		return 1;
 	}
-	
+
 	return -1;
 }
 
@@ -163,7 +163,7 @@ void Sys_Error (char *error, ...)
 	char		text[1024];
 
 	va_start (argptr,error);
-	vsprintf (text, error,argptr);
+	vsnprintf (text, sizeof(text),error,argptr);
 	va_end (argptr);
 
 //    MessageBox(NULL, text, "Error", 0 /* MB_OK */ );
@@ -176,9 +176,9 @@ void Sys_Printf (char *fmt, ...)
 {
 	va_list         argptr;
 	char text[2048];	// JPG 1.05 - added this; 3.30 - changed it from 1024 to 2048
-	
+
 	va_start (argptr,fmt);
-	vsprintf (text, fmt,argptr);	// JPG 1.05 - changed vprintf to vsprintf
+	vsnprintf (text, sizeof(text), fmt,argptr);	// JPG 1.05 - changed vprintf to vsprintf
 	va_end (argptr);
 
 	// JPG 1.05 - translate to plain text
@@ -204,11 +204,11 @@ double Sys_FloatTime (void)
 	static int	starttime;
 
 	_ftime( &tstruct );
- 
+
 	if (!starttime)
 		starttime = tstruct.time;
 	t = (tstruct.time-starttime) + tstruct.millitm*0.001;
-	
+
 	return t;
 }
 
@@ -291,8 +291,8 @@ int main (int argc, char **argv)
 	parms.membase = malloc (parms.memsize);
 
 	_getcwd (cwd, sizeof(cwd));
-	if (cwd[Q_strlen(cwd)-1] == '\\')
-		cwd[Q_strlen(cwd)-1] = 0;
+	if (cwd[strlen(cwd)-1] == '\\')
+		cwd[strlen(cwd)-1] = 0;
 	parms.basedir = cwd; //"f:/quake";
 //	parms.basedir = "f:\\quake";
 

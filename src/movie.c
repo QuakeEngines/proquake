@@ -275,7 +275,7 @@ static qboolean OnChange_capture_dir (cvar_t *var, char *string)
 {
 	if (Movie_IsActive())
 	{
-		Con_Printf ("Cannot change capture_dir whilst capturing. Use `capture_stop` to cease capturing first.\n");
+		Con_Printf ("Cannot change capture_dir whilst capturing. Use 'capture_stop' to cease capturing first.\n");
 		return true;
 	}
 

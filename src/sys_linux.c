@@ -1,3 +1,24 @@
+/*
+Copyright (C) 1996-1997 Id Software, Inc.
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+*/
+// sys_linux.c
+
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -19,7 +40,7 @@
 
 #include "quakedef.h"
 
-qboolean			isDedicated;
+qboolean			isDedicated=false;
 
 int nostdout = 0;
 
@@ -46,7 +67,7 @@ Sys_GetLock
 void Sys_GetLock (void)
 {
 	int i;
-	
+
 	for (i = 0 ; i < 10 ; i++)
 	{
 		hlock = open(va("%s/lock.dat",com_gamedir), O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
@@ -83,12 +104,12 @@ void Sys_Printf (char *fmt, ...)
 {
 	va_list		argptr;
 	char		text[1024];
-	
+
 	va_start (argptr,fmt);
-	vsprintf (text,fmt,argptr);
+	vsnprintf (text, sizeof(text),fmt,argptr);
 	va_end (argptr);
 	fprintf(stderr, "%s", text);
-	
+
 	Con_Print (text);
 }
 
@@ -103,7 +124,7 @@ void Sys_Printf (char *fmt, ...)
 		return;
 
     va_start (argptr,fmt);
-    vsprintf (text,fmt,argptr);
+    vsnprintf (text, sizeof(text),fmt,argptr);
     va_end (argptr);
 
     l = strlen(text);
@@ -132,7 +153,7 @@ void Sys_Printf (char *fmt, ...)
 	unsigned char		*p;
 
 	va_start (argptr,fmt);
-	vsprintf (text,fmt,argptr);
+	vsnprintf (text,sizeof(text),fmt,argptr);
 	va_end (argptr);
 
 	// JPG 1.05 - translate to plain text
@@ -165,64 +186,48 @@ void Sys_Printf (char *fmt, ...)
 	}
 }
 
-#if 0
-static char end1[] =
-"\x1b[?7h\x1b[40m\x1b[2J\x1b[0;1;41m\x1b[1;1H                QUAKE: The Doomed Dimension \x1b[33mby \x1b[44mid\x1b[41m Software                      \x1b[2;1H  ----------------------------------------------------------------------------  \x1b[3;1H           CALL 1-800-IDGAMES TO ORDER OR FOR TECHNICAL SUPPORT                 \x1b[4;1H             PRICE: $45.00 (PRICES MAY VARY OUTSIDE THE US.)                    \x1b[5;1H                                                                                \x1b[6;1H  \x1b[37mYes! You only have one fourth of this incredible epic. That is because most   \x1b[7;1H   of you have paid us nothing or at most, very little. You could steal the     \x1b[8;1H   game from a friend. But we both know you'll be punished by God if you do.    \x1b[9;1H        \x1b[33mWHY RISK ETERNAL DAMNATION? CALL 1-800-IDGAMES AND BUY NOW!             \x1b[10;1H             \x1b[37mRemember, we love you almost as much as He does.                   \x1b[11;1H                                                                                \x1b[12;1H            \x1b[33mProgramming: \x1b[37mJohn Carmack, Michael Abrash, John Cash                \x1b[13;1H       \x1b[33mDesign: \x1b[37mJohn Romero, Sandy Petersen, American McGee, Tim Willits         \x1b[14;1H                     \x1b[33mArt: \x1b[37mAdrian Carmack, Kevin Cloud                           \x1b[15;1H               \x1b[33mBiz: \x1b[37mJay Wilbur, Mike Wilson, Donna Jackson                      \x1b[16;1H            \x1b[33mProjects: \x1b[37mShawn Green   \x1b[33mSupport: \x1b[37mBarrett Alexander                  \x1b[17;1H              \x1b[33mSound Effects: \x1b[37mTrent Reznor and Nine Inch Nails                   \x1b[18;1H  For other information or details on ordering outside the US, check out the    \x1b[19;1H     files accompanying QUAKE or our website at http://www.idsoftware.com.      \x1b[20;1H    \x1b[0;41mQuake is a trademark of Id Software, inc., (c)1996 Id Software, inc.        \x1b[21;1H     All rights reserved. NIN logo is a r
-egistered trademark licensed to        \x1b[22;1H                 Nothing Interactive, Inc. All rights reserved.                 \x1b[40m\x1b[23;1H\x1b[0m";
-static char end2[] =
-"\x1b[?7h\x1b[40m\x1b[2J\x1b[0;1;41m\x1b[1;1H        QUAKE \x1b[33mby \x1b[44mid\x1b[41m Software                                                    \x1b[2;1H -----------------------------------------------------------------------------  \x1b[3;1H        \x1b[37mWhy did you quit from the registered version of QUAKE? Did the          \x1b[4;1H        scary monsters frighten you? Or did Mr. Sandman tug at your             \x1b[5;1H        little lids? No matter! What is important is you love our               \x1b[6;1H        game, and gave us your money. Congratulations, you are probably         \x1b[7;1H        not a thief.                                                            \x1b[8;1H                                                           Thank You.           \x1b[9;1H        \x1b[33;44mid\x1b[41m Software is:                                                         \x1b[10;1H        PROGRAMMING: \x1b[37mJohn Carmack, Michael Abrash, John Cash                    \x1b[11;1H        \x1b[33mDESIGN: \x1b[37mJohn Romero, Sandy Petersen, American McGee, Tim Willits        \x1b[12;1H        \x1b[33mART: \x1b[37mAdrian Carmack, Kevin Cloud                                        \x1b[13;1H        \x1b[33mBIZ: \x1b[37mJay Wilbur, Mike Wilson     \x1b[33mPROJECTS MAN: \x1b[37mShawn Green              \x1b[14;1H        \x1b[33mBIZ ASSIST: \x1b[37mDonna Jackson        \x1b[33mSUPPORT: \x1b[37mBarrett Alexander             \x1b[15;1H        \x1b[33mSOUND EFFECTS AND MUSIC: \x1b[37mTrent Reznor and Nine Inch Nails               \x1b[16;1H                                                                                \x1b[17;1H        If you need help running QUAKE refer to the text files in the           \x1b[18;1H        QUAKE directory, or our website at http://www.idsoftware.com.           \x1b[19;1H        If all else fails, call our technical support at 1-800-IDGAMES.         \x1b[20;1H      \x1b[0;41mQuake is a trademark of Id Software, inc., (c)1996 Id Software, inc.      \x1b[21;1H        All rights reserved. N
-IN logo is a registered trademark licensed        \x1b[22;1H             to Nothing Interactive, Inc. All rights reserved.                  \x1b[23;1H\x1b[40m\x1b[0m";
-
-#endif
 void Sys_Quit (void)
 {
 	Host_Shutdown();
     fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
-#if 0
-	if (registered.value)
-		printf("%s", end2);
-	else
-		printf("%s", end1);
-#endif
 	fflush(stdout);
 	exit(0);
 }
 
 void Sys_Init(void)
 {
-#if id386
+#if !defined(NO_ASSEMBLY) // Formerly #ifndef NO_ASSEMBLY // Formerly #if id386
 	Sys_SetFPCW();
 #endif
 }
 
 void Sys_Error (char *error, ...)
-{ 
+{
     va_list     argptr;
     char        string[1024];
 
 // change stdin to non blocking
     fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
-    
+
     va_start (argptr,error);
-    vsprintf (string,error,argptr);
+    vsnprintf (string,sizeof(string),error,argptr);
     va_end (argptr);
 	fprintf(stderr, "Error: %s\n", string);
 
 	Host_Shutdown ();
 	exit (1);
-
-} 
+}
 
 void Sys_Warn (char *warning, ...)
-{ 
+{
     va_list     argptr;
     char        string[1024];
-    
+
     va_start (argptr,warning);
-    vsprintf (string,warning,argptr);
+    vsnprintf (string,sizeof(string), warning,argptr);
     va_end (argptr);
 	fprintf(stderr, "Warning: %s", string);
-} 
+}
 
 /*
 ============
@@ -234,13 +239,12 @@ returns -1 if not present
 int	Sys_FileTime (char *path)
 {
 	struct	stat	buf;
-	
+
 	if (stat (path,&buf) == -1)
 		return -1;
-	
+
 	return buf.st_mtime;
 }
-
 
 void Sys_mkdir (char *path)
 {
@@ -251,13 +255,12 @@ int Sys_FileOpenRead (char *path, int *handle)
 {
 	int	h;
 	struct stat	fileinfo;
-    
-	
+
 	h = open (path, O_RDONLY, 0666);
 	*handle = h;
 	if (h == -1)
 		return -1;
-	
+
 	if (fstat (h,&fileinfo) == -1)
 		Sys_Error ("Error fstating %s", path);
 
@@ -269,9 +272,8 @@ int Sys_FileOpenWrite (char *path)
 	int     handle;
 
 	umask (0);
-	
-	handle = open(path,O_RDWR | O_CREAT | O_TRUNC
-	, 0666);
+
+	handle = open(path,O_RDWR | O_CREAT | O_TRUNC, 0666);
 
 	if (handle == -1)
 		Sys_Error ("Error opening %s: %s", path,strerror(errno));
@@ -301,12 +303,12 @@ int Sys_FileRead (int handle, void *dest, int count)
 
 void Sys_DebugLog(char *file, char *fmt, ...)
 {
-    va_list argptr; 
+    va_list argptr;
     static char data[1024];
     int fd;
-    
+
     va_start(argptr, fmt);
-    vsprintf(data, fmt, argptr);
+    vsnprintf(data, sizeof(data), fmt, argptr);
     va_end(argptr);
 //    fd = open(file, O_WRONLY | O_BINARY | O_CREAT | O_APPEND, 0666);
     fd = open(file, O_WRONLY | O_CREAT | O_APPEND, 0666);
@@ -316,10 +318,7 @@ void Sys_DebugLog(char *file, char *fmt, ...)
 
 void Sys_EditFile(char *filename)
 {
-
-	char cmd[256];
-	char *term;
-	char *editor;
+	char cmd[256], *term, *editor;
 
 	term = getenv("TERM");
 	if (term && !strcmp(term, "xterm"))
@@ -334,16 +333,15 @@ void Sys_EditFile(char *filename)
 		sprintf(cmd, "xterm -e %s %s", editor, filename);
 		system(cmd);
 	}
-
 }
 
 double Sys_FloatTime (void)
 {
     struct timeval tp;
-    struct timezone tzp; 
-    static int      secbase; 
-    
-    gettimeofday(&tp, &tzp);  
+    struct timezone tzp;
+    static int      secbase;
+
+    gettimeofday(&tp, &tzp);
 
     if (!secbase)
     {
@@ -397,10 +395,11 @@ char *Sys_ConsoleInput(void)
 
 		return text;
 	}
+
 	return NULL;
 }
 
-#if !id386
+#ifdef NO_ASSEMBLY // Formerly:  !id386
 void Sys_HighFPPrecision (void)
 {
 }
@@ -433,11 +432,7 @@ int main (int c, char **v)
 	parms.argv = com_argv;
 	argv = v;
 
-#ifdef GLQUAKE
-	parms.memsize = 16*1024*1024;
-#else
-	parms.memsize = 8*1024*1024;
-#endif
+	parms.memsize = 32*1024*1024;
 
 	j = COM_CheckParm("-mem");
 	if (j)
@@ -489,9 +484,7 @@ int main (int c, char **v)
         if (sys_linerefresh.value)
             Sys_LineRefresh ();
     }
-
 }
-
 
 /*
 ================
@@ -500,7 +493,6 @@ Sys_MakeCodeWriteable
 */
 void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length)
 {
-
 	int r;
 	unsigned long addr;
 	int psize = getpagesize();

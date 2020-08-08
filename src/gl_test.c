@@ -66,7 +66,6 @@ void Test_Spawn (vec3_t origin)
 	int		i;
 	puff_t	*p;
 	vec3_t	temp;
-	vec3_t	normal;
 	vec3_t	incoming;
 	plane_t	*plane;
 	float	d;
@@ -165,7 +164,6 @@ void DrawPuff (puff_t *p)
 
 	p->length -= host_frametime*2;
 }
-
 
 void Test_Draw (void)
 {

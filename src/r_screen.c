@@ -20,8 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_screen.c -- master for refresh, status bar, console, chat, notify, etc
 
 #include "quakedef.h"
-#include "r_local.h"
-#ifdef _WIN32
+//#include "r_local.h"
+#ifdef SUPPORTS_AVI_CAPTURE
 #include "movie.h"
 #endif
 
@@ -35,7 +35,7 @@ float		scr_conlines;		// lines of console to display
 float		oldscreensize, oldfov;
 cvar_t		scr_viewsize = {"viewsize","100", true};
 cvar_t		scr_fov = {"fov","90", true, 6};	// 10 - 170  Baker 3.60 - Save to config
-cvar_t		default_fov = {"default_fov","0", true, 7};	// Baker 3.85 - Default_fov from FuhQuake
+cvar_t		default_fov = {"default_fov","0", true};	// Baker 3.85 - Default_fov from FuhQuake
 cvar_t		scr_conspeed = {"scr_conspeed","99999", true}; // Baker 3.60 - Save to config
 cvar_t		scr_centertime = {"scr_centertime","2"};
 cvar_t		scr_showram = {"showram","1"};
@@ -172,6 +172,8 @@ void SCR_DrawCenterString (void)
 	} while (1);
 }
 
+extern cvar_t cl_scoreboard_clean;
+extern qboolean sb_showscores;
 void SCR_CheckDrawCenterString (void)
 {
 	scr_copytop = 1;
@@ -185,6 +187,10 @@ void SCR_CheckDrawCenterString (void)
 
 	if (key_dest != key_game)
 		return;
+
+	if (sb_showscores && cl_scoreboard_clean.value)
+		return;
+
 
 	SCR_DrawCenterString ();
 }
@@ -204,11 +210,8 @@ float CalcFov (float fov_x, float width, float height)
                 Sys_Error ("Bad fov: %f", fov_x);
 
         x = width/tan(fov_x/360*M_PI);
-
         a = atan (height/x);
-
         a = a*360/M_PI;
-
         return a;
 }
 
@@ -279,7 +282,6 @@ static void SCR_CalcRefdef (void)
 	R_ViewChanged (&vrect, sb_lines, vid.aspect);
 }
 
-
 /*
 =================
 SCR_SizeUp_f
@@ -292,7 +294,6 @@ void SCR_SizeUp_f (void)
 	Cvar_SetValue ("viewsize",scr_viewsize.value+10);
 	vid.recalc_refdef = 1;
 }
-
 
 /*
 =================
@@ -314,10 +315,13 @@ void SCR_SizeDown_f (void)
 SCR_Init
 ==================
 */
+void CL_Default_fov_f(void);
+void CL_Fov_f(void);
 void SCR_Init (void)
 {
-	Cvar_RegisterVariable (&default_fov, NULL);
-	Cvar_RegisterVariable (&scr_fov, NULL);
+	Cvar_RegisterVariable (&default_fov, &CL_Default_fov_f);
+	Cvar_RegisterVariable (&scr_fov, &CL_Fov_f);
+
 	Cvar_RegisterVariable (&scr_viewsize, NULL);
 	Cvar_RegisterVariable (&scr_conspeed, NULL);
 	Cvar_RegisterVariable (&scr_showram, NULL);
@@ -330,6 +334,7 @@ void SCR_Init (void)
 	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
 
 // register our commands
+
 	Cmd_AddCommand ("screenshot",SCR_ScreenShot_f);
 	Cmd_AddCommand ("sizeup",SCR_SizeUp_f);
 	Cmd_AddCommand ("sizedown",SCR_SizeDown_f);
@@ -338,12 +343,13 @@ void SCR_Init (void)
 	scr_net = Draw_PicFromWad ("net");
 	scr_turtle = Draw_PicFromWad ("turtle");
 
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 	Movie_Init ();
 #endif
 
 	scr_initialized = true;
 }
+
 
 /*
 ==============
@@ -426,7 +432,7 @@ void SCR_DrawFPS (void)
 	if (!pq_drawfps.value)
 		return;
 
-	sprintf(buff, "%3d", fps);
+	snprintf (buff, sizeof(buff), "%3d", fps);
 	x = vid.width - 48;
 
 	ch = buff;
@@ -434,6 +440,34 @@ void SCR_DrawFPS (void)
 	while (*ch)
 	{
 		Draw_Character(x, (!show_speed.value ? 8 : 16), *ch);
+		x += 8;
+		ch++;
+	}
+}
+
+/* 
+==============
+SCR_DrawWebPercent
+==============
+*/
+void SCR_DrawWebPercent (void)
+{
+	int x;
+	char buff[20];
+	char *ch;
+
+	snprintf (buff, sizeof(buff), "download: %2.1f%%", (float)(cls.download.percent*100));
+	x = vid.width - (16*8); //64; // 16 x 3 = 48 ... we need 16 x 4 = 64
+
+	Draw_Fill (0, 20, vid.width, 2, 0);
+	Draw_Fill (0, 0, vid.width, 20, 98);
+	Draw_Fill (0, 6, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
+
+	ch = buff;
+
+	while (*ch)
+	{
+		Draw_Character(x, 8, (*ch)+128);
 		x += 8;
 		ch++;
 	}
@@ -449,7 +483,7 @@ void SCR_DrawSpeed (void)
 	int		x;
 	char buff[10];
 	char *ch;
-	float		speed, vspeed, speedunits;
+	float		speed, vspeed;
 	vec3_t		vel;
 	static	float	maxspeed = 0, display_speed = -1;
 	static	double	lastrealtime = 0;
@@ -474,7 +508,7 @@ void SCR_DrawSpeed (void)
 
 	if (display_speed >= 0)
 	{
-		sprintf (buff, "%3d", (int)display_speed);
+		snprintf (buff, sizeof(buff), "%3d", (int)display_speed);
 	ch = buff;
 	x = vid.width - 48;
 	while (*ch)
@@ -513,6 +547,7 @@ void SCR_DrawPause (void)
 	Draw_Pic ((vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
 
+
 /*
 ==============
 SCR_DrawLoading
@@ -528,6 +563,7 @@ void SCR_DrawLoading (void)
 	pic = Draw_CachePic ("gfx/loading.lmp");
 	Draw_Pic ( (vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
+
 
 //=============================================================================
 
@@ -614,6 +650,7 @@ void SCR_DrawConsole (void)
 	}
 }
 
+
 /*
 ==============================================================================
 
@@ -669,11 +706,11 @@ void WritePCXfile (char *filename, byte *data, int width, int height,
 	pcx->ymax = LittleShort((short)(height-1));
 	pcx->hres = LittleShort((short)width);
 	pcx->vres = LittleShort((short)height);
-	Q_memset (pcx->palette,0,sizeof(pcx->palette));
+	memset (pcx->palette,0,sizeof(pcx->palette));
 	pcx->color_planes = 1;		// chunky image
 	pcx->bytes_per_line = LittleShort((short)width);
 	pcx->palette_type = LittleShort(2);		// not a grey scale
-	Q_memset (pcx->filler,0,sizeof(pcx->filler));
+	memset (pcx->filler,0,sizeof(pcx->filler));
 
 // pack the image
 	pack = &pcx->data;
@@ -704,7 +741,7 @@ void WritePCXfile (char *filename, byte *data, int width, int height,
 	COM_WriteFile (filename, pcx, length);
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 extern unsigned char	vid_curpal[256*3];	// JPG 3.02 - gamma corrected screenshots
 #endif
 
@@ -718,45 +755,43 @@ void SCR_ScreenShot_f (void)
 {
 	int     i;
 	char		pcxname[16];
-	char		checkname[MAX_OSPATH];	
-//	int			i, c, temp;
+	char		checkname[MAX_OSPATH];
 
-//
 // find a file name to save it to
-//
+
 	//johnfitz -- changed name format from quake00 to fitz0000
 	for (i=0; i<10000; i++)
 	{
-		sprintf (pcxname, "quake%04i.pcx", i);
-		sprintf (checkname, "%s/%s", com_gamedir, pcxname);
+		snprintf (pcxname, sizeof(pcxname), "quake%04i.pcx", i);
+		snprintf (checkname, sizeof(checkname), "%s/%s", com_gamedir, pcxname);
 		if (Sys_FileTime(checkname) == -1)
 			break;	// file doesn't exist
 	}
+
 	if (i == 10000)
 	{
-		Con_Printf ("SCR_ScreenShot_f: Couldn't create a PCX file\n"); 
+		Con_Printf ("SCR_ScreenShot_f: Couldn't create a PCX file\n");
 		return;
  	}
 
-//
 // save the pcx file
-//
-	D_EnableBackBufferAccess ();	// enable direct drawing of console to back
-									//  buffer
 
-#ifdef WIN32
+	D_EnableBackBufferAccess ();	// enable direct drawing of console to back buffer
+
+#ifdef _WIN32
 	WritePCXfile (pcxname, vid.buffer, vid.width, vid.height, vid.rowbytes, vid_curpal); // JPG 3.02 host_basepal -> vid_curpal
 #else
 	WritePCXfile (pcxname, vid.buffer, vid.width, vid.height, vid.rowbytes, host_basepal);
 #endif
 
-	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in
-									//  for linear writes all the time
+	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in for linear writes all the time
 
 	Con_Printf ("Wrote %s\n", pcxname);
 }
 
+
 //=============================================================================
+
 
 /*
 ===============
@@ -846,6 +881,11 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
 	double time1, time2; //johnfitz -- timeout
 
+#ifdef FLASH
+	return true;	//For Flash we receive key messages via the Main.as file, between calls to the Alchemy C source.
+					//We therefore cant check what the user response was, so we just assume that it was 'yes'.
+#endif
+
 	if (cls.state == ca_dedicated)
 		return true;
 
@@ -859,13 +899,13 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
-	time1 = Sys_FloatTime () + timeout; //johnfitz -- timeout
+	time1 = Sys_DoubleTime () + timeout; //johnfitz -- timeout
 	time2 = 0.0f; //johnfitz -- timeout
 
 	do {
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
-		if (timeout) time2 = Sys_FloatTime (); //johnfitz -- zero timeout means wait forever.
+		if (timeout) time2 = Sys_DoubleTime (); //johnfitz -- zero timeout means wait forever.
 	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE && time2 <= time1);
 
 	scr_fullupdate = 0;
@@ -919,28 +959,35 @@ void SCR_UpdateScreen (void)
 	static float	oldlcd_x;
 	vrect_t		vrect;
 
+	if (cls.state == ca_dedicated)
+		return;				// stdout only
+
+
 	if (scr_skipupdate || block_drawing)
 		return;
-
-	scr_copytop = 0;
-	scr_copyeverything = 0;
 
 	if (scr_disabled_for_loading)
 	{
 		if (realtime - scr_disabled_time > 60)
-		{
-			scr_disabled_for_loading = false;
-			Con_Printf ("load failed.\n");
-		}
+			scr_disabled_for_loading = false; // Con_Printf ("load failed.\n");
 		else
 			return;
 	}
 
-	if (cls.state == ca_dedicated)
-		return;				// stdout only
-
 	if (!scr_initialized || !con_initialized)
 		return;				// not initialized yet
+
+#ifdef _WIN32
+	{	// don't suck up any cpu if minimized
+		extern	int	Minimized;
+
+		if (Minimized)
+			return;
+	}
+#endif
+
+	scr_copytop = 0;
+	scr_copyeverything = 0;
 
 	if (scr_viewsize.value != oldscr_viewsize)
 	{
@@ -996,7 +1043,7 @@ void SCR_UpdateScreen (void)
 
 	D_EnableBackBufferAccess ();	// of all overlay stuff if drawing directly
 
-	if (scr_drawdialog)
+	if (scr_drawdialog) //new game confirm
 	{
 		Sbar_Draw ();
 		Draw_FadeScreen ();
@@ -1027,22 +1074,36 @@ void SCR_UpdateScreen (void)
 		SCR_DrawNet ();
 		SCR_DrawTurtle ();
 		SCR_DrawPause ();
-		SCR_DrawFPS (); // JPG - draw FPS
-		SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
-		SCR_CheckDrawCenterString ();
-		SCR_DrawVolume (); // Baker 3.60 - JoeQuake 0.15
-		Sbar_Draw ();
-		SCR_DrawConsole ();
+		
+		if (cls.state == ca_connected) {
+			void Draw_Crosshair (void);
+			Draw_Crosshair ();	
+			SCR_DrawFPS (); // JPG - draw FPS
+			SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
+			SCR_CheckDrawCenterString ();
+			SCR_DrawVolume (); // Baker 3.60 - JoeQuake 0.15
+			Sbar_Draw ();
+		}
+
+		if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
+			SCR_DrawConsole ();
+
+#ifdef HTTP_DOWNLOAD
+		if (cls.download.web)
+			SCR_DrawWebPercent ();
+#endif
+
 		M_Draw ();
 		Mat_Update ();	// JPG
 	}
 
-	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in
-									//  for linear writes all the time
-	if (pconupdate)
-	{
+	D_DisableBackBufferAccess ();	// for adapters that can't stay mapped in for linear writes all the time
+
+#if 0
+	if (pconupdate) {
 		D_UpdateRects (pconupdate);
 	}
+#endif
 
 	V_UpdatePaletteOld ();
 
@@ -1078,7 +1139,7 @@ void SCR_UpdateScreen (void)
 		VID_Update (&vrect);
 	}
 
-#ifdef _WIN32
+#ifdef SUPPORTS_AVI_CAPTURE
 	Movie_UpdateScreen ();
 #endif
 }

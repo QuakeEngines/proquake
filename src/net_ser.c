@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -473,7 +473,7 @@ int Serial_SendMessage (qsocket_t *sock, sizebuf_t *message)
 
 	// mark sock as busy and save the message for possible retransmit
 	sock->canSend = false;
-	Q_memcpy(sock->sendMessage, message->data, message->cursize);
+	memcpy(sock->sendMessage, message->data, message->cursize);
 	sock->sendMessageLength = message->cursize;
 	sock->lastSendTime = net_time;
 
@@ -684,7 +684,7 @@ static int _Serial_GetMessage (SerialLine *p)
 	p->sock->receiveMessageLength -= length;
 
 	if (p->sock->receiveMessageLength + p->lengthFound)
-		Q_memcpy(p->sock->receiveMessage, &p->sock->receiveMessage[length], p->sock->receiveMessageLength + p->lengthFound);
+		memcpy(p->sock->receiveMessage, &p->sock->receiveMessage[length], p->sock->receiveMessageLength + p->lengthFound);
 
 	return ret;
 }
@@ -736,7 +736,7 @@ void Serial_SearchForHosts (qboolean xmit)
 
 	// see if we've already answered
 	for (n = 0; n < hostCacheCount; n++)
-		if (Q_strcmp (hostcache[n].cname, "#") == 0)
+		if (!strcmp (hostcache[n].cname, "#"))
 			return;
 
 	for (n = 0; n < NUM_COM_PORTS; n++)
@@ -750,11 +750,11 @@ void Serial_SearchForHosts (qboolean xmit)
 		return;
 
 	sprintf(hostcache[hostCacheCount].name, "COM%u", n+1);
-	Q_strcpy(hostcache[hostCacheCount].map, "");
+	strcpy(hostcache[hostCacheCount].map, "");
 	hostcache[hostCacheCount].users = 0;
 	hostcache[hostCacheCount].maxusers = 0;
 	hostcache[hostCacheCount].driver = net_driverlevel;
-	Q_strcpy(hostcache[hostCacheCount].cname, "#");
+	strcpy(hostcache[hostCacheCount].cname, "#");
 	hostCacheCount++;
 
 	return;
@@ -845,7 +845,7 @@ qsocket_t *Serial_Connect (char *host)
 	// see if this looks like a phone number
 	if (*host == '#')
 		host++;
-	for (n = 0; n < Q_strlen(host); n++)
+	for (n = 0; n < strlen(host); n++)
 		if (host[n] == '.' || host[n] == ':')
 			return NULL;
 
@@ -901,7 +901,7 @@ static qsocket_t *_Serial_CheckNewConnections (SerialLine *p)
 
 	if (command == CCREQ_SERVER_INFO)
 	{
-		if (Q_strcmp(MSG_ReadString(), "QUAKE") != 0)
+		if (strcmp(MSG_ReadString(), "QUAKE"))
 			return NULL;
 
 		if (MSG_ReadByte() != SERIAL_PROTOCOL_VERSION)
@@ -921,7 +921,7 @@ static qsocket_t *_Serial_CheckNewConnections (SerialLine *p)
 	if (command != CCREQ_CONNECT)
 		return NULL;
 
-	if (Q_strcmp(MSG_ReadString(), "QUAKE") != 0)
+	if (strcmp(MSG_ReadString(), "QUAKE"))
 		return NULL;
 
 	// send him back the info about the server connection he has been allocated

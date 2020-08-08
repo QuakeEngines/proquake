@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "d_local.h"
-#include "r_local.h"
+//#include "r_local.h"
 
 float           surfscale;
 qboolean        r_cache_thrash;         // set if surface cache is thrashing
@@ -133,10 +133,10 @@ surfcache_t     *D_SCAlloc (int width, int size)
 	qboolean                wrapped_this_time;
 
 	if ((width < 0) || (width > 256))
-		Sys_Error ("D_SCAlloc: bad cache width %d\n", width);
+		Sys_Error ("D_SCAlloc: bad cache width %d", width);
 
 	if ((size <= 0) || (size > 0x10000))
-		Sys_Error ("D_SCAlloc: bad cache size %d\n", size);
+		Sys_Error ("D_SCAlloc: bad cache size %d", size);
 	
 	size = (int)&((surfcache_t *)0)->data[size];
 	size = (size + 3) & ~3;
@@ -265,18 +265,14 @@ surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
 {
 	surfcache_t     *cache;
 
-//
 // if the surface is animating or flashing, flush the cache
-//
 	r_drawsurf.texture = R_TextureAnimation (surface->texinfo->texture);
 	r_drawsurf.lightadj[0] = d_lightstylevalue[surface->styles[0]];
 	r_drawsurf.lightadj[1] = d_lightstylevalue[surface->styles[1]];
 	r_drawsurf.lightadj[2] = d_lightstylevalue[surface->styles[2]];
 	r_drawsurf.lightadj[3] = d_lightstylevalue[surface->styles[3]];
 	
-//
 // see if the cache holds apropriate data
-//
 	cache = surface->cachespots[miplevel];
 
 	if (cache && !cache->dlight && surface->dlightframe != r_framecount
@@ -287,31 +283,23 @@ surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
 			&& cache->lightadj[3] == r_drawsurf.lightadj[3] )
 		return cache;
 
-//
 // determine shape of surface
-//
 	surfscale = 1.0 / (1<<miplevel);
 	r_drawsurf.surfmip = miplevel;
 	r_drawsurf.surfwidth = surface->extents[0] >> miplevel;
 	r_drawsurf.rowbytes = r_drawsurf.surfwidth;
 	r_drawsurf.surfheight = surface->extents[1] >> miplevel;
 	
-//
 // allocate memory if needed
-//
 	if (!cache)     // if a texture just animated, don't reallocate it
 	{
-		cache = D_SCAlloc (r_drawsurf.surfwidth,
-						   r_drawsurf.surfwidth * r_drawsurf.surfheight);
+		cache = D_SCAlloc (r_drawsurf.surfwidth, r_drawsurf.surfwidth * r_drawsurf.surfheight);
 		surface->cachespots[miplevel] = cache;
 		cache->owner = &surface->cachespots[miplevel];
 		cache->mipscale = surfscale;
 	}
 	
-	if (surface->dlightframe == r_framecount)
-		cache->dlight = 1;
-	else
-		cache->dlight = 0;
+	cache->dlight = (surface->dlightframe == r_framecount) ? 1 : 0 ;
 
 	r_drawsurf.surfdat = (pixel_t *)cache->data;
 	
@@ -321,9 +309,7 @@ surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
 	cache->lightadj[2] = r_drawsurf.lightadj[2];
 	cache->lightadj[3] = r_drawsurf.lightadj[3];
 
-//
 // draw and light the surface texture
-//
 	r_drawsurf.surf = surface;
 
 	c_surf++;
@@ -331,5 +317,4 @@ surfcache_t *D_CacheSurface (msurface_t *surface, int miplevel)
 
 	return surface->cachespots[miplevel];
 }
-
 

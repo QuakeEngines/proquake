@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -22,12 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef GLQUAKE
 #include "r_shared.h"
 
-#define ALIAS_BASE_SIZE_RATIO		(1.0 / 11.0)
-					// normalizing factor so player model works out to about
-					//  1 pixel per triangle
+#define ALIAS_BASE_SIZE_RATIO		(1.0 / 11.0) // normalizing factor so player model works out to about 1 pixel per triangle
 
-#define BMODEL_FULLY_CLIPPED	0x10 // value returned by R_BmodelCheckBBox ()
-									 //  if bbox is trivially rejected
+#define BMODEL_FULLY_CLIPPED	0x10 // value returned by R_BmodelCheckBBox () if bbox is trivially rejected
 
 //===========================================================================
 // viewmodel lighting
@@ -122,9 +119,7 @@ extern int	vstartscan;
 void R_ClearPolyList (void);
 void R_DrawPolyList (void);
 
-//
 // current entity info
-//
 extern	qboolean		insubmodel;
 extern	vec3_t			r_worldmodelorg;
 
@@ -140,6 +135,7 @@ void R_DrawSurfaceBlock16 (void);
 void R_DrawSurfaceBlock8 (void);
 texture_t *R_TextureAnimation (texture_t *base);
 
+
 #if	id386
 
 void R_DrawSurfaceBlock8_mip0 (void);
@@ -148,6 +144,27 @@ void R_DrawSurfaceBlock8_mip2 (void);
 void R_DrawSurfaceBlock8_mip3 (void);
 
 #endif
+
+extern cvar_t	r_draworder;
+extern cvar_t	r_drawentities;
+extern cvar_t	r_aliasstats;
+extern cvar_t	r_dspeeds;
+extern cvar_t	r_drawflat;
+extern cvar_t	r_ambient;
+extern cvar_t	r_reportsurfout;
+extern cvar_t	r_maxsurfs;
+extern cvar_t	r_numsurfs;
+extern cvar_t	r_reportedgeout;
+extern cvar_t	r_maxedges;
+extern cvar_t	r_numedges;
+extern cvar_t	r_speeds;
+extern cvar_t	r_timegraph;
+extern cvar_t	r_graphheight;
+extern cvar_t	r_clearcolor;
+
+extern cvar_t	r_waterwarp;
+extern cvar_t	r_fullbright;
+extern cvar_t	r_interpolate_animation;
 
 void R_GenSkyTile (void *pdest);
 void R_GenSkyTile16 (void *pdest);
@@ -314,3 +331,8 @@ void R_SplitEntityOnNode2 (mnode_t *node);
 void R_MarkLights (dlight_t *light, int bit, mnode_t *node);
 
 #endif
+
+// !!! if this is changed, it must be changed in d_ifacea.h too !!!
+#define CACHE_SIZE	32		// used to align key data structures
+
+// Baker: moved ^^ from quakedef.h because only used for winquake/software render

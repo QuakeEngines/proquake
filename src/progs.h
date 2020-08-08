@@ -46,7 +46,16 @@ typedef struct edict_s
 	entvars_t	v;					// C exported fields from progs
 // other fields from progs come immediately after
 } edict_t;
+
 #define	EDICT_FROM_AREA(l) STRUCT_FROM_LINK(l,edict_t,area)
+#define	GETEDICTFIELDVALUE(ed, fieldoffset) (fieldoffset ? (eval_t *)((byte *)&ed->v + fieldoffset) : NULL)
+
+extern	int	eval_gravity, eval_items2, eval_ammo_shells1, eval_ammo_nails1;
+extern	int	eval_ammo_lava_nails, eval_ammo_rockets1, eval_ammo_multi_rockets;
+extern	int	eval_ammo_cells1, eval_ammo_plasma;
+
+// nehahra specific
+extern	int	eval_alpha, eval_fullbright;
 
 //============================================================================
 
@@ -66,7 +75,7 @@ extern	int				pr_edict_size;	// in bytes
 void PR_Init (void);
 
 void PR_ExecuteProgram (func_t fnum);
-void PR_LoadProgs (void);
+void PR_LoadProgs (char *progsname);
 
 void PR_Profile_f (void);
 
@@ -129,6 +138,4 @@ void PR_RunError (char *error, ...);
 
 void ED_PrintEdicts (void);
 void ED_PrintNum (int ent);
-
-eval_t *GetEdictFieldValue(edict_t *ed, char *field);
 

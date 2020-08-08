@@ -67,7 +67,6 @@ texture_t	*r_notexture_mip;
 int		d_lightstylevalue[256];	// 8.8 fraction of base light value
 
 
-void R_MarkLeaves (void);
 
 cvar_t	r_norefresh = {"r_norefresh","0"};
 cvar_t	r_drawentities = {"r_drawentities","1"};
@@ -87,8 +86,11 @@ cvar_t  gl_interpolate_transform = {"gl_interpolate_transform", "0", true};
 cvar_t  gl_interpolate_weapon = {"gl_interpolate_weapon", "0", true};
 cvar_t	r_farclip = {"r_farclip","16384",true};
 
-cvar_t	gl_finish = {"gl_finish","0"};
+#ifdef DX8QUAKE
+cvar_t	gl_clear = {"gl_clear","1"};
+#else
 cvar_t	gl_clear = {"gl_clear","0"};
+#endif
 cvar_t	gl_cull = {"gl_cull","1"};
 cvar_t	gl_texsort = {"gl_texsort","1"};
 cvar_t	gl_smoothmodels = {"gl_smoothmodels","1"};
@@ -97,17 +99,46 @@ cvar_t	gl_polyblend = {"gl_polyblend","1", true};
 cvar_t	gl_flashblend = {"gl_flashblend","1", true};
 cvar_t	gl_playermip = {"gl_playermip","0", true};
 cvar_t	gl_nocolors = {"gl_nocolors","0"};
+#ifdef DX8QUAKE
+cvar_t	gl_finish = {"gl_finish","1"};
+#else
+cvar_t	gl_finish = {"gl_finish","0"};
+#endif
+cvar_t  gl_fullbright = {"gl_fullbright","0", true};
+#ifdef MACOSX
+cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","1"};
+#else
 cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","0"};
+#endif /* MACOSX */
+
 cvar_t	gl_reporttjunctions = {"gl_reporttjunctions","0"};
 cvar_t	gl_doubleeyes = {"gl_doubleeyes", "1"};				// JPG 3.02 - fixed spelling
+#ifdef SUPPORTS_SKYBOX
+cvar_t r_oldsky = {"r_oldsky", "1"}; // set the skybox to on, and save the value in the config file (true)
+#endif
+
+#ifdef SUPPORTS_FOG
+// NATAS - BramBo - Fog Code
+cvar_t gl_fogenable = {"gl_fogenable", "0"};
+cvar_t gl_fogstart = {"gl_fogstart", "50.0"};
+cvar_t gl_fogend = {"gl_fogend", "800.0"};
+cvar_t gl_fogdensity = {"gl_fogdensity", "0.8"};
+cvar_t gl_fogred = {"gl_fogred","0.6"};
+cvar_t gl_foggreen = {"gl_foggreen","0.5"};
+cvar_t gl_fogblue = {"gl_fogblue","0.4"};
+cvar_t gl_fogalpha = {"gl_fogalpha", "0.5"};
+// END
+#endif
 
 extern	cvar_t	gl_ztrick;
+
+
 
 /*
 =================
 R_CullBox
 
-Returns true if the box is completely outside the frustom
+Returns true if the box is completely outside the frustum
 =================
 */
 qboolean R_CullBox (vec3_t mins, vec3_t maxs)
@@ -117,6 +148,7 @@ qboolean R_CullBox (vec3_t mins, vec3_t maxs)
 	for (i=0 ; i<4 ; i++)
 		if (BoxOnPlaneSide (mins, maxs, &frustum[i]) == 2)
 			return true;
+
 	return false;
 }
 
@@ -137,71 +169,70 @@ R_BlendedRotateForEntity
 fenix@io.com: model transform interpolation
 =============
 */
-void R_BlendedRotateForEntity (entity_t *e)
+void R_BlendedRotateForEntity (entity_t *ent)
 {
 	float	blend;
 	vec3_t	d;
 	int		i;
+	float		timepassed;
 
 	// positional interpolation
+	timepassed = cl.time - ent->translate_start_time;
 
-	if (e->translate_start_time == 0) {
-		e->translate_start_time = realtime;
-		VectorCopy (e->origin, e->origin1);
-		VectorCopy (e->origin, e->origin2);
+	if (ent->translate_start_time == 0  || timepassed > 1) {
+		ent->translate_start_time = cl.time;
+		VectorCopy (ent->origin, ent->origin1);
+		VectorCopy (ent->origin, ent->origin2);
 	}
 
-	if (!VectorCompare (e->origin, e->origin2)) {
-		e->translate_start_time = realtime;
-		VectorCopy (e->origin2, e->origin1);
-		VectorCopy (e->origin,  e->origin2);
+	if (!VectorCompare (ent->origin, ent->origin2)) {
+		ent->translate_start_time = cl.time;
+		VectorCopy (ent->origin2, ent->origin1);
+		VectorCopy (ent->origin,  ent->origin2);
 		blend = 0;
 	} else {
-		blend = (realtime - e->translate_start_time) / 0.1;
-
-		if (cl.paused || blend > 1) blend = 1;
+		blend = timepassed / 0.1;
+		if (cl.paused || blend > 1)
+			blend = 1;
 	}
 
-	VectorSubtract (e->origin2, e->origin1, d);
+	VectorSubtract (ent->origin2, ent->origin1, d);
 
-	glTranslatef (
-		e->origin1[0] + (blend * d[0]),
-		e->origin1[1] + (blend * d[1]),
-		e->origin1[2] + (blend * d[2]));
+	glTranslatef (ent->origin1[0] + (blend * d[0]), ent->origin1[1] + (blend * d[1]), ent->origin1[2] + (blend * d[2]));
 
 	// orientation interpolation (Euler angles, yuck!)
+	timepassed = cl.time - ent->rotate_start_time;
 
-	if (e->rotate_start_time == 0) {
-		e->rotate_start_time = realtime;
-		VectorCopy (e->angles, e->angles1);
-		VectorCopy (e->angles, e->angles2);
+	if (ent->rotate_start_time == 0 || timepassed > 1) {
+		ent->rotate_start_time = cl.time;
+		VectorCopy (ent->angles, ent->angles1);
+		VectorCopy (ent->angles, ent->angles2);
 	}
 
-	if (!VectorCompare (e->angles, e->angles2)) {
-		e->rotate_start_time = realtime;
-		VectorCopy (e->angles2, e->angles1);
-		VectorCopy (e->angles,  e->angles2);
+	if (!VectorCompare (ent->angles, ent->angles2)) {
+		ent->rotate_start_time = cl.time;
+		VectorCopy (ent->angles2, ent->angles1);
+		VectorCopy (ent->angles,  ent->angles2);
 		blend = 0;
 	} else {
-		blend = (realtime - e->rotate_start_time) / 0.1;
-
-		if (cl.paused || blend > 1) blend = 1;
+		blend = timepassed / 0.1;
+		if (cl.paused || blend > 1)
+			blend = 1;
 	}
 
-	VectorSubtract (e->angles2, e->angles1, d);
+	VectorSubtract (ent->angles2, ent->angles1, d);
 
 	// always interpolate along the shortest path
 	for (i = 0; i < 3; i++)  {
-		if (d[i] > 180) {
+		if (d[i] > 180)
 			d[i] -= 360;
-		} else if (d[i] < -180) {
+		else if (d[i] < -180)
 			d[i] += 360;
-		}
 	}
 
-	glRotatef ( e->angles1[1] + ( blend * d[1]),  0, 0, 1);
-	glRotatef (-e->angles1[0] + (-blend * d[0]),  0, 1, 0);
-	glRotatef ( e->angles1[2] + ( blend * d[2]),  1, 0, 0);
+	glRotatef ( ent->angles1[1] + ( blend * d[1]),  0, 0, 1);
+	glRotatef (-ent->angles1[0] + (-blend * d[0]),  0, 1, 0);
+	glRotatef ( ent->angles1[2] + ( blend * d[2]),  1, 0, 0);
 }
 
 /*
@@ -263,14 +294,12 @@ mspriteframe_t *R_GetSpriteFrame (entity_t *currententity)
 	return pspriteframe;
 }
 
-
 /*
 =================
 R_DrawSpriteModel
-
 =================
 */
-void R_DrawSpriteModel (entity_t *e)
+void R_DrawSpriteModel (entity_t *ent)
 {
 	vec3_t	point;
 	mspriteframe_t	*frame;
@@ -280,17 +309,16 @@ void R_DrawSpriteModel (entity_t *e)
 
 	// don't even bother culling, because it's just a single
 	// polygon without a surface cache
-	frame = R_GetSpriteFrame (e);
+	frame = R_GetSpriteFrame (ent);
 	psprite = currententity->model->cache.data;
 
-	if (psprite->type == SPR_ORIENTED)
-	{	// bullet marks on walls
+	if (psprite->type == SPR_ORIENTED) {
+		// bullet marks on walls
 		AngleVectors (currententity->angles, v_forward, v_right, v_up);
 		up = v_up;
 		right = v_right;
-	}
-	else
-	{	// normal sprite
+	} else {
+		// normal sprite
 		up = vup;
 		right = vright;
 	}
@@ -305,22 +333,22 @@ void R_DrawSpriteModel (entity_t *e)
 	glBegin (GL_QUADS);
 
 	glTexCoord2f (0, 1);
-	VectorMA (e->origin, frame->down, up, point);
+	VectorMA (ent->origin, frame->down, up, point);
 	VectorMA (point, frame->left, right, point);
 	glVertex3fv (point);
 
 	glTexCoord2f (0, 0);
-	VectorMA (e->origin, frame->up, up, point);
+	VectorMA (ent->origin, frame->up, up, point);
 	VectorMA (point, frame->left, right, point);
 	glVertex3fv (point);
 
 	glTexCoord2f (1, 0);
-	VectorMA (e->origin, frame->up, up, point);
+	VectorMA (ent->origin, frame->up, up, point);
 	VectorMA (point, frame->right, right, point);
 	glVertex3fv (point);
 
 	glTexCoord2f (1, 1);
-	VectorMA (e->origin, frame->down, up, point);
+	VectorMA (ent->origin, frame->down, up, point);
 	VectorMA (point, frame->right, right, point);
 	glVertex3fv (point);
 
@@ -360,6 +388,7 @@ int lastposenum0;
 
 int	lastposenum;
 
+
 /*
 =============
 GL_DrawAliasFrame
@@ -371,7 +400,7 @@ int gNoAlias;
 // End D3DQuake
 void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 {
-	float	alpha; // Baker 3.80x - added alpha for gl_ringalpha
+	float	alpha;
 	float 	l;
 	trivertx_t	*verts;
 	int		*order;
@@ -388,10 +417,11 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 
 	verts = (trivertx_t *)((byte *)paliashdr + paliashdr->posedata);
 	verts += posenum * paliashdr->poseverts;
+
 	order = (int *)((byte *)paliashdr + paliashdr->commands);
 
-	if (alpha < 1)  // Baker 3.60 - gl_ringalpha
-		glEnable (GL_BLEND);  // Baker 3.60 - gl_ringalpha
+	if (alpha < 1)
+		glEnable (GL_BLEND);
 
 	while (1)
 	{
@@ -405,23 +435,25 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 			glBegin (GL_TRIANGLE_FAN);
 		}
 		else
-			glBegin (GL_TRIANGLE_STRIP);
-
-		do
 		{
+			glBegin (GL_TRIANGLE_STRIP);
+		}
+
+		do {
 			// texture coordinates come from the draw list
 			glTexCoord2f (((float *)order)[0], ((float *)order)[1]);
 			order += 2;
 
 			// normals and vertexes come from the frame list
 			l = shadedots[verts->lightnormalindex] * shadelight;
-#ifdef D3DQUAKE
+#ifdef D3DQ_WORKAROUND
 			if ( l > 1 ) l = 1; // Manually clamp
 #endif
 			// Baker 3.80x - This is no longer used
 			// glColor3f (l, l, l);
 			glColor4f (l, l, l, alpha); // Baker 3.80x - transparent weapon
 			glVertex3f (verts->v[0], verts->v[1], verts->v[2]);
+
 			verts++;
 		} while (--count);
 
@@ -429,9 +461,12 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 	}
 
 
-	if (alpha < 1) // Baker 3.60
-		glDisable (GL_BLEND);  // Baker 3.60
+	if (alpha < 1)
+		glDisable (GL_BLEND);
 
+#ifdef DX8QUAKE
+	glFinish ();
+#endif
 }
 
 /*
@@ -465,8 +500,8 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
 
     order = (int *)((byte *)paliashdr + paliashdr->commands);
 
-	if (alpha < 1)  // Baker 3.60 - gl_ringalpha
-		glEnable (GL_BLEND);  // Baker 3.60 -
+	if (alpha < 1)
+		glEnable (GL_BLEND);
 
     for (;;)
 	{
@@ -485,8 +520,7 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do
-		{
+		do {
 			// texture coordinates come from the draw list
 			glTexCoord2f (((float *)order)[0], ((float *)order)[1]);
 			order += 2;
@@ -503,18 +537,21 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
 
 			// blend the vertex positions from each frame together
 			glColor4f (l, l, l, alpha); // Baker 3.80x - transparent weapon
-			glVertex3f (
-				verts1->v[0] + (blend * d[0]),
-				verts1->v[1] + (blend * d[1]),
-				verts1->v[2] + (blend * d[2]));
+			glVertex3f (verts1->v[0] + (blend * d[0]), verts1->v[1] + (blend * d[1]), verts1->v[2] + (blend * d[2]));
 
 			verts1++;
 			verts2++;
 		} while (--count);
+
 		glEnd ();
 	}
-	if (alpha < 1) // Baker 3.60
-		glDisable (GL_BLEND);  // Baker 3.60
+
+	if (alpha < 1)
+		glDisable (GL_BLEND);
+
+#ifdef DX8QUAKE
+	glFinish ();
+#endif		
 }
 
 /*
@@ -526,12 +563,9 @@ extern	vec3_t			lightspot;
 
 void GL_DrawAliasShadow (aliashdr_t *paliashdr, int posenum)
 {
-
 	trivertx_t	*verts;
-
 	int		*order;
 	vec3_t	point;
-
 	float	height, lheight;
 	int		count;
 
@@ -556,7 +590,9 @@ void GL_DrawAliasShadow (aliashdr_t *paliashdr, int posenum)
 			glBegin (GL_TRIANGLE_FAN);
 		}
 		else
+		{
 			glBegin (GL_TRIANGLE_STRIP);
+		}
 
 		do {
 			// texture coordinates come from the draw list
@@ -601,12 +637,12 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 	int         count;
 	float       blend;
 
-	blend = (realtime - e->frame_start_time) / e->frame_interval;
+	blend = (cl.time - e->frame_start_time) / e->frame_interval;
 
 	if (blend > 1) blend = 1;
 
 	lheight = e->origin[2] - lightspot[2];
-	height  = -lheight + 1.0;
+	height  = 1.0 -lheight;
 
 	verts1 = (trivertx_t *)((byte *)paliashdr + paliashdr->posedata);
 	verts2 = verts1;
@@ -633,8 +669,7 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do
-		{
+		do {
 			order += 2;
 
 			point1[0] = verts1->v[0] * paliashdr->scale[0] + paliashdr->scale_origin[0];
@@ -653,9 +688,7 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 
 			VectorSubtract(point2, point1, d);
 
-			glVertex3f (point1[0] + (blend * d[0]),
-				point1[1] + (blend * d[1]),
-				height);
+			glVertex3f (point1[0] + (blend * d[0]), point1[1] + (blend * d[1]), height);
 
 			verts1++;
 			verts2++;
@@ -665,11 +698,9 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 	}
 }
 
-
 /*
 =================
 R_SetupAliasFrame
-
 =================
 */
 void R_SetupAliasFrame (int frame, aliashdr_t *paliashdr)
@@ -694,7 +725,6 @@ void R_SetupAliasFrame (int frame, aliashdr_t *paliashdr)
 
 	GL_DrawAliasFrame (paliashdr, pose);
 }
-
 
 /*
  =================
@@ -725,41 +755,39 @@ void R_SetupAliasBlendedFrame (int frame, aliashdr_t *paliashdr, entity_t* e)
 	}
 	else
 	{
-	/* One tenth of a second is a good for most Quake animations.
-	If the nextthink is longer then the animation is usually meant to pause
-	(e.g. check out the shambler magic animation in shambler.qc).  If its
-	shorter then things will still be smoothed partly, and the jumps will be
-	less noticable because of the shorter time.  So, this is probably a good
-		assumption. */
+// One tenth of a second is a good for most Quake animations.
+// If the nextthink is longer then the animation is usually meant to pause
+// (e.g. check out the shambler magic animation in shambler.qc). If its
+// shorter then things will still be smoothed partly, and the jumps will be
+// less noticable because of the shorter time. So, this is probably a good assumption.
 		e->frame_interval = 0.1;
 	}
 
-	if (e->pose2 != pose)
+	if (e->currpose != pose)
 	{
-		e->frame_start_time = realtime;
-		e->pose1 = e->pose2;
-		e->pose2 = pose;
+		e->frame_start_time = cl.time;
+		e->lastpose = e->currpose;
+		e->currpose = pose;
 		blend = 0;
 	}
 	else
 	{
-		blend = (realtime - e->frame_start_time) / e->frame_interval;
+		blend = (cl.time - e->frame_start_time) / e->frame_interval;
 	}
 
-	// wierd things start happening if blend passes 1
-	if (cl.paused || blend > 1) blend = 1;
+	// weird things start happening if blend passes 1
+	if (cl.paused || blend > 1)
+		blend = 1;
 
-	GL_DrawAliasBlendedFrame (paliashdr, e->pose1, e->pose2, blend);
+	GL_DrawAliasBlendedFrame (paliashdr, e->lastpose, e->currpose, blend);
 }
-
-
 
 /*
 =================
 R_DrawAliasModel
 =================
 */
-void R_DrawAliasModel (entity_t *e)
+void R_DrawAliasModel (entity_t *ent)
 {
 	int			client_no;
 	int			lnum;
@@ -780,28 +808,23 @@ void R_DrawAliasModel (entity_t *e)
 	if (R_CullBox (mins, maxs))
 		return;
 
-
 	VectorCopy (currententity->origin, r_entorigin);
 	VectorSubtract (r_origin, r_entorigin, modelorg);
 
-	//
 	// get lighting information
-	//
 
 	ambientlight = shadelight = R_LightPoint (currententity->origin);
 
-	// allways give the gun some light
-	if (e == &cl.viewent && ambientlight < 24)
+	// always give the gun some light
+	if (ent == &cl.viewent && ambientlight < 24)
 		ambientlight = shadelight = 24;
 
 	for (lnum=0 ; lnum<MAX_DLIGHTS ; lnum++)
 	{
 		if (cl_dlights[lnum].die >= cl.time)
 		{
-			VectorSubtract (currententity->origin,
-							cl_dlights[lnum].origin,
-							dist);
-			add = cl_dlights[lnum].radius - Length(dist);
+			VectorSubtract (currententity->origin, cl_dlights[lnum].origin, dist);
+			add = cl_dlights[lnum].radius - VectorLength(dist);
 
 			if (add > 0) {
 				ambientlight += add;
@@ -833,18 +856,16 @@ void R_DrawAliasModel (entity_t *e)
 	ambientlight = gammatable[(int) ambientlight];	// JPG 3.02 - gamma correction
 	shadelight = gammatable[(int) shadelight];		// JPG 3.02 - gamma correction
 
-	shadedots = r_avertexnormal_dots[((int)(e->angles[1] * (SHADEDOT_QUANT / 360.0))) & (SHADEDOT_QUANT - 1)];
+	shadedots = r_avertexnormal_dots[((int)(ent->angles[1] * (SHADEDOT_QUANT / 360.0))) & (SHADEDOT_QUANT - 1)];
 	shadelight = shadelight / 200.0;
 
-	an = e->angles[1]/180*M_PI;
+	an = ent->angles[1]/180*M_PI;
 	shadevector[0] = cos(-an);
 	shadevector[1] = sin(-an);
 	shadevector[2] = 1;
 	VectorNormalize (shadevector);
 
-	//
 	// locate the proper data
-	//
 	paliashdr = (aliashdr_t *)Mod_Extradata (currententity->model);
 
 	c_alias_polys += paliashdr->numtris;
@@ -856,11 +877,11 @@ void R_DrawAliasModel (entity_t *e)
     glPushMatrix ();
 
      // fenix@io.com: model transform interpolation
-	if (gl_interpolate_transform.value && !torch && (client_no != cl.viewentity || !chase_active.value || !cls.demoplayback)) // Don't interpolate the player in chasecam during demo playback
-		R_BlendedRotateForEntity (e);
-	else {
-		R_RotateForEntity (e);
-	}
+	 // Don't interpolate the player in chasecam during demo playback
+	if (gl_interpolate_transform.value && !torch && (client_no != cl.viewentity || !chase_active.value || !cls.demoplayback))
+		R_BlendedRotateForEntity (ent);
+	else
+		R_RotateForEntity (ent);
 
 	if (!strcmp (clmodel->name, "progs/eyes.mdl") && gl_doubleeyes.value) {
 		glTranslatef (paliashdr->scale_origin[0], paliashdr->scale_origin[1], paliashdr->scale_origin[2] - (22 + 8));
@@ -876,8 +897,7 @@ void R_DrawAliasModel (entity_t *e)
 
 	// we can't dynamically colormap textures, so they are cached
 	// seperately for the players.  Heads are just uncolored.
-	if (currententity->colormap != vid.colormap && !gl_nocolors.value)
-	{
+	if (currententity->colormap != vid.colormap && !gl_nocolors.value) {
 		client_no = currententity - cl_entities;
 		if (client_no >= 1 && client_no<=cl.maxclients /* && !strcmp (currententity->model->name, "progs/player.mdl") */)
 		    GL_Bind(playertextures - 1 + client_no);
@@ -928,7 +948,7 @@ void R_DrawAliasModel (entity_t *e)
 		if (!strncmp (clmodel->name, "progs/bolt", 10))
 			return;
 		glPushMatrix ();
-		R_RotateForEntity (e);
+		R_RotateForEntity (ent);
 		glDisable (GL_TEXTURE_2D);
 		glEnable (GL_BLEND);
 
@@ -949,7 +969,32 @@ void R_DrawAliasModel (entity_t *e)
 		glColor4f (1,1,1,1);
 		glPopMatrix ();
 	}
+}
 
+void SortEntitiesByTransparency (void)
+{
+	int		i, j;
+	entity_t	*tmp;
+
+	for (i = 0 ; i < cl_numvisedicts ; i++)
+	{
+		if (cl_visedicts[i]->istransparent)
+		{
+			for (j = cl_numvisedicts - 1 ; j > i ; j--)
+			{
+				// if not transparent, exchange with transparent
+				if (!(cl_visedicts[j]->istransparent))
+				{
+					tmp = cl_visedicts[i];
+					cl_visedicts[i] = cl_visedicts[j];
+					cl_visedicts[j] = tmp;
+					break;
+				}
+			}
+			if (j == i)
+				return;
+		}
+	}
 }
 
 /*
@@ -964,6 +1009,10 @@ void R_DrawEntitiesOnList (void)
 	if (!r_drawentities.value)
 		return;
 
+	// Baker: http://forums.inside3d.com/viewtopic.php?p=13458
+	//        Transparent entities need sorted to ensure items behind transparent objects get drawn (z-buffer)
+	SortEntitiesByTransparency ();
+
 	// draw sprites seperately, because of alpha blending
 	for (i=0 ; i<cl_numvisedicts ; i++)
 	{
@@ -976,7 +1025,22 @@ void R_DrawEntitiesOnList (void)
 			break;
 
 		case mod_brush:
+
+				// Get rid of Z-fighting for textures by offsetting the
+				// drawing of entity models compared to normal polygons.
+				// (Only works if gl_ztrick is turned off)
+				if(!gl_ztrick.value)
+				{
+					glEnable(GL_POLYGON_OFFSET_FILL);
+				}
+
 			R_DrawBrushModel (currententity);
+
+				if(!gl_ztrick.value)
+				{
+					glDisable(GL_POLYGON_OFFSET_FILL);
+				}
+
 			break;
 
 		default:
@@ -992,6 +1056,9 @@ void R_DrawEntitiesOnList (void)
 		{
 		case mod_sprite:
 			R_DrawSpriteModel (currententity);
+			break;
+
+		default:
 			break;
 		}
 	}
@@ -1013,7 +1080,7 @@ void R_DrawViewModel (void)
 	int			ambientlight, shadelight;
 
 	// fenix@io.com: model transform interpolation
-    float		old_interpolate_model_transform;
+    float		old_interpolate_transform;
 
 	if (!r_drawviewmodel.value)
 		return;
@@ -1056,7 +1123,7 @@ void R_DrawViewModel (void)
 			continue;
 
 		VectorSubtract (currententity->origin, dl->origin, dist);
-		add = dl->radius - Length(dist);
+		add = dl->radius - VectorLength(dist);
 		if (add > 0)
 			ambientlight += add;
 	}
@@ -1077,10 +1144,10 @@ void R_DrawViewModel (void)
 	glDepthRange (gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
 
         // fenix@io.com: model transform interpolation
-    old_interpolate_model_transform = gl_interpolate_transform.value;
+    old_interpolate_transform = gl_interpolate_transform.value;
     gl_interpolate_transform.value = false;
 	R_DrawAliasModel (currententity);
-    gl_interpolate_transform.value = old_interpolate_model_transform;
+    gl_interpolate_transform.value = old_interpolate_transform;
 
 	glDepthRange (gldepthmin, gldepthmax);
 }
@@ -1091,11 +1158,9 @@ void R_DrawViewModel (void)
 R_PolyBlend
 ============
 */
-byte		color_white[4] = {255, 255, 255, 0}; // Baker hwgamma support
-byte		color_black[4] = {0, 0, 0, 0}; // Baker end hwgamma support
 void R_PolyBlend (void)
 {
-#ifndef D3DQUAKE
+#ifdef SUPPORTS_ENHANCED_GAMMA
 	// Baker hwgamma support
 	if (using_hwgamma) {
 		if ((vid_hwgamma_enabled && gl_hwblend.value) || !v_blend[3])
@@ -1120,7 +1185,7 @@ void R_PolyBlend (void)
 
 		glColor3ubv (color_white);
 	} else
-#endif
+#endif // !d3dquake
 	{ // Baker end hwgamma support
 		if (!gl_polyblend.value)
 			return;
@@ -1141,7 +1206,7 @@ void R_PolyBlend (void)
 
 		glColor4fv (v_blend);
 
-#ifdef D3DQUAKE
+#ifdef D3DQ_WORKAROUND
 	/* Work around GeForce D3D driver bug where drawing abutting
 	 * triangles with the viewport set to something less than full screen
 	 * causes a visible seam. Draw one triangle instead of one quad.
@@ -1172,12 +1237,12 @@ void R_PolyBlend (void)
 R_BrightenScreen
 ================
 */
-#ifndef D3DQUAKE
+#ifdef SUPPORTS_ENHANCED_GAMMA
 // baker hwgamma support - if disabled, this should not be called
 void R_BrightenScreen (void)
 {
-	float		f;
 	extern float vid_gamma;
+	float		f;
 
 	if (vid_hwgamma_enabled || v_contrast.value <= 1.0)
 		return;
@@ -1292,48 +1357,6 @@ void R_SetFrustum (void)
 	}
 }
 
-
-/*
-===============
-R_SetFrustum - Baker 3.80x - attempted fov fix
-===============
-*/ /*
-void R_SetFrustum (void)
-{
-	int		i;
-
-	if (r_refdef.fov_x == 90)
-	{
-		// front side is visible
-
-		VectorAdd (vpn, vright, frustum[0].normal);
-		VectorSubtract (vpn, vright, frustum[1].normal);
-
-		VectorAdd (vpn, vup, frustum[2].normal);
-		VectorSubtract (vpn, vup, frustum[3].normal);
-	}
-	else
-	{
-		// rotate VPN right by FOV_X/2 degrees
-		RotatePointAroundVector( frustum[0].normal, vup, vpn, -(90-r_refdef.fov_x / 2 ) );
-		// rotate VPN left by FOV_X/2 degrees
-		RotatePointAroundVector( frustum[1].normal, vup, vpn, 90-r_refdef.fov_x / 2 );
-		// rotate VPN up by FOV_X/2 degrees
-		RotatePointAroundVector( frustum[2].normal, vright, vpn, 90-r_refdef.fov_y / 2 );
-		// rotate VPN down by FOV_X/2 degrees
-		RotatePointAroundVector( frustum[3].normal, vright, vpn, -( 90 - r_refdef.fov_y / 2 ) );
-	}
-
-	for (i=0 ; i<4 ; i++)
-	{
-		frustum[i].type = PLANE_ANYZ;
-		frustum[i].dist = DotProduct (r_origin, frustum[i].normal);
-		frustum[i].signbits = SignbitsForPlane (&frustum[i]);
-	}
-} */
-
-
-
 /*
 ===============
 R_SetupFrame
@@ -1360,18 +1383,18 @@ void R_SetupFrame (void)
 	r_viewleaf = Mod_PointInLeaf (r_origin, cl.worldmodel);
 
 	V_SetContentsColor (r_viewleaf->contents);
+
 	V_CalcBlend ();
+
 
 	r_cache_thrash = false;
 
 	c_brush_polys = 0;
 	c_alias_polys = 0;
-
 }
 
 
-void MYgluPerspective( GLdouble fovy, GLdouble aspect,
-		     GLdouble zNear, GLdouble zFar )
+void MYgluPerspective( GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar )
 {
    GLdouble xmin, xmax, ymin, ymax;
 
@@ -1463,6 +1486,101 @@ void R_SetupGL (void)
 	glEnable(GL_DEPTH_TEST);
 }
 
+cvar_t r_waterwarp = {"r_waterwarp", "0", true}; // Baker 3.60 - Save this to config now
+
+/*
+===============
+R_Init
+===============
+*/
+void R_Init (void)
+{
+	extern cvar_t gl_finish;
+	extern cvar_t r_truegunangle;
+	extern cvar_t r_farclip;
+	extern cvar_t gl_ringalpha;
+	extern cvar_t gl_fullbright;
+	extern void R_Envmap_f (void);
+
+	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);
+	Cmd_AddCommand ("envmap", R_Envmap_f);
+	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);
+
+#ifdef SUPPORTS_SKYBOX
+	Cmd_AddCommand ("sky", R_SkyCommand_f);
+	Cmd_AddCommand ("loadsky", R_SkyCommand_f);
+#endif
+
+	Cvar_RegisterVariable (&r_norefresh, NULL);
+	Cvar_RegisterVariable (&r_lightmap, NULL);
+	Cvar_RegisterVariable (&r_fullbright, NULL);
+	Cvar_RegisterVariable (&r_drawentities, NULL);
+	Cvar_RegisterVariable (&r_drawviewmodel, NULL);
+	Cvar_RegisterVariable (&gl_ringalpha, NULL);
+	Cvar_RegisterVariable (&r_truegunangle, NULL);
+
+	Cvar_RegisterVariable (&r_shadows, NULL);
+	Cvar_RegisterVariable (&r_mirroralpha, NULL);
+	Cvar_RegisterVariable (&r_wateralpha, NULL);
+	Cvar_RegisterVariable (&r_dynamic, NULL);
+	Cvar_RegisterVariable (&r_novis, NULL);
+	Cvar_RegisterVariable (&r_speeds, NULL);
+	Cvar_RegisterVariable (&r_waterwarp, NULL);
+	Cvar_RegisterVariable (&r_farclip, NULL);
+
+	// fenix@io.com: register new cvar for model interpolation
+	Cvar_RegisterVariable (&gl_interpolate_animation, NULL);
+	Cvar_RegisterVariable (&gl_interpolate_transform, NULL);
+	Cvar_RegisterVariable (&gl_interpolate_weapon, NULL);
+
+	Cvar_RegisterVariable (&gl_finish, NULL);
+	Cvar_RegisterVariable (&gl_texsort, NULL);
+
+ 	if (gl_mtexable)
+		Cvar_SetValue ("gl_texsort", 0.0);
+
+	Cvar_RegisterVariable (&gl_cull, NULL);
+	Cvar_RegisterVariable (&gl_smoothmodels, NULL);
+	Cvar_RegisterVariable (&gl_affinemodels, NULL);
+	Cvar_RegisterVariable (&gl_polyblend, NULL);
+	Cvar_RegisterVariable (&gl_flashblend, NULL);
+	Cvar_RegisterVariable (&gl_playermip, NULL);
+	Cvar_RegisterVariable (&gl_nocolors, NULL);
+
+	Cvar_RegisterVariable (&gl_keeptjunctions, NULL);
+	Cvar_RegisterVariable (&gl_reporttjunctions, NULL);
+	Cvar_RegisterVariable (&gl_fullbright, NULL);
+
+	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
+#ifdef SUPPORTS_SKYBOX
+	Cvar_RegisterVariable (&r_oldsky, NULL);
+#endif
+
+#ifdef SUPPORTS_FOG // Baker: d3dquake hates fog
+	Cvar_RegisterVariable (&gl_fogenable, NULL);
+	Cvar_RegisterVariable (&gl_fogstart, NULL);
+	Cvar_RegisterVariable (&gl_fogend, NULL);
+	Cvar_RegisterVariable (&gl_fogdensity, NULL);
+	Cvar_RegisterVariable (&gl_fogalpha, NULL);
+	Cvar_RegisterVariable (&gl_fogred, NULL);
+	Cvar_RegisterVariable (&gl_fogblue, NULL);
+	Cvar_RegisterVariable (&gl_foggreen, NULL);
+#endif
+
+	R_InitTextures ();
+	R_InitParticles ();
+	R_InitParticleTexture ();
+
+#ifdef GLTEST
+	Test_Init ();
+#endif
+
+	playertextures = texture_extension_number;
+	texture_extension_number += 16;
+}
+
+
+
 /*
 ================
 R_RenderScene
@@ -1498,24 +1616,26 @@ void R_RenderScene (void)
 
 }
 
-int	gl_ztrickframe = 0;
+
 
 /*
 =============
 R_Clear
 =============
 */
+int	gl_ztrickframe = 0;
+
 void R_Clear (void)
 {
 	int	clearbits = 0;
 
-#ifndef D3DQUAKE
+#ifdef SUPPORTS_ENHANCED_GAMMA
 	if (using_hwgamma) // Baker hwgamma
 		if (gl_clear.value || (!vid_hwgamma_enabled && v_contrast.value > 1))
 			clearbits |= GL_COLOR_BUFFER_BIT;
-#endif
+#endif // D3D no support v_constrast
 
-	if (r_mirroralpha.value != 1.0)
+	if (r_mirroralpha.value < 1.0) // Baker 3.99: was != 1.0, changed in event gets set to # higher than 1.0
 	{
 		if (gl_clear.value)
 			glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1525,20 +1645,16 @@ void R_Clear (void)
 		gldepthmax = 0.5;
 		glDepthFunc (GL_LEQUAL);
 	}
-	else if (gl_ztrick.value)
-	{
+	else if (gl_ztrick.value) {
 		if (gl_clear.value)
 			glClear (GL_COLOR_BUFFER_BIT);
 
 		gl_ztrickframe = !gl_ztrickframe;
-		if (gl_ztrickframe)
-		{
+		if (gl_ztrickframe) {
 			gldepthmin = 0;
 			gldepthmax = 0.49999;
 			glDepthFunc (GL_LEQUAL);
-		}
-		else
-		{
+		} else {
 			gldepthmin = 1;
 			gldepthmax = 0.5;
 			glDepthFunc (GL_GEQUAL);
@@ -1547,10 +1663,13 @@ void R_Clear (void)
 	else
 	{
 		// Baker hwgamma support
+#ifdef SUPPORTS_ENHANCED_GAMMA
 		if (using_hwgamma) {
 			clearbits |= GL_DEPTH_BUFFER_BIT;
 			glClear (clearbits);
-		} else {
+		} else
+#endif
+		{
 			if (gl_clear.value)
 				glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			else
@@ -1651,8 +1770,8 @@ r_refdef must be set before the first call
 */
 void R_RenderView (void)
 {
-	double	time1 = 0, time2;
-//	GLfloat colors[4] = {(GLfloat) 0.0, (GLfloat) 0.0, (GLfloat) 1, (GLfloat) 0.20};
+	double	time1 = 0.0, time2;
+	GLfloat colors[4] = {(GLfloat) 0.0, (GLfloat) 0.0, (GLfloat) 1, (GLfloat) 0.20};
 
 	if (r_norefresh.value)
 		return;
@@ -1663,7 +1782,7 @@ void R_RenderView (void)
 	if (r_speeds.value)
 	{
 		glFinish ();
-		time1 = Sys_FloatTime ();
+		time1 = Sys_DoubleTime ();
 		c_brush_polys = 0;
 		c_alias_polys = 0;
 	}
@@ -1677,13 +1796,32 @@ void R_RenderView (void)
 
 	// render normal view
 
+#ifdef SUPPORTS_FOG //Baker: d3dquake hates
+// NATAS - BramBo - fog code
+
+if( gl_fogenable.value ) {
+	glFogi(GL_FOG_MODE, GL_LINEAR);
+	colors[0] = gl_fogred.value;
+	colors[1] = gl_foggreen.value;
+	colors[2] = gl_fogblue.value;
+	glFogfv(GL_FOG_COLOR, colors);
+	glFogf(GL_FOG_START, gl_fogstart.value);
+	glFogf(GL_FOG_END, gl_fogend.value);
+	glFogf(GL_FOG_DENSITY, gl_fogdensity.value);
+	glEnable(GL_FOG);
+} else {
+	glDisable(GL_FOG);
+}
+#endif
+
 	R_RenderScene ();
 	R_DrawViewModel ();
 	R_DrawWaterSurfaces ();
 
-//  More fog right here :)
-//	glDisable(GL_FOG);
-//  End of all fog code...
+#ifdef SUPPORTS_FOG
+   // NATAS - BramBo - Fog code
+   glDisable(GL_FOG);
+#endif
 
 	// render mirror view
 	R_Mirror ();
@@ -1692,8 +1830,7 @@ void R_RenderView (void)
 
 	if (r_speeds.value)
 	{
-//		glFinish ();
-		time2 = Sys_FloatTime ();
+		time2 = Sys_DoubleTime ();
 		Con_Printf ("%3i ms  %4i wpoly %4i epoly\n", (int)((time2-time1)*1000), c_brush_polys, c_alias_polys);
 	}
 }

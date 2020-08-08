@@ -49,7 +49,9 @@ static MMRESULT (ACMAPI *qacmDriverClose)(HACMDRIVER, DWORD);
 static HINSTANCE avi_handle = NULL, acm_handle = NULL;
 
 PAVIFILE	m_file;
-PAVISTREAM	m_uncompressed_video_stream, m_compressed_video_stream, m_audio_stream;
+PAVISTREAM	m_uncompressed_video_stream;
+PAVISTREAM  m_compressed_video_stream;
+PAVISTREAM  m_audio_stream;
 
 unsigned long m_codec_fourcc;
 int			m_video_frame_counter;
@@ -397,6 +399,7 @@ void Capture_WriteVideo (byte *pixel_buffer)
 	int	size = vid.width * vid.height * 3;
 #endif
 
+	// check frame size (TODO: other things too?) hasn't changed
 	if (m_video_frame_size != size)
 	{
 		Con_Printf ("ERROR: Frame size changed\n");

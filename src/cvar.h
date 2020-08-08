@@ -9,7 +9,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -32,9 +32,10 @@ file when the game is quit:
 cvar_t	r_draworder = {"r_draworder","1"};
 cvar_t	scr_screensize = {"screensize","1",true};
 
-Cvars must be registered before use, or they will have a 0 value instead of the float interpretation of the string.  Generally, all cvar_t declarations should be registered in the apropriate init function before any console commands are executed:
-Cvar_RegisterVariable (&host_framerate);
-
+Cvars must be registered before use, or they will have a 0 value instead of the
+float interpretation of the string. Generally, all cvar_t declarations should be
+registered in the apropriate init function before any console commands are executed:
+Cvar_RegisterVariable (&host_framerate, NULL);
 
 C code usually just references a cvar in place:
 if ( r_draworder.value )
@@ -78,25 +79,30 @@ void 	Cvar_Set (char *var_name, char *value);
 void	Cvar_SetValue (char *var_name, float value);
 // expands value to a string and calls Cvar_Set
 
-float	Cvar_VariableValue (char *var_name);
+
 // returns 0 if not defined or non numeric
+float	Cvar_VariableValue (char *var_name);
 
-char	*Cvar_VariableString (char *var_name);
 // returns an empty string if not defined
+char	*Cvar_VariableString (char *var_name);
 
-char 	*Cvar_CompleteVariable (char *partial);
+
 // attempts to match a partial variable name for command line completion
 // returns NULL if nothing fits
+char 	*Cvar_CompleteVariable (char *partial);
 
-qboolean Cvar_Command (void);
+
 // called by Cmd_ExecuteString when Cmd_Argv(0) doesn't match a known
 // command.  Returns true if the command was a variable reference that
 // was handled. (print or change)
+qboolean Cvar_Command (void);
 
-void 	Cvar_WriteVariables (FILE *f);
 // Writes lines containing "set variable value" for all variables
 // with the archive flag set to true.
+void 	Cvar_WriteVariables (FILE *f);
 
 cvar_t *Cvar_FindVar (char *var_name);
+void Cvar_Init (void);
+
 
 extern cvar_t	*cvar_vars;

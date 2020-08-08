@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "asm_draw.h"
 #include "d_ifacea.h"
 
-#if	id386
+#if id386
 
 // !!! if these are changed, they must be changed in r_draw.c too !!!
 #define FULLY_CLIPPED_CACHED	0x80000000
@@ -834,5 +834,5 @@ LClampP2:
 LClampP3:
 	ret
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 

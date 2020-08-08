@@ -57,16 +57,14 @@ StripLength
 */
 int	StripLength (int starttri, int startv)
 {
-	int			m1, m2;
-	int			j;
+	int		m1, m2, j, k;
 	mtriangle_t	*last, *check;
-	int			k;
 
 	used[starttri] = 2;
 
 	last = &triangles[starttri];
 
-	stripverts[0] = last->vertindex[(startv)%3];
+	stripverts[0] = last->vertindex[(startv+0)%3];
 	stripverts[1] = last->vertindex[(startv+1)%3];
 	stripverts[2] = last->vertindex[(startv+2)%3];
 
@@ -82,6 +80,7 @@ nexttri:
 	{
 		if (check->facesfront != last->facesfront)
 			continue;
+
 		for (k=0 ; k<3 ; k++)
 		{
 			if (check->vertindex[k] != m1)
@@ -109,8 +108,8 @@ nexttri:
 			goto nexttri;
 		}
 	}
-done:
 
+done:
 	// clear the temp used flags
 	for (j=starttri+1 ; j<pheader->numtris ; j++)
 		if (used[j] == 2)
@@ -126,16 +125,14 @@ FanLength
 */
 int	FanLength (int starttri, int startv)
 {
-	int		m1, m2;
-	int		j;
+	int		m1, m2, j, k;
 	mtriangle_t	*last, *check;
-	int		k;
 
 	used[starttri] = 2;
 
 	last = &triangles[starttri];
 
-	stripverts[0] = last->vertindex[(startv)%3];
+	stripverts[0] = last->vertindex[(startv+0)%3];
 	stripverts[1] = last->vertindex[(startv+1)%3];
 	stripverts[2] = last->vertindex[(startv+2)%3];
 
@@ -145,13 +142,13 @@ int	FanLength (int starttri, int startv)
 	m1 = last->vertindex[(startv+0)%3];
 	m2 = last->vertindex[(startv+2)%3];
 
-
 	// look for a matching triangle
 nexttri:
 	for (j=starttri+1, check=&triangles[starttri+1] ; j<pheader->numtris ; j++, check++)
 	{
 		if (check->facesfront != last->facesfront)
 			continue;
+
 		for (k=0 ; k<3 ; k++)
 		{
 			if (check->vertindex[k] != m1)
@@ -176,8 +173,8 @@ nexttri:
 			goto nexttri;
 		}
 	}
-done:
 
+done:
 	// clear the temp used flags
 	for (j=starttri+1 ; j<pheader->numtris ; j++)
 		if (used[j] == 2)
@@ -186,28 +183,19 @@ done:
 	return stripcount;
 }
 
-
 /*
 ================
 BuildTris
 
-Generate a list of trifans or strips
-for the model, which holds for all frames
+Generate a list of trifans or strips for the model, which holds for all frames
 ================
 */
 void BuildTris (void)
 {
-	int		i, j, k;
-	int		startv;
-	float	s, t;
-	int		len, bestlen, besttype;
-	int		bestverts[1024];
-	int		besttris[1024];
-	int		type;
+	int		i, j, k, startv, len, bestlen, besttype, type, bestverts[1024], besttris[1024];
+	float		s, t;
 
-	//
 	// build tristrips
-	//
 	numorder = 0;
 	numcommands = 0;
 	memset (used, 0, sizeof(used));
@@ -223,10 +211,7 @@ void BuildTris (void)
 		{
 			for (startv =0 ; startv < 3 ; startv++)
 			{
-				if (type == 1)
-					len = StripLength (i, startv);
-				else
-					len = FanLength (i, startv);
+				len = (type == 1) ? StripLength (i, startv) : FanLength (i, startv);
 				if (len > bestlen)
 				{
 					besttype = type;
@@ -243,10 +228,7 @@ void BuildTris (void)
 		for (j=0 ; j<bestlen ; j++)
 			used[besttris[j]] = 1;
 
-		if (besttype == 1)
-			commands[numcommands++] = (bestlen+2);
-		else
-			commands[numcommands++] = -(bestlen+2);
+		commands[numcommands++] = (besttype == 1) ? (bestlen+2) : -(bestlen+2);
 
 		for (j=0 ; j<bestlen+2 ; j++)
 		{
@@ -276,29 +258,25 @@ void BuildTris (void)
 }
 
 
-void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr)
-{
-   int         i, j;
-   int         *cmds;
-   trivertx_t   *verts;
+void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr) {
+	int		i, j, *cmds;
+	trivertx_t	*verts;
 
-   BuildTris ();      // trifans or lists
+	// Tonik: don't cache anything, because it seems just as fast
+	// (if not faster) to rebuild the tris instead of loading them from disk
+		BuildTris ();		// trifans or lists
 
-   // save the data out
-   paliashdr->poseverts = numorder;
+	// save the data out
+	paliashdr->poseverts = numorder;
 
-   cmds = Hunk_Alloc (numcommands * 4);
-   paliashdr->commands = (byte *)cmds - (byte *)paliashdr;
-   memcpy (cmds, commands, numcommands * 4);
-   verts = Hunk_Alloc (paliashdr->numposes * paliashdr->poseverts * sizeof(trivertx_t));
-   paliashdr->posedata = (byte *)verts - (byte *)paliashdr;
+	cmds = Hunk_Alloc (numcommands * 4);
+	paliashdr->commands = (byte *)cmds - (byte *)paliashdr;
+	memcpy (cmds, commands, numcommands * 4);
 
-   for (i=0 ; i<paliashdr->numposes ; i++)
-   {
-      for (j=0 ; j<numorder ; j++)
-      {
-         *verts++ = poseverts[i][vertexorder[j]];
-      }
-   }
-} 
+	verts = Hunk_Alloc (paliashdr->numposes * paliashdr->poseverts * sizeof(trivertx_t) );
+	paliashdr->posedata = (byte *)verts - (byte *)paliashdr;
+	for (i=0 ; i<paliashdr->numposes ; i++)
+		for (j=0 ; j<numorder ; j++)
+			*verts++ = poseverts[i][vertexorder[j]];
+}
 

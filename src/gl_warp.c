@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -22,6 +22,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 
 extern	model_t	*loadmodel;
+
+#ifdef SUPPORTS_SKYBOX
+static int	sky_width[6] = {512, 512, 512, 512, 512, 512};
+static int	sky_height[6] = {512, 512, 512, 512, 512, 512};
+#endif
 
 int		skytexturenum;
 
@@ -41,7 +46,7 @@ void BoundPoly (int numverts, float *verts, vec3_t mins, vec3_t maxs)
 	mins[0] = mins[1] = mins[2] = 9999;
 	maxs[0] = maxs[1] = maxs[2] = -9999;
 	v = verts;
-	for (i=0 ; i<numverts ; i++)
+	for (i=0 ; i<numverts ; i++) {
 		for (j=0 ; j<3 ; j++, v++)
 		{
 			if (*v < mins[j])
@@ -49,6 +54,7 @@ void BoundPoly (int numverts, float *verts, vec3_t mins, vec3_t maxs)
 			if (*v > maxs[j])
 				maxs[j] = *v;
 		}
+	}
 }
 
 void SubdividePolygon (int numverts, float *verts)
@@ -63,16 +69,18 @@ void SubdividePolygon (int numverts, float *verts)
 	float	frac;
 	glpoly_t	*poly;
 	float	s, t;
+	float		subdivide_size;
 
 	if (numverts > 60)
 		Sys_Error ("numverts = %i", numverts);
 
+	subdivide_size = max(1, gl_subdivide_size.value);
 	BoundPoly (numverts, verts, mins, maxs);
 
 	for (i=0 ; i<3 ; i++)
 	{
 		m = (mins[i] + maxs[i]) * 0.5;
-		m = gl_subdivide_size.value * floor (m/gl_subdivide_size.value + 0.5);
+		m = subdivide_size * floor (m/subdivide_size + 0.5);
 		if (maxs[i] - m < 8)
 			continue;
 		if (m - mins[i] < 8)
@@ -153,9 +161,7 @@ void GL_SubdivideSurface (msurface_t *fa)
 
 	warpface = fa;
 
-	//
 	// convert edges back to a normal polygon
-	//
 	numverts = 0;
 	for (i=0 ; i<fa->numedges ; i++)
 	{
@@ -174,6 +180,8 @@ void GL_SubdivideSurface (msurface_t *fa)
 
 //=========================================================
 
+#define	TURBSINSIZE	256
+#define TURBSCALE ((float) TURBSINSIZE / (2 * M_PI))
 
 
 // speed up sin calculations - Ed
@@ -181,7 +189,7 @@ float	turbsin[] =
 {
 	#include "gl_warp_sin.h"
 };
-#define TURBSCALE (256.0 / (2 * M_PI))
+
 
 /*
 =============
@@ -218,9 +226,6 @@ void EmitWaterPolys (msurface_t *fa)
 		glEnd ();
 	}
 }
-
-
-
 
 /*
 =============
@@ -259,6 +264,9 @@ void EmitSkyPolys (msurface_t *fa)
 		}
 		glEnd ();
 	}
+#ifdef DX8QUAKE
+	glFinish ();
+#endif
 }
 
 /*
@@ -291,7 +299,7 @@ void EmitBothSkyLayers (msurface_t *fa)
 	glDisable (GL_BLEND);
 }
 
-#ifndef QUAKE2
+#ifndef SUPPORTS_SKYBOX
 /*
 =================
 R_DrawSkyChain
@@ -323,7 +331,6 @@ void R_DrawSkyChain (msurface_t *s)
 }
 
 #endif
-
 /*
 =================================================================
 
@@ -332,7 +339,7 @@ void R_DrawSkyChain (msurface_t *s)
 =================================================================
 */
 
-#ifdef QUAKE2
+#ifdef SUPPORTS_SKYBOX
 
 
 #define	SKY_TEX		2000
@@ -403,7 +410,7 @@ void LoadPCX (FILE *f)
 	fseek (f, sizeof(pcxbuf) - 4, SEEK_SET);
 
 	count = (pcx->xmax+1) * (pcx->ymax+1);
-	pcx_rgb = malloc( count * 4);
+	pcx_rgb = Q_malloc( count * 4);
 
 	for (y=0 ; y<=pcx->ymax ; y++)
 	{
@@ -490,7 +497,7 @@ void LoadTGA (FILE *fin)
 	targa_header.id_length = fgetc(fin);
 	targa_header.colormap_type = fgetc(fin);
 	targa_header.image_type = fgetc(fin);
-	
+
 	targa_header.colormap_index = fgetLittleShort(fin);
 	targa_header.colormap_length = fgetLittleShort(fin);
 	targa_header.colormap_size = fgetc(fin);
@@ -501,11 +508,11 @@ void LoadTGA (FILE *fin)
 	targa_header.pixel_size = fgetc(fin);
 	targa_header.attributes = fgetc(fin);
 
-	if (targa_header.image_type!=2 
-		&& targa_header.image_type!=10) 
+	if (targa_header.image_type!=2
+		&& targa_header.image_type!=10)
 		Sys_Error ("LoadTGA: Only type 2 and 10 targa RGB images supported\n");
 
-	if (targa_header.colormap_type !=0 
+	if (targa_header.colormap_type !=0
 		|| (targa_header.pixel_size!=32 && targa_header.pixel_size!=24))
 		Sys_Error ("Texture_LoadTGA: Only 32 or 24 bit images supported (no colormaps)\n");
 
@@ -513,11 +520,11 @@ void LoadTGA (FILE *fin)
 	rows = targa_header.height;
 	numPixels = columns * rows;
 
-	targa_rgba = malloc (numPixels*4);
-	
+	targa_rgba = Q_malloc (numPixels*4);
+
 	if (targa_header.id_length != 0)
 		fseek(fin, targa_header.id_length, SEEK_CUR);  // skip TARGA image comment
-	
+
 	if (targa_header.image_type==2) {  // Uncompressed, RGB images
 		for(row=rows-1; row>=0; row--) {
 			pixbuf = targa_rgba + row*columns*4;
@@ -525,7 +532,7 @@ void LoadTGA (FILE *fin)
 				unsigned char red,green,blue,alphabyte;
 				switch (targa_header.pixel_size) {
 					case 24:
-							
+
 							blue = getc(fin);
 							green = getc(fin);
 							red = getc(fin);
@@ -570,7 +577,7 @@ void LoadTGA (FILE *fin)
 								alphabyte = getc(fin);
 								break;
 					}
-	
+
 					for(j=0;j<packetSize;j++) {
 						*pixbuf++=red;
 						*pixbuf++=green;
@@ -618,14 +625,14 @@ void LoadTGA (FILE *fin)
 							else
 								goto breakOut;
 							pixbuf = targa_rgba + row*columns*4;
-						}						
+						}
 					}
 				}
 			}
 			breakOut:;
 		}
 	}
-	
+
 	fclose(fin);
 }
 
@@ -635,27 +642,51 @@ R_LoadSkys
 ==================
 */
 char	*suf[6] = {"rt", "bk", "lf", "ft", "up", "dn"};
-void R_LoadSkys (void)
+static char skybox_name[MAX_QPATH] = ""; // name of current skybox
+
+void R_LoadSkys (char *skybox)
 {
 	int		i;
 	FILE	*f;
-	char	name[64];
+	char		name[MAX_QPATH];
+
+	if (skybox == NULL) {
+		Con_DPrintf("Null skybox\n");
+		return;
+	}
+
+	if (skybox[0] == 0) {
+		// Setting skybox to nothing
+		strcpy (skybox_name, skybox);
+		Con_DPrintf ("skybox set to \"%s\"\n", skybox);
+		Cvar_SetValue ("r_oldsky", 1);
+		return;
+	}
+
+	if (!strcmp(skybox, skybox_name)) //no change
+	{
+		Cvar_SetValue ("r_oldsky", skybox_name[0] == 0);
+		return;
+	}
 
 	for (i=0 ; i<6 ; i++)
 	{
 		GL_Bind (SKY_TEX + i);
-		sprintf (name, "gfx/env/bkgtst%s.tga", suf[i]);
+		//snprintf (name, sizeof(name), "gfx/env/bkgtst%s.tga", suf[i]);
+		snprintf (name, sizeof(name), "gfx/env/%s%s.tga", skybox, suf[i]);
 		COM_FOpenFile (name, &f);
 		if (!f)
 		{
 			Con_Printf ("Couldn't load %s\n", name);
-			continue;
+			break;
 		}
 		LoadTGA (f);
 //		LoadPCX (f);
-
-		glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, targa_rgba);
-//		glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, pcx_rgb);
+#ifdef MACOSX_TEXRAM_CHECK
+                GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, sky_width[i], sky_height[i], 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
+#endif /* MACOSX */
+		glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, sky_width[i], sky_height[i], 0, GL_RGBA, GL_UNSIGNED_BYTE, targa_rgba);
+//		glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, sky_width[i], sky_height[i], GL_RGBA, GL_UNSIGNED_BYTE, pcx_rgb);
 
 		free (targa_rgba);
 //		free (pcx_rgb);
@@ -663,22 +694,121 @@ void R_LoadSkys (void)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	}
+
+	if (i == 6)
+	{
+		strcpy (skybox_name, skybox);
+		Con_DPrintf ("skybox set to \"%s\"\n", skybox);
+	}
+
+	// Enable/disable skybox
+	Cvar_SetValue ("r_oldsky", skybox_name[0] == 0);
+
+
 }
 
+#ifdef SUPPORTS_SKYBOX
 
-vec3_t	skyclip[6] = {
+/*
+=================
+R_Sky_NewMap
+=================
+*/
+void R_Sky_NewMap (void)
+{
+	float fog_density, fog_red, fog_green, fog_blue;
+	char  key[MAX_KEY], value[MAX_VALUE];
+	char  *data;
+
+	// initially no skybox or fog
+	Cvar_SetValue ("r_oldsky", 1);
+
+	// Default fog
+	fog_density = 0.8;
+	fog_red = fog_green = fog_blue = 0.3;
+#ifdef SUPPORTS_FOG
+	Cvar_SetValue ("gl_fogenable", 0);
+	Cvar_SetValue ("gl_fogdensity", fog_density);
+	Cvar_SetValue ("gl_fogred", fog_red);
+	Cvar_SetValue ("gl_foggreen", fog_green);
+	Cvar_SetValue ("gl_fogblue", fog_blue);
+#endif
+	data = cl.worldmodel->entities;
+	if (!data)
+		return;
+
+	data = COM_Parse(data);
+	if (!data) //should never happen
+		return; // error
+	if (com_token[0] != '{') //should never happen
+		return; // error
+	while (1)
+	{
+		data = COM_Parse(data);
+		if (!data)
+			return; // error
+		if (com_token[0] == '}')
+			break; // end of worldspawn
+		if (com_token[0] == '_')
+			strcpy(key, com_token + 1); // Support "_sky" and "_fog" also
+		else
+			strcpy(key, com_token);
+		while (key[strlen(key)-1] == ' ') // remove trailing spaces
+			key[strlen(key)-1] = 0;
+		data = COM_Parse(data);
+		if (!data)
+			return; // error
+		strcpy(value, com_token);
+
+		if (!strcmp("sky", key) && value[0])
+			R_LoadSkys (value);
+		else if (!strcmp("fog", key) && value[0])
+		{
+			sscanf(value, "%f %f %f %f", &fog_density, &fog_red, &fog_green, &fog_blue);
+#ifdef SUPPORTS_FOG
+			Cvar_SetValue ("gl_fogenable", fog_density ? 1 : 0);
+			Cvar_SetValue ("gl_fogdensity", fog_density);
+			Cvar_SetValue ("gl_fogred", fog_red);
+			Cvar_SetValue ("gl_foggreen", fog_green);
+			Cvar_SetValue ("gl_fogblue", fog_blue);
+#endif
+		}
+	}
+}
+
+/*
+=================
+R_SkyCommand_f
+=================
+*/
+void R_SkyCommand_f (void)
+{
+	switch (Cmd_Argc())
+	{
+	case 1:
+		Con_Printf("\"sky\" is \"%s\"\n", skybox_name);
+		break;
+	case 2:
+		R_LoadSkys (Cmd_Argv(1));
+		break;
+	default:
+		Con_Printf("usage: sky <skyname>\n");
+	}
+}
+#endif
+
+static vec3_t	skyclip[6] = {
 	{1,1,0},
 	{1,-1,0},
 	{0,-1,1},
 	{0,1,1},
 	{1,0,1},
-	{-1,0,1} 
+	{-1,0,1}
 };
 int	c_sky;
 
 // 1 = s, 2 = t, 3 = 2048
-int	st_to_vec[6][3] =
-{
+static int	st_to_vec[6][3] = {
 	{3,-1,2},
 	{-3,1,2},
 
@@ -687,14 +817,10 @@ int	st_to_vec[6][3] =
 
 	{-2,-1,3},		// 0 degrees yaw, look straight up
 	{2,-1,-3}		// look straight down
-
-//	{-1,2,3},
-//	{1,2,-3}
 };
 
 // s = [0]/[2], t = [1]/[2]
-int	vec_to_st[6][3] =
-{
+static int	vec_to_st[6][3] = {
 	{-2,3,1},
 	{2,3,-1},
 
@@ -703,82 +829,42 @@ int	vec_to_st[6][3] =
 
 	{-2,-1,3},
 	{-2,1,-3}
-
-//	{-1,2,3},
-//	{1,2,-3}
 };
 
-float	skymins[2][6], skymaxs[2][6];
+static float	skymins[2][6], skymaxs[2][6];
 
 void DrawSkyPolygon (int nump, vec3_t vecs)
 {
-	int		i,j;
+	int		i,j, axis;
+	float	s, t, dv, *vp;
 	vec3_t	v, av;
-	float	s, t, dv;
-	int		axis;
-	float	*vp;
 
 	c_sky++;
-#if 0
-glBegin (GL_POLYGON);
-for (i=0 ; i<nump ; i++, vecs+=3)
-{
-	VectorAdd(vecs, r_origin, v);
-	glVertex3fv (v);
-}
-glEnd();
-return;
-#endif
 	// decide which face it maps to
-	VectorCopy (vec3_origin, v);
+	VectorClear (v);
 	for (i=0, vp=vecs ; i<nump ; i++, vp+=3)
-	{
 		VectorAdd (vp, v, v);
-	}
 	av[0] = fabs(v[0]);
 	av[1] = fabs(v[1]);
 	av[2] = fabs(v[2]);
 	if (av[0] > av[1] && av[0] > av[2])
-	{
-		if (v[0] < 0)
-			axis = 1;
-		else
-			axis = 0;
-	}
+		axis = (v[0] < 0) ? 1 : 0;
 	else if (av[1] > av[2] && av[1] > av[0])
-	{
-		if (v[1] < 0)
-			axis = 3;
-		else
-			axis = 2;
-	}
+		axis = (v[1] < 0) ? 3 : 2;
 	else
-	{
-		if (v[2] < 0)
-			axis = 5;
-		else
-			axis = 4;
-	}
+		axis = (v[2] < 0) ? 5 : 4;
 
 	// project new texture coords
 	for (i=0 ; i<nump ; i++, vecs+=3)
 	{
 		j = vec_to_st[axis][2];
-		if (j > 0)
-			dv = vecs[j - 1];
-		else
-			dv = -vecs[-j - 1];
+		dv = (j > 0) ? vecs[j - 1] : -vecs[-j - 1];
 
 		j = vec_to_st[axis][0];
-		if (j < 0)
-			s = -vecs[-j -1] / dv;
-		else
-			s = vecs[j-1] / dv;
+		s = (j < 0) ? -vecs[-j -1] / dv : vecs[j-1] / dv;
+
 		j = vec_to_st[axis][1];
-		if (j < 0)
-			t = -vecs[-j -1] / dv;
-		else
-			t = vecs[j-1] / dv;
+		t = (j < 0) ? -vecs[-j -1] / dv : vecs[j-1] / dv;
 
 		if (s < skymins[0][axis])
 			skymins[0][axis] = s;
@@ -794,18 +880,14 @@ return;
 #define	MAX_CLIP_VERTS	64
 void ClipSkyPolygon (int nump, vec3_t vecs, int stage)
 {
-	float	*norm;
-	float	*v;
+	float	*norm, *v, d, e, dists[MAX_CLIP_VERTS];
 	qboolean	front, back;
-	float	d, e;
-	float	dists[MAX_CLIP_VERTS];
-	int		sides[MAX_CLIP_VERTS];
+	int		sides[MAX_CLIP_VERTS], newc[2], i, j;
 	vec3_t	newv[2][MAX_CLIP_VERTS];
-	int		newc[2];
-	int		i, j;
 
 	if (nump > MAX_CLIP_VERTS-2)
-		Sys_Error ("ClipSkyPolygon: MAX_CLIP_VERTS");
+		Sys_Error ("ClipSkyPolygon: nump > MAX_CLIP_VERTS - 2");
+
 	if (stage == 6)
 	{	// fully clipped, so draw it
 		DrawSkyPolygon (nump, vecs);
@@ -852,10 +934,12 @@ void ClipSkyPolygon (int nump, vec3_t vecs, int stage)
 			VectorCopy (v, newv[0][newc[0]]);
 			newc[0]++;
 			break;
+
 		case SIDE_BACK:
 			VectorCopy (v, newv[1][newc[1]]);
 			newc[1]++;
 			break;
+
 		case SIDE_ON:
 			VectorCopy (v, newv[0][newc[0]]);
 			newc[0]++;
@@ -883,6 +967,61 @@ void ClipSkyPolygon (int nump, vec3_t vecs, int stage)
 	ClipSkyPolygon (newc[1], newv[1][0], stage+1);
 }
 
+#ifdef SUPPORTS_SKYBOX
+/*
+=================
+R_DrawSkyChain
+=================
+*/
+extern cvar_t r_oldsky;
+void R_DrawSkyChain (msurface_t *s)
+{
+	msurface_t	*fa;
+	int		i;
+	vec3_t	verts[MAX_CLIP_VERTS];
+	glpoly_t	*p;
+	if (!r_oldsky.value && !skybox_name[0]==0) // if the skybox value is one, draw the skybox
+		{
+		c_sky = 0;
+		GL_Bind(solidskytexture);
+		// calculate vertex values for sky box
+		for (fa=s ; fa ; fa=fa->texturechain)
+		{
+			for (p=fa->polys ; p ; p=p->next)
+			{
+				for (i=0 ; i < p->numverts ; i++)
+				{
+					VectorSubtract (p->verts[i], r_origin, verts[i]);
+				}
+				ClipSkyPolygon (p->numverts, verts[0], 0);
+			}
+		}
+	}
+	else // otherwise, draw the normal quake sky
+	{
+		GL_DisableMultitexture();
+		// used when gl_texsort is on
+		GL_Bind(solidskytexture);
+		speedscale = realtime*8;
+		speedscale -= (int)speedscale & ~127 ;
+
+		for (fa=s ; fa ; fa=fa->texturechain)
+			EmitSkyPolys (fa);
+
+		glEnable (GL_BLEND);
+
+		GL_Bind (alphaskytexture);
+		speedscale = realtime*16;
+		speedscale -= (int)speedscale & ~127 ;
+
+		for (fa=s ; fa ; fa=fa->texturechain)
+			EmitSkyPolys (fa);
+
+		glDisable (GL_BLEND);
+	}
+}
+
+#else
 /*
 =================
 R_DrawSkyChain
@@ -901,19 +1040,15 @@ void R_DrawSkyChain (msurface_t *s)
 
 	// calculate vertex values for sky box
 
-	for (fa=s ; fa ; fa=fa->texturechain)
-	{
-		for (p=fa->polys ; p ; p=p->next)
-		{
+	for (fa=s ; fa ; fa=fa->texturechain) {
+		for (p=fa->polys ; p ; p=p->next) {
 			for (i=0 ; i<p->numverts ; i++)
-			{
 				VectorSubtract (p->verts[i], r_origin, verts[i]);
-			}
 			ClipSkyPolygon (p->numverts, verts[0], 0);
 		}
 	}
 }
-
+#endif
 
 /*
 ==============
@@ -931,21 +1066,38 @@ void R_ClearSkyBox (void)
 	}
 }
 
-
-void MakeSkyVec (float s, float t, int axis)
+static void MakeSkyVec (float s, float t, int axis)
 {
 	int	j, k, farclip;
+	float	w, h;
 	vec3_t		v, b;
 
+#if 1
 	farclip = max((int)r_farclip.value, 4096);
 	b[0] = s * (farclip >> 1);
 	b[1] = t * (farclip >> 1);
 	b[2] = (farclip >> 1);
+#endif
+#if 0 // aguirRe style
+	// Compromise; big enough to avoid sky covering world,
+	// but small enough to avoid hiding skyboxes in fog
+	farclip = gl_fogenable.value ? gl_skyclip.value : GL_FARCLIP;
+
+	if (farclip > GL_FARCLIP)
+		farclip = GL_FARCLIP;
+
+	b[0] = s * farclip / 2;
+	b[1] = t * farclip / 2;
+	b[2] = farclip / 2;
+#endif
 
 	for (j=0 ; j<3 ; j++)
 	{
 		k = st_to_vec[axis][j];
-		v[j] = (k < 0) ? -b[-k-1] : b[k-1];
+		if (k < 0)
+			v[j] = -b[-k - 1];
+		else
+			v[j] = b[k - 1];
 		v[j] += r_origin[j];
 	}
 
@@ -953,51 +1105,75 @@ void MakeSkyVec (float s, float t, int axis)
 	s = (s+1)*0.5;
 	t = (t+1)*0.5;
 
-	if (s < 1.0/512)
-		s = 1.0/512;
-	else if (s > 511.0/512)
-		s = 511.0/512;
-	if (t < 1.0/512)
-		t = 1.0/512;
-	else if (t > 511.0/512)
-		t = 511.0/512;
+	w = sky_width[axis];
+	h = sky_height[axis];
+
+	// Empirical tests to get good results in most combinations.
+	// Maybe possible to have one formula for all
+#ifdef DX8QUAKE_GL_MAX_SIZE_FAKE
+	
+	if (w < 256 && gl_max_size > 256)
+	{
+		s = s * (w-1)/w + 0.5/w;
+		t = t * (h-1)/h + 0.5/h;
+	}
+	else
+	{
+		int size = gl_max_size * 3 / 2;
+#else
+	if (w < 256 && gl_max_size.value > 256)
+	{
+		s = s * (w-1)/w + 0.5/w;
+		t = t * (h-1)/h + 0.5/h;
+	}
+	else
+	{
+		int size = gl_max_size.value * 3 / 2;
+
+
+#endif
+		if (size > 512)
+			size = 512;
+
+		w = min(w, (float)size);
+		h = min(h, (float)size);
+
+		if (s < 1/w)
+			s = 1/w;
+		else if (s > (w-1)/w)
+			s = (w-1)/w;
+		if (t < 1/h)
+			t = 1/h;
+		else if (t > (h-1)/h)
+			t = (h-1)/h;
+	}
 
 	t = 1.0 - t;
 	glTexCoord2f (s, t);
 	glVertex3fv (v);
 }
 
+static int	skytexorder[6] = {0,2,1,3,4,5};
 /*
 ==============
 R_DrawSkyBox
 ==============
 */
-int	skytexorder[6] = {0,2,1,3,4,5};
 void R_DrawSkyBox (void)
 {
 	int		i, j, k;
-	vec3_t	v;
 	float	s, t;
+	vec3_t	v;
 
-#if 0
-glEnable (GL_BLEND);
-glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-glColor4f (1,1,1,0.5);
-glDisable (GL_DEPTH_TEST);
-#endif
+
+
 	for (i=0 ; i<6 ; i++)
 	{
-		if (skymins[0][i] >= skymaxs[0][i]
-		|| skymins[1][i] >= skymaxs[1][i])
+		if (skymins[0][i] >= skymaxs[0][i] || skymins[1][i] >= skymaxs[1][i])
 			continue;
 
 		GL_Bind (SKY_TEX+skytexorder[i]);
-#if 0
-skymins[0][i] = -1;
-skymins[1][i] = -1;
-skymaxs[0][i] = 1;
-skymaxs[1][i] = 1;
-#endif
+
 		glBegin (GL_QUADS);
 		MakeSkyVec (skymins[0][i], skymins[1][i], i);
 		MakeSkyVec (skymins[0][i], skymaxs[1][i], i);
@@ -1005,12 +1181,7 @@ skymaxs[1][i] = 1;
 		MakeSkyVec (skymaxs[0][i], skymins[1][i], i);
 		glEnd ();
 	}
-#if 0
-glDisable (GL_BLEND);
-glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-glColor4f (1,1,1,0.5);
-glEnable (GL_DEPTH_TEST);
-#endif
+
 }
 
 
@@ -1033,7 +1204,6 @@ void R_InitSky (texture_t *mt)
 	unsigned	transpix;
 	int			r, g, b;
 	unsigned	*rgba;
-	extern	int			skytexturenum;
 
 	src = (byte *)mt + mt->offsets[0];
 
@@ -1061,6 +1231,9 @@ void R_InitSky (texture_t *mt)
 	if (!solidskytexture)
 		solidskytexture = texture_extension_number++;
 	GL_Bind (solidskytexture );
+#ifdef MACOSX_TEXRAM_CHECK
+        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, 128, 128, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
+#endif /* MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, trans);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -1079,6 +1252,9 @@ void R_InitSky (texture_t *mt)
 	if (!alphaskytexture)
 		alphaskytexture = texture_extension_number++;
 	GL_Bind(alphaskytexture);
+#ifdef MACOSX_TEXRAM_CHECK
+        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_alpha_format, 128, 128, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
+#endif /* MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_alpha_format, 128, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, trans);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

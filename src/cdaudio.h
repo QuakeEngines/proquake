@@ -26,3 +26,7 @@ void CDAudio_Pause(void);
 void CDAudio_Resume(void);
 void CDAudio_Shutdown(void);
 void CDAudio_Update(void);
+
+#ifdef SUPPORTS_CD_PLAYER
+qboolean CDAudio_IsEnabled(void);
+#endif

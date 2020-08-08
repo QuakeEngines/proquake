@@ -233,5 +233,5 @@ Lsavelight:
 	fstp	%st(0)
 	jmp		Lp1
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 

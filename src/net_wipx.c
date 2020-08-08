@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -48,7 +48,7 @@ int WIPX_Init (void)
 	struct qsockaddr addr;
 	char	*p;
 	int		r;
-	WORD	wVersionRequested; 
+	WORD	wVersionRequested;
 
 	if (!COM_CheckParm ("-ipx")) // Baker 3.83: Must now explicitly indicate -ipx, instead of using -noipx
 		return -1;
@@ -59,11 +59,9 @@ int WIPX_Init (void)
 
 	if (winsock_initialized == 0)
 	{
-		wVersionRequested = MAKEWORD(1, 1); 
+		wVersionRequested = MAKEWORD(1, 1);
 
-		r = pWSAStartup (MAKEWORD(1, 1), &winsockdata);
-
-		if (r)
+		if ((r = pWSAStartup (MAKEWORD(1, 1), &winsockdata)))
 		{
 			Con_Printf ("Winsock initialization failed.\n");
 			return -1;
@@ -78,7 +76,7 @@ int WIPX_Init (void)
 	if (pgethostname(buff, MAXHOSTNAMELEN) == 0)
 	{
 		// if the quake hostname isn't set, set it to the machine name
-		if (Q_strcmp(hostname.string, "UNNAMED") == 0)
+		if (strcmp(hostname.string, "UNNAMED") == 0)
 		{
 			// see if it's a text IP address (well, close enough)
 			for (p = buff; *p; p++)
@@ -111,9 +109,8 @@ int WIPX_Init (void)
 	((struct sockaddr_ipx *)&broadcastaddr)->sa_socket = htons((unsigned short)net_hostport);
 
 	WIPX_GetSocketAddr (net_controlsocket, &addr);
-	Q_strcpy(my_ipx_address,  WIPX_AddrToString (&addr));
-	p = Q_strrchr (my_ipx_address, ':');
-	if (p)
+	strcpy(my_ipx_address,  WIPX_AddrToString (&addr));
+	if ((p = strrchr (my_ipx_address, ':')))
 		*p = 0;
 
 	Con_Printf("Winsock IPX Initialized\n");
@@ -157,8 +154,7 @@ void WIPX_Listen (qboolean state)
 
 int WIPX_OpenSocket (int port)
 {
-	int handle;
-	int newsocket;
+	int handle, newsocket;
 	struct sockaddr_ipx address;
 	u_long _true = 1;
 
@@ -185,10 +181,12 @@ int WIPX_OpenSocket (int port)
 	{
 		ipxsocket[handle] = newsocket;
 		sequence[handle] = 0;
+
 		return handle;
 	}
 
 	Sys_Error ("Winsock IPX bind failed\n");
+
 ErrorReturn:
 	pclosesocket (newsocket);
 	return -1;
@@ -252,7 +250,7 @@ int WIPX_Read (int handle, byte *buf, int len, struct qsockaddr *addr)
 
 	if (ret < 4)
 		return 0;
-	
+
 	// remove sequence number, it's only needed for DOS IPX
 	ret -= 4;
 	memcpy(buf, packetBuffer+4, ret);
@@ -305,8 +303,8 @@ char *WIPX_AddrToString (struct qsockaddr *addr)
 		((struct sockaddr_ipx *)addr)->sa_nodenum[3] & 0xff,
 		((struct sockaddr_ipx *)addr)->sa_nodenum[4] & 0xff,
 		((struct sockaddr_ipx *)addr)->sa_nodenum[5] & 0xff,
-		ntohs(((struct sockaddr_ipx *)addr)->sa_socket)
-		);
+		ntohs(((struct sockaddr_ipx *)addr)->sa_socket));
+
 	return buf;
 }
 
@@ -318,7 +316,7 @@ int WIPX_StringToAddr (char *string, struct qsockaddr *addr)
 	char buf[3];
 
 	buf[2] = 0;
-	Q_memset(addr, 0, sizeof(struct qsockaddr));
+	memset(addr, 0, sizeof(struct qsockaddr));
 	addr->sa_family = AF_IPX;
 
 #define DO(src,dest)	\
@@ -352,9 +350,8 @@ int WIPX_GetSocketAddr (int handle, struct qsockaddr *addr)
 {
 	int socket = ipxsocket[handle];
 	int addrlen = sizeof(struct qsockaddr);
-//	unsigned int a;
 
-	Q_memset(addr, 0, sizeof(struct qsockaddr));
+	memset(addr, 0, sizeof(struct qsockaddr));
 	if(pgetsockname(socket, (struct sockaddr *)addr, &addrlen) != 0)
 	{
 		int errno = pWSAGetLastError();
@@ -367,7 +364,7 @@ int WIPX_GetSocketAddr (int handle, struct qsockaddr *addr)
 
 int WIPX_GetNameFromAddr (struct qsockaddr *addr, char *name)
 {
-	Q_strcpy(name, WIPX_AddrToString(addr));
+	strcpy(name, WIPX_AddrToString(addr));
 	return 0;
 }
 
@@ -378,7 +375,7 @@ int WIPX_GetAddrFromName(char *name, struct qsockaddr *addr)
 	int n;
 	char buf[32];
 
-	n = Q_strlen(name);
+	n = strlen(name);
 
 	if (n == 12)
 	{

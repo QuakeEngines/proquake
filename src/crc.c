@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-/* crc.c */
+// crc.c
 
 #include "quakedef.h"
 #include "crc.h"
@@ -80,7 +80,6 @@ unsigned short CRC_Value(unsigned short crcvalue)
 	return crcvalue ^ CRC_XOR_VALUE;
 }
 
-// Baker 3.60 - CRC Block - for GL_LoadTexture: cache mismatch
 unsigned short CRC_Block (byte *data, int size)
 {
 	unsigned short crc = CRC_INIT_VALUE;

@@ -17,7 +17,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
 // cmd.h -- Command buffer and command execution
 
 //===========================================================================
@@ -56,7 +55,6 @@ void Cbuf_Execute (void);
 //===========================================================================
 
 /*
-
 Command execution takes a null terminated string, breaks it into tokens,
 then searches for a command or variable that matches the first token.
 
@@ -68,10 +66,8 @@ not apropriate.
 
 typedef void (*xcommand_t) (void);
 
-typedef enum
-{
-	src_client,		// came in over a net connection as a clc_stringcmd
-					// host_client will be valid during this state.
+typedef enum {
+	src_client,		// came in over a net connection as a clc_stringcmd. host_client will be valid during this state.
 	src_command		// from the command buffer
 } cmd_source_t;
 

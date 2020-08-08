@@ -20,6 +20,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl_main.c  -- client main loop
 
 #include "quakedef.h"
+#ifdef HTTP_DOWNLOAD
+#include "curl.h"
+#endif
 
 // we need to declare some mouse variables here, because the menu system
 // references them even when on a unix system.
@@ -30,10 +33,13 @@ cvar_t	cl_color = {"_cl_color", "0", true};
 
 cvar_t	cl_shownet = {"cl_shownet","0"};	// can be 0, 1, or 2
 cvar_t	cl_nolerp = {"cl_nolerp","0"};
+cvar_t  cl_gameplayhack_monster_lerp = {"cl_gameplayhack_monster_lerp","1"};
 
 cvar_t	lookspring = {"lookspring","0", true};
 cvar_t	lookstrafe = {"lookstrafe","0", true};
 cvar_t	sensitivity = {"sensitivity","3", true};
+
+cvar_t	cl_mapname	= {"cl_mapname", ""};
 
 cvar_t	m_pitch = {"m_pitch","0.022", true};
 cvar_t	m_yaw = {"m_yaw","0.022", true};
@@ -59,8 +65,13 @@ cvar_t	pq_moveup = {"pq_moveup", "0", true};
 
 // JPG 3.00 - added this by request
 cvar_t	pq_smoothcam = {"pq_smoothcam", "1", true};
+#ifdef HTTP_DOWNLOAD
+cvar_t	cl_web_download		= {"cl_web_download", "1"};
+cvar_t	cl_web_download_url	= {"cl_web_download_url", "http://downloads.quake-1.com/"};
+#endif
 
 cvar_t	cl_demospeed		= {"cl_demospeed", "1"}; // Baker 3.75 - demo rewind/ff
+cvar_t	cl_bobbing		= {"cl_bobbing", "0"};
 
 client_static_t	cls;
 client_state_t	cl;
@@ -77,10 +88,10 @@ entity_t		*cl_visedicts[MAX_VISEDICTS];
 extern cvar_t scr_fov;
 float			savedsensitivity;
 float			savedfov;
+
 /*
 =====================
 CL_ClearState
-
 =====================
 */
 void CL_ClearState (void)
@@ -89,6 +100,7 @@ void CL_ClearState (void)
 
 	if (!sv.active)
 		Host_ClearMemory ();
+
 
 // wipe the entire cl structure
 	memset (&cl, 0, sizeof(cl));
@@ -103,15 +115,12 @@ void CL_ClearState (void)
 	memset (cl_temp_entities, 0, sizeof(cl_temp_entities));
 	memset (cl_beams, 0, sizeof(cl_beams));
 
-//
 // allocate the efrags and chain together into a free list
-//
 	cl.free_efrags = cl_efrags;
 	for (i=0 ; i<MAX_EFRAGS-1 ; i++)
 		cl.free_efrags[i].entnext = &cl.free_efrags[i+1];
 	cl.free_efrags[i].entnext = NULL;
 
-	Cvar_Set ("host_mapname", ""); // notice mapname not valid yet
 }
 
 /*
@@ -127,12 +136,28 @@ void CL_Disconnect (void)
 // stop sounds (especially looping!)
 	S_StopAllSounds (true);
 
+// CDAudio_Stop
+	CDAudio_Stop();
+
+
 // bring the console down and fade the colors back to normal
 //	SCR_BringDownConsole ();
 
+#ifdef HTTP_DOWNLOAD
+	// We have to shut down webdownloading first
+	if( cls.download.web )
+	{
+		cls.download.disconnect = true;
+		return;
+	}
+
+#endif
+
 // if running a local server, shut it down
 	if (cls.demoplayback)
+	{
 		CL_StopPlayback ();
+	}
 	else if (cls.state == ca_connected)
 	{
 		if (cls.demorecording)
@@ -152,18 +177,26 @@ void CL_Disconnect (void)
 
 	cls.demoplayback = cls.timedemo = false;
 	cls.signon = 0;
-	Cvar_Set ("host_mapname", ""); // notice mapname not valid yet
+
+	SCR_EndLoadingPlaque (); // Baker: any disconnect state should end the loading plague, right?
+
 }
 
 void CL_Disconnect_f (void)
 {
+#ifdef HTTP_DOWNLOAD
+	// We have to shut down webdownloading first
+	if( cls.download.web )
+	{
+		cls.download.disconnect = true;
+		return;
+	}
+
+#endif
 	CL_Disconnect ();
 	if (sv.active)
 		Host_ShutdownServer (false);
 }
-
-
-
 
 /*
 =====================
@@ -193,7 +226,7 @@ void CL_EstablishConnection (char *host)
 
 	Con_DPrintf ("CL_EstablishConnection: connected to %s\n", host);
 
-	// JPG - proquake message
+		// JPG - proquake message
 	if (cls.netcon->mod == MOD_PROQUAKE)
 	{
 		if (pq_cheatfree)
@@ -281,7 +314,7 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 		MSG_WriteString (&cls.message, va("color %i %i\n", ((int)cl_color.value)>>4, ((int)cl_color.value)&15));
 
 		MSG_WriteByte (&cls.message, clc_stringcmd);
-		sprintf (str, "spawn %s", cls.spawnparms);
+		snprintf (str, sizeof(str), "spawn %s", cls.spawnparms);
 		MSG_WriteString (&cls.message, str);
 
 		// JPG 3.20 - model and .exe checking
@@ -290,12 +323,14 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 			FILE *f;
 			unsigned crc;
 			char path[64];
+#ifdef SUPPORTS_CHEATFREE_MODE
 
 			strcpy(path, argv[0]);
-#ifdef WIN32
+#endif // ^^ MACOSX can't support this code but Windows/Linux do
+#ifdef _WIN32
 			if (!strstr(path, ".exe") && !strstr(path, ".EXE"))
 				strcat(path, ".exe");
-#endif
+#endif // ^^ This is Windows operating system specific; Linux does not need
 			f = fopen(path, "rb");
 			if (!f)
 				Host_Error("Could not open %s", path);
@@ -324,6 +359,7 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 				}
 			}
 		}
+
 		break;
 
 	case 3:
@@ -363,19 +399,20 @@ void CL_NextDemo (void)
 		cls.demonum = 0;
 		if (!cls.demos[cls.demonum][0])
 		{
+#ifdef SUPPORTS_DEMO_AUTOPLAY
 			if (nostartdemos)
-				nostartdemos = false; // Baker 3.76 -- part of hack to avoid start demos with dem autoplay 
+				nostartdemos = false; // Baker 3.76 -- part of hack to avoid start demos with dem autoplay
 			else
-			{
+#endif  // ^^ Uses Windows specific functionality
 			Con_DPrintf ("No demos listed with startdemos\n");
-			}
+
 			CL_Disconnect();	// JPG 1.05 - patch by CSR to fix crash
 			cls.demonum = -1;
 			return;
 		}
 	}
 
-	sprintf (str,"playdemo %s\n", cls.demos[cls.demonum]);
+	snprintf (str,sizeof(str),"playdemo %s\n", cls.demos[cls.demonum]);
 	Cbuf_InsertText (str);
 	cls.demonum++;
 }
@@ -398,58 +435,15 @@ void CL_PrintEntities_f (void)
 			Con_Printf ("EMPTY\n");
 			continue;
 		}
-		Con_Printf ("%s:%2i  (%5.1f,%5.1f,%5.1f) [%5.1f %5.1f %5.1f]\n",ent->model->name,ent->frame, ent->origin[0], ent->origin[1], ent->origin[2], ent->angles[0], ent->angles[1], ent->angles[2]);
+		Con_Printf ("%s:%2i  (%5.1f,%5.1f,%5.1f) [%5.1f %5.1f %5.1f]\n", ent->model->name,ent->frame, ent->origin[0], ent->origin[1], ent->origin[2], ent->angles[0], ent->angles[1], ent->angles[2]);
 	}
 }
 
 
-/*
-===============
-SetPal
-
-Debugging tool, just flashes the screen
-===============
-*/
-void SetPal (int i)
-{
-#if 0
-	static int old;
-	byte	pal[768];
-	int		c;
-
-	if (i == old)
-		return;
-	old = i;
-
-	if (i==0)
-		VID_SetPaletteOld (host_basepal);
-	else if (i==1)
-	{
-		for (c=0 ; c<768 ; c+=3)
-		{
-			pal[c] = 0;
-			pal[c+1] = 255;
-			pal[c+2] = 0;
-		}
-		VID_SetPaletteOld (pal);
-	}
-	else
-	{
-		for (c=0 ; c<768 ; c+=3)
-		{
-			pal[c] = 0;
-			pal[c+1] = 0;
-			pal[c+2] = 255;
-		}
-		VID_SetPaletteOld (pal);
-	}
-#endif
-}
 
 /*
 ===============
 CL_AllocDlight
-
 ===============
 */
 dlight_t *CL_AllocDlight (int key)
@@ -494,7 +488,6 @@ dlight_t *CL_AllocDlight (int key)
 /*
 ===============
 CL_DecayLights
-
 ===============
 */
 void CL_DecayLights (void)
@@ -516,7 +509,6 @@ void CL_DecayLights (void)
 			dl->radius = 0;
 	}
 }
-
 
 /*
 ===============
@@ -549,25 +541,15 @@ float	CL_LerpPoint (void)
 	if (frac < 0)
 	{
 		if (frac < -0.01)
-		{
-SetPal(1);
 			cl.time = cl.ctime = cl.mtime[1];
-//				Con_Printf ("low frac\n");
-		}
 		frac = 0;
 	}
 	else if (frac > 1)
 	{
 		if (frac > 1.01)
-		{
-SetPal(2);
 			cl.time = cl.ctime = cl.mtime[0];
-//				Con_Printf ("high frac\n");
-		}
 		frac = 1;
 	}
-	else
-		SetPal(0);
 
 	return frac;
 }
@@ -583,27 +565,23 @@ void CL_RelinkEntities (void)
 {
 	entity_t	*ent;
 	int			i, j;
-	float		frac, f, d;
-	vec3_t		delta;
-	float		bobjrotate;
-	vec3_t		oldorg;
+	float		frac, f, d, bobjrotate;
+	vec3_t		delta, oldorg;
 	dlight_t	*dl;
 
 // determine partial update time
 	frac = CL_LerpPoint ();
 
-	// JPG - check to see if we need to update the status bar
+// JPG - check to see if we need to update the status bar
 	if (pq_timer.value && ((int) cl.time != (int) cl.oldtime))
 		Sbar_Changed();
 
 	cl_numvisedicts = 0;
 
-//
 // interpolate player info
-//
 	for (i=0 ; i<3 ; i++)
 		cl.velocity[i] = cl.mvelocity[1][i] + frac * (cl.mvelocity[0][i] - cl.mvelocity[1][i]);
-
+	//PROQUAKE ADDITION --START
 	if (cls.demoplayback || (last_angle_time > host_time && !(in_attack.state & 3)) && pq_smoothcam.value) // JPG - check for last_angle_time for smooth chasecam!
 	{
 	// interpolate the angles
@@ -620,8 +598,9 @@ void CL_RelinkEntities (void)
 			cl.lerpangles[j] = cl.mviewangles[1][j] + frac*d;
 		}
 	}
-	else
+		else
 		VectorCopy(cl.viewangles, cl.lerpangles);
+	//PROQUAKE ADDITION --END
 
 	bobjrotate = anglemod(100*cl.time);
 
@@ -645,8 +624,7 @@ void CL_RelinkEntities (void)
 		VectorCopy (ent->origin, oldorg);
 
 		if (ent->forcelink)
-		{	// the entity was not updated in the last message
-			// so move to the final spot
+		{	// the entity was not updated in the last message so move to the final spot
 			VectorCopy (ent->msg_origins[0], ent->origin);
 			VectorCopy (ent->msg_angles[0], ent->angles);
 		}
@@ -677,14 +655,14 @@ void CL_RelinkEntities (void)
 
 // rotate binary objects locally
 		if (ent->model->flags & EF_ROTATE)
+		{
 			ent->angles[1] = bobjrotate;
-
+			if (cl_bobbing.value)
+				ent->origin[2] += sin(bobjrotate / 90 * M_PI) * 5 + 5;
+		}
 		if (ent->effects & EF_BRIGHTFIELD)
 			R_EntityParticles (ent);
-#ifdef QUAKE2
-		if (ent->effects & EF_DARKFIELD)
-			R_DarkFieldParticles (ent);
-#endif
+
 		if (ent->effects & EF_MUZZLEFLASH)
 		{
 			vec3_t		fv, rv, uv;
@@ -714,23 +692,6 @@ void CL_RelinkEntities (void)
 			dl->radius = 200 + (rand()&31);
 			dl->die = cl.time + 0.001;
 		}
-#ifdef QUAKE2
-		if (ent->effects & EF_DARKLIGHT)
-		{
-			dl = CL_AllocDlight (i);
-			VectorCopy (ent->origin,  dl->origin);
-			dl->radius = 200.0 + (rand()&31);
-			dl->die = cl.time + 0.001;
-			dl->dark = true;
-		}
-		if (ent->effects & EF_LIGHT)
-		{
-			dl = CL_AllocDlight (i);
-			VectorCopy (ent->origin,  dl->origin);
-			dl->radius = 200;
-			dl->die = cl.time + 0.001;
-		}
-#endif
 
 		if (ent->model->flags & EF_GIB)
 			R_RocketTrail (oldorg, ent->origin, 2);
@@ -758,15 +719,15 @@ void CL_RelinkEntities (void)
 		if (i == cl.viewentity && (!chase_active.value || pq_cheatfree))	// JPG 3.20 - added pq_cheatfree
 			continue;
 
-#ifdef QUAKE2
-		if ( ent->effects & EF_NODRAW )
-			continue;
-#endif
 		if (cl_numvisedicts < MAX_VISEDICTS)
 		{
 			cl_visedicts[cl_numvisedicts] = ent;
 			cl_numvisedicts++;
 		}
+#ifdef SUPPORTS_ENTITY_ALPHA
+		if (!ent->transparency)
+			ent->transparency = 1;
+#endif
 	}
 
 }
@@ -794,8 +755,7 @@ int CL_ReadFromServer (void)
 		cl.ctime -= host_frametime;
 	// Baker 3.75 - end demo fast rewind
 
-	do
-	{
+	do {
 		ret = CL_GetMessage ();
 		if (ret == -1)
 			Host_Error ("CL_ReadFromServer: lost server connection");
@@ -803,7 +763,7 @@ int CL_ReadFromServer (void)
 			break;
 
 		cl.last_received_message = realtime;
-		CL_ParseServerMessage ();
+                CL_ParseServerMessage ();
 	} while (ret && cls.state == ca_connected);
 
 	if (cl_shownet.value)
@@ -812,9 +772,7 @@ int CL_ReadFromServer (void)
 	CL_RelinkEntities ();
 	CL_UpdateTEnts ();
 
-//
 // bring the links up to date
-//
 	return 0;
 }
 
@@ -872,14 +830,24 @@ extern cvar_t default_fov;
 
 void CL_Fov_f (void) {
 	if (scr_fov.value == 90.0 && default_fov.value) {
+		if (default_fov.value == 90)
+			return; // Baker 3.99k: Don't do a message saying default FOV has been set to 90 if it is 90!
+
 		Cvar_SetValue ("fov", default_fov.value);
 		Con_Printf("fov set to default_fov %s\n", default_fov.string);
 	}
 }
 
 void CL_Default_fov_f (void) {
-	if (default_fov.value < 10.0 || default_fov.value > 140.0)
-		Cvar_SetValue ("default_fov", 90.0f);
+
+	if (default_fov.value == 0)
+		return; // Baker: this is totally permissible and happens with Reset to defaults.
+
+	if (default_fov.value < 10.0 || default_fov.value > 140.0) {
+		Cvar_SetValue ("default_fov", 0.0f);
+		Con_Printf("Default fov %s is out-of-range; set to 0\n", default_fov.string);
+	}
+
 }
 
 // End Baker
@@ -942,6 +910,27 @@ void CL_RestoreSensitivity_f (void) {
 
 /*
 =============
+CL_Tracepos_f -- johnfitz
+
+display impact point of trace along VPN
+=============
+*/
+extern void TraceLine (vec3_t start, vec3_t end, vec3_t impact);
+void CL_Tracepos_f (void)
+{
+	vec3_t	v, w;
+
+	VectorScale(vpn, 8192.0, v);
+	TraceLine(r_refdef.vieworg, v, w);
+
+	if (VectorLength(w) == 0)
+		Con_Printf ("Tracepos: trace didn't hit anything\n");
+	else
+		Con_Printf ("Tracepos: (%i %i %i)\n", (int)w[0], (int)w[1], (int)w[2]);
+}
+
+/*
+=============
 CL_Viewpos_f -- johnfitz
 
 display client's position and angles
@@ -969,6 +958,7 @@ void CL_Viewpos_f (void)
 		(int)cl.viewangles[ROLL]);
 #endif
 }
+
 /*
 =================
 CL_Init
@@ -981,9 +971,7 @@ void CL_Init (void)
 	CL_InitInput ();
 	CL_InitTEnts ();
 
-//
 // register our commands
-//
 	Cvar_RegisterVariable (&cl_name, NULL);
 	Cvar_RegisterVariable (&cl_color, NULL);
 	Cvar_RegisterVariable (&cl_upspeed, NULL);
@@ -1006,9 +994,12 @@ void CL_Init (void)
 	Cvar_RegisterVariable (&m_forward, NULL);
 	Cvar_RegisterVariable (&m_side, NULL);
 
+	Cvar_RegisterVariable (&cl_gameplayhack_monster_lerp, NULL); // Hacks!
+
 //	Cvar_RegisterVariable (&cl_autofire);
 	Cvar_RegisterVariable (&cl_demorewind, NULL);
 	Cvar_RegisterVariable (&cl_demospeed, NULL);
+	Cvar_RegisterVariable (&cl_bobbing, NULL);
 
 	Cmd_AddCommand ("entities", CL_PrintEntities_f);
 	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
@@ -1016,13 +1007,18 @@ void CL_Init (void)
 	Cmd_AddCommand ("stop", CL_Stop_f);
 	Cmd_AddCommand ("playdemo", CL_PlayDemo_f);
 	Cmd_AddCommand ("timedemo", CL_TimeDemo_f);
+	Cmd_AddCommand ("tracepos", CL_Tracepos_f); //johnfitz
+	Cmd_AddCommand ("viewpos", CL_Viewpos_f); //Baker 3.76 - Using FitzQuake's viewpos instead of my own
+
 	Cmd_AddCommand ("savefov", CL_SaveFOV_f);
 	Cmd_AddCommand ("savesensitivity", CL_SaveSensitivity_f);
 	Cmd_AddCommand ("restorefov", CL_RestoreFOV_f);
 	Cmd_AddCommand ("restoresensitivity", CL_RestoreSensitivity_f);
-	Cmd_AddCommand ("viewpos", CL_Viewpos_f); //Baker 3.76 - Using FitzQuake's viewpos instead of my own
 
-	// JPG - added these for %r formatting
+	
+
+
+// JPG - added these for %r formatting
 	Cvar_RegisterVariable (&pq_needrl, NULL);
 	Cvar_RegisterVariable (&pq_haverl, NULL);
 	Cvar_RegisterVariable (&pq_needrox, NULL);
@@ -1041,5 +1037,11 @@ void CL_Init (void)
 
 	// JPG 3.02 - added this by request
 	Cvar_RegisterVariable (&pq_smoothcam, NULL);
-}
 
+	Cvar_RegisterVariable (&cl_mapname, NULL);
+
+#ifdef HTTP_DOWNLOAD
+	Cvar_RegisterVariable (&cl_web_download, NULL);
+	Cvar_RegisterVariable (&cl_web_download_url, NULL);
+#endif
+}

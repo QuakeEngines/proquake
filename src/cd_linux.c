@@ -210,21 +210,20 @@ void CDAudio_Resume(void)
 static void CD_f (void)
 {
 	char	*command;
-	int		ret;
-	int		n;
+	int	ret, n;
 
 	if (Cmd_Argc() < 2)
 		return;
 
 	command = Cmd_Argv (1);
 
-	if (Q_strcasecmp(command, "on") == 0)
+	if (!Q_strcasecmp(command, "on"))
 	{
 		enabled = true;
 		return;
 	}
 
-	if (Q_strcasecmp(command, "off") == 0)
+	if (!Q_strcasecmp(command, "off"))
 	{
 		if (playing)
 			CDAudio_Stop();
@@ -232,7 +231,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "reset") == 0)
+	if (!Q_strcasecmp(command, "reset"))
 	{
 		enabled = true;
 		if (playing)
@@ -243,7 +242,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "remap") == 0)
+	if (!Q_strcasecmp(command, "remap"))
 	{
 		ret = Cmd_Argc() - 2;
 		if (ret <= 0)
@@ -258,7 +257,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "close") == 0)
+	if (!Q_strcasecmp(command, "close"))
 	{
 		CDAudio_CloseDoor();
 		return;
@@ -274,37 +273,37 @@ static void CD_f (void)
 		}
 	}
 
-	if (Q_strcasecmp(command, "play") == 0)
+	if (!Q_strcasecmp(command, "play"))
 	{
 		CDAudio_Play((byte)Q_atoi(Cmd_Argv (2)), false);
 		return;
 	}
 
-	if (Q_strcasecmp(command, "loop") == 0)
+	if (!Q_strcasecmp(command, "loop"))
 	{
 		CDAudio_Play((byte)Q_atoi(Cmd_Argv (2)), true);
 		return;
 	}
 
-	if (Q_strcasecmp(command, "stop") == 0)
+	if (!Q_strcasecmp(command, "stop"))
 	{
 		CDAudio_Stop();
 		return;
 	}
 
-	if (Q_strcasecmp(command, "pause") == 0)
+	if (!Q_strcasecmp(command, "pause"))
 	{
 		CDAudio_Pause();
 		return;
 	}
 
-	if (Q_strcasecmp(command, "resume") == 0)
+	if (!Q_strcasecmp(command, "resume"))
 	{
 		CDAudio_Resume();
 		return;
 	}
 
-	if (Q_strcasecmp(command, "eject") == 0)
+	if (!Q_strcasecmp(command, "eject"))
 	{
 		if (playing)
 			CDAudio_Stop();
@@ -313,7 +312,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "info") == 0)
+	if (!Q_strcasecmp(command, "info"))
 	{
 		Con_Printf("%u tracks\n", maxTrack);
 		if (playing)
@@ -357,8 +356,7 @@ void CDAudio_Update(void)
 			playing = false;
 			return;
 		}
-		if (subchnl.cdsc_audiostatus != CDROM_AUDIO_PLAY &&
-			subchnl.cdsc_audiostatus != CDROM_AUDIO_PAUSED) {
+		if (subchnl.cdsc_audiostatus != CDROM_AUDIO_PLAY && subchnl.cdsc_audiostatus != CDROM_AUDIO_PAUSED) {
 			playing = false;
 			if (playLooping)
 				CDAudio_Play(playTrack, true);
@@ -373,7 +371,7 @@ int CDAudio_Init(void)
 	if (cls.state == ca_dedicated)
 		return -1;
 
-	if (!COM_CheckParm("-cdaudio")) // Baker 3.83: Must now explicitly indicate -cdaudio, instead of using -nocdaudio
+	if (COM_CheckParm("-nocdaudio")) 
 		return -1;
 
 	if ((i = COM_CheckParm("-cddev")) != 0 && i < com_argc - 1) {
@@ -404,7 +402,6 @@ int CDAudio_Init(void)
 
 	return 0;
 }
-
 
 void CDAudio_Shutdown(void)
 {

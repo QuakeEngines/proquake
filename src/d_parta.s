@@ -27,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "d_ifacea.h"
 #include "asm_draw.h"
 
-#if	id386
+#if id386
 
 //----------------------------------------------------------------------
 // 8-bpp particle drawing code.
@@ -474,4 +474,4 @@ LPop1AndDone:
 	fstp	%st(0)
 	jmp		LDone
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)

@@ -24,8 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 mnode_t	*r_pefragtopnode;
 
 
-//===========================================================================
-
 /*
 ===============================================================================
 
@@ -95,9 +93,7 @@ void R_SplitEntityOnNode (mnode_t *node)
 	int			sides;
 	
 	if (node->contents == CONTENTS_SOLID)
-	{
 		return;
-	}
 	
 // add an efrag if the node is a leaf
 

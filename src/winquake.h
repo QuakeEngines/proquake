@@ -19,6 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // winquake.h: Win32-specific Quake header file
 
+#ifdef _WIN32
+
 #pragma warning( disable : 4229 )  // mgraph gets this
 
 #include <windows.h>
@@ -29,12 +31,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MK_XBUTTON1         0x0020
 #define MK_XBUTTON2         0x0040
 
+#ifndef WITHOUT_WINKEYHOOK
+
+#define LLKHF_UP			(KF_UP >> 8)
+#define KF_UP				0x8000
+
+typedef ULONG ULONG_PTR; // Baker 3.99r: this is not appropriate for 64 bit, only 32 but I'm not building 64 bit version
+
+typedef struct {
+    DWORD   vkCode;
+    DWORD   scanCode;
+    DWORD   flags;
+    DWORD   time;
+    ULONG_PTR dwExtraInfo;
+} *PKBDLLHOOKSTRUCT;
+
+#endif
+
 #ifndef SERVERONLY
 #include <ddraw.h>
 #include <dsound.h>
 #ifndef GLQUAKE
 #ifndef NO_MGRAPH
-#include <mgraph.h>
+#include "mgraph.h"
 #endif
 #endif
 #endif
@@ -61,12 +80,15 @@ void	VID_UnlockBuffer (void);
 
 #endif
 
-typedef enum {MS_WINDOWED, MS_FULLSCREEN, MS_FULLDIB, MS_UNINIT} modestate_t;
+typedef enum {
+	MS_WINDOWED, MS_FULLSCREEN, MS_FULLDIB, MS_UNINIT
+} modestate_t;
 
 extern modestate_t	modestate;
 
 extern HWND			mainwindow;
 extern qboolean		ActiveApp, Minimized;
+extern cvar_t _windowed_mouse;
 
 extern qboolean	WinNT;
 
@@ -82,8 +104,6 @@ void IN_SetQuakeMouseState (void);
 void IN_MouseEvent (int mstate);
 
 extern qboolean	winsock_lib_initialized;
-
-extern cvar_t		_windowed_mouse;
 
 extern int		window_center_x, window_center_y;
 extern RECT		window_rect;
@@ -106,16 +126,13 @@ int (PASCAL FAR *pWSACleanup)(void);
 int (PASCAL FAR *pWSAGetLastError)(void);
 SOCKET (PASCAL FAR *psocket)(int af, int type, int protocol);
 int (PASCAL FAR *pioctlsocket)(SOCKET s, long cmd, u_long FAR *argp);
-int (PASCAL FAR *psetsockopt)(SOCKET s, int level, int optname,
-							  const char FAR * optval, int optlen);
-int (PASCAL FAR *precvfrom)(SOCKET s, char FAR * buf, int len, int flags,
-							struct sockaddr FAR *from, int FAR * fromlen);
-int (PASCAL FAR *psendto)(SOCKET s, const char FAR * buf, int len, int flags,
-						  const struct sockaddr FAR *to, int tolen);
+int (PASCAL FAR *psetsockopt)(SOCKET s, int level, int optname, const char FAR * optval, int optlen);
+int (PASCAL FAR *precvfrom)(SOCKET s, char FAR * buf, int len, int flags, struct sockaddr FAR *from, int FAR * fromlen);
+int (PASCAL FAR *psendto)(SOCKET s, const char FAR * buf, int len, int flags, const struct sockaddr FAR *to, int tolen);
 int (PASCAL FAR *pclosesocket)(SOCKET s);
 int (PASCAL FAR *pgethostname)(char FAR * name, int namelen);
 struct hostent FAR * (PASCAL FAR *pgethostbyname)(const char FAR * name);
-struct hostent FAR * (PASCAL FAR *pgethostbyaddr)(const char FAR * addr,
-												  int len, int type);
-int (PASCAL FAR *pgetsockname)(SOCKET s, struct sockaddr FAR *name,
-							   int FAR * namelen);
+struct hostent FAR * (PASCAL FAR *pgethostbyaddr)(const char FAR * addr, int len, int type);
+int (PASCAL FAR *pgetsockname)(SOCKET s, struct sockaddr FAR *name, int FAR * namelen);
+
+#endif	//_WIN32

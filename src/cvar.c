@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -39,50 +39,31 @@ void Cvar_Reset (char *name); //johnfitz
 Cvar_List_f -- johnfitz
 ============
 */
-
 void Cvar_List_f (void)
-
 {
-
 	cvar_t		*cvar;
-
 	char 		*partial;
 	int		len, count;
 
 	if (Cmd_Argc() > 1)
-
 	{
-
 		partial = Cmd_Argv (1);
-
-		len = Q_strlen(partial);
-
+		len = strlen(partial);
 	}
-
 	else
-
 	{
-
 		partial = NULL;
-
 		len = 0;
-
 	}
 
 	Con_Printf ("\n");
 
 	count=0;
-
 	for (cvar=cvar_vars ; cvar ; cvar=cvar->next)
-
 	{
-
-		if (partial && Q_strncmp (partial,cvar->name, len))
-
+		if (partial && strncmp (partial,cvar->name, len))
 		{
-
 			continue;
-
 		}
 
 		Con_Printf ("%s is [%s]\n", cvar->name, cvar->string);
@@ -96,11 +77,8 @@ void Cvar_List_f (void)
 	Con_Printf ("\n%i cvar(s)", count);
 
 	if (partial)
-
 	{
-
 		Con_Printf (" beginning with \"%s\"", partial);
-
 	}
 
 	Con_Printf ("\n\n");
@@ -242,10 +220,10 @@ void Cvar_Init (void)
 {
 	Cmd_AddCommand ("cvarlist", Cvar_List_f);
 	Cmd_AddCommand ("toggle", Cvar_Toggle_f);
-	//Cmd_AddCommand ("cycle", Cvar_Cycle_f);
+	Cmd_AddCommand ("cycle", Cvar_Cycle_f);
 	//Cmd_AddCommand ("inc", Cvar_Inc_f);
-	Cmd_AddCommand ("cvar_reset_one", Cvar_Reset_f);
-	Cmd_AddCommand ("cvar_reset_all", Cvar_ResetAll_f);
+	Cmd_AddCommand ("resetcvar", Cvar_Reset_f);
+	Cmd_AddCommand ("resetall", Cvar_ResetAll_f);
 }
 
 //==============================================================================
@@ -264,9 +242,9 @@ Cvar_FindVar
 cvar_t *Cvar_FindVar (char *var_name)
 {
 	cvar_t	*var;
-	
+
 	for (var=cvar_vars ; var ; var=var->next)
-		if (!Q_strcmp (var_name, var->name))
+		if (!strcmp (var_name, var->name))
 			return var;
 
 	return NULL;
@@ -280,7 +258,7 @@ Cvar_VariableValue
 float	Cvar_VariableValue (char *var_name)
 {
 	cvar_t	*var;
-	
+
 	var = Cvar_FindVar (var_name);
 	if (!var)
 		return 0;
@@ -296,7 +274,7 @@ Cvar_VariableString
 char *Cvar_VariableString (char *var_name)
 {
 	cvar_t *var;
-	
+
 	var = Cvar_FindVar (var_name);
 	if (!var)
 		return cvar_null_string;
@@ -313,15 +291,15 @@ char *Cvar_CompleteVariable (char *partial)
 {
 	cvar_t		*cvar;
 	int			len;
-	
-	len = Q_strlen(partial);
-	
+
+	len = strlen(partial);
+
 	if (!len)
 		return NULL;
-		
+
 // check functions
 	for (cvar=cvar_vars ; cvar ; cvar=cvar->next)
-		if (!Q_strncmp (partial,cvar->name, len))
+		if (!strncmp (partial,cvar->name, len))
 			return cvar->name;
 
 	return NULL;
@@ -352,7 +330,7 @@ void Cvar_Set (char *var_name, char *value)
 {
 	cvar_t	*var;
 	qboolean changed;
-	
+
 	var = Cvar_FindVar (var_name);
 	if (!var)
 	{	// there is an error in C code if this happens
@@ -360,23 +338,23 @@ void Cvar_Set (char *var_name, char *value)
 		return;
 	}
 
-	changed = Q_strcmp(var->string, value);
-	
+	changed = strcmp(var->string, value);
+
 	Z_Free (var->string);	// free the old value string
-	
-	var->string = Z_Malloc (Q_strlen(value)+1);
-	Q_strcpy (var->string, value);
+
+	var->string = Z_Malloc (strlen(value)+1);
+	strcpy (var->string, value);
 	var->value = Q_atof (var->string);
-	
+
 	//johnfitz -- during initialization, update default too
 	if (!host_initialized)
 	{
 		Z_Free (var->default_string);
-		var->default_string = Z_Malloc (Q_strlen(value)+1);
-		Q_strcpy (var->default_string, value);
+		var->default_string = Z_Malloc (strlen(value)+1);
+		strcpy (var->default_string, value);
 	}
 	//johnfitz
-	
+
 	if ((var->server == 1) && changed)  // JPG - so that server = 2 will mute the variable
 	{
 		if (sv.active)
@@ -399,6 +377,7 @@ void Cvar_Set (char *var_name, char *value)
 	// JPG - there's probably a better place for this, but it works.
 	if (!strcmp(var_name, "pq_lag"))
 	{
+		
 		if (var->value < 0)
 		{
 			Cvar_Set("pq_lag", "0");
@@ -409,6 +388,11 @@ void Cvar_Set (char *var_name, char *value)
 			Cvar_Set("pq_lag", "400");
 			return;
 		}
+
+		if (var->value == 0 && key_dest == key_menu) // Baker 3.99k: reset to defaults shouldn't trigger the pq_lag msg
+			return; 
+
+		
 		Cbuf_AddText(va("say \"%cping +%d%c\"\n", 157, (int) var->value, 159));
 	}
 }
@@ -421,11 +405,13 @@ Cvar_SetValue
 void Cvar_SetValue (char *var_name, float value)
 {
 	char	val[32];
-	
-	sprintf (val, "%f",value);
+
+	if (value == (int)value)
+		snprintf(val, sizeof(val),  "%d", (int)value);
+	else
+	snprintf (val, sizeof(val), "%f",value);
 	Cvar_Set (var_name, val);
 }
-
 
 /*
 ============
@@ -438,30 +424,30 @@ void Cvar_RegisterVariable (cvar_t *variable, void *function)
 {
 	char	*oldstr;
 	cvar_t	*cursor,*prev; //johnfitz -- sorted list insert
-	
+
 // first check to see if it has already been defined
 	if (Cvar_FindVar (variable->name))
 	{
 		Con_Printf ("Can't register variable %s, already defined\n", variable->name);	// JPG 3.02 allready->already
 		return;
 	}
-	
+
 // check for overlap with a command
 	if (Cmd_Exists (variable->name))
 	{
 		Con_Printf ("Cvar_RegisterVariable: %s is a command\n", variable->name);
 		return;
 	}
-		
+
 // copy the value off, because future sets will Z_Free it
 	oldstr = variable->string;
-	variable->string = Z_Malloc (Q_strlen(variable->string)+1);	
-	Q_strcpy (variable->string, oldstr);
+	variable->string = Z_Malloc (strlen(variable->string)+1);
+	strcpy (variable->string, oldstr);
 	variable->value = Q_atof (variable->string);
-	
+
 	//johnfitz -- save initial value for "reset" command
-	variable->default_string = Z_Malloc (Q_strlen(variable->string)+1);
-	Q_strcpy (variable->default_string, oldstr);
+	variable->default_string = Z_Malloc (strlen(variable->string)+1);
+	strcpy (variable->default_string, oldstr);
 	//johnfitz
 // link the variable in
 
@@ -506,7 +492,7 @@ qboolean	Cvar_Command (void)
 	v = Cvar_FindVar (Cmd_Argv(0));
 	if (!v)
 		return false;
-		
+
 // perform a variable print or set
 	if (Cmd_Argc() == 1)
 	{
@@ -517,7 +503,6 @@ qboolean	Cvar_Command (void)
 	Cvar_Set (v->name, Cmd_Argv(1));
 	return true;
 }
-
 
 /*
 ============
@@ -530,7 +515,7 @@ with the archive flag set to true.
 void Cvar_WriteVariables (FILE *f)
 {
 	cvar_t	*var;
-	
+
 	fprintf (f, "\n// Variables\n\n");
 	for (var = cvar_vars ; var ; var = var->next)
 		if (var->archive)

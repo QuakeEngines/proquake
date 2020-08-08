@@ -32,14 +32,10 @@ sfx_t			*cl_sfx_ric1;
 sfx_t			*cl_sfx_ric2;
 sfx_t			*cl_sfx_ric3;
 sfx_t			*cl_sfx_r_exp3;
-#ifdef QUAKE2
-sfx_t			*cl_sfx_imp;
-sfx_t			*cl_sfx_rail;
-#endif
 
 /*
 =================
-CL_ParseTEnt
+CL_InitTEnts
 =================
 */
 void CL_InitTEnts (void)
@@ -51,10 +47,6 @@ void CL_InitTEnts (void)
 	cl_sfx_ric2 = S_PrecacheSound ("weapons/ric2.wav");
 	cl_sfx_ric3 = S_PrecacheSound ("weapons/ric3.wav");
 	cl_sfx_r_exp3 = S_PrecacheSound ("weapons/r_exp3.wav");
-#ifdef QUAKE2
-	cl_sfx_imp = S_PrecacheSound ("shambler/sattck1.wav");
-	cl_sfx_rail = S_PrecacheSound ("weapons/lstart.wav");
-#endif
 }
 
 /*
@@ -64,10 +56,9 @@ CL_ParseBeam
 */
 void CL_ParseBeam (model_t *m)
 {
-	int		ent;
+	int	i, ent;
 	vec3_t	start, end;
 	beam_t	*b;
-	int		i;
 	
 	ent = MSG_ReadShort ();
 	
@@ -81,6 +72,7 @@ void CL_ParseBeam (model_t *m)
 
 // override any beam with the same entity
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
+	{
 		if (b->entity == ent)
 		{
 			b->entity = ent;
@@ -90,6 +82,7 @@ void CL_ParseBeam (model_t *m)
 			VectorCopy (end, b->end);
 			return;
 		}
+	}
 
 // find a free beam
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
@@ -104,6 +97,7 @@ void CL_ParseBeam (model_t *m)
 			return;
 		}
 	}
+
 	Con_Printf ("beam list overflow!\n");	
 }
 
@@ -116,9 +110,6 @@ void CL_ParseTEnt (void)
 {
 	int		type;
 	vec3_t	pos;
-#ifdef QUAKE2
-	vec3_t	endpos;
-#endif
 	dlight_t	*dl;
 	int		rnd;
 	int		colorStart, colorLength;
@@ -152,7 +143,9 @@ void CL_ParseTEnt (void)
 		R_RunParticleEffect (pos, vec3_origin, 0, 10);
 #endif
 		if ( rand() % 5 )
+		{
 			S_StartSound (-1, 0, cl_sfx_tink1, pos, 1, 1);
+		}
 		else
 		{
 			rnd = rand() & 3;
@@ -164,6 +157,7 @@ void CL_ParseTEnt (void)
 				S_StartSound (-1, 0, cl_sfx_ric3, pos, 1, 1);
 		}
 		break;
+
 	case TE_SUPERSPIKE:			// super spike hitting wall
 		pos[0] = MSG_ReadCoord ();
 		pos[1] = MSG_ReadCoord ();
@@ -171,7 +165,9 @@ void CL_ParseTEnt (void)
 		R_RunParticleEffect (pos, vec3_origin, 0, 20);
 
 		if ( rand() % 5 )
+		{
 			S_StartSound (-1, 0, cl_sfx_tink1, pos, 1, 1);
+		}
 		else
 		{
 			rnd = rand() & 3;
@@ -260,38 +256,10 @@ void CL_ParseTEnt (void)
 		S_StartSound (-1, 0, cl_sfx_r_exp3, pos, 1, 1);
 		break;
 		
-#ifdef QUAKE2
-	case TE_IMPLOSION:
-		pos[0] = MSG_ReadCoord ();
-		pos[1] = MSG_ReadCoord ();
-		pos[2] = MSG_ReadCoord ();
-		S_StartSound (-1, 0, cl_sfx_imp, pos, 1, 1);
-		break;
-
-	case TE_RAILTRAIL:
-		pos[0] = MSG_ReadCoord ();
-		pos[1] = MSG_ReadCoord ();
-		pos[2] = MSG_ReadCoord ();
-		endpos[0] = MSG_ReadCoord ();
-		endpos[1] = MSG_ReadCoord ();
-		endpos[2] = MSG_ReadCoord ();
-		S_StartSound (-1, 0, cl_sfx_rail, pos, 1, 1);
-		S_StartSound (-1, 1, cl_sfx_r_exp3, endpos, 1, 1);
-		R_RocketTrail (pos, endpos, 0+128);
-		R_ParticleExplosion (endpos);
-		dl = CL_AllocDlight (-1);
-		VectorCopy (endpos, dl->origin);
-		dl->radius = 350;
-		dl->die = cl.time + 0.5;
-		dl->decay = 300;
-		break;
-#endif
-
 	default:
 		Sys_Error ("CL_ParseTEnt: bad type");
 	}
 }
-
 
 /*
 =================
@@ -304,8 +272,10 @@ entity_t *CL_NewTempEntity (void)
 
 	if (cl_numvisedicts == MAX_VISEDICTS)
 		return NULL;
+
 	if (num_temp_entities == MAX_TEMP_ENTITIES)
 		return NULL;
+
 	ent = &cl_temp_entities[num_temp_entities];
 	memset (ent, 0, sizeof(*ent));
 	num_temp_entities++;
@@ -315,7 +285,6 @@ entity_t *CL_NewTempEntity (void)
 	ent->colormap = vid.colormap;
 	return ent;
 }
-
 
 /*
 =================
@@ -361,12 +330,20 @@ void CL_UpdateTEnts (void)
 		}
 		else
 		{
-			yaw = (int) (atan2(dist[1], dist[0]) * 180 / M_PI);
+#if !defined(FLASH)
+			yaw = (int) (atan2f(dist[1], dist[0]) * 180 / M_PI);
+#else
+			yaw = (int) (myAtan2(dist[1], dist[0]) * 180 / M_PI);
+#endif
 			if (yaw < 0)
 				yaw += 360;
 	
-			forward = sqrt (dist[0]*dist[0] + dist[1]*dist[1]);
-			pitch = (int) (atan2(dist[2], forward) * 180 / M_PI);
+			forward = sqrtf (dist[0]*dist[0] + dist[1]*dist[1]);
+#if !defined(FLASH)
+			pitch = (int) (atan2f(dist[2], forward) * 180 / M_PI);
+#else
+			pitch = (int) (myAtan2(dist[2], forward) * 180 / M_PI);
+#endif
 			if (pitch < 0)
 				pitch += 360;
 		}
@@ -389,8 +366,5 @@ void CL_UpdateTEnts (void)
 				org[i] += dist[i]*30;
 			d -= 30;
 		}
-	}
-	
+	}	
 }
-
-

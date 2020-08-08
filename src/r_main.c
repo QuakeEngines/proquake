@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_main.c
 
 #include "quakedef.h"
-#include "r_local.h"
+//#include "r_local.h"
 
 //define	PASSAGES
 
@@ -51,10 +51,10 @@ int			r_clipflags;
 
 byte		*r_warpbuffer;
 
+
+#if !defined(FLASH)
 byte		*r_stack_start;
-
-qboolean	r_fov_greater_than_90;
-
+#endif
 
 // view origin
 vec3_t	vup, base_vup;
@@ -94,9 +94,6 @@ int			modcount;
 int			*pfrustum_indexes[4];
 int			r_frustum_indexes[4*6];
 
-int		reinit_surfcache = 1;	// if 1, surface cache is currently empty and
-								// must be reinitialized for current cache size
-
 mleaf_t		*r_viewleaf, *r_oldviewleaf;
 
 texture_t	*r_notexture_mip;
@@ -115,7 +112,7 @@ cvar_t	r_speeds = {"r_speeds","0"};
 cvar_t	r_timegraph = {"r_timegraph","0"};
 cvar_t	r_graphheight = {"r_graphheight","10"};
 cvar_t	r_clearcolor = {"r_clearcolor","2"};
-cvar_t	r_waterwarp = {"r_waterwarp","0", true};  // Baker 3.60 - Save this to config now, classic default is 0
+cvar_t	r_waterwarp = {"r_waterwarp","0", true};
 cvar_t	r_fullbright = {"r_fullbright","0"};
 cvar_t	r_drawentities = {"r_drawentities","1"};
 cvar_t	r_drawviewmodel = {"r_drawviewmodel","1", true};  // Baker 3.60 - Save to config
@@ -132,6 +129,7 @@ cvar_t	r_maxedges = {"r_maxedges", "0"};
 cvar_t	r_numedges = {"r_numedges", "0"};
 cvar_t	r_aliastransbase = {"r_aliastransbase", "200"};
 cvar_t	r_aliastransadj = {"r_aliastransadj", "100"};
+cvar_t	r_interpolate_animation = {"r_interpolate_animation", "0", true};
 
 extern cvar_t	scr_fov;
 
@@ -147,23 +145,23 @@ void	R_InitTextures (void)
 {
 	int		x,y, m;
 	byte	*dest;
-	
+
 // create a simple checkerboard texture for the default
 	r_notexture_mip = Hunk_AllocName (sizeof(texture_t) + 16*16+8*8+4*4+2*2, "notexture");
-	
+
 	r_notexture_mip->width = r_notexture_mip->height = 16;
 	r_notexture_mip->offsets[0] = sizeof(texture_t);
 	r_notexture_mip->offsets[1] = r_notexture_mip->offsets[0] + 16*16;
 	r_notexture_mip->offsets[2] = r_notexture_mip->offsets[1] + 8*8;
 	r_notexture_mip->offsets[3] = r_notexture_mip->offsets[2] + 4*4;
-	
+
 	for (m=0 ; m<4 ; m++)
 	{
 		dest = (byte *)r_notexture_mip + r_notexture_mip->offsets[m];
 		for (y=0 ; y< (16>>m) ; y++)
 			for (x=0 ; x< (16>>m) ; x++)
 			*dest++ = ((y < (8>>m)) ^ (x < (8>>m))) ? 0 : 0xff;
-	}	
+	}
 }
 
 /*
@@ -173,15 +171,16 @@ R_Init
 */
 void R_Init (void)
 {
+#if !defined(FLASH)
 	int		dummy;
-	
+
 // get stack position so we can guess if we are going to overflow
 	r_stack_start = (byte *)&dummy;
-	
+#endif
 	R_InitTurb ();
-	
-	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);	
-	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);	
+
+	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);
+	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);
 
 	Cvar_RegisterVariable (&r_draworder, NULL);
 	Cvar_RegisterVariable (&r_speeds, NULL);
@@ -206,6 +205,8 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_aliastransbase, NULL);
 	Cvar_RegisterVariable (&r_aliastransadj, NULL);
 
+	Cvar_RegisterVariable (&r_interpolate_animation, NULL);
+
 	Cvar_SetValue ("r_maxedges", (float)100000); //NUMSTACKEDGES
 	Cvar_SetValue ("r_maxsurfs", (float)100000); //NUMSTACKSURFACES
 
@@ -217,12 +218,13 @@ void R_Init (void)
 	r_refdef.xOrigin = XCENTERING;
 	r_refdef.yOrigin = YCENTERING;
 
+	R_InitTextures ();
 	R_InitParticles ();
 
 // TODO: collect 386-specific code in one place
-#if	id386
+#ifndef NO_ASSEMBLY // Formerly #if id386
 	Sys_MakeCodeWriteable ((long)R_EdgeCodeStart, (long)R_EdgeCodeEnd - (long)R_EdgeCodeStart);
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 
 	D_Init ();
 }
@@ -235,14 +237,17 @@ R_NewMap
 void R_NewMap (void)
 {
 	int		i;
-	
+
 // clear out efrags in case the level hasn't been reloaded
 // FIXME: is this one short?
 	for (i=0 ; i<cl.worldmodel->numleafs ; i++)
 		cl.worldmodel->leafs[i].efrags = NULL;
-		 	
+
 	r_viewleaf = NULL;
 	R_ClearParticles ();
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+	R_FinalizeAliasVerts ();
+#endif
 
 	r_cnumsurfs = r_maxsurfs.value;
 
@@ -282,7 +287,7 @@ void R_NewMap (void)
 	r_viewchanged = false;
 
 #ifdef PASSAGES
-CreatePassages ();
+	CreatePassages ();
 #endif
 }
 
@@ -343,11 +348,11 @@ void R_SetVrect (vrect_t *pvrectin, vrect_t *pvrect, int lineadj)
 	pvrect->x = (pvrectin->width - pvrect->width)/2;
 	pvrect->y = full ? 0 : (h - pvrect->height) / 2;
 
-	if (lcd_x.value)
-	{
-		pvrect->y >>= 1;
-		pvrect->height >>= 1;
-	}
+		if (lcd_x.value)
+		{
+			pvrect->y >>= 1;
+			pvrect->height >>= 1;
+		}
 }
 
 
@@ -393,7 +398,7 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 	pixelAspect = aspect;
 	xOrigin = r_refdef.xOrigin;
 	yOrigin = r_refdef.yOrigin;
-	
+
 	screenAspect = r_refdef.vrect.width*pixelAspect / r_refdef.vrect.height;
 // 320*200 1.0 pixelAspect = 1.6 screenAspect
 // 320*240 1.0 pixelAspect = 1.3333 screenAspect
@@ -426,25 +431,25 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 	screenedge[0].normal[1] = 0;
 	screenedge[0].normal[2] = 1;
 	screenedge[0].type = PLANE_ANYZ;
-	
+
 // right side clip
 	screenedge[1].normal[0] = 1.0 / ((1.0-xOrigin)*r_refdef.horizontalFieldOfView);
 	screenedge[1].normal[1] = 0;
 	screenedge[1].normal[2] = 1;
 	screenedge[1].type = PLANE_ANYZ;
-	
+
 // top side clip
 	screenedge[2].normal[0] = 0;
 	screenedge[2].normal[1] = -1.0 / (yOrigin*verticalFieldOfView);
 	screenedge[2].normal[2] = 1;
 	screenedge[2].type = PLANE_ANYZ;
-	
+
 // bottom side clip
 	screenedge[3].normal[0] = 0;
 	screenedge[3].normal[1] = 1.0 / ((1.0-yOrigin)*verticalFieldOfView);
-	screenedge[3].normal[2] = 1;	
+	screenedge[3].normal[2] = 1;
 	screenedge[3].type = PLANE_ANYZ;
-	
+
 	for (i=0 ; i<4 ; i++)
 		VectorNormalize (screenedge[i].normal);
 
@@ -452,28 +457,19 @@ void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect)
 	r_aliastransition = r_aliastransbase.value * res_scale;
 	r_resfudge = r_aliastransadj.value * res_scale;
 
-	/*if (scr_fov.value <= 90.0)
-		r_fov_greater_than_90 = false;
-	else
-		r_fov_greater_than_90 = true;  // Baker 3.75 - aguirRe isn't using this ;) Allow FOV r_drawviewmodel in WinQuake*/
 
 // TODO: collect 386-specific code in one place
-#if	id386
-	if (r_pixbytes == 1)
-	{
-		Sys_MakeCodeWriteable ((long)R_Surf8Start,
-						     (long)R_Surf8End - (long)R_Surf8Start);
+#ifndef NO_ASSEMBLY // Formerly #if id386
+	if (r_pixbytes == 1) {
+		Sys_MakeCodeWriteable ((long)R_Surf8Start, (long)R_Surf8End - (long)R_Surf8Start);
 		colormap = vid.colormap;
 		R_Surf8Patch ();
-	}
-	else
-	{
-		Sys_MakeCodeWriteable ((long)R_Surf16Start,
-						     (long)R_Surf16End - (long)R_Surf16Start);
+	} else {
+		Sys_MakeCodeWriteable ((long)R_Surf16Start, (long)R_Surf16End - (long)R_Surf16Start);
 		colormap = vid.colormap16;
 		R_Surf16Patch ();
 	}
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 
 	D_ViewChanged ();
 }
@@ -492,12 +488,12 @@ void R_MarkLeaves (void)
 
 	if (r_oldviewleaf == r_viewleaf)
 		return;
-	
+
 	r_visframecount++;
 	r_oldviewleaf = r_viewleaf;
 
 	vis = Mod_LeafPVS (r_viewleaf, cl.worldmodel);
-		
+
 	for (i=0 ; i<cl.worldmodel->numleafs ; i++)
 	{
 		if (vis[i>>3] & (1<<(i&7)))
@@ -540,7 +536,7 @@ void R_DrawEntitiesOnList (void)
 		if (currententity == &cl_entities[cl.viewentity])
 		{
 			if (!chase_active.value)
-				continue;	// don't draw the player
+			continue;	// don't draw the player
 			else
 				currententity->angles[0] *= 0.3;
 		}
@@ -562,7 +558,7 @@ void R_DrawEntitiesOnList (void)
 			if (R_AliasCheckBBox ())
 			{
 				j = R_LightPoint (currententity->origin);
-	
+
 				lighting.ambientlight = j;
 				lighting.shadelight = j;
 
@@ -573,20 +569,25 @@ void R_DrawEntitiesOnList (void)
 					if (cl_dlights[lnum].die >= cl.time)
 					{
 						VectorSubtract (currententity->origin, cl_dlights[lnum].origin, dist);
-						add = cl_dlights[lnum].radius - Length(dist);
-	
+						add = cl_dlights[lnum].radius - VectorLength(dist);
+
 						if (add > 0)
 							lighting.ambientlight += add;
 					}
 				}
-	
+
 			// clamp lighting so it doesn't overbright as much
 				if (lighting.ambientlight > 128)
 					lighting.ambientlight = 128;
 				if (lighting.ambientlight + lighting.shadelight > 192)
 					lighting.shadelight = 192 - lighting.ambientlight;
 
-				R_AliasDrawModel (&lighting);
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+				if (r_interpolate_animation.value)
+					R_AliasDrawModelMH (&lighting);
+				else
+#endif
+					R_AliasDrawModelNM (&lighting);
 			}
 
 			break;
@@ -610,11 +611,14 @@ void R_DrawViewModel (void)
 	vec3_t		dist;
 	float		add;
 	dlight_t	*dl;
-	
-	if (!r_drawviewmodel.value) 
+
+	if (!r_drawviewmodel.value)
 		return;
-	
-	if (chase_active.value) 
+
+	if (chase_active.value)
+		return;
+
+	if (!r_drawentities.value)
 		return;
 
 	if (cl.items & IT_INVISIBILITY)
@@ -624,14 +628,14 @@ void R_DrawViewModel (void)
 		return;
 
 	currententity = &cl.viewent;
+
 	if (!currententity->model)
 		return;
 
 	VectorCopy (currententity->origin, r_entorigin);
 	VectorSubtract (r_origin, r_entorigin, modelorg);
 
-	VectorCopy (vup, viewlightvec);
-	VectorInverse (viewlightvec);
+	VectorNegate (vup, viewlightvec);
 
 	j = R_LightPoint (currententity->origin);
 
@@ -640,7 +644,7 @@ void R_DrawViewModel (void)
 	r_viewlighting.ambientlight = j;
 	r_viewlighting.shadelight = j;
 
-// add dynamic lights		
+// add dynamic lights
 	for (lnum=0 ; lnum<MAX_DLIGHTS ; lnum++)
 	{
 		dl = &cl_dlights[lnum];
@@ -652,7 +656,7 @@ void R_DrawViewModel (void)
 			continue;
 
 		VectorSubtract (currententity->origin, dl->origin, dist);
-		add = dl->radius - Length(dist);
+		add = dl->radius - VectorLength(dist);
 		if (add > 0)
 			r_viewlighting.ambientlight += add;
 	}
@@ -665,7 +669,12 @@ void R_DrawViewModel (void)
 
 	r_viewlighting.plightvec = lightvec;
 
-	R_AliasDrawModel (&r_viewlighting);
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+	if (r_interpolate_animation.value)
+		R_AliasDrawModelMH (&r_viewlighting);
+	else
+#endif
+		R_AliasDrawModelNM (&r_viewlighting);
 }
 
 
@@ -709,7 +718,7 @@ int R_BmodelCheckBBox (model_t *clmodel, float *minmaxs)
 			rejectpt[0] = minmaxs[pindex[0]];
 			rejectpt[1] = minmaxs[pindex[1]];
 			rejectpt[2] = minmaxs[pindex[2]];
-			
+
 			d = DotProduct (rejectpt, view_clipplanes[i].normal);
 			d -= view_clipplanes[i].dist;
 
@@ -763,12 +772,9 @@ void R_DrawBEntitiesOnList (void)
 
 		// see if the bounding box lets us trivially reject, also sets
 		// trivial accept status
-			for (j=0 ; j<3 ; j++)
-			{
-				minmaxs[j] = currententity->origin[j] +
-						clmodel->mins[j];
-				minmaxs[3+j] = currententity->origin[j] +
-						clmodel->maxs[j];
+			for (j=0 ; j<3 ; j++) {
+				minmaxs[j] = currententity->origin[j] + clmodel->mins[j];
+				minmaxs[3+j] = currententity->origin[j] + clmodel->maxs[j];
 			}
 
 			clipflags = R_BmodelCheckBBox (clmodel, minmaxs);
@@ -779,38 +785,30 @@ void R_DrawBEntitiesOnList (void)
 				VectorSubtract (r_origin, r_entorigin, modelorg);
 			// FIXME: is this needed?
 				VectorCopy (modelorg, r_worldmodelorg);
-		
+
 				r_pcurrentvertbase = clmodel->vertexes;
-		
+
 			// FIXME: stop transforming twice
 				R_RotateBmodel ();
 
-			// calculate dynamic lighting for bmodel if it's not an
-			// instanced model
+			// calculate dynamic lighting for bmodel if it's not an instanced model
 				if (clmodel->firstmodelsurface != 0)
 				{
 					for (k=0 ; k<MAX_DLIGHTS ; k++)
 					{
-						if ((cl_dlights[k].die < cl.time) ||
-							(!cl_dlights[k].radius))
-						{
+						if ((cl_dlights[k].die < cl.time) || (!cl_dlights[k].radius))
 							continue;
-						}
 
-						R_MarkLights (&cl_dlights[k], 1<<k,
-							clmodel->nodes + clmodel->hulls[0].firstclipnode);
+						R_MarkLights (&cl_dlights[k], 1<<k, clmodel->nodes + clmodel->hulls[0].firstclipnode);
 					}
 				}
 
 			// if the driver wants polygons, deliver those. Z-buffering is on
 			// at this point, so no clipping to the world tree is needed, just
 			// frustum clipping
-				if (r_drawpolys | r_drawculledpolys)
-				{
+				if (r_drawpolys | r_drawculledpolys) {
 					R_ZDrawSubmodelPolys (clmodel);
-				}
-				else
-				{
+				} else {
 					r_pefragtopnode = NULL;
 
 					for (j=0 ; j<3 ; j++)
@@ -824,7 +822,7 @@ void R_DrawBEntitiesOnList (void)
 					if (r_pefragtopnode)
 					{
 						currententity->topnode = r_pefragtopnode;
-	
+
 						if (r_pefragtopnode->contents >= 0)
 						{
 						// not a leaf; has to be clipped to the world BSP
@@ -838,12 +836,12 @@ void R_DrawBEntitiesOnList (void)
 						// drawing order
 							R_DrawSubmodelPolygons (clmodel, clipflags);
 						}
-	
+
 						currententity->topnode = NULL;
 					}
 				}
 
-			// put back world rotation and frustum clipping		
+			// put back world rotation and frustum clipping
 			// FIXME: R_RotateBmodel should just work off base_vxx
 				VectorCopy (base_vpn, vpn);
 				VectorCopy (base_vup, vup);
@@ -892,20 +890,22 @@ void R_EdgeDrawing (void)
 	R_BeginEdgeFrame ();
 
 	if (r_dspeeds.value)
-		rw_time1 = Sys_FloatTime ();
+		rw_time1 = Sys_DoubleTime ();
 
 	R_RenderWorld ();
 
 	if (r_drawculledpolys)
 		R_ScanEdges ();
 
+#if 0
 // only the world can be drawn back to front with no z reads or compares, just
 // z writes, so have the driver turn z compares on now
 	D_TurnZOn ();
+#endif
 
 	if (r_dspeeds.value)
 	{
-		rw_time2 = Sys_FloatTime ();
+		rw_time2 = Sys_DoubleTime ();
 		db_time1 = rw_time2;
 	}
 
@@ -913,7 +913,7 @@ void R_EdgeDrawing (void)
 
 	if (r_dspeeds.value)
 	{
-		db_time2 = Sys_FloatTime ();
+		db_time2 = Sys_DoubleTime ();
 		se_time1 = db_time2;
 	}
 
@@ -923,7 +923,7 @@ void R_EdgeDrawing (void)
 		S_ExtraUpdate ();	// don't let sound get messed up if going slow
 		VID_LockBuffer ();
 	}
-	
+
 	if (!(r_drawpolys | r_drawculledpolys))
 		R_ScanEdges ();
 }
@@ -943,7 +943,7 @@ void R_RenderView_ (void)
 	r_warpbuffer = warpbuffer;
 
 	if (r_timegraph.value || r_speeds.value || r_dspeeds.value)
-		r_time1 = Sys_FloatTime ();
+		r_time1 = Sys_DoubleTime ();
 
 	R_SetupFrame ();
 
@@ -961,14 +961,14 @@ SetVisibilityByPassages ();
 
 	if (!cl_entities[0].model || !cl.worldmodel)
 		Sys_Error ("R_RenderView: NULL worldmodel");
-		
+
 	if (!r_dspeeds.value)
 	{
 		VID_UnlockBuffer ();
 		S_ExtraUpdate ();	// don't let sound get messed up if going slow
 		VID_LockBuffer ();
 	}
-	
+
 	R_EdgeDrawing ();
 
 	if (!r_dspeeds.value)
@@ -977,10 +977,10 @@ SetVisibilityByPassages ();
 		S_ExtraUpdate ();	// don't let sound get messed up if going slow
 		VID_LockBuffer ();
 	}
-	
+
 	if (r_dspeeds.value)
 	{
-		se_time2 = Sys_FloatTime ();
+		se_time2 = Sys_DoubleTime ();
 		de_time1 = se_time2;
 	}
 
@@ -988,7 +988,7 @@ SetVisibilityByPassages ();
 
 	if (r_dspeeds.value)
 	{
-		de_time2 = Sys_FloatTime ();
+		de_time2 = Sys_DoubleTime ();
 		dv_time1 = de_time2;
 	}
 
@@ -996,14 +996,14 @@ SetVisibilityByPassages ();
 
 	if (r_dspeeds.value)
 	{
-		dv_time2 = Sys_FloatTime ();
-		dp_time1 = Sys_FloatTime ();
+		dv_time2 = Sys_DoubleTime ();
+		dp_time1 = Sys_DoubleTime ();
 	}
 
 	R_DrawParticles ();
 
 	if (r_dspeeds.value)
-		dp_time2 = Sys_FloatTime ();
+		dp_time2 = Sys_DoubleTime ();
 
 	if (r_dowarp)
 		D_WarpScreen ();
@@ -1015,7 +1015,7 @@ SetVisibilityByPassages ();
 
 	if (r_aliasstats.value)
 		R_PrintAliasStats ();
-		
+
 	if (r_speeds.value)
 		R_PrintTimes ();
 
@@ -1035,10 +1035,12 @@ SetVisibilityByPassages ();
 void R_RenderView (void)
 {
 	int	dummy, delta;
-	
+//This causes problems for Flash when not using -O3
+#if !defined(FLASH)
 	delta = (byte *)&dummy - r_stack_start;
 	if (delta < -10000 || delta > 10000)
 		Sys_Error ("R_RenderView: called without enough stack");
+#endif
 
 	if ( Hunk_LowMark() & 3 )
 		Sys_Error ("Hunk is missaligned");
@@ -1060,7 +1062,7 @@ R_InitTurb
 void R_InitTurb (void)
 {
 	int		i;
-	
+
 	for (i=0 ; i<(SIN_BUFFER_SIZE) ; i++)
 	{
 		sintable[i] = AMP + sin(i*3.14159*2/CYCLE)*AMP;

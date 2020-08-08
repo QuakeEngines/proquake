@@ -18,7 +18,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-//  keynum_t - Baker 3.60 - from FitzQuake and JoeQuake 0.15 with edits for full keyboard support/8 buttons
 // these are the key numbers that should be passed to Key_Event
 typedef enum
 {
@@ -74,6 +73,7 @@ typedef enum
 	K_RWIN,
 	K_MENU, 
 
+// keypad keys
 	KP_NUMLOCK,		
 	KP_SLASH,		
 	KP_STAR,
@@ -152,9 +152,12 @@ typedef enum
 	K_MWHEELDOWN
 } keynum_t;
 
+#define	MAXCMDLINE		256
 
 
-typedef enum {key_game, key_console, key_message, key_menu} keydest_t;
+typedef enum {
+	key_game, key_console, key_message, key_menu
+} keydest_t;
 
 extern keydest_t	key_dest;
 extern char *keybindings[256];
@@ -168,3 +171,7 @@ void Key_WriteBindings (FILE *f);
 void Key_SetBinding (int keynum, char *binding);
 void Key_ClearStates (void);
 
+void History_Shutdown (void);
+
+
+qboolean Key_InternationalON(void);

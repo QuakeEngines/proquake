@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -17,7 +17,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-// comndef.h  -- general definitions
+// common.h  -- general definitions
+
+
+#ifndef COMMON_H
+
+#define COMMON_H
+
+
 
 #if !defined BYTE_DEFINED
 typedef unsigned char 		byte;
@@ -29,7 +36,21 @@ typedef unsigned char 		byte;
 
 typedef enum {false, true}	qboolean;
 
-// Baker 3.60 - "bound" function from JoeQuake 
+#ifndef NULL
+
+#define NULL ((void *)0)
+
+#endif
+
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+// by joe
 #define bound(a, b, c) ((a) >= (c) ? (a) : (b) < (a) ? (a) : (b) > (c) ? (c) : (b))
 
 
@@ -70,10 +91,6 @@ void InsertLinkAfter (link_t *l, link_t *after);
 #define	STRUCT_FROM_LINK(l,t,m) ((t *)((byte *)l - (int)&(((t *)0)->m)))
 
 //============================================================================
-
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
 #define Q_MAXCHAR ((char)0x7f)
 #define Q_MAXSHORT ((short)0x7fff)
@@ -128,21 +145,56 @@ float MSG_ReadPreciseAngle (void); // JPG - precise aim!!
 
 //============================================================================
 
-void Q_memset (void *dest, int fill, int count);
-void Q_memcpy (void *dest, void *src, int count);
-int Q_memcmp (void *m1, void *m2, int count);
-
 #ifdef _WIN32
 
-#define	vsnprintf _vsnprintf
+#undef snprintf
+#undef vsnprintf
+#define vsnprintf _vsnprintf
+#define snprintf _snprintf
+
+
+
+// MSVC has a different name for several standard functions
+
+# define strcasecmp stricmp
+
+# define strncasecmp strnicmp
+
 #endif
-void Q_strcpy (char *dest, char *src);
-void Q_strncpy (char *dest, char *src, int count);
-int Q_strlen (char *str);
-char *Q_strrchr (char *s, char c);
-void Q_strcat (char *dest, char *src);
-int Q_strcmp (char *s1, char *s2);
-int Q_strncmp (char *s1, char *s2, int count);
+
+#ifdef BUILD_MP3_VERSION
+
+int		va_snprintf (char *function, char *buffer, size_t buffersize, const char *format, ...);
+int		va_vsnprintf (char *function, char *buffer, size_t buffersize, const char *format, va_list args);
+
+#endif
+
+
+
+int dpsnprintf (char *buffer, size_t buffersize, const char *format, ...);
+
+int dpvsnprintf (char *buffer, size_t buffersize, const char *format, va_list args);
+
+
+
+#if !defined(FLASH) 
+
+char *strltrim(char *s);
+
+#if !defined(HAVE_STRLCAT)
+
+size_t strlcat(char *dst, const char *src, size_t siz);
+
+#endif
+
+#endif
+
+
+
+//void Q_strcpy (char *dest, char *src);
+//void Q_strncpy (char *dest, char *src, int count);
+
+
 int Q_strcasecmp (char *s1, char *s2);
 int Q_strncasecmp (char *s1, char *s2, int n);
 int	Q_atoi (char *str);
@@ -168,12 +220,14 @@ void COM_InitArgv (int argc, char **argv);
 
 char *COM_SkipPath (char *pathname);
 void COM_StripExtension (char *in, char *out);
+char *COM_FileExtension (char *in);
 void COM_FileBase (char *in, char *out);
 void COM_DefaultExtension (char *path, char *extension);
 
 char	*va(char *format, ...);
 // does a varargs printf into a temp buffer
 
+char *CopyString (char *s);
 
 //============================================================================
 
@@ -183,9 +237,15 @@ struct cache_user_s;
 extern	char	com_gamedir[MAX_OSPATH];
 extern char	com_basedir[MAX_OSPATH];
 
+
 void COM_ForceExtension (char *path, char *extension);	// by joe
 
+
 void COM_WriteFile (char *filename, void *data, int len);
+
+
+void COM_CreatePath (char *path);
+
 int COM_OpenFile (char *filename, int *hndl);
 int COM_FOpenFile (char *filename, FILE **file);
 void COM_CloseFile (int h);
@@ -194,8 +254,27 @@ byte *COM_LoadStackFile (char *path, void *buffer, int bufsize);
 byte *COM_LoadTempFile (char *path);
 byte *COM_LoadHunkFile (char *path);
 void COM_LoadCacheFile (char *path, struct cache_user_s *cu);
+#ifdef HTTP_DOWNLOAD
+
+void COM_GetFolder (char *in, char *out);//R00k
+
+#endif
+
+
+
+char *COM_Quakebar (int len);
+
 
 
 extern	struct cvar_s	registered;
 
 extern qboolean		standard_quake, rogue, hipnotic;
+extern qboolean		mod_deeplair, mod_conhide,  mod_nosoundwarn;
+
+
+
+extern void COM_ToLowerString(char *in, char *out);
+
+void R_PreMapLoad (char *mapname);
+
+#endif

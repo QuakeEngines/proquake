@@ -1,11 +1,11 @@
 //
 // This source file is part of the bstring string library.  This code was
-// written by Paul Hsieh in 2002-2006, and is covered by the BSD open source 
-// license. Refer to the accompanying documentation for details on usage and 
+// written by Paul Hsieh in 2002-2006, and is covered by the BSD open source
+// license. Refer to the accompanying documentation for details on usage and
 // license.
 //
 
-// 
+//
 // test.cpp
 //
 // This file is the C++ unit test for Bstrlib
@@ -16,7 +16,7 @@
 #include "bstrlib.h"
 #include "bstrwrap.h"
 
-// Exceptions must be turned on in the compiler to successfully run 
+// Exceptions must be turned on in the compiler to successfully run
 // this test.  The compiler must also support STL.
 
 #define dumpOutQty (32)
@@ -34,15 +34,15 @@ char * dumpBstring (const bstring b) {
 		bcatcstr (dumpOut[rot], "NULL");
 	} else {
 		char msg[32];
-		sprintf (msg, "%p", (void *)b);
+		snprintf (msg, sizeof(msg), "%p", (void *)b);
 		bcatcstr (dumpOut[rot], msg);
 
 		if (b->slen < 0) {
-			sprintf (msg, ":[err:slen=%d<0]", b->slen);
+			snprintf (msg, sizeof(msg), ":[err:slen=%d<0]", b->slen);
 			bcatcstr (dumpOut[rot], msg);
 		} else {
 			if (b->mlen > 0 && b->mlen < b->slen) {
-				sprintf (msg, ":[err:mlen=%d<slen=%d]", b->mlen, b->slen);
+				snprintf (msg, sizeof(msg), ":[err:mlen=%d<slen=%d]", b->mlen, b->slen);
 				bcatcstr (dumpOut[rot], msg);
 			} else {
 				if (b->mlen == -1) {

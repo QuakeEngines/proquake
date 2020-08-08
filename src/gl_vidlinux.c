@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -76,7 +76,7 @@ int		mouserate = MOUSE_DEFAULTSAMPLERATE;
 cvar_t		vid_mode = {"vid_mode","5",false};
 cvar_t		vid_redrawfull = {"vid_redrawfull","0",false};
 cvar_t		vid_waitforrefresh = {"vid_waitforrefresh","0",true};
- 
+
 char	*framebuffer_ptr;
 
 cvar_t  mouse_button_commands[3] =
@@ -165,7 +165,7 @@ void vtswitch(int newconsole)
 
 void keyhandler(int scancode, int state)
 {
-	
+
 	int sc;
 
 	sc = scancode & 0x7f;
@@ -236,7 +236,7 @@ void	VID_SetPaletteOld (unsigned char *palette)
 		g = pal[1];
 		b = pal[2];
 		pal += 3;
-		
+
 		v = (255<<24) + (r<<0) + (g<<8) + (b<<16);
 		*table++ = v;
 	}
@@ -268,7 +268,7 @@ void	VID_SetPaletteOld (unsigned char *palette)
 	}
 }
 
-void CheckMultiTextureExtensions(void) 
+void CheckMultiTextureExtensions(void)
 {
 	void *prjobj;
 
@@ -446,29 +446,29 @@ void Init_KBD(void)
 		scantokey[30] = 'a';
 		scantokey[48] = 'b';
 		scantokey[46] = 'c';
-		scantokey[32] = 'd';       
-		scantokey[18] = 'e';       
-		scantokey[33] = 'f';       
-		scantokey[34] = 'g';       
-		scantokey[35] = 'h';       
-		scantokey[23] = 'i';       
-		scantokey[36] = 'j';       
-		scantokey[37] = 'k';       
-		scantokey[38] = 'l';       
-		scantokey[50] = 'm';       
-		scantokey[49] = 'n';       
-		scantokey[24] = 'o';       
-		scantokey[25] = 'p';       
-		scantokey[16] = 'q';       
-		scantokey[19] = 'r';       
-		scantokey[31] = 's';       
-		scantokey[20] = 't';       
-		scantokey[22] = 'u';       
-		scantokey[47] = 'v';       
-		scantokey[17] = 'w';       
-		scantokey[45] = 'x';       
-		scantokey[21] = 'y';       
-		scantokey[44] = 'z';       
+		scantokey[32] = 'd';
+		scantokey[18] = 'e';
+		scantokey[33] = 'f';
+		scantokey[34] = 'g';
+		scantokey[35] = 'h';
+		scantokey[23] = 'i';
+		scantokey[36] = 'j';
+		scantokey[37] = 'k';
+		scantokey[38] = 'l';
+		scantokey[50] = 'm';
+		scantokey[49] = 'n';
+		scantokey[24] = 'o';
+		scantokey[25] = 'p';
+		scantokey[16] = 'q';
+		scantokey[19] = 'r';
+		scantokey[31] = 's';
+		scantokey[20] = 't';
+		scantokey[22] = 'u';
+		scantokey[47] = 'v';
+		scantokey[17] = 'w';
+		scantokey[45] = 'x';
+		scantokey[21] = 'y';
+		scantokey[44] = 'z';
 
 		scantokey[78] = '+';
 		scantokey[74] = '-';
@@ -481,7 +481,7 @@ void Init_KBD(void)
 
 #define NUM_RESOLUTIONS 16
 
-static int resolutions[NUM_RESOLUTIONS][3]={ 
+static int resolutions[NUM_RESOLUTIONS][3]={
 	320,200,  GR_RESOLUTION_320x200,
 	320,240,  GR_RESOLUTION_320x240,
 	400,256,  GR_RESOLUTION_400x256,
@@ -510,7 +510,7 @@ int findres(int *width, int *height)
 			*height = resolutions[i][1];
 			return resolutions[i][2];
 		}
-        
+
 	*width = 640;
 	*height = 480;
 	return GR_RESOLUTION_640x480;
@@ -521,7 +521,7 @@ qboolean VID_Is8bit(void)
 	return is8bit;
 }
 
-void VID_Init8bitPalette(void) 
+void VID_Init8bitPalette(void)
 {
 	// Check for 8bit Extensions and initialize them.
 	int i;
@@ -570,7 +570,7 @@ void VID_Init8bitPalette(void)
 		}
 		qglColorTableEXT(GL_SHARED_TEXTURE_PALETTE_EXT, GL_RGB, 256, GL_RGB, GL_UNSIGNED_BYTE, (void *) thePalette);
 		is8bit = true;
-	
+
 	}
 
 	dlclose(prjobj);
@@ -588,8 +588,15 @@ static void Check_GammaOld (unsigned char *pal)
 			vid_gamma = 1;
 		else
 			vid_gamma = 0.7; // default to 0.7 on non-3dfx hardware
-	} else
-		vid_gamma = Q_atof(com_argv[i+1]);
+	} else {
+		vid_gamma = Q_atof(com_argv[i+1];
+		if (vid_gamma == 0) {
+			// Baker: Then someone used -gamma parameter incorrectly so use the default
+			vid_gamma = 0.7;
+		} else {
+			vid_gamma = bound(0.3, vid_gamma, 1); //Baker 3.99: place min on vid_gamma value to avoid white screen
+		}
+	}
 
 	for (i=0 ; i<768 ; i++)
 	{
@@ -620,7 +627,7 @@ void VID_Init(unsigned char *palette)
 	Cvar_RegisterVariable (&vid_redrawfull);
 	Cvar_RegisterVariable (&vid_waitforrefresh);
 	Cvar_RegisterVariable (&gl_ztrick);
-	
+
 	vid.maxwarpwidth = WARP_WIDTH;
 	vid.maxwarpheight = WARP_HEIGHT;
 	vid.colormap = host_colormap;
@@ -659,7 +666,7 @@ void VID_Init(unsigned char *palette)
 	if (vid.conheight < 200)
 		vid.conheight = 200;
 
-	fc = fxMesaCreateContext(0, findres(&width, &height), GR_REFRESH_75Hz, 
+	fc = fxMesaCreateContext(0, findres(&width, &height), GR_REFRESH_75Hz,
 		attribs);
 	if (!fc)
 		Sys_Error("Unable to create 3DFX context.\n");
@@ -684,7 +691,7 @@ void VID_Init(unsigned char *palette)
 
 	GL_Init();
 
-	sprintf (gldir, "%s/glquake", com_gamedir);
+	snprintf (gldir, sizeof(gldir), "%s/glquake", com_gamedir);
 	Sys_mkdir (gldir);
 
 	Check_GammaOld(palette);
@@ -839,10 +846,10 @@ void IN_MouseMove (usercmd_t *cmd)
 		cmd->sidemove += m_side.value * mouse_x;
 	else
 		cl.viewangles[YAW] -= m_yaw.value * mouse_x;
-	
+
 	if (mlook_active)    // Baker 3.60 - Freelook cvar support
 		V_StopPitchDrift ();
-		
+
 	if ( mlook_active && !(in_strafe.state & 1))  // Baker 3.60 - Freelook cvar support
 	{
 		cl.viewangles[PITCH] += m_pitch.value * mouse_y;

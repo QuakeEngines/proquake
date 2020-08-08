@@ -29,21 +29,15 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdio.h>
 #include "quakedef.h"
 
-int audio_fd;
-int snd_inited;
+int audio_fd, snd_inited;
 
 static int tryrates[] = { 11025, 22051, 44100, 8000 };
 
 qboolean SNDDMA_Init(void)
 {
-
-	int rc;
-    int fmt;
-	int tmp;
-    int i;
+	int	rc, fmt, tmp, i, caps;
     char *s;
 	struct audio_buf_info info;
-	int caps;
 
 	snd_inited = 0;
 
@@ -93,44 +87,50 @@ qboolean SNDDMA_Init(void)
     shm->splitbuffer = 0;
 
 // set sample bits & speed
+	if ((s = getenv("QUAKE_SOUND_SAMPLEBITS")))
+		shm->samplebits = Q_atoi(s);
+	else if ((i = COM_CheckParm("-sndbits")) && i + 1 < com_argc)
+		shm->samplebits = Q_atoi(com_argv[i+1]);
 
-    s = getenv("QUAKE_SOUND_SAMPLEBITS");
-    if (s) shm->samplebits = atoi(s);
-	else if ((i = COM_CheckParm("-sndbits")) != 0)
-		shm->samplebits = atoi(com_argv[i+1]);
 	if (shm->samplebits != 16 && shm->samplebits != 8)
     {
         ioctl(audio_fd, SNDCTL_DSP_GETFMTS, &fmt);
-        if (fmt & AFMT_S16_LE) shm->samplebits = 16;
-        else if (fmt & AFMT_U8) shm->samplebits = 8;
+		if (fmt & AFMT_S16_LE)
+			shm->samplebits = 16;
+		else if (fmt & AFMT_U8)
+			shm->samplebits = 8;
     }
 
-    s = getenv("QUAKE_SOUND_SPEED");
-    if (s) shm->speed = atoi(s);
-	else if ((i = COM_CheckParm("-sndspeed")) != 0)
-		shm->speed = atoi(com_argv[i+1]);
+	if ((s = getenv("QUAKE_SOUND_SPEED")))
+		shm->speed = Q_atoi(s);
+	else if ((i = COM_CheckParm("-sndspeed")) && i + 1 < com_argc)
+		shm->speed = Q_atoi(com_argv[i+1]);
+	else if (COM_CheckParm("-44khz"))
+		shm->speed = 44100;
+	else if (COM_CheckParm("-22khz"))
+		shm->speed = 22050;
     else
     {
         for (i=0 ; i<sizeof(tryrates)/4 ; i++)
-            if (!ioctl(audio_fd, SNDCTL_DSP_SPEED, &tryrates[i])) break;
+			if (!ioctl(audio_fd, SNDCTL_DSP_SPEED, &tryrates[i]))
+				break;
         shm->speed = tryrates[i];
     }
 
-    s = getenv("QUAKE_SOUND_CHANNELS");
-    if (s) shm->channels = atoi(s);
-	else if ((i = COM_CheckParm("-sndmono")) != 0)
+	if ((s = getenv("QUAKE_SOUND_CHANNELS")))
+		shm->channels = Q_atoi(s);
+	else if ((i = COM_CheckParm("-sndmono")))
 		shm->channels = 1;
-	else if ((i = COM_CheckParm("-sndstereo")) != 0)
+	else if ((i = COM_CheckParm("-sndstereo")))
 		shm->channels = 2;
-    else shm->channels = 2;
+    else 
+		shm->channels = 2;
 
 	shm->samples = info.fragstotal * info.fragsize / (shm->samplebits/8);
 	shm->submission_chunk = 1;
 
 // memory map the dma buffer
-
-	shm->buffer = (unsigned char *) mmap(NULL, info.fragstotal
-		* info.fragsize, PROT_WRITE, MAP_FILE|MAP_SHARED, audio_fd, 0);
+	shm->buffer = (unsigned char *) mmap(NULL, info.fragstotal * info.fragsize, PROT_WRITE, MAP_FILE|MAP_SHARED, audio_fd, 0);
 	if (!shm->buffer || shm->buffer == (unsigned char *)-1)
 	{
 		perror("/dev/dsp");
@@ -150,6 +150,7 @@ qboolean SNDDMA_Init(void)
 		close(audio_fd);
         return 0;
     }
+
 	if (tmp)
 		shm->channels = 2;
 	else
@@ -197,7 +198,6 @@ qboolean SNDDMA_Init(void)
 	}
 
 // toggle the trigger & start her up
-
     tmp = 0;
     rc  = ioctl(audio_fd, SNDCTL_DSP_SETTRIGGER, &tmp);
 	if (rc < 0)
@@ -207,6 +207,7 @@ qboolean SNDDMA_Init(void)
 		close(audio_fd);
 		return 0;
 	}
+
     tmp = PCM_ENABLE_OUTPUT;
     rc = ioctl(audio_fd, SNDCTL_DSP_SETTRIGGER, &tmp);
 	if (rc < 0)
@@ -221,15 +222,14 @@ qboolean SNDDMA_Init(void)
 
 	snd_inited = 1;
 	return 1;
-
 }
 
 int SNDDMA_GetDMAPos(void)
 {
-
 	struct count_info count;
 
-	if (!snd_inited) return 0;
+	if (!snd_inited) 
+		return 0;
 
 	if (ioctl(audio_fd, SNDCTL_DSP_GETOPTR, &count)==-1)
 	{
@@ -244,7 +244,6 @@ int SNDDMA_GetDMAPos(void)
 	shm->samplepos = count.ptr / (shm->samplebits / 8);
 
 	return shm->samplepos;
-
 }
 
 void SNDDMA_Shutdown(void)

@@ -2,7 +2,7 @@
 // location.c
 //
 // JPG
-// 
+//
 // This entire file is new in proquake.  It is used to translate map areas
 // to names for the %l formatting specifier
 //
@@ -35,11 +35,11 @@ void LOC_LoadLocations (void)
 	mapname = cl.worldmodel->name;
 	if (Q_strncasecmp(mapname, "maps/", 5))
 		return;
-	Q_strcpy(filename + 5, mapname + 5);
-	ch = Q_strrchr(filename, '.');
+	strcpy(filename + 5, mapname + 5);
+	ch = strrchr(filename, '.');
 	if (ch)
 		*ch = 0;
-	Q_strcat(filename, ".loc");
+	strcat(filename, ".loc");
 
 	COM_FOpenFile(filename, &f);
 	if (!f)
@@ -50,7 +50,7 @@ void LOC_LoadLocations (void)
 	{
 		if (fscanf(f, "%f, %f, %f, %f, %f, %f, ", &l->a[0], &l->a[1], &l->a[2], &l->b[0], &l->b[1], &l->b[2]) == 6)
 		{
-			l->sd = 0;	// JPG 1.05 
+			l->sd = 0;	// JPG 1.05
 			for (i = 0 ; i < 3 ; i++)
 			{
 				if (l->a[i] > l->b[i])
@@ -59,20 +59,20 @@ void LOC_LoadLocations (void)
 					l->a[i] = l->b[i];
 					l->b[i] = temp;
 				}
-				l->sd += l->b[i] - l->a[i];  // JPG 1.05 
+				l->sd += l->b[i] - l->a[i];  // JPG 1.05
 			}
 			l->a[2] -= 32.0;
 			l->b[2] += 32.0;
 			fgets(buff, 256, f);
 
-			ch = Q_strrchr(buff, '\n');
+			ch = strrchr(buff, '\n');
 			if (ch)
 				*ch = 0;
-			ch = Q_strrchr(buff, '\"');
+			ch = strrchr(buff, '\"');
 			if (ch)
 				*ch = 0;
 			for (ch = buff ; *ch == ' ' || *ch == '\t' || *ch == '\"' ; ch++);
-			Q_strncpy(l->name, ch, 31);
+			strncpy(l->name, ch, 31);
 			l = &locations[++numlocations];
 		}
 		else
@@ -100,7 +100,7 @@ char *LOC_GetLocation (vec3_t p)
 	bestdist = 999999;
 	for (l = locations ; l < locations + numlocations ; l++)
 	{
-		dist =	fabs(l->a[0] - p[0]) + fabs(l->b[0] - p[0]) + 
+		dist =	fabs(l->a[0] - p[0]) + fabs(l->b[0] - p[0]) +
 				fabs(l->a[1] - p[1]) + fabs(l->b[1] - p[1]) +
 				fabs(l->a[2] - p[2]) + fabs(l->b[2] - p[2]) - l->sd;
 

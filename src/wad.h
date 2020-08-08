@@ -73,3 +73,8 @@ void	*W_GetLumpName (char *name);
 void	*W_GetLumpNum (int num);
 
 void SwapPic (qpic_t *pic);
+
+#ifdef SUPPORTS_HLBSP
+void WAD3_LoadTextureWadFile (char *filename);
+byte *WAD3_LoadTexture(miptex_t *mt);
+#endif

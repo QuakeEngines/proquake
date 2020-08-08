@@ -1,4 +1,22 @@
-//
+/*
+Copyright (C) 2002, J.P. Grossman
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+*/
 // iplog.c
 //
 // JPG 1.05
@@ -26,9 +44,10 @@ IPLog_Init
 */
 void IPLog_Init (void)
 {
-	int p;
 	FILE *f;
 	iplog_t temp;
+#if !defined(MACOSX) // OSX hates some of this stuff
+	int p;
 
 	// Allocate space for the IP logs
 	iplog_size = 0;
@@ -38,6 +57,7 @@ void IPLog_Init (void)
 	if (p < com_argc - 1)
 		iplog_size = Q_atoi(com_argv[p+1]) * 1024 / sizeof(iplog_t);
 	if (!iplog_size)
+#endif // This should be fine in Linux as well as Win
 		iplog_size = DEFAULT_IPLOGSIZE;
 
 	iplogs = (iplog_t *) Hunk_AllocName(iplog_size * sizeof(iplog_t), "iplog");
@@ -46,16 +66,20 @@ void IPLog_Init (void)
 	iplog_full = 0;
 
 	// Attempt to load log data from iplog.dat
+#ifdef _WIN32
 	Sys_GetLock();
-	f = fopen(va("%s/%s/iplog.dat", host_parms.basedir, GAMENAME), "r"); // Baker 3.83 ... todo: double check that -basedir operates as expected
-	
+#endif
+	f = fopen(va("%s/id1/iplog.dat", host_parms.basedir), "r"); // Baker 3.83 ... todo: double check that -basedir operates as expected
+
 	if (f)
 	{
 		while(fread(&temp, 20, 1, f))
 			IPLog_Add(temp.addr, temp.name);
 		fclose(f);
 	}
+#ifdef _WIN32
 	Sys_ReleaseLock();
+#endif
 }
 
 /*
@@ -104,11 +128,12 @@ void IPLog_WriteLog (void)
 
 	if (!iplog_size)
 		return;
-
+#ifdef _WIN32
 	Sys_GetLock();
+#endif
 
 	// first merge
-	f = fopen(va("%s/%s/iplog.dat", host_parms.basedir, GAMENAME), "r"); // Baker 3.83 ... todo: double check that -basedir operates as expected
+	f = fopen(va("%s/id1/iplog.dat",host_parms.basedir), "r");
 	if (f)
 	{
 		while(fread(&temp, 20, 1, f))
@@ -117,7 +142,7 @@ void IPLog_WriteLog (void)
 	}
 
 	// then write
-	f = fopen(va("%s/%s/iplog.dat", host_parms.basedir, GAMENAME), "w"); // Baker 3.83 ... todo: double check that -basedir operates as expected
+	f = fopen(va("%s/id1/iplog.dat",host_parms.basedir), "w");
 	if (f)
 	{
 		if (iplog_full)
@@ -129,11 +154,12 @@ void IPLog_WriteLog (void)
 			fwrite(&iplogs[i], 20, 1, f);
 
 		fclose(f);
-	}	
+	}
 	else
 		Con_Printf("Could not write iplog.dat\n");
-
+#ifdef _WIN32
 	Sys_ReleaseLock();
+#endif
 }
 
 #define MAX_REPITITION	64
@@ -285,7 +311,7 @@ void IPLog_DumpTree (iplog_t *root, FILE *f)
 		return;
 	IPLog_DumpTree(root->children[0], f);
 
-	sprintf(address, "%d.%d.%d.xxx", root->addr >> 16, (root->addr >> 8) & 0xff, root->addr & 0xff);
+	snprintf(address, sizeof(address), "%d.%d.%d.xxx", root->addr >> 16, (root->addr >> 8) & 0xff, root->addr & 0xff);
 	strcpy(name, root->name);
 	for (ch = name ; *ch ; ch++)
 	{
@@ -313,7 +339,7 @@ void IPLog_Dump (void)
 		return;
 	}
 
-	f = fopen(va("%s/%s/iplog.txt", host_parms.basedir, GAMENAME), "w"); // Baker 3.83 ... todo: double check that -basedir operates as expected
+	f = fopen(va("%s/id1/iplog.txt",host_parms.basedir), "w");
 	if (!f)
 	{
 		Con_Printf ("Couldn't write iplog.txt.\n");

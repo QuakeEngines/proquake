@@ -30,7 +30,11 @@ HRESULT (WINAPI *pDirectSoundCreate)(GUID FAR *lpGUID, LPDIRECTSOUND FAR *lplpDS
 #define	WAV_BUFFER_SIZE			0x0400
 #define SECONDARY_BUFFER_SIZE	0x10000
 
-typedef enum {SIS_SUCCESS, SIS_FAILURE, SIS_NOTAVAIL} sndinitstat;
+typedef enum {
+	SIS_SUCCESS, 
+	SIS_FAILURE, 
+	SIS_NOTAVAIL
+} sndinitstat;
 
 static qboolean	wavonly;
 static qboolean	dsound_init;
@@ -42,10 +46,8 @@ static int	sample16;
 static int	snd_sent, snd_completed;
 
 
-/* 
- * Global variables. Must be visible to window-procedure function 
- *  so it can unlock and free the data block after it has been played. 
- */ 
+// Global variables. Must be visible to window-procedure function 
+// so it can unlock and free the data block after it has been played. 
 
 HANDLE		hData;
 HPSTR		lpData, lpData2;
@@ -54,11 +56,8 @@ HGLOBAL		hWaveHdr;
 LPWAVEHDR	lpWaveHdr;
 
 HWAVEOUT    hWaveOut; 
-
 WAVEOUTCAPS	wavecaps;
-
 DWORD	gSndBufSize;
-
 MMTIME		mmstarttime;
 
 LPDIRECTSOUND pDS;
@@ -68,7 +67,6 @@ HINSTANCE hInstDS;
 
 qboolean SNDDMA_InitDirect (void);
 qboolean SNDDMA_InitWav (void);
-
 
 /*
 ==================
@@ -90,7 +88,6 @@ void S_BlockSound (void)
 	}
 }
 
-
 /*
 ==================
 S_UnblockSound
@@ -98,14 +95,12 @@ S_UnblockSound
 */
 void S_UnblockSound (void)
 {
-
 // DirectSound takes care of blocking itself
 	if (snd_iswave)
 	{
 		snd_blocked--;
 	}
 }
-
 
 /*
 ==================
@@ -172,7 +167,6 @@ void FreeSound (void)
 	wav_init = false;
 }
 
-
 /*
 ==================
 SNDDMA_InitDirect
@@ -203,15 +197,13 @@ sndinitstat SNDDMA_InitDirect (void)
     format.nChannels = shm->channels;
     format.wBitsPerSample = shm->samplebits;
     format.nSamplesPerSec = shm->speed;
-    format.nBlockAlign = format.nChannels
-		*format.wBitsPerSample / 8;
+    format.nBlockAlign = format.nChannels *format.wBitsPerSample / 8;
     format.cbSize = 0;
-    format.nAvgBytesPerSec = format.nSamplesPerSec
-		*format.nBlockAlign; 
+    format.nAvgBytesPerSec = format.nSamplesPerSec *format.nBlockAlign; 
 
 	if (!hInstDS)
 	{
-		hInstDS = LoadLibrary("dsound.dll");
+		hInstDS = LoadLibrary(TEXT("dsound.dll"));  // Baker 3.70D3D Direct3DQuake
 		
 		if (hInstDS == NULL)
 		{
@@ -237,13 +229,12 @@ sndinitstat SNDDMA_InitDirect (void)
 		}
 
 		if (MessageBox (NULL,
-						"The sound hardware is in use by another app.\n\n"
-					    "Select Retry to try to start sound again or Cancel to run Quake with no sound.",
-						"Sound not available",
+						TEXT("The sound hardware is in use by another app.\n\n")
+					    TEXT("Select Retry to try to start sound again or Cancel to run Quake with no sound."),
+						TEXT("Sound not available"),
 						MB_RETRYCANCEL | MB_SETFOREGROUND | MB_ICONEXCLAMATION) != IDRETRY)
 		{
-			Con_SafePrintf ("DirectSoundCreate failure\n"
-							"  hardware already in use\n");
+			Con_SafePrintf ("DirectSoundCreate failure hardware already in use\n");
 			return SIS_NOTAVAIL;
 		}
 	}
@@ -251,9 +242,7 @@ sndinitstat SNDDMA_InitDirect (void)
 	dscaps.dwSize = sizeof(dscaps);
 
 	if (DS_OK != pDS->lpVtbl->GetCaps (pDS, &dscaps))
-	{
 		Con_SafePrintf ("Couldn't get DS caps\n");
-	}
 
 	if (dscaps.dwFlags & DSCAPS_EMULDRIVER)
 	{
@@ -411,10 +400,9 @@ sndinitstat SNDDMA_InitDirect (void)
 	return SIS_SUCCESS;
 }
 
-
 /*
 ==================
-SNDDM_InitWav
+SNDDMA_InitWav
 
 Crappy windows multimedia base
 ==================
@@ -439,16 +427,12 @@ qboolean SNDDMA_InitWav (void)
 	format.nChannels = shm->channels;
 	format.wBitsPerSample = shm->samplebits;
 	format.nSamplesPerSec = shm->speed;
-	format.nBlockAlign = format.nChannels
-		*format.wBitsPerSample / 8;
+	format.nBlockAlign = format.nChannels *format.wBitsPerSample / 8;
 	format.cbSize = 0;
-	format.nAvgBytesPerSec = format.nSamplesPerSec
-		*format.nBlockAlign; 
+	format.nAvgBytesPerSec = format.nSamplesPerSec *format.nBlockAlign; 
 	
 	/* Open a waveform device for output using window callback. */ 
-	while ((hr = waveOutOpen((LPHWAVEOUT)&hWaveOut, WAVE_MAPPER, 
-					&format, 
-					0, 0L, CALLBACK_NULL)) != MMSYSERR_NOERROR)
+	while ((hr = waveOutOpen((LPHWAVEOUT)&hWaveOut, WAVE_MAPPER, &format, 0, 0L, CALLBACK_NULL)) != MMSYSERR_NOERROR)
 	{
 		if (hr != MMSYSERR_ALLOCATED)
 		{
@@ -457,9 +441,9 @@ qboolean SNDDMA_InitWav (void)
 		}
 
 		if (MessageBox (NULL,
-						"The sound hardware is in use by another app.\n\n"
-					    "Select Retry to try to start sound again or Cancel to run Quake with no sound.",
-						"Sound not available",
+						TEXT("The sound hardware is in use by another app.\n\n")
+					    TEXT("Select Retry to try to start sound again or Cancel to run Quake with no sound."),
+						TEXT("Sound not available"),
 						MB_RETRYCANCEL | MB_SETFOREGROUND | MB_ICONEXCLAMATION) != IDRETRY)
 		{
 			Con_SafePrintf ("waveOutOpen failure;\n"
@@ -496,8 +480,7 @@ qboolean SNDDMA_InitWav (void)
 	 * also be globally allocated with GMEM_MOVEABLE and 
 	 * GMEM_SHARE flags. 
 	 */ 
-	hWaveHdr = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE, 
-		(DWORD) sizeof(WAVEHDR) * WAV_BUFFERS); 
+	hWaveHdr = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE,  (DWORD) sizeof(WAVEHDR) * WAV_BUFFERS); 
 
 	if (hWaveHdr == NULL)
 	{ 
@@ -523,8 +506,7 @@ qboolean SNDDMA_InitWav (void)
 		lpWaveHdr[i].dwBufferLength = WAV_BUFFER_SIZE; 
 		lpWaveHdr[i].lpData = lpData + i*WAV_BUFFER_SIZE;
 
-		if (waveOutPrepareHeader(hWaveOut, lpWaveHdr+i, sizeof(WAVEHDR)) !=
-				MMSYSERR_NOERROR)
+		if (waveOutPrepareHeader(hWaveOut, lpWaveHdr+i, sizeof(WAVEHDR)) != MMSYSERR_NOERROR)
 		{
 			Con_SafePrintf ("Sound: failed to prepare wave headers\n");
 			FreeSound ();
@@ -553,7 +535,6 @@ Try to find a sound device to mix for.
 Returns false if nothing is found.
 ==================
 */
-
 int SNDDMA_Init(void)
 {
 	sndinitstat	stat;
@@ -570,7 +551,7 @@ int SNDDMA_Init(void)
 	{
 		if (snd_firsttime || snd_isdirect)
 		{
-			stat = SNDDMA_InitDirect ();;
+			stat = SNDDMA_InitDirect ();
 
 			if (stat == SIS_SUCCESS)
 			{
@@ -672,9 +653,7 @@ void SNDDMA_Submit(void)
 	if (!wav_init)
 		return;
 
-	//
 	// find which sound blocks have completed
-	//
 	while (1)
 	{
 		if ( snd_completed == snd_sent )
@@ -691,9 +670,7 @@ void SNDDMA_Submit(void)
 		snd_completed++;	// this buffer has been played
 	}
 
-	//
 	// submit two new sound blocks
-	//
 	while (((snd_sent - snd_completed) >> sample16) < 4)
 	{
 		h = lpWaveHdr + ( snd_sent&WAV_MASK );
@@ -726,4 +703,3 @@ void SNDDMA_Shutdown(void)
 {
 	FreeSound ();
 }
-

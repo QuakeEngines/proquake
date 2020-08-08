@@ -212,5 +212,5 @@ C(R_Alias_clip_left):
 	jmp		LRightLeftEntry
 
 
-#endif	// id386
+#endif // ! NO_ASSEMBLY (formerly id386)
 

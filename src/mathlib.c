@@ -63,10 +63,10 @@ void PerpendicularVector( vec3_t dst, const vec3_t src )
 	*/
 	for ( pos = 0, i = 0; i < 3; i++ )
 	{
-		if ( fabs( src[i] ) < minelem )
+		if ( fabsf( src[i] ) < minelem )
 		{
 			pos = i;
-			minelem = fabs( src[i] );
+			minelem = fabsf( src[i] );
 		}
 	}
 	tempvec[0] = tempvec[1] = tempvec[2] = 0.0F;
@@ -129,10 +129,10 @@ void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point, 
 	memset( zrot, 0, sizeof( zrot ) );
 	zrot[0][0] = zrot[1][1] = zrot[2][2] = 1.0F;
 
-	zrot[0][0] = cos( DEG2RAD( degrees ) );
-	zrot[0][1] = sin( DEG2RAD( degrees ) );
-	zrot[1][0] = -sin( DEG2RAD( degrees ) );
-	zrot[1][1] = cos( DEG2RAD( degrees ) );
+	zrot[0][0] = cosf( DEG2RAD( degrees ) );
+	zrot[0][1] = sinf( DEG2RAD( degrees ) );
+	zrot[1][0] = -sinf( DEG2RAD( degrees ) );
+	zrot[1][1] = cosf( DEG2RAD( degrees ) );
 
 	R_ConcatRotations( m, zrot, tmpmat );
 	R_ConcatRotations( tmpmat, im, rot );
@@ -174,8 +174,7 @@ void BOPS_Error (void)
 	Sys_Error ("BoxOnPlaneSide:  Bad signbits");
 }
 
-
-#if	!id386
+#if	!id386 
 
 /*
 ==================
@@ -293,14 +292,14 @@ void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 	float		sr, sp, sy, cr, cp, cy;
 	
 	angle = angles[YAW] * (M_PI*2 / 360);
-	sy = sin(angle);
-	cy = cos(angle);
+	sy = sinf(angle);
+	cy = cosf(angle);
 	angle = angles[PITCH] * (M_PI*2 / 360);
-	sp = sin(angle);
-	cp = cos(angle);
+	sp = sinf(angle);
+	cp = cosf(angle);
 	angle = angles[ROLL] * (M_PI*2 / 360);
-	sr = sin(angle);
-	cr = cos(angle);
+	sr = sinf(angle);
+	cr = cosf(angle);
 
 	forward[0] = cp*cy;
 	forward[1] = cp*sy;
@@ -367,38 +366,17 @@ void CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross)
 
 double sqrt(double x);
 
-vec_t Length(vec3_t v)
+vec_t VectorLength(vec3_t v)
 {
-	int		i;
-	float	length;
-	
-	length = 0;
-	for (i=0 ; i< 3 ; i++)
-		length += v[i]*v[i];
-	length = sqrt (length);		// FIXME
-
-	return length;
+	return sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 }
-
-float VectorLength (vec3_t v)
-{
-	float	length;
-
-	length = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
-	return sqrt(length);
-}
-
 
 float VectorNormalize (vec3_t v)
 {
-	float	length, ilength;
-
-	length = v[0]*v[0] + v[1]*v[1] + v[2]*v[2];
-	length = sqrt (length);		// FIXME
-
+	float length = sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 	if (length)
 	{
-		ilength = 1/length;
+		const float ilength = 1.0f / length;
 		v[0] *= ilength;
 		v[1] *= ilength;
 		v[2] *= ilength;
@@ -590,3 +568,24 @@ fixed16_t Invert24To16(fixed16_t val)
 }
 
 #endif
+
+int ParseFloats(char *s, float *f, int *f_size) {
+   int i, argc;
+
+   if (!s || !f || !f_size)
+      Sys_Error("ParseFloats() wrong params");
+
+   if (f_size[0] <= 0)
+      return (f_size[0] = 0); // array have no size, unusual but no crime
+
+   Cmd_TokenizeString(s);
+   argc = min(Cmd_Argc(), f_size[0]);
+   
+   for(i = 0; i < argc; i++)
+      f[i] = Q_atof(Cmd_Argv(i));
+
+   for( ; i < f_size[0]; i++)
+      f[i] = 0; // zeroing unused elements
+
+   return (f_size[0] = argc);
+} 

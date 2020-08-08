@@ -129,8 +129,7 @@ DWORD RequestProc (DWORD dwNichts)
 			// Param2 : End line
 				iBeginLine = pBuffer[1];
 				iEndLine = pBuffer[2];
-				pBuffer[0] = ReadText ((LPTSTR) (pBuffer + 1), iBeginLine, 
-									   iEndLine);
+				pBuffer[0] = ReadText ((LPTSTR) (pBuffer + 1), iBeginLine, iEndLine);
 				break;
 
 			case CCOM_GET_SCR_LINES:
@@ -156,8 +155,7 @@ LPVOID GetMappedBuffer (HANDLE hfileBuffer)
 {
 	LPVOID pBuffer;
 
-	pBuffer = MapViewOfFile (hfileBuffer,
-							FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
+	pBuffer = MapViewOfFile (hfileBuffer, FILE_MAP_READ | FILE_MAP_WRITE, 0, 0, 0);
 
 	return pBuffer;
 }

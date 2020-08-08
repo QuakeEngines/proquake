@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // r_surf.c: surface-related refresh code
 
 #include "quakedef.h"
-#include "r_local.h"
+//#include "r_local.h"
 
 drawsurf_t	r_drawsurf;
 
@@ -148,12 +148,9 @@ Combine and scale multiple lightmaps into the 8.8 format in blocklights
 */
 void R_BuildLightMap (void)
 {
-	int			smax, tmax;
-	int			t;
-	int			i, size;
+	int		smax, tmax, t, i, size, maps;
 	byte		*lightmap;
 	unsigned	scale;
-	int			maps;
 	msurface_t	*surf;
 
 	surf = r_drawsurf.surf;
@@ -174,17 +171,17 @@ void R_BuildLightMap (void)
 	for (i=0 ; i<size ; i++)
 		blocklights[i] = r_refdef.ambientlight<<8;
 
-
 // add all the lightmaps
 	if (lightmap)
-		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-			 maps++)
+	{
+		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ; maps++)
 		{
 			scale = r_drawsurf.lightadj[maps];	// 8.8 fraction		
 			for (i=0 ; i<size ; i++)
 				blocklights[i] += lightmap[i] * scale;
 			lightmap += size;	// skip to next lightmap
 		}
+	}
 
 // add all the dynamic lights
 	if (surf->dlightframe == r_framecount)
@@ -202,7 +199,6 @@ void R_BuildLightMap (void)
 	}
 }
 
-
 /*
 ===============
 R_TextureAnimation
@@ -212,8 +208,7 @@ Returns the proper texture for a given time and base texture
 */
 texture_t *R_TextureAnimation (texture_t *base)
 {
-	int		reletive;
-	int		count;
+	int	relative, count;
 
 	if (currententity->frame)
 	{
@@ -224,10 +219,10 @@ texture_t *R_TextureAnimation (texture_t *base)
 	if (!base->anim_total)
 		return base;
 
-	reletive = (int)(cl.time*10) % base->anim_total;
+	relative = (int)(cl.time*10) % base->anim_total;
 
 	count = 0;	
-	while (base->anim_min > reletive || base->anim_max <= reletive)
+	while (base->anim_min > relative || base->anim_max <= relative)
 	{
 		base = base->anim_next;
 		if (!base)
@@ -238,7 +233,6 @@ texture_t *R_TextureAnimation (texture_t *base)
 
 	return base;
 }
-
 
 /*
 ===============
@@ -307,8 +301,7 @@ void R_DrawSurface (void)
 
 // << 16 components are to guarantee positive values for %
 	soffset = ((soffset >> r_drawsurf.surfmip) + (smax << 16)) % smax;
-	basetptr = &r_source[((((basetoffset >> r_drawsurf.surfmip) 
-		+ (tmax << 16)) % tmax) * twidth)];
+	basetptr = &r_source[((((basetoffset >> r_drawsurf.surfmip) + (tmax << 16)) % tmax) * twidth)];
 
 	pcolumndest = r_drawsurf.surfdat;
 
@@ -368,8 +361,7 @@ void R_DrawSurfaceBlock8_mip0 (void)
 			for (b=15; b>=0; b--)
 			{
 				pix = psource[b];
-				prowdest[b] = ((unsigned char *)vid.colormap)
-						[(light & 0xFF00) + pix];
+				prowdest[b] = ((unsigned char *)vid.colormap)[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
 	
@@ -383,7 +375,6 @@ void R_DrawSurfaceBlock8_mip0 (void)
 			psource -= r_stepback;
 	}
 }
-
 
 /*
 ================
@@ -418,8 +409,7 @@ void R_DrawSurfaceBlock8_mip1 (void)
 			for (b=7; b>=0; b--)
 			{
 				pix = psource[b];
-				prowdest[b] = ((unsigned char *)vid.colormap)
-						[(light & 0xFF00) + pix];
+				prowdest[b] = ((unsigned char *)vid.colormap)[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
 	
@@ -433,7 +423,6 @@ void R_DrawSurfaceBlock8_mip1 (void)
 			psource -= r_stepback;
 	}
 }
-
 
 /*
 ================
@@ -468,8 +457,7 @@ void R_DrawSurfaceBlock8_mip2 (void)
 			for (b=3; b>=0; b--)
 			{
 				pix = psource[b];
-				prowdest[b] = ((unsigned char *)vid.colormap)
-						[(light & 0xFF00) + pix];
+				prowdest[b] = ((unsigned char *)vid.colormap)[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
 	
@@ -483,7 +471,6 @@ void R_DrawSurfaceBlock8_mip2 (void)
 			psource -= r_stepback;
 	}
 }
-
 
 /*
 ================
@@ -518,8 +505,7 @@ void R_DrawSurfaceBlock8_mip3 (void)
 			for (b=1; b>=0; b--)
 			{
 				pix = psource[b];
-				prowdest[b] = ((unsigned char *)vid.colormap)
-						[(light & 0xFF00) + pix];
+				prowdest[b] = ((unsigned char *)vid.colormap)[(light & 0xFF00) + pix];
 				light += lightstep;
 			}
 	
