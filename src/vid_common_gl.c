@@ -50,7 +50,7 @@ unsigned	d_8to24table2[256];
 
 
 
-#if !defined(DX8QUAKE)
+#if !defined(DX8QUAKE_NO_8BIT)
 unsigned char d_15to8table[65536];
 #endif
 
@@ -251,7 +251,7 @@ void GL_Init (void) {
 	gl_extensions = glGetString (GL_EXTENSIONS);
 
 	if (strncasecmp(gl_renderer, "Intel", 5) == 0) {
-		Con_Printf ("Intel Display Adapter detected.");
+		Con_Printf ("Intel Display Adapter detected\n");
 		IntelDisplayAdapter = true;
 		Cvar_Set ("gl_ztrick", "0");
 		Cvar_Set ("gl_clear", "1");
@@ -335,10 +335,10 @@ void	VID_SetPaletteOld (unsigned char *palette)
 		*table++ = v;
 	}
 
-#ifdef DX8QUAKE
-	d_8to24table[255] = 0;	// 255 is transparent
-#else
-	d_8to24table[255] &= 0xffffff;	// 255 is transparent
+	d_8to24table[255] = 0;	// 255 is transparent "MH: says this fixes pink edges"
+	//d_8to24table[255] &= 0xffffff;	// 255 is transparent
+
+#if !defined(DX8QUAKE_NO_8BIT)
 
 	// JACK: 3D distance calcs - k is last closest, l is the distance.
 	// FIXME: Precalculate this and cache to disk.

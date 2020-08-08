@@ -2211,7 +2211,9 @@ void Host_Startdemos_f (void)
 
 	if (sv.active || cls.demoplayback)
 	{
+#if 0	// Baker: no this is annoying if you use +map xxxx in the command line
 		Con_Printf("Disconnect before playing demo loop\n");
+#endif
 		return;
 	}
 

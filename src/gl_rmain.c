@@ -89,11 +89,7 @@ cvar_t	r_farclip = {"r_farclip","16384",true};
 cvar_t	gl_nearwater_fix = {"gl_nearwater_fix","1",true};
 cvar_t	gl_fadescreen_alpha = {"gl_fadescreen_alpha","0.7",true};
 
-#ifdef DX8QUAKE
-cvar_t	gl_clear = {"gl_clear","1"};
-#else
 cvar_t	gl_clear = {"gl_clear","0"};
-#endif
 cvar_t	gl_cull = {"gl_cull","1"};
 cvar_t	gl_texsort = {"gl_texsort","1"};
 cvar_t	gl_smoothmodels = {"gl_smoothmodels","1"};
@@ -102,12 +98,13 @@ cvar_t	gl_polyblend = {"gl_polyblend","1", true};
 cvar_t	gl_flashblend = {"gl_flashblend","1", true};
 cvar_t	gl_playermip = {"gl_playermip","0", true};
 cvar_t	gl_nocolors = {"gl_nocolors","0"};
-#ifdef DX8QUAKE
-cvar_t	gl_finish = {"gl_finish","1"};
-#else
 cvar_t	gl_finish = {"gl_finish","0"};
-#endif
+
 cvar_t  gl_fullbright = {"gl_fullbright","0", true};
+#ifdef SUPPORTS_GL_OVERBRIGHTS
+cvar_t  gl_overbright = {"gl_overbright","0", true};
+#endif
+
 #ifdef MACOSX
 cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","1"};
 #else
@@ -489,9 +486,6 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 	if (alpha < 1)
 		glDisable (GL_BLEND);
 
-#ifdef DX8QUAKE
-	glFinish ();
-#endif
 }
 
 /*
@@ -573,10 +567,7 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
 
 	if (alpha < 1)
 		glDisable (GL_BLEND);
-
-#ifdef DX8QUAKE
-	glFinish ();
-#endif		
+		
 }
 
 /*
@@ -1379,7 +1370,10 @@ void TurnVector (vec3_t out, vec3_t forward, vec3_t side, float angle)
 }
 
 
-
+void GL_OverBright_f(void) {
+	if (cls.state == ca_connected)
+		Con_Printf("Restart map for changes to take full effect ...\n");
+}
 
 
 
@@ -1600,8 +1594,10 @@ void R_Init (void)
 	Cvar_RegisterVariable (&gl_finish, NULL);
 	Cvar_RegisterVariable (&gl_texsort, NULL);
 
- 	if (gl_mtexable)
+#if 0 // Baker this isn't good at the moment
+	if (gl_mtexable)
 		Cvar_SetValue ("gl_texsort", 0.0);
+#endif
 
 	Cvar_RegisterVariable (&gl_cull, NULL);
 	Cvar_RegisterVariable (&gl_smoothmodels, NULL);
@@ -1614,6 +1610,7 @@ void R_Init (void)
 	Cvar_RegisterVariable (&gl_keeptjunctions, NULL);
 	Cvar_RegisterVariable (&gl_reporttjunctions, NULL);
 	Cvar_RegisterVariable (&gl_fullbright, NULL);
+	Cvar_RegisterVariable (&gl_overbright, GL_OverBright_f);
 
 	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
 #ifdef SUPPORTS_SKYBOX
@@ -1692,7 +1689,7 @@ R_Clear
 =============
 */
 int	gl_ztrickframe = 0;
-
+// Baker: fix this foobared clustermess please!
 void R_Clear (void)
 {
 	int	clearbits = 0;
@@ -1713,6 +1710,7 @@ void R_Clear (void)
 		gldepthmax = 0.5;
 		glDepthFunc (GL_LEQUAL);
 	}
+#ifndef DX8QUAKE_NO_GL_ZTRICK // MH says "ztrick doesn't play nice with D3D (it shouldn't be used in GL either)"
 	else if (gl_ztrick.value) {
 		if (gl_clear.value)
 			glClear (GL_COLOR_BUFFER_BIT);
@@ -1728,6 +1726,7 @@ void R_Clear (void)
 			glDepthFunc (GL_GEQUAL);
 		}
 	}
+#endif
 	else
 	{
 		// Baker hwgamma support

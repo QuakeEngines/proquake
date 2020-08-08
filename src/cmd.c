@@ -285,9 +285,9 @@ static void Cmd_StuffCmds_f (void)
 	{
 		if (!com_argv[i])
 			continue;		// NEXTSTEP nulls out -NXHost
-		strlcat (text, com_argv[i], sizeof(text));
+		strcat (text, com_argv[i]);  // Dynamic string: no strlcat required
 		if (i != com_argc-1)
-			strlcat (text, " ", sizeof(text));
+			strcat (text, " ");  // Dynamic string: no strlcat required
 	}
 
 // pull out the commands
@@ -306,8 +306,8 @@ static void Cmd_StuffCmds_f (void)
 			c = text[j];
 			text[j] = 0;
 
-			strlcat (build, text+i, sizeof(build)); // Dynamic string: no strlcat required
-			strlcat (build, "\n", sizeof(build));   // Dynamic string: no strlcat required
+			strcat (build, text+i); // Dynamic string: no strlcat required
+			strcat (build, "\n");   // Dynamic string: no strlcat required
 			text[j] = c;
 			i = j-1;
 		}
@@ -773,6 +773,7 @@ void	Cmd_ExecuteString (char *text, cmd_source_t src)
 	cmd_function_t	*cmd;
 	cmdalias_t		*a;
 
+//	Con_Printf("Cmd_ExecuteString: %s \n", text);
 	cmd_source = src;
 	Cmd_TokenizeString (text);
 

@@ -98,7 +98,7 @@ extern lpSelTexFUNC qglSelectTextureSGIS;
 // Engine internal vars
 
 extern qboolean gl_mtexable;
-#if !defined(DX8QUAKE_GET_GLMAXSIZE)
+#if !defined(DX8QUAKE_GET_GL_MAX_SIZE)
 extern	cvar_t	gl_max_size;
 #else
 extern	int		gl_max_size;

@@ -116,6 +116,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define D3DQ_EXTRA_FEATURES // (D3D_FEATURE)
 # define D3DQ_CANNOT_DO_THIS // D3D_NOT_CAPABLE
 # define D3DQ_WORKAROUND     // D3DQ_WORKAROUND
+# define D3DQ_CONTRAST
 #endif
 
 #ifdef MACOSX
@@ -229,23 +230,48 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Define Deficiencies and Workarounds
 
 #if defined(_WIN32) && defined(GLQUAKE)
+// Baker: why is this a define?  And not a cvar?  Just to mark the code? Yes
 # define INTEL_OPENGL_DRIVER_WORKAROUND // Windows only issue?  Or is Linux affected too?  OS X is not affected
 # define GL_QUAKE_SKIN_METHOD
 #endif
 
 #ifdef DX8QUAKE
-//# undef  SUPPORTS_GLVIDEO_MODESWITCH  // Not now, isn't working right
-# define DX8QUAKE_NO_DIALOGS  // No dialogs for DX8QUAKE
-# define DX8QUAKE_NO_8BIT
-# define DX8QUAKE_GET_GLMAXSIZE
-# define DX8QUAKE_NO_FRONT_BACK_BUFFER
-# define DX8QUAKE_GL_MAX_SIZE_FAKE
-# define DX8QUAKE_ALT_MODEL_TEXTURE
-# define DX8QUAKE_ALT_RESAMPLE
-# define DX8QUAKE_NO_BINDTEXFUNC
-# define DX8QUAKE_NO_GLTEXSORT
-# define DX8QUAKE_BAKER_ALTTAB_HACK
+# define DX8QUAKE_NO_8BIT					// D3D8 wrapper didn't keep the 8bit support
+# define DX8QUAKE_GET_GL_MAX_SIZE			// D3D8 wrapper obtains the maxsize from the video card
+# define DX8QUAKE_CANNOT_DETECT_FULLSCREEN_BY_MODESTATE	// Detecting modestate == MS_FULLDIB can't distinguish between windowed and fullscreen modes
+# define DX8QUAKE_NO_BINDTEXFUNC			// SGIS/ancient GL pathway removal
+# define DX8QUAKE_NO_GL_ZTRICK				// DX8QUAKE hates gl_ztrick; clear the buffers every time
+# define DX8QUAKE_GL_READPIXELS_NO_RGBA		// Wrapper only supports GL_RGBA; not GL_RGBA like envmap command uses
+# define DX8QUAKE_VSYNC_COMMANDLINE_PARAM	// Vsync command line param option ... -vsync
 #endif
+
+#ifdef GLQUAKE
+# define SUPPORTS_GL_OVERBRIGHTS		// Overbright lighting support: too slow as the code is at the moment
+#endif
+// gl_keeptjunctions: Setting this to 0 will reduce the number of bsp polygon vertices by removing colinear points, however it produces holes in the BSP due to floating point precision errors.
+// Baker: this should default to 1.  That's what FTE does.
+
+// 0 = Remove colinear vertexes when loading the map. (will speed up the game performance, but will leave a few artifact pixels).
+// Yields a few more frames per second.
+
+// Note: gl_texsort 1 is for when multitexture is unavailable
+//       gl_texsort 0 is for when multitexture is available
+// Note: in glpro442 as of this time, gl_texsort 0 is going to be a fail becuase mtex is off.
+
+// Discarded DX8QUAKE #ifdefs -- all functional but either not necessary or some such thing
+
+
+//# undef  SUPPORTS_GLVIDEO_MODESWITCH  // Not now, isn't working right
+//# define DX8QUAKE_NO_DIALOGS				// No "starting Quake type "dialogs for DX8QUAKE, Improvement applicable to GL
+//# define DX8QUAKE_NO_FRONT_BACK_BUFFER		// Baker: 4.42 - wasn't necessary, seems DX8 wrapper can do this
+//# define DX8QUAKE_GL_MAX_SIZE_FAKE			// Baker  4.42 - this is no different than dx8 wrapper doing it right way
+//# define DX8QUAKE_ALT_MODEL_TEXTURE				// Believe this is unnecessary skin sharpening option applicanle to GL
+// # define DX8QUAKE_ALT_RESAMPLE				// Removing redundant function ... I think
+//# define DX8QUAKE_NO_GL_TEXSORT_ZERO			// gl_texsort 0 is for no multitexture (can be applied to GL)
+//# define DX8QUAKE_NO_GL_KEEPTJUNCTIONS_ZERO		// gl_keeptjunction 0 is (can be applied to GL) * Note below
+//# define DX8QUAKE_BAKER_ALTTAB_HACK				// Possibly removeable now
+
+
 
 int build_number (void);
 void Host_Version_f (void);

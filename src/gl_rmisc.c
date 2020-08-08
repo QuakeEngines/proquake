@@ -129,12 +129,21 @@ Grab six views for environment mapping tests
 */
 void R_Envmap_f (void)
 {
-#if !defined(DX8QUAKE_NO_FRONT_BACK_BUFFER)
+// Baker: this really foobars DX8QUAKE
+// Tried it in d3d8quake
+#if !defined(DX8QUAKE_GL_READPIXELS_NO_RGBA)
 	byte	buffer[256*256*4];
+	int		x,y, width, height;
 
 	glDrawBuffer  (GL_FRONT);
 	glReadBuffer  (GL_FRONT);
 	envmap = true;
+
+	// Baker: store them
+	x = r_refdef.vrect.x;
+	y = r_refdef.vrect.y;
+	width = r_refdef.vrect.width;
+	height = r_refdef.vrect.height;
 
 	r_refdef.vrect.x = 0;
 	r_refdef.vrect.y = 0;
@@ -184,7 +193,16 @@ void R_Envmap_f (void)
 	envmap = false;
 	glDrawBuffer  (GL_BACK);
 	glReadBuffer  (GL_BACK);
+
+	// Baker: restore them
+	r_refdef.vrect.x = x;
+	r_refdef.vrect.y = y;
+	r_refdef.vrect.width = width;
+	r_refdef.vrect.height = height;
+
 	GL_EndRendering ();
+#else
+	Con_Printf("Envmap command not supported\n");
 #endif
 }
 
@@ -274,7 +292,7 @@ void R_TranslatePlayerSkin (int playernum)
 	// don't mipmap these, because it takes too long
 	GL_Upload8 (translated, paliashdr->skinwidth, paliashdr->skinheight, false, false, true);
 #else
-#ifdef DX8QUAKE_GL_MAX_SIZE_FAKE
+#ifdef DX8QUAKE_GET_GL_MAX_SIZE
 	scaled_width = gl_max_size < 512 ? gl_max_size : 512;
 	scaled_height = gl_max_size < 256 ? gl_max_size : 256;
 #else
@@ -417,7 +435,6 @@ extern qboolean IntelDisplayAdapter;
 #endif
 void R_TimeRefresh_f (void)
 {
-#if !defined(DX8QUAKE_NO_FRONT_BACK_BUFFER)
 	int		i;
 	float		start, stop, time;
 
@@ -444,7 +461,6 @@ void R_TimeRefresh_f (void)
 
 	glDrawBuffer  (GL_BACK);
 	GL_EndRendering ();
-#endif
 }
 
 void D_FlushCaches (void)

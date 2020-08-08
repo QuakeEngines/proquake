@@ -60,7 +60,7 @@ Host_Version_f
 */
 void Host_Version_f (void)
 {
-	Con_Printf ("%s version %s\n", ENGINE_NAME, ENGINE_VERSION);
+	Con_Printf ("%s version %s\n", ENGINE_NAME, VersionString());
 	Con_Printf ("Exe: "__TIME__" "__DATE__"\n");
 }
 

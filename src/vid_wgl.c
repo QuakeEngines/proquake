@@ -217,23 +217,34 @@ void CheckVsyncControlExtensions (void) {
 		return;
 	}
 
-	if (!CheckExtension("WGL_EXT_swap_control")) {
+#ifdef DX8QUAKE_VSYNC_COMMANDLINE_PARAM
+	if (COM_CheckParm("-vsync")) {
+		Con_SafePrintf ("\x02Note:");
+		Con_Printf (" Vertical sync in fullscreen is on (-vsync param)\n");
+		return;
+	} else {
+		Con_Warning ("Vertical sync in fullscreen is off\n");
+		Con_Printf ("Use -vsync in command line to enable vertical sync\n"); 
+		return;
+	}
+#endif
+
+
+	if (!CheckExtension("WGL_EXT_swap_control") && !CheckExtension("GL_WIN_swap_hint")) {
 		Con_Warning ("Vertical sync not supported (extension not found)\n");
 		return;
 	}
 
 	if (!(wglSwapIntervalEXT = (void *)wglGetProcAddress("wglSwapIntervalEXT"))) {
-		Con_Warning ("Vertical sync not supported (wglSwapIntervalEXT failed)\n");
+				Con_Warning ("vertical sync not supported (wglSwapIntervalEXT failed)\n");
 		return;
 	}
 
 	Con_Printf("Vsync control extensions found\n");
-
 }
 
 
 //==========================================================================
-
 // direct draw software compatability stuff
 
 void VID_HandlePause (qboolean pause) {
@@ -533,9 +544,9 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 // fix the leftover Alt from any Alt-Tab or the like that switched us away
 	Key_ClearAllStates ();
 
-	if (!msg_suppress_1)
+	if (!msg_suppress_1) {
 		Con_SafePrintf ("Video mode %s initialized.\n", VID_GetModeDescription (vid_modenum));
-
+	}
 	VID_SetPaletteOld (palette);
 
 	vid.recalc_refdef = 1;

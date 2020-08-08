@@ -180,6 +180,7 @@ R_BuildLightMap
 Combine and scale multiple lightmaps into the 8.8 format in blocklights
 ===============
 */
+extern cvar_t gl_overbright;
 void R_BuildLightMap (msurface_t *surf, byte *dest, int stride)
 {
 	int			smax, tmax, t, i, j, size, maps;
@@ -237,6 +238,7 @@ store:
 				if (t > 255)
 					t = 255;
 #ifdef D3DQ_WORKAROUND
+				// Really??????
 				dest[3] = 255-t;
 #else
 				dest[3] = 255-gammatable[t];	// JPG 3.02 - t -> gammatable[t]
@@ -245,27 +247,34 @@ store:
 			}
 		}
 		break;
-	case GL_ALPHA:
+//	case GL_ALPHA:
+//	case GL_INTENSITY:
 	case GL_LUMINANCE:
-	case GL_INTENSITY:
+
 		bl = blocklights;
 		for (i=0 ; i<tmax ; i++, dest += stride)
 		{
 			for (j=0 ; j<smax ; j++)
 			{
-#ifdef DX8QUAKE
-				t = *bl++;
-				t >>= 8;
-				if (t > 255)
-					t = 255;
-				dest[j] = t;
-#else
-				t = *bl++;
-				t >>= 7;
-				if (t > 255)
-					t = 255;
-				dest[j] = 255-gammatable[t];	// JPG 3.02 - t -> gammatable[t]
+#ifdef SUPPORTS_GL_OVERBRIGHTS // DX8QUAKE
+				if (gl_overbright.value) {
+					t = *bl++;
+					t >>= 8;
+					if (t > 255)
+						t = 255;
+					dest[j] = t; 
+				} 
+				else
 #endif
+				{
+					t = *bl++;
+					t >>= 7;
+					if (t > 255)
+						t = 255;
+					// Baker: if hardware gamma shouldn't this go?
+					dest[j] = 255-gammatable[t];	// JPG 3.02 - t -> gammatable[t]
+				}
+
 			}
 		}
 		break;
@@ -335,7 +344,7 @@ void R_BlendLightmaps (void) {
 
 	if (r_fullbright.value)
 		return;
-#if !defined(DX8QUAKE)
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
 	if (!gl_texsort.value)
 		return;
 #endif
@@ -343,25 +352,39 @@ void R_BlendLightmaps (void) {
 	glDepthMask (GL_FALSE);		// GL_FALSE = 0  don't bother writing Z
 
 	if (gl_lightmap_format == GL_LUMINANCE)
-#ifdef DX8QUAKE
+#ifdef SUPPORTS_GL_OVERBRIGHTS // DX8QUAKE
+	if (gl_overbright.value)
 		glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
-#else
-		glBlendFunc (GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+	else
 #endif
-	else if (gl_lightmap_format == GL_INTENSITY)
-	{
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-		glColor4f (0,0,0,1);
-		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	}
+		glBlendFunc (GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+
+// Baker: everything except intensity and luminance are broke
+//        and GLQuake uses luminance by default.
+//	else if (gl_lightmap_format == GL_INTENSITY)
+//	{
+//		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+//		glColor4f (0,0,0,1);
+//		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//	}
 
 	if (!r_lightmap.value)
 		glEnable (GL_BLEND);
 
 	for (i=0 ; i<MAX_LIGHTMAPS ; i++) {
-		if (!(p = lightmap_polys[i]))
+		p = lightmap_polys[i];
+		if (!p)
 			continue;
+
 		GL_Bind(lightmap_textures+i);
+	
+		// BengtQuake uploads lightmap here
+
+#if 1 // This isn't in BengtQuake which does this instead
+#if 0
+		R_UploadLightmap (i); // BengtQuake way
+#endif
+
 		if (lightmap_modified[i]) {
 			lightmap_modified[i] = false;
 			theRect = &lightmap_rectchange[i];
@@ -372,14 +395,14 @@ void R_BlendLightmaps (void) {
 			theRect->h = 0;
 			theRect->w = 0;
 		}
+#endif
+
 		for ( ; p ; p=p->chain) {
-#if !defined(DX8QUAKE)
 			// JPG - added r_waterwarp
 			if ((p->flags & SURF_UNDERWATER) && r_waterwarp.value) {
 
 				DrawGLWaterPolyLightmap (p);
 			} else {
-#endif
 				glBegin (GL_POLYGON);
 				v = p->verts[0];
 				for (j=0 ; j<p->numverts ; j++, v+= VERTEXSIZE)
@@ -388,21 +411,18 @@ void R_BlendLightmaps (void) {
 					glVertex3fv (v);
 				}
 				glEnd ();
-#if !defined(DX8QUAKE)
 			}
-#else
-			glFinish ();
-#endif
 		}
 	}
 
 	glDisable (GL_BLEND);
 	if (gl_lightmap_format == GL_LUMINANCE) {
 		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	} else if (gl_lightmap_format == GL_INTENSITY) {
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-		glColor4f (1,1,1,1);
 	}
+// else if (gl_lightmap_format == GL_INTENSITY) {
+//		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+//		glColor4f (1,1,1,1);
+//	}
 
 	glDepthMask (GL_TRUE);	// GLTRUE = 1 back to normal Z buffering
 }
@@ -426,6 +446,16 @@ void R_RenderDynamicLightmaps (msurface_t *fa)
 
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
 	lightmap_polys[fa->lightmaptexturenum] = fa->polys;
+
+#if 0 // MH Overbrights
+	// mh - overbrights - need to rebuild the lightmap if this changes
+	if (fa->overbright != gl_usingoverbright)
+	{
+		fa->overbright = gl_usingoverbright;
+		goto dynamic;
+	}
+
+#endif
 
 	// check for lightmap modification
 	for (maps = 0 ; maps < MAXLIGHTMAPS && fa->styles[maps] != 255 ; maps++)
@@ -471,11 +501,13 @@ void R_DrawWaterSurfaces (void)
 	int			i;
 	msurface_t	*s;
 	texture_t	*t;
-#ifdef DX8QUAKE_NO_GLTEXSORT
-	if (r_wateralpha.value >= 1.0 || pq_cheatfree) // JPG 3.20 - cheat protection, Baker 3.99: changed in event set higher than max value of 1
-#else
-	if ((r_wateralpha.value >= 1.0 || pq_cheatfree) && gl_texsort.value) // JPG 3.20 - cheat protection, Baker 3.99: changed in event set higher than max value of 1
-#endif
+
+	// JPG 3.20 - cheat protection, Baker 3.99: changed in event set higher than max value of 1	
+	if ((r_wateralpha.value >= 1.0 || pq_cheatfree) 
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
+			&& gl_texsort.value
+#endif 
+			)
 		return;
 
 
@@ -489,7 +521,7 @@ void R_DrawWaterSurfaces (void)
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	}
 
-#if !defined(DX8QUAKE_NO_GLTEXSORT)
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
 	if (!gl_texsort.value) 
 	{
 		if (!waterchain)
@@ -607,7 +639,7 @@ void DrawTextureChains (void)
 	msurface_t	*s;
 	texture_t	*t;
 
-#if !defined(DX8QUAKE)
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
 	if (!gl_texsort.value) {
 		GL_DisableMultitexture();
 
@@ -644,14 +676,11 @@ void DrawTextureChains (void)
 		}
 
 		t->texturechain = NULL;
-#ifdef DX8QUAKE
-		glFinish ();
-#endif
 	}
 }
 
 
-#if !defined(DX8QUAKE)
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
 /*
 ================
 R_DrawSequentialPoly
@@ -691,7 +720,13 @@ int gNoSurfaces=0;
 			// Binds world to texture env 0
 			GL_SelectTexture(TEXTURE0_SGIS);
 			GL_Bind (t->gl_texturenum);
+//			BengtQuake uploads the lightmap here
+//			R_UploadLightmap (s->lightmaptexturenum);
+			// BengtOverbright does this
+//			GL_BeginLightBlend ();
+//          instead of this next line
 			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+			
 			// Binds lightmap to texenv 1
 			GL_EnableMultitexture(); // Same as SelectTexture (TEXTURE1)
 			GL_Bind (lightmap_textures + s->lightmaptexturenum);
@@ -804,6 +839,8 @@ int gNoSurfaces=0;
 		GL_SelectTexture(TEXTURE0_SGIS);
 		GL_Bind (t->gl_texturenum);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+// BengtQuake differences here (uploads lightmap)
+// Overbright differences here
 		GL_EnableMultitexture();
 		GL_Bind (lightmap_textures + s->lightmaptexturenum);
 		i = s->lightmaptexturenum;
@@ -877,9 +914,7 @@ void DrawGLWaterPoly (glpoly_t *p) {
 	float	*v;
 	vec3_t	nv;
 
-#if !defined(DX8QUAKE)
 	GL_DisableMultitexture();
-#endif
 
 	glBegin (GL_TRIANGLE_FAN);
 	v = p->verts[0];
@@ -902,9 +937,7 @@ void DrawGLWaterPolyLightmap (glpoly_t *p)
 	float	*v;
 	vec3_t	nv;
 
-#if !defined(DX8QUAKE)
 	GL_DisableMultitexture();
-#endif
 
 	glBegin (GL_TRIANGLE_FAN);
 	v = p->verts[0];
@@ -952,11 +985,9 @@ void R_RenderBrushPoly (msurface_t *fa)
 		return;
 	}
 
-#if !defined(DX8QUAKE)
 	if ((fa->flags & SURF_UNDERWATER) && r_waterwarp.value)		// JPG - added r_waterwarp
 		DrawGLWaterPoly (fa->polys);
 	else
-#endif
 		DrawGLPoly (fa->polys);
 
 #ifndef NOFULLBRIGHT
@@ -967,6 +998,14 @@ void R_RenderBrushPoly (msurface_t *fa)
 
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
 	lightmap_polys[fa->lightmaptexturenum] = fa->polys;
+#if 0
+	// mh - overbrights - need to rebuild the lightmap if this changes
+	if (fa->overbright != gl_usingoverbright)
+	{
+		fa->overbright = gl_usingoverbright;
+		goto dynamic;
+	}
+#endif
 
 	// check for lightmap modification
 	for (maps = 0 ; maps < MAXLIGHTMAPS && fa->styles[maps] != 255 ;
@@ -978,7 +1017,7 @@ void R_RenderBrushPoly (msurface_t *fa)
 		|| fa->cached_dlight)			// dynamic previously
 	{
 dynamic:
-		if (r_dynamic.value)
+		if (r_dynamic.value&& !r_fullbright.value) // Bengt: added if no fullbrights
 		{
 			lightmap_modified[fa->lightmaptexturenum] = true;
 			theRect = &lightmap_rectchange[fa->lightmaptexturenum];
@@ -1131,14 +1170,12 @@ void R_DrawBrushModel (entity_t *ent)
 		if (((psurf->flags & SURF_PLANEBACK) && (dot < -BACKFACE_EPSILON)) ||
 			(!(psurf->flags & SURF_PLANEBACK) && (dot > BACKFACE_EPSILON)))
 		{
-#if !defined(DX8QUAKE)
-			if (gl_texsort.value)
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
+			if (!gl_texsort.value)
+				R_DrawSequentialPoly (psurf);
+			else
 #endif
 				R_RenderBrushPoly (psurf);
-#if !defined(DX8QUAKE)
-			else
-				R_DrawSequentialPoly (psurf);
-#endif
 		}
 	}
 
@@ -1244,7 +1281,7 @@ void R_RecursiveWorldNode (mnode_t *node)
 			side = 0;
 
 		{
-#ifdef DX8QUAKE
+#ifdef DX8QUAKE_NO_GL_TEXSORT_ZERO
 			for (surf = cl.worldmodel->surfaces + node->firstsurface; c ; c--, surf++)
 			{
 				if (surf->visframe != r_framecount)
@@ -1513,7 +1550,7 @@ void BuildSurfaceDisplayList (msurface_t *fa)
 		poly->verts[i][5] = s;
 		poly->verts[i][6] = t;
 	}
-#if !defined(DX8QUAKE)
+#if !defined(DX8QUAKE_NO_GL_KEEPTJUNCTIONS_ZERO)
 	// remove co-linear points - Ed
 	if (!gl_keeptjunctions.value && (!(fa->flags & SURF_UNDERWATER) && !r_waterwarp.value)) {
 		for (i = 0 ; i < lnumverts ; ++i) {
@@ -1604,28 +1641,30 @@ void GL_BuildLightmaps (void)
 
 #ifdef MACOSX_EXTRA_FEATURES
 
-        // <AWE> MacOS X v10.1, GLQuake v1.0.2:
-        // Using GL_LUMINACE causes frame drops in rooms with many lightmap textures.
-        // Since GL_INTENSITY, GL_ALPHA result in totaly dark surfaces, we have to use GL_RGBA as default.
+    // <AWE> MacOS X v10.1, GLQuake v1.0.2:
+    // Using GL_LUMINACE causes frame drops in rooms with many lightmap textures.
+    // Since GL_INTENSITY, GL_ALPHA result in totaly dark surfaces, we have to use GL_RGBA as default.
 
-        if (gl_luminace_lightmaps == false)
-            gl_lightmap_format = GL_RGBA;
-        else
+    if (gl_luminace_lightmaps == false)
+        gl_lightmap_format = GL_RGBA;
+    else
 
 #endif /* MACOSX */
-	gl_lightmap_format = GL_LUMINANCE;
+		gl_lightmap_format = GL_LUMINANCE;
+
 	// default differently on the Permedia
 	if (isPermedia)
 		gl_lightmap_format = GL_RGBA;
 
 	if (COM_CheckParm ("-lm_1"))
 		gl_lightmap_format = GL_LUMINANCE;
-	if (COM_CheckParm ("-lm_a"))
-		gl_lightmap_format = GL_ALPHA;
-	if (COM_CheckParm ("-lm_i"))
-		gl_lightmap_format = GL_INTENSITY;
-	if (COM_CheckParm ("-lm_2"))
-		gl_lightmap_format = GL_RGBA4;
+// Baker these other lightmap formats simply don't work
+//	if (COM_CheckParm ("-lm_a"))
+//		gl_lightmap_format = GL_ALPHA;
+//	if (COM_CheckParm ("-lm_i"))
+//		gl_lightmap_format = GL_INTENSITY;
+//	if (COM_CheckParm ("-lm_2"))
+//		gl_lightmap_format = GL_RGBA4;
 	if (COM_CheckParm ("-lm_4"))
 		gl_lightmap_format = GL_RGBA;
 
@@ -1634,12 +1673,12 @@ void GL_BuildLightmaps (void)
 	case GL_RGBA:
 		lightmap_bytes = 4;
 		break;
-	case GL_RGBA4:
-		lightmap_bytes = 2;
-		break;
+//	case GL_RGBA4:
+//		lightmap_bytes = 2;
+//		break;
+//	case GL_INTENSITY:
+//	case GL_ALPHA:
 	case GL_LUMINANCE:
-	case GL_INTENSITY:
-	case GL_ALPHA:
 		lightmap_bytes = 1;
 		break;
 	}
@@ -1664,7 +1703,7 @@ void GL_BuildLightmaps (void)
 		}
 	}
 
-#if !defined(DX8QUAKE)
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
  	if (!gl_texsort.value)
  		GL_SelectTexture(TEXTURE1_SGIS);
 #endif
@@ -1688,7 +1727,7 @@ void GL_BuildLightmaps (void)
 		glTexImage2D (GL_TEXTURE_2D, 0, lightmap_bytes, BLOCK_WIDTH, BLOCK_HEIGHT, 0, gl_lightmap_format, GL_UNSIGNED_BYTE, lightmaps+i*BLOCK_WIDTH*BLOCK_HEIGHT*lightmap_bytes);
 	}
 
-#if !defined(DX8QUAKE)
+#if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
  	if (!gl_texsort.value)
  		GL_SelectTexture(TEXTURE0_SGIS);
 #endif

@@ -264,9 +264,6 @@ void EmitSkyPolys (msurface_t *fa)
 		}
 		glEnd ();
 	}
-#ifdef DX8QUAKE
-	glFinish ();
-#endif
 }
 
 /*
@@ -1110,7 +1107,7 @@ static void MakeSkyVec (float s, float t, int axis)
 
 	// Empirical tests to get good results in most combinations.
 	// Maybe possible to have one formula for all
-#ifdef DX8QUAKE_GL_MAX_SIZE_FAKE
+#ifdef DX8QUAKE_GET_GL_MAX_SIZE
 	
 	if (w < 256 && gl_max_size > 256)
 	{

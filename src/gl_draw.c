@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern unsigned char d_15to8table[65536];
 
 cvar_t		gl_nobind = {"gl_nobind", "0"};
-#ifdef DX8QUAKE_GET_GLMAXSIZE
+#ifdef DX8QUAKE_GET_GL_MAX_SIZE
 int			gl_max_size = 1024;
 #else
 cvar_t		gl_max_size = {"gl_max_size", "1024"};
@@ -69,11 +69,7 @@ int		gl_lightmap_format = 4;
 int		gl_solid_format = 3;
 int		gl_alpha_format = 4;
 
-#ifdef DX8QUAKE
-int		gl_filter_min = GL_LINEAR_MIPMAP_LINEAR;
-#else
 int		gl_filter_min = GL_LINEAR_MIPMAP_NEAREST;
-#endif
 int		gl_filter_max = GL_LINEAR;
 
 
@@ -155,14 +151,11 @@ void GL_Bind (int texnum)
 		return;
 
 	currenttexture = texnum;
-#ifdef DX8QUAKE
+#if defined(DX8QUAKE_NO_BINDTEXFUNC) || !defined(_WIN32)
 	glBindTexture(GL_TEXTURE_2D, texnum);
-#else
-
-#if defined(_WIN32) && !defined(DX8QUAKE_NO_BINDTEXFUNC)
+#else // DX8QUAKE or MACOSX
 	bindTexFunc (GL_TEXTURE_2D, texnum);
-#else
-	glBindTexture(GL_TEXTURE_2D, texnum);
+#endif
 
 #ifdef MACOSX_EXTRA_FEATURES
         if (gl_texturefilteranisotropic) {
@@ -171,8 +164,6 @@ void GL_Bind (int texnum)
             glTexParameterfv (GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, &gl_texureanisotropylevel);
         }
 #endif /* MACOSX */
-#endif
-#endif
 }
 
 /*
@@ -597,7 +588,7 @@ void Draw_Init (void)
 	Cvar_RegisterVariable (&gl_free_world_textures, NULL);//R00k
 #endif
 
-#ifdef DX8QUAKE_GET_GLMAXSIZE
+#ifdef DX8QUAKE_GET_GL_MAX_SIZE
 	glGetIntegerv (GL_MAX_TEXTURE_SIZE, &gl_max_size);
 #else
 	Cvar_RegisterVariable (&gl_max_size, NULL);
@@ -1361,7 +1352,6 @@ Call before beginning any disc IO.
 
 void Draw_BeginDisc (void)
 {
-#ifndef DX8QUAKE_NO_FRONT_BACK_BUFFER
 #ifdef INTEL_OPENGL_DRIVER_WORKAROUND
 	extern qboolean IntelDisplayAdapter;
 	// Baker: Intel display adapters issue fix
@@ -1381,7 +1371,6 @@ void Draw_BeginDisc (void)
 	glDrawBuffer  (GL_FRONT);
 	Draw_Pic (vid.width - 24, 0, draw_disc);
 	glDrawBuffer  (GL_BACK);
-#endif
 }
 
 
@@ -1462,7 +1451,6 @@ void GL_ResampleTexture (unsigned *in, int inwidth, int inheight, unsigned *out,
 	{
 		inrow = in + inwidth*(i*inheight/outheight);
 		frac = fracstep >> 1;
-#if !defined(DX8QUAKE_ALT_RESAMPLE)
 		for (j=0 ; j<outwidth ; j+=4)
 		{
 			out[j] = inrow[frac>>16];
@@ -1477,6 +1465,7 @@ void GL_ResampleTexture (unsigned *in, int inwidth, int inheight, unsigned *out,
 	}
 }
 
+#ifndef DX8QUAKE_NO_8BIT
 /*
 ================
 GL_Resample8BitTexture -- JACK
@@ -1493,7 +1482,6 @@ void GL_Resample8BitTexture (unsigned char *in, int inwidth, int inheight, unsig
 	{
 		inrow = in + inwidth*(i*inheight/outheight);
 		frac = fracstep >> 1;
-#endif
 		for (j=0 ; j<outwidth ; j+=4)
 		{
 			out[j] = inrow[frac>>16];
@@ -1507,7 +1495,7 @@ void GL_Resample8BitTexture (unsigned char *in, int inwidth, int inheight, unsig
 		}
 	}
 }
-
+#endif
 
 /*
 ================
@@ -1596,7 +1584,7 @@ static	unsigned	scaled[1024*512];	// [512*256];
 	scaled_width >>= (int)gl_picmip.value;
 	scaled_height >>= (int)gl_picmip.value;
 
-#ifdef DX8QUAKE_GET_GLMAXSIZE
+#ifdef DX8QUAKE_GET_GL_MAX_SIZE
 	if (scaled_width > gl_max_size) scaled_width = gl_max_size;
 	if (scaled_height > gl_max_size) scaled_height = gl_max_size;
 #else

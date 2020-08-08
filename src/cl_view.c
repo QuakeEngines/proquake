@@ -247,11 +247,14 @@ static void V_DriftPitch (void)
 
 cshift_t	cshift_empty = { {130,80,50}, 0 };
 cshift_t	cshift_water = { {130,80,50}, 128 };
+#ifdef KUROK_WATER
+cshift_t	cshift_water = {{64,64,128}, 128};
+#endif
 cshift_t	cshift_slime = { {0,25,5}, 150 };
 cshift_t	cshift_lava = { {255,80,0}, 150 };
 
 cvar_t		vold_gamma = {"gamma", "1", true};
-#ifndef GLQUAKE
+#if !defined(GLQUAKE) || defined(D3DQ_CONTRAST)
 cvar_t		vnew_contrast = {"contrast", "1", true};
 #endif
 
@@ -286,13 +289,13 @@ void BuildGammaTable (float g)
 
 	for (i=0 ; i<256 ; i++)
 	{
-		inf = 255 * pow((i + 0.5) / 255.5 * 2, g) + 0.5;
+		inf = 255 * pow((i + 0.5) / 255.5, g) + 0.5;
 		gammatable[i] =bound(0, inf, 255);
 	}
 }
 #endif
 
-#ifndef GLQUAKE
+#if !defined(GLQUAKE) || defined(D3DQ_CONTRAST)
 static void BuildGammaTable2 (float g, float c)
 {
 	int	i, inf;
@@ -330,10 +333,28 @@ static qboolean V_CheckGamma (void)
 {
 	static float oldgammavalue;
 	float gamma;
+#ifdef D3DQ_CONTRAST
+	static float oldcontrastvalue;
+	float contrast;
+#endif
 
+#ifdef D3DQ_CONTRAST
+	if (vold_gamma.value == oldgammavalue && vnew_contrast.value == oldcontrastvalue) // exit if gamma and contrast are unchanged
+		return false;
 
+	contrast = bound(0.1, vnew_contrast.value, 3);
+
+	if (vnew_contrast.value != contrast) {
+		// If cvar isn't within bounds, make it so
+		Cvar_SetValue("contrast", contrast);
+	}
+
+	oldcontrastvalue = contrast;
+
+#else
 	if (vold_gamma.value == oldgammavalue) // exit if gamma is unchanged
 		return false;
+#endif
 
 	gamma = bound(0.3, vold_gamma.value, 3);
 
@@ -344,7 +365,12 @@ static qboolean V_CheckGamma (void)
 
 	oldgammavalue = gamma;
 
+#ifdef D3DQ_CONTRAST
+	BuildGammaTable2 (gamma, contrast); // Baker 3.99 todo: update gamma cvar if bounded
+#else
 	BuildGammaTable (gamma); // Baker 3.99 todo: update gamma cvar if bounded
+#endif
+
 	vid.recalc_refdef = 1;				// force a surface cache flush
 
 #ifdef D3DQ_EXTRA_FEATURES
@@ -489,16 +515,15 @@ Underwater, lava, etc each has a color shift
 */
 void V_SetContentsColor (int contents)
 {
-#ifdef SUPPORTS_ENHANCED_GAMMA
-if (vid_hwgamma_enabled && gl_hwblend.value) {
 	if (!pq_waterblend.value)
 	{
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
+#ifdef GLQUAKE
 		cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
+#endif
 		return;
 	}
-}
-#endif
+
 	switch (contents)
 	{
 	case CONTENTS_EMPTY:
@@ -515,13 +540,11 @@ if (vid_hwgamma_enabled && gl_hwblend.value) {
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_water;
 	}
 
-#ifdef SUPPORTS_ENHANCED_GAMMA
-if (vid_hwgamma_enabled && gl_hwblend.value) {
-
 	if (pq_waterblend.value > 0 && pq_waterblend.value < 1
 		&& contents != CONTENTS_EMPTY)
 		cl.cshifts[CSHIFT_CONTENTS].percent *= pq_waterblend.value;
 
+#ifdef GLQUAKE
 	if (contents != CONTENTS_EMPTY)
 	{
 		if (!gl_polyblend.value)
@@ -533,10 +556,7 @@ if (vid_hwgamma_enabled && gl_hwblend.value) {
 	{
 		cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
 	}
-} else
 #endif
-	// JPG 1.05 - control amount of shift
-	cl.cshifts[CSHIFT_CONTENTS].percent *= pq_waterblend.value;
 }
 
 /*
@@ -1531,7 +1551,7 @@ void V_Init (void)
 
 	Cvar_RegisterVariable (&vold_gamma, NULL);
 
-#ifdef GLQUAKE
+#if defined(GLQUAKE) && !defined(D3DQ_CONTRAST)
 	BuildGammaTable (1.0);	// no gamma yet
 #else
 	Cvar_RegisterVariable (&vnew_contrast, NULL);

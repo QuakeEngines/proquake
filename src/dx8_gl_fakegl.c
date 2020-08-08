@@ -2406,6 +2406,13 @@ void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed)
 		d3d_CurrentMode.Width = width;
 		d3d_CurrentMode.Height = height;
 		d3d_CurrentMode.RefreshRate = 0;
+
+#ifdef DX8QUAKE_VSYNC_COMMANDLINE_PARAM
+		if (COM_CheckParm("-vsync")) {
+			// required for windowed mode
+			d3d_PresentParams.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+		}
+#endif
 	}
 	else
 	{
@@ -2415,6 +2422,15 @@ void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed)
 		// ensure that we got a good format
 		if (fmt == D3DFMT_UNKNOWN)
 			Sys_Error ("failed to get fullscreen mode");
+
+#ifdef DX8QUAKE_VSYNC_COMMANDLINE_PARAM
+		if (COM_CheckParm("-vsync")) {
+			// vsync off
+			d3d_PresentParams.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+		} else {
+			d3d_PresentParams.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+		}
+#endif
 	}
 
 	// fill in mode-dependent stuff

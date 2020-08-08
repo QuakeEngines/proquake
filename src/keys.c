@@ -1087,6 +1087,13 @@ void Key_Event (int key, int ascii, qboolean down)
 		// Alt-Enter detected
 		// swallow it and process
 
+#ifdef DX8QUAKE_CANNOT_DETECT_FULLSCREEN_BY_MODESTATE
+		Cbuf_AddText("toggle vid_fullscreen\n");
+		Cbuf_AddText("vid_restart\n");
+		Cbuf_Execute ();
+		return;
+#endif
+
 		if (VID_WindowedSwapAvailable()) { // We can switch to/from Windowed mode?
 			if (VID_isFullscreen())
 				VID_Windowed();
