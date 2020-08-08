@@ -40,6 +40,11 @@ cvar_t	scr_ofsx = {"scr_ofsx","0", false};
 cvar_t	scr_ofsy = {"scr_ofsy","0", false};
 cvar_t	scr_ofsz = {"scr_ofsz","0", false};
 
+#ifdef SUPPORTS_AUTOID
+cvar_t		scr_autoid		= {"scr_autoid", "0", true};
+#endif
+
+
 cvar_t	cl_rollspeed = {"cl_rollspeed", "200", true};
 cvar_t	cl_rollangle = {"cl_rollangle", "0", true}; // Quake classic default = 2.0
 
@@ -1194,6 +1199,66 @@ void SCR_DrawVolume (void)
 	Draw_String (vid.width - 88, yofs + 8, "volume");
 }
 
+#ifdef SUPPORTS_AUTOID_SOFTWARE
+void R_DrawNameTags(void)
+{
+	int i;
+	vec3_t center;
+	vec3_t tagcenter;
+	vec3_t waste, waste2;
+//	frame_t *frame;
+	entity_t	*state;
+	vec3_t	OurViewPoint;
+	vec3_t  ThisClientPoint;
+	vec3_t	stop;
+	extern cvar_t scr_autoid;
+
+	if (!scr_autoid.value || cls.state != ca_connected || !cls.demoplayback)
+		return;
+
+	for (i = 0; i < cl.maxclients; i++)
+	{
+		state = &cl_entities[1+i];
+
+		if (!state->model->name)		// NULL model
+			continue;
+
+		if (!(state->modelindex == cl_modelindex[mi_player]))	// Not a player model
+			continue;
+
+		if (ISDEAD(state->frame)) // Dead
+			continue;
+
+//		if (strcmp(state->model->name, "progs/player.mdl"))
+//			continue;
+
+
+//		if (R_CullSphere(state->origin, 0))
+//			continue;
+		
+		VectorCopy (r_refdef.vieworg, OurViewPoint);
+		VectorCopy (state->origin, ThisClientPoint);
+
+		TraceLine (OurViewPoint, ThisClientPoint, stop);
+		
+		if (stop[0] != 0 || stop[1] != 0 || stop[2] != 0)  // Quick and dirty traceline
+			continue;
+
+
+		VectorCopy(state->origin, tagcenter);
+		tagcenter[2] += 32;
+		ML_Project(tagcenter, center, r_refdef.viewangles, r_refdef.vieworg, (float)r_refdef.vrect.width/r_refdef.vrect.height, r_refdef.fov_y);
+		if (center[2] > 1)
+			continue;
+		//Con_Printf("Center is x, y, z %f %f %f\n", center[0], center[1], center[2]);
+		Draw_String(center[0]*r_refdef.vrect.width+r_refdef.vrect.x, (1-center[1])*r_refdef.vrect.height+r_refdef.vrect.y, cl.scores[i].name);
+		//Con_Printf("Drawing tag for number %i = %s\n", i, cl.scores[i].name); 
+		//Con_Printf("Drawing at x %i,y i% \n", center[0]*r_refdef.vrect.width+r_refdef.vrect.x, (1-center[1])*r_refdef.vrect.height+r_refdef.vrect.y);
+		//Con_Printf("Our screen %i %i with center0/1 %f %f\n",  r_refdef.vrect.width, r_refdef.vrect.height, center[0], center[1]);
+	}
+}
+#endif
+
 
 /*
 ==================
@@ -1358,4 +1423,9 @@ void V_Init (void)
 #ifndef GLQUAKE
 	Cvar_RegisterVariable (&r_polyblend, NULL);	// JPG 3.30 - winquake version of gl_polyblend
 #endif
+
+#ifdef SUPPORTS_AUTOID
+	Cvar_RegisterVariable (&scr_autoid, NULL);
+#endif
+
 }

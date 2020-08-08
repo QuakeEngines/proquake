@@ -461,7 +461,7 @@ void SCR_DrawWebPercent (void)
 
 	Draw_Fill (0, 20, vid.width, 2, 0);
 	Draw_Fill (0, 0, vid.width, 20, 98);
-	Draw_Fill (0, 6, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
+	Draw_Fill (0, 8, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
 
 	ch = buff;
 
@@ -942,6 +942,7 @@ void SCR_BringDownConsole (void)
 
 void Mat_Update (void);	// JPG
 
+
 /*
 ==================
 SCR_UpdateScreen
@@ -1078,6 +1079,9 @@ void SCR_UpdateScreen (void)
 		if (cls.state == ca_connected) {
 			void Draw_Crosshair (void);
 			Draw_Crosshair ();	
+#ifdef SUPPORTS_AUTOID_SOFTWARE
+			R_DrawNameTags(); 
+#endif
 			SCR_DrawFPS (); // JPG - draw FPS
 			SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
 			SCR_CheckDrawCenterString ();

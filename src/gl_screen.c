@@ -98,6 +98,7 @@ cvar_t		gl_triplebuffer = {"gl_triplebuffer", "1", true };
 cvar_t      pq_drawfps = {"pq_drawfps", "0", true}; // JPG - draw frames per second
 cvar_t      show_speed = {"show_speed", "0", false}; // JPG - draw frames per second
 
+
 extern	cvar_t	crosshair;
 extern  cvar_t	cl_crosshaircentered; // Baker 3.60 - centered crosshair
 //extern  cvar_t  cl_colorshow; // Baker 3.99n - show color @ top/left of screen
@@ -542,7 +543,7 @@ void SCR_DrawWebPercent (void)
 
 	Draw_Fill (0, 20, vid.width, 2, 0);
 	Draw_Fill (0, 0, vid.width, 20, 98);
-	Draw_Fill (0, 6, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
+	Draw_Fill (0, 8, (int)((vid.width - (18*8)) * cls.download.percent), 8, 8);
 
 	ch = buff;
 
@@ -728,6 +729,141 @@ void SCR_DrawConsole (void)
 	}
 }
 
+
+#ifdef SUPPORTS_AUTOID_HARDWARE
+//=============================================================================
+
+int qglProject (float objx, float objy, float objz, float *model, float *proj, int *view, float* winx, float* winy, float* winz)
+{
+	int	i;
+	float	in[4], out[4];
+
+	in[0] = objx, in[1] = objy, in[2] = objz, in[3] = 1.0;
+
+	for (i=0 ; i<4 ; i++)
+		out[i] = in[0] * model[0*4+i] + in[1] * model[1*4+i] + in[2] * model[2*4+i] + in[3] * model[3*4+i];
+
+	for (i=0 ; i<4 ; i++)
+		in[i]  = out[0] * proj[0*4+i] + out[1] * proj[1*4+i] + out[2] * proj[2*4+i] + out[3] * proj[3*4+i];
+
+	if (!in[3])
+		return 0;
+
+	VectorScale (in, 1 / in[3], in);
+
+	*winx = view[0] + (1 + in[0]) * view[2] / 2;
+	*winy = view[1] + (1 + in[1]) * view[3] / 2;
+	*winz = (1 + in[2]) / 2;
+
+	return 1;
+}
+
+typedef struct player_autoid_s
+{
+	float		x, y;
+	scoreboard_t	*player;
+} autoid_player_t;
+
+static	autoid_player_t	autoids[MAX_SCOREBOARDNAME];
+static	int		autoid_count;
+
+extern cvar_t scr_autoid;
+void SCR_SetupAutoID (void)
+{
+	int		i, view[4];
+	float		model[16], project[16], winz, *origin;
+	entity_t	*state;
+	autoid_player_t	*id;
+	vec3_t	OurViewPoint;
+	vec3_t  ThisClientPoint;
+	vec3_t	stop;
+	vec3_t	edist;
+	void TraceLine (vec3_t start, vec3_t end, vec3_t impact);
+
+	autoid_count = 0;
+
+	if (!scr_autoid.value || cls.state != ca_connected || !cls.demoplayback)
+		return;
+
+	glGetFloatv (GL_MODELVIEW_MATRIX, model);
+	glGetFloatv (GL_PROJECTION_MATRIX, project);
+
+	glGetIntegerv (GL_VIEWPORT, view);
+
+	for (i = 0 ; i < cl.maxclients ; i++)
+	{
+		state = &cl_entities[1+i];
+
+		if (!state->model->name)		// NULL model
+			continue;
+
+		if (!(state->modelindex == cl_modelindex[mi_player]))	// Not a player model
+			continue;
+
+		if (ISDEAD(state->frame)) // Dead
+			continue;
+
+//		if (strcmp(state->model->name, "progs/player.mdl"))
+//			continue;
+
+
+		if (R_CullSphere(state->origin, 0))
+			continue;
+
+		// Logic
+		// Fill in one value with our viewpoint and the next value with target
+		// Do traceline
+
+		
+		VectorCopy (r_refdef.vieworg, OurViewPoint);
+		VectorCopy (state->origin, ThisClientPoint);
+
+		TraceLine (OurViewPoint, ThisClientPoint, stop);
+		if (stop[0] != 0 || stop[1] != 0 || stop[2] != 0)  // Quick and dirty traceline
+			continue;
+
+#if 1
+		if (!CL_Visible_To_Client(OurViewPoint, ThisClientPoint)) {
+			// We can't see it
+			//Con_Printf("Cannot see it\n");
+			continue;
+			
+		}
+#endif
+
+		id = &autoids[autoid_count];
+		id->player = &cl.scores[i];
+
+#if 0
+		Con_Printf("Player %s\n", id->player->name); // Print name of seen player
+		Con_Printf("Client num %i\n", i);
+		Con_Printf("modelname is %s\n", state->model->name);
+		Con_Printf("modelindex is %i\n", state->modelindex);
+		//Con_Printf("modelname char one is %i\n", state->model->name[0]);
+		Con_Printf("playermodel index is %i\n", cl_modelindex[mi_player]);
+#endif
+
+		origin = state->origin;
+		if (qglProject(origin[0], origin[1], origin[2] + 28, model, project, view, &id->x, &id->y, &winz))
+			autoid_count++;
+	}
+}
+
+void SCR_DrawAutoID (void)
+{
+	int	i, x, y;
+
+	if (!scr_autoid.value || cls.state != ca_connected || !cls.demoplayback)
+		return;
+
+	for (i = 0 ; i < autoid_count ; i++)
+	{
+		x = autoids[i].x * vid.width / glwidth;
+		y = (glheight - autoids[i].y) * vid.height / glheight;
+		Draw_String (x - strlen(autoids[i].player->name) * 4, y - 8, autoids[i].player->name);
+	}
+}
+#endif
 
 /*
 ==============================================================================
@@ -1035,6 +1171,10 @@ void SCR_UpdateScreen (void)
 
 	V_RenderView ();
 
+#ifdef SUPPORTS_AUTOID_HARDWARE
+	SCR_SetupAutoID ();
+#endif
+
 	GL_Set2D ();
 
 // added by joe - IMPORTANT: this _must_ be here so that
@@ -1078,8 +1218,15 @@ void SCR_UpdateScreen (void)
 		SCR_DrawNet ();
 		SCR_DrawTurtle ();
 		SCR_DrawPause ();
+		
 
 		if (cls.state == ca_connected) {
+#ifdef SUPPORTS_AUTOID_HARDWARE
+			SCR_DrawAutoID ();
+#endif
+#ifdef SUPPORTS_AUTOID_SOFTWARE
+			R_DrawNameTags(); 
+#endif
 			Draw_Crosshair ();
 			SCR_DrawFPS (); // JPG - draw FPS
 			SCR_DrawSpeed (); // Baker 3.67 - Drawspeed

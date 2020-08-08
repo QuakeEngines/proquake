@@ -70,7 +70,7 @@ cvar_t	    cl_bindprotect = {"cl_bindprotect","2", true};
 cvar_t		in_keymap = {"in_keymap", "1", true};
 #endif
 
-#ifdef SUPPORTS_GLVIDEOMODE_SWITCH
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
 cvar_t		cl_key_altenter = {"cl_key_altenter", "1", true}; // Baker 3.99q: allows user to disable new ALT-ENTER behavior
 #endif
 
@@ -1028,7 +1028,7 @@ void Key_Init (void)
 // register our functions
 
 	Cvar_RegisterVariable(&cl_bindprotect, NULL);
-#ifdef SUPPORTS_GLVIDEOMODE_SWITCH
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
 	Cvar_RegisterVariable(&cl_key_altenter, NULL);
 #endif
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
@@ -1057,7 +1057,7 @@ void Key_Event (int key, int ascii, qboolean down)
 	int	flex_ascii;
 
 
-#ifdef SUPPORTS_GLVIDEOMODE_SWITCH
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
 	if (alt_down && key == K_ENTER && !down && cl_key_altenter.value) {
 		// Alt-Enter detected
 		// swallow it and process

@@ -62,6 +62,9 @@ typedef struct entity_s
 // FIXME: could turn these into a union
 	int						trivial_accept;
 	struct mnode_s			*topnode;		// for bmodels, first world node that splits bmodel, or NULL if not split
+
+	int		modelindex;
+	
 #ifdef SUPPORTS_HARDWARE_ANIM_INTERPOLATION
         // fenix@io.com: model animation interpolation
         float           frame_start_time;
@@ -70,16 +73,24 @@ typedef struct entity_s
 
 		// fenix@io.com: model transform interpolation
         float           translate_start_time;
-		vec3_t          origin1, origin2;
+		vec3_t          lastorigin, currorigin;
 
         float			rotate_start_time;
-        vec3_t			angles1, angles2;
+        vec3_t			lastangles, currangles;
 #endif
 
 #ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
 		float           frame_start_time;
 		int				lastpose, currpose;
 		int				lastframe;
+
+		// fenix@io.com: model transform interpolation
+        float           translate_start_time;
+		vec3_t          lastorigin, currorigin;
+
+        float			rotate_start_time;
+        vec3_t			lastangles, currangles;
+
 #endif
 
 #ifdef SUPPORTS_ENTITY_ALPHA
@@ -87,6 +98,8 @@ typedef struct entity_s
 		float			transparency;
 		qboolean 		istransparent;
 #endif
+
+		qboolean		monsterstep;
 } entity_t;
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!

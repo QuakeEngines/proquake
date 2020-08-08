@@ -133,3 +133,95 @@ void Chase_Update (void)
         r_refdef.viewangles[PITCH] = chase_pitch.value;
     }
 } 
+
+
+#ifdef SUPPORTS_AUTOID
+
+qboolean Still_Visible (vec3_t checkpoint, int viewcontents)
+{
+   int i;
+   vec3_t mins;
+   vec3_t maxs;
+
+   // check against world model
+   if ((Mod_PointInLeaf (checkpoint, cl.worldmodel))->contents != viewcontents)
+      return false;
+
+   // check visedicts - this happens *after* CL_ReadFromServer so the list will be valid
+   for (i = 0; i < cl_numvisedicts; i++)
+   {
+      // retrieve the current entity
+      entity_t *e = cl_visedicts[i];
+
+      // don't check against self
+      if (e == &cl_entities[cl.viewentity]) 
+		  continue;
+
+	  // don't check against players
+	  if (e->modelindex == cl_modelindex[mi_player])
+		  continue;
+
+      // derive the bbox
+      if (e->model->type == mod_brush && (e->angles[0] || e->angles[1] || e->angles[2]))
+      {
+         // copied from R_CullBox rotation test for inline bmodels, loop just unrolled
+         mins[0] = e->origin[0] - e->model->radius;
+         maxs[0] = e->origin[0] + e->model->radius;
+         mins[1] = e->origin[1] - e->model->radius;
+         maxs[1] = e->origin[1] + e->model->radius;
+         mins[2] = e->origin[2] - e->model->radius;
+         maxs[2] = e->origin[2] + e->model->radius;
+      }
+      else
+      {
+         VectorAdd (e->origin, e->model->mins, mins);
+         VectorAdd (e->origin, e->model->maxs, maxs);
+      }
+
+      // check against bbox
+      if (checkpoint[0] < mins[0]) continue;
+      if (checkpoint[1] < mins[1]) continue;
+      if (checkpoint[2] < mins[2]) continue;
+      if (checkpoint[0] > maxs[0]) continue;
+      if (checkpoint[1] > maxs[1]) continue;
+      if (checkpoint[2] > maxs[2]) continue;
+
+      // point inside
+      return false;
+   }
+
+   // it's good now
+   return true;
+}
+
+qboolean CL_Visible_To_Client (vec3_t viewer, vec3_t seen)
+{
+   // calculate distance between chasecam and original org to establish number of tests we need.
+   // an int is good enough here.:)  add a cvar multiplier to this...
+   int num_tests = (sqrt ((viewer[0] - seen[0]) * (viewer[0] - seen[0]) +
+               (viewer[1] - seen[1]) * (viewer[1] - seen[1]) +
+               (viewer[2] - seen[2]) * (viewer[2] - seen[2])));
+
+   // take the contents of the view leaf
+   int viewcontents = (Mod_PointInLeaf (viewer, cl.worldmodel))->contents;
+   int best;
+
+   // move along path from viewer to seen
+   for (best = 0; best < num_tests; best++)
+   {
+      vec3_t step_to_entity;
+
+      step_to_entity[0] = viewer[0] + (seen[0] - viewer[0]) * best / num_tests;
+      step_to_entity[1] = viewer[1] + (seen[1] - viewer[1]) * best / num_tests;
+      step_to_entity[2] = viewer[2] + (seen[2] - viewer[2]) * best / num_tests;
+
+      // check for a leaf hit with different contents
+      if (!Still_Visible (step_to_entity, viewcontents))
+      {
+			return false;
+      }
+   }
+
+   return true;
+} 
+#endif

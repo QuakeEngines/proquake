@@ -622,9 +622,10 @@ void IN_ActivateMouse (void) {
 			}
 		} else {
 			//Con_SafePrintf("Mouse: IN_ActivateMouse 6\n");
-			if (mouseparmsvalid)
+			if (mouseparmsvalid) {
 				restore_spi = SystemParametersInfo (SPI_SETMOUSE, 0, newmouseparms, 0);
-
+//				Con_Printf("Setting NEW mouse parameters ...\n");
+			}
 			SetCursorPos (window_center_x, window_center_y);
 			SetCapture (mainwindow);
 			ClipCursor (&window_rect);
@@ -647,8 +648,16 @@ void IN_DeactivateMouse (void) {
 //This code just frees the mouse to Windows
 //	Con_SafePrintf("Mouse: IN_DeactivateMouse 1\n");
 	mouse_lockedto_quakewindow = false;
-
+//	Con_Printf("Is mouse init? %i\n", flex_mouseinitialized);
 	if (flex_mouseinitialized) {
+#if 1 // Baker: We have to do this for dinput now too.  We might have changed them.
+		if (restore_spi) {
+			SystemParametersInfo (SPI_SETMOUSE, 0, originalmouseparms, 0);
+//			Con_Printf("Setting OLD mouse parameters ...\n");
+		}
+#endif
+
+		
 		if (flex_dinput) {
 			if (g_pMouse) {
 				if (flex_dinput_acquired) {
@@ -659,9 +668,12 @@ void IN_DeactivateMouse (void) {
 			}
 		} else {
 //			Con_SafePrintf("Mouse: IN_DeactivateMouse 6\n");
-			if (restore_spi)
+#if 0 // Baker: We have to do this for dinput now too.  We might have changed them.
+			if (restore_spi) {
 				SystemParametersInfo (SPI_SETMOUSE, 0, originalmouseparms, 0);
-
+				Con_Printf("Setting OLD mouse parameters ...\n");
+			}
+#endif
 			ClipCursor (NULL);
 			ReleaseCapture ();
 		}
@@ -773,6 +785,8 @@ void IN_StartupMouse (void) {
 
 // Baker 3.99n: experiment
 
+//	Con_Printf("MOUSEDEBUG: Startup ...\n");
+
 	if ( COM_CheckParm ("-nomouse") )
 		return;
 
@@ -792,9 +806,20 @@ void IN_StartupMouse (void) {
 		}
 	}
 
-	if (!flex_dinput) {
-		mouseparmsvalid = SystemParametersInfo (SPI_GETMOUSE, 0, originalmouseparms, 0);
+#if 1
+		if (!mouseparmsvalid) {
+			mouseparmsvalid = SystemParametersInfo (SPI_GETMOUSE, 0, originalmouseparms, 0);
+//			Con_Printf("Getting mouse parameters ...\n");
+		}
+#endif
 
+	if (!flex_dinput) {
+#if 0		
+		if (!mouseparmsvalid) {
+			mouseparmsvalid = SystemParametersInfo (SPI_GETMOUSE, 0, originalmouseparms, 0);
+//			Con_Printf("Getting mouse parameters ...\n");
+		}
+#endif
 		if (mouseparmsvalid) {
 			if ( COM_CheckParm ("-noforcemspd") )
 				newmouseparms[2] = originalmouseparms[2];
@@ -837,7 +862,7 @@ void IN_SetGlobals(void) {
 //	mouse_buttons = mouse_oldbuttonstate = 0;
 //	flex_input_initialized = false;
 //	mx_accum      = my_accum = 0;
-	restore_spi   = false;
+//	restore_spi   = false;
 //	memset(&current_pos,       0, sizeof(current_pos));
 //	memset(originalmouseparms, 0, sizeof(originalmouseparms));
 //	originalmouseparms[0] =0;
@@ -933,6 +958,7 @@ void IN_Shutdown (void) {
 //        been done?
 	
 //	Con_SafePrintf("Mouse: IN_Shutdown 1\n");
+//	Con_Printf("Mouse shutdown ...\n");
 	IN_DeactivateMouse ();
 	IN_ShowMouse ();
 

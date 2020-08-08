@@ -31,7 +31,7 @@ cvar_t	sv_defaultmap = {"sv_defaultmap",""}; //Baker 3.95: R00k
 cvar_t	sv_ipmasking = {"sv_ipmasking","1",false, true}; //Baker 3.95: R00k
 cvar_t	sv_cullentities = {"sv_cullentities", "1", false, true}; // Baker 3.99c: Rook and I both think sv_cullentities is better cvar name than sv_cullplayers
 cvar_t	sv_cullentities_notify = {"sv_cullentities_notify", "0", false, true}; // in event there are multiple modes for anti-wallhack (Rook has a more comprehensive mode)
-cvar_t 	sv_gameplayfix_monster_lerp = {"sv_gameplayfix_monster_lerp", "1", false, true}; // Baker: No "Not lerping" monsters
+cvar_t 	sv_gameplayfix_monster_lerp = {"sv_gameplayfix_monster_lerp", "0", false, true}; // Baker: No "Not lerping" monsters
 
 char	localmodels[MAX_MODELS][5];			// inline model names for precache
 
@@ -401,8 +401,7 @@ crosses a waterline.
 
 int		fatbytes;
 byte	fatpvs[MAX_MAP_LEAFS/8];
-
-void SV_AddToFatPVS (vec3_t org, mnode_t *node)
+void SV_AddToFatPVS (vec3_t org, mnode_t *node, model_t *worldmodel)
 {
 	int		i;
 	byte	*pvs;
@@ -416,7 +415,7 @@ void SV_AddToFatPVS (vec3_t org, mnode_t *node)
 		{
 			if (node->contents != CONTENTS_SOLID)
 			{
-				pvs = Mod_LeafPVS ( (mleaf_t *)node, sv.worldmodel);
+				pvs = Mod_LeafPVS ( (mleaf_t *)node, worldmodel);
 				for (i=0 ; i<fatbytes ; i++)
 					fatpvs[i] |= pvs[i];
 			}
@@ -431,7 +430,7 @@ void SV_AddToFatPVS (vec3_t org, mnode_t *node)
 			node = node->children[1];
 		else
 		{	// go down both
-			SV_AddToFatPVS (org, node->children[0]);
+			SV_AddToFatPVS (org, node->children[0], worldmodel);
 			node = node->children[1];
 		}
 	}
@@ -445,11 +444,19 @@ Calculates a PVS that is the inclusive or of all leafs within 8 pixels of the
 given point.
 =============
 */
-byte *SV_FatPVS (vec3_t org)
+/*
+=============
+SV_FatPVS
+
+Calculates a PVS that is the inclusive or of all leafs within 8 pixels of the
+given point.
+=============
+*/
+byte *SV_FatPVS (vec3_t org, model_t *worldmodel)
 {
-	fatbytes = (sv.worldmodel->numleafs+31)>>3;
+	fatbytes = (worldmodel->numleafs+31)>>3;
 	memset (fatpvs, 0, fatbytes);
-	SV_AddToFatPVS (org, sv.worldmodel->nodes);
+	SV_AddToFatPVS (org, worldmodel->nodes, worldmodel);
 	return fatpvs;
 }
 
@@ -743,7 +750,7 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 
 // find the client's PVS
 	VectorAdd (clent->v.origin, clent->v.view_ofs, org);
-	pvs = SV_FatPVS (org);
+	pvs = SV_FatPVS (org, sv.worldmodel);
 
 // send over all entities (excpet the client) that touch the pvs
 	ent = NEXT_EDICT(sv.edicts);

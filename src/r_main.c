@@ -130,6 +130,8 @@ cvar_t	r_numedges = {"r_numedges", "0"};
 cvar_t	r_aliastransbase = {"r_aliastransbase", "200"};
 cvar_t	r_aliastransadj = {"r_aliastransadj", "100"};
 cvar_t	r_interpolate_animation = {"r_interpolate_animation", "0", true};
+cvar_t	r_interpolate_transform = {"r_interpolate_transform", "0", true};
+cvar_t	r_interpolate_weapon = {"r_interpolate_weapon", "0", true};
 
 extern cvar_t	scr_fov;
 
@@ -206,6 +208,8 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_aliastransadj, NULL);
 
 	Cvar_RegisterVariable (&r_interpolate_animation, NULL);
+	Cvar_RegisterVariable (&r_interpolate_transform, NULL);
+	Cvar_RegisterVariable (&r_interpolate_weapon, NULL);
 
 	Cvar_SetValue ("r_maxedges", (float)100000); //NUMSTACKEDGES
 	Cvar_SetValue ("r_maxsurfs", (float)100000); //NUMSTACKSURFACES

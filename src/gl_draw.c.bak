@@ -2158,13 +2158,6 @@ qboolean mtexenabled = false;
 void GL_DisableMultitexture(void)
 {
 	if (mtexenabled) {
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-		if (gl_combine)
-		{
-			// mh - need to explicitly set back to 1xmodulate
-			glTexEnvf(GL_TEXTURE_ENV, GL_RGB_SCALE_ARB, 1.0f);
-		}
-#endif
 		glDisable(GL_TEXTURE_2D);
 		GL_SelectTexture(TEXTURE0_SGIS);
 		mtexenabled = false;

@@ -101,3 +101,10 @@ extern	qboolean vid_hwgamma_enabled;
 #define MOUSE_RELEASE_GAME_SAFE  (cls.state != ca_connected || sv.active==true || key_dest == key_menu || cls.demoplayback)
 //|| cls.demoplayback || key_dest == key_menu || sv.active)
 #endif
+
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
+qboolean VID_WindowedSwapAvailable(void);
+qboolean VID_isFullscreen(void);
+void VID_Windowed(void);
+void VID_Fullscreen(void);
+#endif

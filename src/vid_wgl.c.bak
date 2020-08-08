@@ -978,12 +978,6 @@ void GL_BeginRendering (int *x, int *y, int *width, int *height) {
 	*x = *y = 0;
 	*width = WindowRect.right - WindowRect.left;
 	*height = WindowRect.bottom - WindowRect.top;
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS 	
-	// mh - determine at start of frame if we're using overbrights
-	gl_usingoverbright = gl_combine && gl_overbright.value;
-#endif
-	
 }
 
 // D3D diff 5 of 14
@@ -1950,9 +1944,6 @@ void	VID_Init (unsigned char *palette) {
 
 	memset(&devmode, 0, sizeof(devmode));
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	Cvar_RegisterVariable (&gl_overbright, NULL);
-#endif
 	Cvar_RegisterVariable (&vid_fullscreen, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_width, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_height, NULL); //johnfitz

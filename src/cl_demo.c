@@ -429,6 +429,12 @@ void CL_Record_f (void)
 		return;
 	}
 
+#if 0
+	snprintf(cls.demoname, sizeof(cls.demoname), "%s", name);
+
+	Con_Printf("Current demo is: %s\n", cls.demoname);
+#endif
+
 	cls.forcetrack = track;
 	fprintf (cls.demofile, "%i\n", cls.forcetrack);
 	
@@ -563,6 +569,11 @@ void CL_PlayDemo_f (void)
 			return;
 		}
 	}
+
+#if 0
+	snprintf(cls.demoname, sizeof(cls.demoname), "%s", name);
+//	MessageBox(NULL, cls.demoname, "Verdict?", MB_OK);
+#endif
 
 	Con_Printf ("Playing demo from %s\n", COM_SkipPath(name));
 

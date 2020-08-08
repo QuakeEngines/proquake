@@ -134,11 +134,17 @@ void Draw_Character (int x, int y, int num)
 	if (y <= -8)
 		return;			// totally off screen
 
-#ifdef PARANOID
-	if (y > vid.height - 8 || x < 0 || x > vid.width - 8)
-		Sys_Error ("Con_DrawCharacter: (%i, %i)", x, y);
-	if (num < 0 || num > 255)
-		Sys_Error ("Con_DrawCharacter: char %i", num);
+#if 1 // was #ifdef PARANOID -- Baker: 4.32 we need this for autoid 
+	if (y > vid.height - 8 || x < 0 || x > vid.width - 8) {
+		//Sys_Error  ("Con_DrawCharacter: (%i, %i)", x, y);
+		Con_DPrintf ("Con_DrawCharacter: (%i, %i)\n", x, y);
+		return;
+	}
+#endif
+
+#ifdef PARANOID // Baker: I would enable but I don't see how it could happen, haha!  Why isn't it num unsigned char anyways?
+		if (num < 0 || num > 255)
+			Sys_Error ("Con_DrawCharacter: char %i", num);
 #endif
 
 	row = num>>4;

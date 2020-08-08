@@ -277,7 +277,7 @@ extern qboolean using_hwgamma; // Baker hw gamma support
 extern	float	gldepthmin, gldepthmax;
 extern	byte	color_white[4], color_black[4];
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
+#define SUPPORTS_HARDWARE_OVERBRIGHTS
 // mh - combine and overbrights
 #define GL_COMBINE_ARB			0x8570
 #define GL_COMBINE_RGB_ARB		0x8571

@@ -86,6 +86,61 @@ char *svc_strings[] =
 
 //=============================================================================
 
+#ifdef SUPPORTS_AUTOID
+void CL_InitModelnames (void)
+{
+	int	i;
+
+	memset (cl_modelnames, 0, sizeof(cl_modelnames));
+
+	cl_modelnames[mi_player] = "progs/player.mdl";
+	cl_modelnames[mi_q3torso] = "progs/player/upper.md3";
+	cl_modelnames[mi_q3head] = "progs/player/head.md3";
+	cl_modelnames[mi_h_player] = "progs/h_player.mdl";
+	cl_modelnames[mi_eyes] = "progs/eyes.mdl";
+	cl_modelnames[mi_rocket] = "progs/missile.mdl";
+	cl_modelnames[mi_grenade] = "progs/grenade.mdl";
+	cl_modelnames[mi_flame0] = "progs/flame0.mdl";
+	cl_modelnames[mi_flame0_md3] = "progs/flame.md3";
+	cl_modelnames[mi_flame1] = "progs/flame.mdl";
+	cl_modelnames[mi_flame2] = "progs/flame2.mdl";
+	cl_modelnames[mi_explo1] = "progs/s_explod.spr";
+	cl_modelnames[mi_explo2] = "progs/s_expl.spr";
+	cl_modelnames[mi_bubble] = "progs/s_bubble.spr";
+	cl_modelnames[mi_gib1] = "progs/gib1.mdl";
+	cl_modelnames[mi_gib2] = "progs/gib2.mdl";
+	cl_modelnames[mi_gib3] = "progs/gib3.mdl";
+	cl_modelnames[mi_fish] = "progs/fish.mdl";
+	cl_modelnames[mi_dog] = "progs/dog.mdl";
+	cl_modelnames[mi_soldier] = "progs/soldier.mdl";
+	cl_modelnames[mi_enforcer] = "progs/enforcer.mdl";
+	cl_modelnames[mi_knight] = "progs/knight.mdl";
+	cl_modelnames[mi_hknight] = "progs/hknight.mdl";
+	cl_modelnames[mi_scrag] = "progs/wizard.mdl";
+	cl_modelnames[mi_ogre] = "progs/ogre.mdl";
+	cl_modelnames[mi_fiend] = "progs/demon.mdl";
+	cl_modelnames[mi_vore] = "progs/shalrath.mdl";
+	cl_modelnames[mi_shambler] = "progs/shambler.mdl";
+	cl_modelnames[mi_h_dog] = "progs/h_dog.mdl";
+	cl_modelnames[mi_h_soldier] = "progs/h_guard.mdl";
+	cl_modelnames[mi_h_enforcer] = "progs/h_mega.mdl";
+	cl_modelnames[mi_h_knight] = "progs/h_knight.mdl";
+	cl_modelnames[mi_h_hknight] = "progs/h_hellkn.mdl";
+	cl_modelnames[mi_h_scrag] = "progs/h_wizard.mdl";
+	cl_modelnames[mi_h_ogre] = "progs/h_ogre.mdl";
+	cl_modelnames[mi_h_fiend] = "progs/h_demon.mdl";
+	cl_modelnames[mi_h_vore] = "progs/h_shal.mdl";
+	cl_modelnames[mi_h_shambler] = "progs/h_shams.mdl";
+	cl_modelnames[mi_h_zombie] = "progs/h_zombie.mdl";
+
+	for (i = 0 ; i < NUM_MODELINDEX ; i++)
+	{
+		if (!cl_modelnames[i])
+			Sys_Error ("cl_modelnames[%d] not initialized", i);
+	}
+}
+#endif
+
 /*
 ===============
 CL_EntityNum
@@ -218,7 +273,7 @@ static int CL_WebDownloadProgress( double percent )
 	static double time, oldtime, newtime;
 
 	cls.download.percent = percent;
-	CL_KeepaliveMessage();
+		CL_KeepaliveMessage();
 
 	newtime = Sys_DoubleTime ();
 	time = newtime - oldtime;
@@ -288,6 +343,11 @@ void CL_ParseServerInfo (void)
 // needlessly purge it
 
 // precache models
+#ifdef SUPPORTS_AUTOID
+	for (i=0 ; i<NUM_MODELINDEX ; i++)
+		cl_modelindex[i] = -1;
+#endif
+
 	memset (cl.model_precache, 0, sizeof(cl.model_precache));
 	for (nummodels=1 ; ; nummodels++)
 	{
@@ -301,6 +361,17 @@ void CL_ParseServerInfo (void)
 		}
 		strcpy (model_precache[nummodels], str);
 		Mod_TouchModel (str);
+
+#ifdef SUPPORTS_AUTOID
+		for (i = 0 ; i < NUM_MODELINDEX ; i++)
+		{
+			if (!strcmp(cl_modelnames[i], model_precache[nummodels]))
+			{
+				cl_modelindex[i] = nummodels;
+				break;
+			}
+		}
+#endif
 	}
 
 // precache sounds
@@ -331,18 +402,18 @@ void CL_ParseServerInfo (void)
 		if (cl.model_precache[i] == NULL)
 		{
 #ifdef HTTP_DOWNLOAD
-			if (cl_web_download.value && cl_web_download_url.string)
+			if (!cls.demoplayback && cl_web_download.value && cl_web_download_url.string)
 			{
 				char url[1024];
 				qboolean success = false;
-				char download_tempname[MAX_QPATH],download_finalname[MAX_QPATH];
+				char download_tempname[MAX_OSPATH],download_finalname[MAX_OSPATH];
 				char folder[MAX_QPATH];
 				char name[MAX_QPATH];
 				extern char server_name[MAX_QPATH];
 				extern int net_hostport;
 
 				//Create the FULL path where the file should be written
-				Q_snprintfz (download_tempname, MAX_OSPATH, "%s/%s.tmp", com_gamedir, model_precache[i]);
+				Q_snprintfz (download_tempname, sizeof(download_tempname), "%s/%s.tmp", com_gamedir, model_precache[i]);
 
 				//determine the proper folder and create it, the OS will ignore if already exsists
 				COM_GetFolder(model_precache[i],folder);// "progs/","maps/"
@@ -371,7 +442,7 @@ void CL_ParseServerInfo (void)
 
 				if (success)
 				{
-					Con_Printf("Web download succesfull: %s\n", download_tempname);
+					Con_Printf("Web download successful: %s\n", download_tempname);
 					//Rename the .tmp file to the final precache filename
 					Q_snprintfz (download_finalname, MAX_OSPATH, "%s/%s", com_gamedir, model_precache[i]);
 					rename (download_tempname, download_finalname);
@@ -379,9 +450,9 @@ void CL_ParseServerInfo (void)
 					free(download_tempname);
 					free(download_finalname);
 
-					Cbuf_AddText (va("connect %s:%u\n",server_name,net_hostport));//reconnect after each success
-					return;
-				}
+						Cbuf_AddText (va("connect %s:%u\n",server_name,net_hostport));//reconnect after each success
+						return;
+					}
 				else
 				{
 					remove (download_tempname);
@@ -400,9 +471,9 @@ void CL_ParseServerInfo (void)
 			} else
 #endif
 			{
-			Con_Printf("Model %s not found\n", model_precache[i]);
-			return;
-		}
+				Con_Printf("Model %s not found\n", model_precache[i]);
+				return;
+			}
 		}
 		CL_KeepaliveMessage ();
 	}
@@ -428,6 +499,132 @@ void CL_ParseServerInfo (void)
 	noclip_anglehack = false;		// noclip is turned off at start
 }
 
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+extern cvar_t r_interpolate_transform;
+void CL_EntityInterpolateOrigins (entity_t *ent)
+{
+	qboolean no_interpolate=false;
+
+	if (r_interpolate_transform.value)
+	{
+		float timepassed = cl.time - ent->translate_start_time;
+		float blend = 0;
+		vec3_t delta = {0, 0, 0};
+
+		if (ent->translate_start_time == 0 || timepassed > 1)
+		{
+			ent->translate_start_time = cl.time;
+
+			VectorCopy (ent->origin, ent->lastorigin);
+			VectorCopy (ent->origin, ent->currorigin);
+		}
+
+		if (!VectorCompare (ent->origin, ent->currorigin))
+		{
+			ent->translate_start_time = cl.time;
+
+			VectorCopy (ent->currorigin, ent->lastorigin);
+			VectorCopy (ent->origin,  ent->currorigin);
+
+			blend = 0;
+		}
+		else
+		{
+			blend = timepassed / 0.1;
+
+			if (cl.paused || blend > 1) blend = 1;
+		}
+
+		VectorSubtract (ent->currorigin, ent->lastorigin, delta);
+
+		// use cubic interpolation
+		{
+			float lastlerp = 2 * (blend * blend * blend) - 3 * (blend * blend) + 1;
+			float currlerp = 3 * (blend * blend) - 2 * (blend * blend * blend);
+
+			ent->origin[0] = ent->lastorigin[0] * lastlerp + ent->currorigin[0] * currlerp;
+			ent->origin[1] = ent->lastorigin[1] * lastlerp + ent->currorigin[1] * currlerp;
+			ent->origin[2] = ent->lastorigin[2] * lastlerp + ent->currorigin[2] * currlerp;
+		}
+
+
+	
+
+	}
+}
+
+
+void CL_EntityInterpolateAngles (entity_t *ent)
+{
+	if (r_interpolate_transform.value)
+	{
+		float timepassed = cl.time - ent->rotate_start_time;
+		float blend = 0;
+		vec3_t delta = {0, 0, 0};
+
+		if (ent->rotate_start_time == 0 || timepassed > 1)
+		{
+			ent->rotate_start_time = cl.time;
+
+			VectorCopy (ent->angles, ent->lastangles);
+			VectorCopy (ent->angles, ent->currangles);
+		}
+
+		if (!VectorCompare (ent->angles, ent->currangles))
+		{
+			ent->rotate_start_time = cl.time;
+
+			VectorCopy (ent->currangles, ent->lastangles);
+			VectorCopy (ent->angles,  ent->currangles);
+
+			blend = 0;
+		}
+		else
+		{
+			blend = timepassed / 0.1;
+
+			if (cl.paused || blend > 1) blend = 1;
+		}
+
+		VectorSubtract (ent->currangles, ent->lastangles, delta);
+
+		// always interpolate along the shortest path
+		if (delta[0] > 180) delta[0] -= 360; else if (delta[0] < -180) delta[0] += 360;
+		if (delta[1] > 180) delta[1] -= 360; else if (delta[1] < -180) delta[1] += 360;
+		if (delta[2] > 180) delta[2] -= 360; else if (delta[2] < -180) delta[2] += 360;
+
+		// get currangles on the shortest path
+		VectorAdd (ent->lastangles, delta, delta);
+
+		// use cubic interpolation
+		{
+			float lastlerp = 2 * (blend * blend * blend) - 3 * (blend * blend) + 1;
+			float currlerp = 3 * (blend * blend) - 2 * (blend * blend * blend);
+
+			ent->angles[0] = ent->lastangles[0] * lastlerp + delta[0] * currlerp;
+			ent->angles[1] = ent->lastangles[1] * lastlerp + delta[1] * currlerp;
+			ent->angles[2] = ent->lastangles[2] * lastlerp + delta[2] * currlerp;
+		}
+	}
+}
+
+
+void CL_ClearInterpolation (entity_t *ent)
+{
+	ent->frame_start_time = 0;
+	ent->lastpose = ent->currpose;
+
+	ent->translate_start_time = 0;
+	ent->lastorigin[0] = ent->lastorigin[1] = ent->lastorigin[2] = 0;
+	ent->currorigin[0] = ent->currorigin[1] = ent->currorigin[2] = 0;
+
+	ent->rotate_start_time = 0;
+	ent->lastangles[0] = ent->lastangles[1] = ent->lastangles[2] = 0;
+	ent->currangles[0] = ent->currangles[1] = ent->currangles[2] = 0;
+}
+#endif
+
+
 /*
 ==================
 CL_ParseUpdate
@@ -443,7 +640,6 @@ void CL_ParseUpdate (int bits)
 {
 	int		i, num;
 	model_t		*model;
-	int			modnum;
 	qboolean	forcelink;
 	entity_t	*ent;
 #ifdef GL_QUAKE_SKIN_METHOD
@@ -473,16 +669,16 @@ if (bits&(1<<i))
 
 	if (bits & U_MODEL)
 	{
-		modnum = MSG_ReadByte ();
-		if (modnum >= MAX_MODELS)
+		ent->modelindex = MSG_ReadByte ();
+		if (ent->modelindex >= MAX_MODELS)
 			Host_Error ("CL_ParseUpdate: bad modelindex");
 	}
 	else
 	{
-		modnum = ent->baseline.modelindex;
+		ent->modelindex = ent->baseline.modelindex;
 	}
 
-	model = cl.model_precache[modnum];
+	model = cl.model_precache[ent->modelindex];
 	if (model != ent->model)
 	{
 		ent->model = model;
@@ -491,6 +687,17 @@ if (bits&(1<<i))
 				ent->syncbase = (model->synctype == ST_RAND) ? (float)(rand()&0x7fff) / 0x7fff : 0.0;
 		else
 			forcelink = true;	// hack to make null model players work
+
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+		// if the model has changed we must also reset the interpolation data
+		// lastpose and currpose are critical as they might be pointing to invalid frames in the new model!!!
+		CL_ClearInterpolation (ent);
+
+		// reset frame and skin too...!
+		if (!(bits & U_FRAME)) ent->frame = 0;
+		if (!(bits & U_SKIN)) ent->skinnum = 0;
+#endif
+
 #ifdef GL_QUAKE_SKIN_METHOD
 		if (num > 0 && num <= cl.maxclients)
 			R_TranslatePlayerSkin (num - 1);
@@ -504,6 +711,7 @@ if (bits&(1<<i))
 		ent->colormap = vid.colormap;
 	else
 	{
+//		Con_Printf("ent: num %i colormap %i frame %i\n", num, i, ent->frame);
 		if (i > cl.maxclients)
 			Sys_Error ("i >= cl.maxclients");
 		ent->colormap = cl.scores[i-1].translations;
@@ -553,9 +761,12 @@ if (bits&(1<<i))
 
 	{
 		extern cvar_t cl_gameplayhack_monster_lerp;
-	if (!cl_gameplayhack_monster_lerp.value)
+
 		if ( bits & U_NOLERP )
-			ent->forcelink = true;
+			if (!cl_gameplayhack_monster_lerp.value)
+				ent->forcelink = true;
+			else
+				ent->forcelink = (sv.active == true);
 	}
 
 	if ( forcelink )

@@ -157,6 +157,7 @@ typedef struct
 #endif
 
 	qboolean	capturedemo;
+	char		demoname[256];		// current demo playing name (length 16 on purpose)
 } client_static_t;
 
 extern client_static_t	cls;
@@ -325,6 +326,22 @@ void CL_NextDemo (void);
 extern	int				cl_numvisedicts;
 extern	entity_t		*cl_visedicts[MAX_VISEDICTS];
 
+#ifdef SUPPORTS_AUTOID
+// model indexes
+typedef	enum modelindex_s {
+	mi_player, mi_q3torso, mi_q3head, mi_eyes, mi_rocket, mi_grenade,
+	mi_flame0, mi_flame0_md3, mi_flame1, mi_flame2, mi_explo1, mi_explo2, mi_bubble,
+	mi_fish, mi_dog, mi_soldier, mi_enforcer, mi_knight, mi_hknight,
+	mi_scrag, mi_ogre, mi_fiend, mi_vore, mi_shambler,
+	mi_h_dog, mi_h_soldier, mi_h_enforcer, mi_h_knight, mi_h_hknight, mi_h_scrag,
+	mi_h_ogre, mi_h_fiend, mi_h_vore, mi_h_shambler, mi_h_zombie, mi_h_player,
+	mi_gib1, mi_gib2, mi_gib3, NUM_MODELINDEX
+} modelindex_t;
+
+extern	modelindex_t cl_modelindex[NUM_MODELINDEX];
+extern	char		*cl_modelnames[NUM_MODELINDEX];
+#endif
+
 // cl_input.c
 typedef struct
 {
@@ -363,6 +380,9 @@ void CL_TimeDemo_f (void);
 // cl_parse.c
 void CL_ParseServerMessage (void);
 void CL_NewTranslation (int slot);
+#ifdef SUPPORTS_AUTOID
+void CL_InitModelnames (void);
+#endif
 
 // view.c
 void V_StartPitchDrift (void);

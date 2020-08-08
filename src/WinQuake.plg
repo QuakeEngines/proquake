@@ -6,18 +6,18 @@
 --------------------Configuration: gas2masm - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F43.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D00.tmp" with contents
 [
 /nologo /ML /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /Fp".\Release/gas2masm.pch" /YX /Fo".\Release/" /Fd".\Release/" /FD /c 
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gas2masm\gas2masm.c"
+"E:\moreproquake\proquake_434\WinQuake\gas2masm\gas2masm.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F43.tmp" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F44.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D00.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D01.tmp" with contents
 [
 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /incremental:no /pdb:".\Release/gas2masm.pdb" /machine:I386 /out:".\Release/gas2masm.exe" 
 .\Release\gas2masm.obj
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F44.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D01.tmp"
 <h3>Output Window</h3>
 Compiling...
 gas2masm.c
@@ -31,18 +31,18 @@ gas2masm.exe - 0 error(s), 0 warning(s)
 --------------------Configuration: gas2masm - Win32 Debug--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F46.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D03.tmp" with contents
 [
 /nologo /MLd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /Fp".\Debug/gas2masm.pch" /YX /Fo".\Debug/" /Fd".\Debug/" /FD /c 
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gas2masm\gas2masm.c"
+"E:\moreproquake\proquake_434\WinQuake\gas2masm\gas2masm.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F46.tmp" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F47.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D03.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D04.tmp" with contents
 [
 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /incremental:yes /pdb:".\Debug/gas2masm.pdb" /debug /machine:I386 /out:".\Debug/gas2masm.exe" 
 .\Debug\gas2masm.obj
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F47.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D04.tmp"
 <h3>Output Window</h3>
 Compiling...
 gas2masm.c
@@ -56,7 +56,7 @@ gas2masm.exe - 0 error(s), 0 warning(s)
 --------------------Configuration: winquake - Win32 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F49.bat" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D06.bat" with contents
 [
 @echo off
 cl /EP > .\Release\worlda.spp .\worlda.s
@@ -64,8 +64,8 @@ gas2masm\debug\gas2masm < .\Release\worlda.spp >                                
 ml /c /Cp /coff /Fo.\Release\worlda.obj /Zm /Zi                                                                                                                                                                                                    .\Release\worlda.asm
 del .\Release\worlda.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F49.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4A.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D06.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D07.bat" with contents
 [
 @echo off
 cl /EP > .\Release\sys_wina.spp .\sys_wina.s
@@ -73,8 +73,8 @@ gas2masm\debug\gas2masm < .\Release\sys_wina.spp >                              
 ml /c /Cp /coff /Fo.\Release\sys_wina.obj /Zm /Zi                                                                                                                                                                                                    .\Release\sys_wina.asm
 del .\Release\sys_wina.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4A.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4B.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D07.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D08.bat" with contents
 [
 @echo off
 cl /EP > .\Release\surf8.spp .\surf8.s
@@ -82,8 +82,8 @@ gas2masm\debug\gas2masm < .\Release\surf8.spp >                                 
 ml /c /Cp /coff /Fo.\Release\surf8.obj /Zm /Zi                                                                                                                                                                                                    .\Release\surf8.asm
 del .\Release\surf8.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4B.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4C.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D08.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D09.bat" with contents
 [
 @echo off
 cl /EP > .\Release\surf16.spp .\surf16.s
@@ -91,8 +91,8 @@ gas2masm\debug\gas2masm < .\Release\surf16.spp >                                
 ml /c /Cp /coff /Fo.\Release\surf16.obj /Zm /Zi                                                                                                                                                                                                    .\Release\surf16.asm
 del .\Release\surf16.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4C.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4D.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D09.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0A.bat" with contents
 [
 @echo off
 cl /EP > .\Release\snd_mixa.spp .\snd_mixa.s
@@ -100,8 +100,8 @@ gas2masm\debug\gas2masm < .\Release\snd_mixa.spp >                              
 ml /c /Cp /coff /Fo.\Release\snd_mixa.obj /Zm /Zi                                                                                                                                                                                                    .\Release\snd_mixa.asm
 del .\Release\snd_mixa.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4D.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4E.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0A.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0B.bat" with contents
 [
 @echo off
 cl /EP > .\Release\r_varsa.spp .\r_varsa.s
@@ -109,8 +109,8 @@ gas2masm\debug\gas2masm < .\Release\r_varsa.spp >                               
 ml /c /Cp /coff /Fo.\Release\r_varsa.obj /Zm /Zi                                                                                                                                                                                                    .\Release\r_varsa.asm
 del .\Release\r_varsa.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4E.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4F.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0B.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0C.bat" with contents
 [
 @echo off
 cl /EP > .\Release\r_edgea.spp .\r_edgea.s
@@ -118,8 +118,8 @@ gas2masm\debug\gas2masm < .\Release\r_edgea.spp >                               
 ml /c /Cp /coff /Fo.\Release\r_edgea.obj /Zm /Zi                                                                                                                                                                                                    .\Release\r_edgea.asm
 del .\Release\r_edgea.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F4F.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F50.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0C.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0D.bat" with contents
 [
 @echo off
 cl /EP > .\Release\r_drawa.spp .\r_drawa.s
@@ -127,8 +127,8 @@ gas2masm\debug\gas2masm < .\Release\r_drawa.spp >                               
 ml /c /Cp /coff /Fo.\Release\r_drawa.obj /Zm /Zi                                                                                                                                                                                                    .\Release\r_drawa.asm
 del .\Release\r_drawa.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F50.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F51.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0D.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0E.bat" with contents
 [
 @echo off
 cl /EP > .\Release\r_aliasa.spp .\r_aliasa.s
@@ -136,8 +136,8 @@ gas2masm\debug\gas2masm < .\Release\r_aliasa.spp >                              
 ml /c /Cp /coff /Fo.\Release\r_aliasa.obj /Zm /Zi                                                                                                                                                                                                    .\Release\r_aliasa.asm
 del .\Release\r_aliasa.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F51.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F52.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0E.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0F.bat" with contents
 [
 @echo off
 cl /EP > .\Release\r_aclipa.spp .\r_aclipa.s
@@ -145,8 +145,8 @@ gas2masm\debug\gas2masm < .\Release\r_aclipa.spp >                              
 ml /c /Cp /coff /Fo.\Release\r_aclipa.obj /Zm /Zi                                                                                                                                                                                                    .\Release\r_aclipa.asm
 del .\Release\r_aclipa.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F52.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F53.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D0F.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D10.bat" with contents
 [
 @echo off
 cl /EP > .\Release\math.spp .\math.s
@@ -154,8 +154,8 @@ gas2masm\debug\gas2masm < .\Release\math.spp >                                  
 ml /c /Cp /coff /Fo.\Release\math.obj /Zm /Zi                                                                                                                                                                                                    .\Release\math.asm
 del .\Release\math.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F53.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F54.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D10.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D11.bat" with contents
 [
 @echo off
 cl /EP > .\Release\d_varsa.spp .\d_varsa.s
@@ -163,8 +163,8 @@ gas2masm\debug\gas2masm < .\Release\d_varsa.spp >                               
 ml /c /Cp /coff /Fo.\Release\d_varsa.obj /Zm /Zi                                                                                                                                                                                                    .\Release\d_varsa.asm
 del .\Release\d_varsa.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F54.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F55.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D11.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D12.bat" with contents
 [
 @echo off
 cl /EP > .\Release\d_spr8.spp .\d_spr8.s
@@ -172,8 +172,8 @@ gas2masm\debug\gas2masm < .\Release\d_spr8.spp >                                
 ml /c /Cp /coff /Fo.\Release\d_spr8.obj /Zm /Zi                                                                                                                                                                                                    .\Release\d_spr8.asm
 del .\Release\d_spr8.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F55.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F56.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D12.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D13.bat" with contents
 [
 @echo off
 cl /EP > .\Release\d_scana.spp .\d_scana.s
@@ -181,8 +181,8 @@ gas2masm\debug\gas2masm < .\Release\d_scana.spp >                               
 ml /c /Cp /coff /Fo.\Release\d_scana.obj /Zm /Zi                                                                                                                                                                                                    .\Release\d_scana.asm
 del .\Release\d_scana.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F56.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F57.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D13.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D14.bat" with contents
 [
 @echo off
 cl /EP > .\Release\d_polysa.spp .\d_polysa.s
@@ -190,8 +190,8 @@ gas2masm\debug\gas2masm < .\Release\d_polysa.spp >                              
 ml /c /Cp /coff /Fo.\Release\d_polysa.obj /Zm /Zi                                                                                                                                                                                                    .\Release\d_polysa.asm
 del .\Release\d_polysa.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F57.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F58.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D14.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D15.bat" with contents
 [
 @echo off
 cl /EP > .\Release\d_parta.spp .\d_parta.s
@@ -199,8 +199,8 @@ gas2masm\debug\gas2masm < .\Release\d_parta.spp >                               
 ml /c /Cp /coff /Fo.\Release\d_parta.obj /Zm /Zi                                                                                                                                                                                                    .\Release\d_parta.asm
 del .\Release\d_parta.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F58.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F59.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D15.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D16.bat" with contents
 [
 @echo off
 cl /EP > .\Release\d_draw16.spp .\d_draw16.s
@@ -208,8 +208,8 @@ gas2masm\debug\gas2masm < .\Release\d_draw16.spp >                              
 ml /c /Cp /coff /Fo.\Release\d_draw16.obj /Zm /Zi                                                                                                                                                                                                    .\Release\d_draw16.asm
 del .\Release\d_draw16.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F59.bat"
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F5A.bat" with contents
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D16.bat"
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D17.bat" with contents
 [
 @echo off
 cl /EP > .\Release\d_draw.spp .\d_draw.s
@@ -217,8 +217,8 @@ gas2masm\release\gas2masm < .\Release\d_draw.spp >                              
 ml /c /Cp /coff /Fo.\Release\d_draw.obj /Zm /Zi                                                                                                                                                                                                    .\Release\d_draw.asm
 del .\Release\d_draw.spp
 ]
-Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F5A.bat"
-Creating command line "rc.exe /l 0x409 /fo".\Release/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\winquake.rc"" 
+Creating command line "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D17.bat"
+Creating command line "rc.exe /l 0x409 /fo".\Release/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_434\WinQuake\winquake.rc"" 
 mycoolbuild
 Microsoft (R) 32-bit C/C++ Optimizing Compiler Version 12.00.8168 for 80x86
 Copyright (C) Microsoft Corp 1984-1998. All rights reserved.
@@ -381,98 +381,98 @@ Microsoft (R) Macro Assembler Version 6.15.8803
 Copyright (C) Microsoft Corp 1981-2000.  All rights reserved.
 
  Assembling: .\Release\d_draw.asm
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F5B.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D18.tmp" with contents
 [
 /nologo /G5 /ML /GX /O2 /I ".\scitech\include" /I ".\dxsdk\sdk7\include" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /FR".\Release/" /Fp".\Release/WinQuake.pch" /YX /Fo".\Release/" /Fd".\Release/" /FD /c 
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\chase.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_demo.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_input.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_parse.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_tent.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_view.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\common.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\conproc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\console.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\crc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cvar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_edge.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_fill.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_init.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_modech.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_part.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_polyse.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_scan.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_sky.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_sprite.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_surf.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_vars.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\d_zpoint.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host_cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\in_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\iplog.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\keys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\location.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\mathlib.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\matrix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\menu.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie_avi.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_dgrm.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_loop.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_vcr.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wins.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wipx.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\nonintel.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_cmds.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_edict.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_exec.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\qmp3.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_aclip.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_alias.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_bsp.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_draw.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_edge.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_efrag.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_light.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_misc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_model.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_part.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_rast.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_screen.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_sky.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_sprite.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_surf.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_vars.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\registry.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sbar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\security.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_dma.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mem.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_move.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_phys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_user.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_world.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sys_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\version.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\vid_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\wad.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\webdownload.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\zone.c"
+"E:\moreproquake\proquake_434\WinQuake\cd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\chase.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_demo.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_input.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_main.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_parse.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_tent.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_view.c"
+"E:\moreproquake\proquake_434\WinQuake\cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\common.c"
+"E:\moreproquake\proquake_434\WinQuake\conproc.c"
+"E:\moreproquake\proquake_434\WinQuake\console.c"
+"E:\moreproquake\proquake_434\WinQuake\crc.c"
+"E:\moreproquake\proquake_434\WinQuake\cvar.c"
+"E:\moreproquake\proquake_434\WinQuake\d_edge.c"
+"E:\moreproquake\proquake_434\WinQuake\d_fill.c"
+"E:\moreproquake\proquake_434\WinQuake\d_init.c"
+"E:\moreproquake\proquake_434\WinQuake\d_modech.c"
+"E:\moreproquake\proquake_434\WinQuake\d_part.c"
+"E:\moreproquake\proquake_434\WinQuake\d_polyse.c"
+"E:\moreproquake\proquake_434\WinQuake\d_scan.c"
+"E:\moreproquake\proquake_434\WinQuake\d_sky.c"
+"E:\moreproquake\proquake_434\WinQuake\d_sprite.c"
+"E:\moreproquake\proquake_434\WinQuake\d_surf.c"
+"E:\moreproquake\proquake_434\WinQuake\d_vars.c"
+"E:\moreproquake\proquake_434\WinQuake\d_zpoint.c"
+"E:\moreproquake\proquake_434\WinQuake\host.c"
+"E:\moreproquake\proquake_434\WinQuake\host_cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\in_win.c"
+"E:\moreproquake\proquake_434\WinQuake\iplog.c"
+"E:\moreproquake\proquake_434\WinQuake\keys.c"
+"E:\moreproquake\proquake_434\WinQuake\location.c"
+"E:\moreproquake\proquake_434\WinQuake\mathlib.c"
+"E:\moreproquake\proquake_434\WinQuake\matrix.c"
+"E:\moreproquake\proquake_434\WinQuake\menu.c"
+"E:\moreproquake\proquake_434\WinQuake\movie.c"
+"E:\moreproquake\proquake_434\WinQuake\movie_avi.c"
+"E:\moreproquake\proquake_434\WinQuake\net_dgrm.c"
+"E:\moreproquake\proquake_434\WinQuake\net_loop.c"
+"E:\moreproquake\proquake_434\WinQuake\net_main.c"
+"E:\moreproquake\proquake_434\WinQuake\net_vcr.c"
+"E:\moreproquake\proquake_434\WinQuake\net_win.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wins.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wipx.c"
+"E:\moreproquake\proquake_434\WinQuake\nonintel.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_cmds.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_edict.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_exec.c"
+"E:\moreproquake\proquake_434\WinQuake\qmp3.cpp"
+"E:\moreproquake\proquake_434\WinQuake\r_aclip.c"
+"E:\moreproquake\proquake_434\WinQuake\r_alias.c"
+"E:\moreproquake\proquake_434\WinQuake\r_bsp.c"
+"E:\moreproquake\proquake_434\WinQuake\r_draw.c"
+"E:\moreproquake\proquake_434\WinQuake\r_edge.c"
+"E:\moreproquake\proquake_434\WinQuake\r_efrag.c"
+"E:\moreproquake\proquake_434\WinQuake\r_light.c"
+"E:\moreproquake\proquake_434\WinQuake\r_main.c"
+"E:\moreproquake\proquake_434\WinQuake\r_misc.c"
+"E:\moreproquake\proquake_434\WinQuake\r_model.c"
+"E:\moreproquake\proquake_434\WinQuake\r_part.c"
+"E:\moreproquake\proquake_434\WinQuake\r_rast.c"
+"E:\moreproquake\proquake_434\WinQuake\r_screen.c"
+"E:\moreproquake\proquake_434\WinQuake\r_sky.c"
+"E:\moreproquake\proquake_434\WinQuake\r_sprite.c"
+"E:\moreproquake\proquake_434\WinQuake\r_surf.c"
+"E:\moreproquake\proquake_434\WinQuake\r_vars.c"
+"E:\moreproquake\proquake_434\WinQuake\registry.cpp"
+"E:\moreproquake\proquake_434\WinQuake\sbar.c"
+"E:\moreproquake\proquake_434\WinQuake\security.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_dma.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mem.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mix.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_main.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_move.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_phys.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_user.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_world.c"
+"E:\moreproquake\proquake_434\WinQuake\sys_win.c"
+"E:\moreproquake\proquake_434\WinQuake\version.c"
+"E:\moreproquake\proquake_434\WinQuake\vid_win.c"
+"E:\moreproquake\proquake_434\WinQuake\wad.c"
+"E:\moreproquake\proquake_434\WinQuake\webdownload.c"
+"E:\moreproquake\proquake_434\WinQuake\zone.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F5B.tmp" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F5C.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D18.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D19.tmp" with contents
 [
-.\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"e:\quakedm3\wqpro430.exe" 
+.\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map:".\Release/wqpro435.map" /machine:I386 /out:"e:\quakedm3\wqpro435.exe" 
 .\Release\cd_win.obj
 .\Release\chase.obj
 .\Release\cl_demo.obj
@@ -577,7 +577,7 @@ Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F5C.tmp" with co
 .\Release\sys_wina.obj
 .\Release\worlda.obj
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F5C.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D19.tmp"
 <h3>Output Window</h3>
 Compiling resources...
 Compiling...
@@ -666,7 +666,7 @@ wad.c
 webdownload.c
 zone.c
 Linking...
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F60.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1B.tmp" with contents
 [
 /nologo /o".\Release/WinQuake.bsc" 
 .\Release\cd_win.sbr
@@ -753,95 +753,95 @@ Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F60.tmp" with co
 .\Release\wad.sbr
 .\Release\webdownload.sbr
 .\Release\zone.sbr]
-Creating command line "bscmake.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F60.tmp"
+Creating command line "bscmake.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1B.tmp"
 Creating browse info file...
 <h3>Output Window</h3>
 
 
 
 <h3>Results</h3>
-wqpro430.exe - 0 error(s), 0 warning(s)
+wqpro435.exe - 0 error(s), 0 warning(s)
 <h3>
 --------------------Configuration: winquake - Win32 GL Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating command line "rc.exe /l 0x409 /fo".\release_gl/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\winquake.rc"" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F61.tmp" with contents
+Creating command line "rc.exe /l 0x409 /fo".\release_gl/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_434\WinQuake\winquake.rc"" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1C.tmp" with contents
 [
 /nologo /G5 /ML /W3 /GX /O2 /I ".\dxsdk\sdk7\include" /D "NDEBUG" /D "GLQUAKE" /D "WIN32" /D "_WINDOWS" /FR".\release_gl/" /Fp".\release_gl/WinQuake.pch" /YX /Fo".\release_gl/" /Fd".\release_gl/" /FD /c 
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\chase.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_demo.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_input.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_parse.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_tent.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_view.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\common.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\conproc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\console.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\crc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cvar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_draw.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_fullbright.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_mesh.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_model.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_refrag.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rlight.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rmain.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rmisc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rsurf.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_screen.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_test.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_warp.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host_cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\in_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\iplog.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\keys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\location.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\mathlib.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\matrix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\menu.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie_avi.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_dgrm.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_loop.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_vcr.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wins.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wipx.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_cmds.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_edict.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_exec.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\qmp3.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_part.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\registry.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sbar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\security.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_dma.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mem.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_move.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_phys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_user.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_world.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sys_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\version.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\vid_common_gl.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\vid_wgl.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\wad.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\webdownload.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\zone.c"
+"E:\moreproquake\proquake_434\WinQuake\cd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\chase.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_demo.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_input.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_main.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_parse.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_tent.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_view.c"
+"E:\moreproquake\proquake_434\WinQuake\cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\common.c"
+"E:\moreproquake\proquake_434\WinQuake\conproc.c"
+"E:\moreproquake\proquake_434\WinQuake\console.c"
+"E:\moreproquake\proquake_434\WinQuake\crc.c"
+"E:\moreproquake\proquake_434\WinQuake\cvar.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_draw.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_fullbright.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_mesh.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_model.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_refrag.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rlight.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rmain.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rmisc.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rsurf.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_screen.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_test.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_warp.c"
+"E:\moreproquake\proquake_434\WinQuake\host.c"
+"E:\moreproquake\proquake_434\WinQuake\host_cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\in_win.c"
+"E:\moreproquake\proquake_434\WinQuake\iplog.c"
+"E:\moreproquake\proquake_434\WinQuake\keys.c"
+"E:\moreproquake\proquake_434\WinQuake\location.c"
+"E:\moreproquake\proquake_434\WinQuake\mathlib.c"
+"E:\moreproquake\proquake_434\WinQuake\matrix.c"
+"E:\moreproquake\proquake_434\WinQuake\menu.c"
+"E:\moreproquake\proquake_434\WinQuake\movie.c"
+"E:\moreproquake\proquake_434\WinQuake\movie_avi.c"
+"E:\moreproquake\proquake_434\WinQuake\net_dgrm.c"
+"E:\moreproquake\proquake_434\WinQuake\net_loop.c"
+"E:\moreproquake\proquake_434\WinQuake\net_main.c"
+"E:\moreproquake\proquake_434\WinQuake\net_vcr.c"
+"E:\moreproquake\proquake_434\WinQuake\net_win.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wins.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wipx.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_cmds.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_edict.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_exec.c"
+"E:\moreproquake\proquake_434\WinQuake\qmp3.cpp"
+"E:\moreproquake\proquake_434\WinQuake\r_part.c"
+"E:\moreproquake\proquake_434\WinQuake\registry.cpp"
+"E:\moreproquake\proquake_434\WinQuake\sbar.c"
+"E:\moreproquake\proquake_434\WinQuake\security.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_dma.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mem.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mix.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_main.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_move.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_phys.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_user.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_world.c"
+"E:\moreproquake\proquake_434\WinQuake\sys_win.c"
+"E:\moreproquake\proquake_434\WinQuake\version.c"
+"E:\moreproquake\proquake_434\WinQuake\vid_common_gl.c"
+"E:\moreproquake\proquake_434\WinQuake\vid_wgl.c"
+"E:\moreproquake\proquake_434\WinQuake\wad.c"
+"E:\moreproquake\proquake_434\WinQuake\webdownload.c"
+"E:\moreproquake\proquake_434\WinQuake\zone.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F61.tmp" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F62.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1C.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1D.tmp" with contents
 [
-advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"e:\quakedm3\glpro430.exe" 
+advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map:".\release_gl/glpro435.map" /machine:I386 /out:"e:\quakedm3\glpro435.exe" 
 .\release_gl\cd_win.obj
 .\release_gl\chase.obj
 .\release_gl\cl_demo.obj
@@ -912,7 +912,7 @@ advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.l
 .\release_gl\zone.obj
 .\release_gl\winquake.res
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F62.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1D.tmp"
 <h3>Output Window</h3>
 Compiling resources...
 Compiling...
@@ -985,7 +985,7 @@ wad.c
 webdownload.c
 zone.c
 Linking...
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F64.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1F.tmp" with contents
 [
 /nologo /o".\release_gl/WinQuake.bsc" 
 .\release_gl\cd_win.sbr
@@ -1056,99 +1056,99 @@ Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F64.tmp" with co
 .\release_gl\wad.sbr
 .\release_gl\webdownload.sbr
 .\release_gl\zone.sbr]
-Creating command line "bscmake.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F64.tmp"
+Creating command line "bscmake.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D1F.tmp"
 Creating browse info file...
 <h3>Output Window</h3>
 
 
 
 <h3>Results</h3>
-glpro430.exe - 0 error(s), 0 warning(s)
+glpro435.exe - 0 error(s), 0 warning(s)
 <h3>
 --------------------Configuration: winquake - Win32 D3D Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating command line "rc.exe /l 0x409 /fo".\release_d3d/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\winquake.rc"" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F65.tmp" with contents
+Creating command line "rc.exe /l 0x409 /fo".\release_d3d/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_434\WinQuake\winquake.rc"" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D20.tmp" with contents
 [
 /nologo /G5 /ML /GX /O2 /I ".\dxsdk\sdk7\include" /I ".\D3DFrame" /D "NDEBUG" /D "GLQUAKE" /D "WIN32" /D "_WINDOWS" /D "D3DQUAKE" /FR".\release_d3d/" /Fp".\release_d3d/WinQuake.pch" /YX /Fo".\release_d3d/" /Fd".\release_d3d/" /FD /c 
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\chase.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_demo.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_input.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_parse.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_tent.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_view.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\common.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\conproc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\console.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\crc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cvar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_draw.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_fakegl.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_fullbright.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_mesh.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_model.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_refrag.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rlight.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rmain.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rmisc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rsurf.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_screen.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_test.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_warp.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host_cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\in_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\iplog.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\keys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\location.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\mathlib.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\matrix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\menu.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie_avi.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_dgrm.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_loop.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_vcr.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wins.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wipx.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_cmds.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_edict.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_exec.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\qmp3.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_part.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\registry.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sbar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\security.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_dma.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mem.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_move.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_phys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_user.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_world.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sys_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\version.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\vid_common_gl.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\vid_wgl.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\wad.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\webdownload.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\zone.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\D3DFrame\d3denum.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\D3DFrame\d3dframe.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\D3DFrame\d3dutil.cpp"
+"E:\moreproquake\proquake_434\WinQuake\cd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\chase.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_demo.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_input.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_main.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_parse.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_tent.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_view.c"
+"E:\moreproquake\proquake_434\WinQuake\cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\common.c"
+"E:\moreproquake\proquake_434\WinQuake\conproc.c"
+"E:\moreproquake\proquake_434\WinQuake\console.c"
+"E:\moreproquake\proquake_434\WinQuake\crc.c"
+"E:\moreproquake\proquake_434\WinQuake\cvar.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_draw.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_fakegl.cpp"
+"E:\moreproquake\proquake_434\WinQuake\gl_fullbright.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_mesh.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_model.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_refrag.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rlight.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rmain.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rmisc.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rsurf.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_screen.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_test.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_warp.c"
+"E:\moreproquake\proquake_434\WinQuake\host.c"
+"E:\moreproquake\proquake_434\WinQuake\host_cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\in_win.c"
+"E:\moreproquake\proquake_434\WinQuake\iplog.c"
+"E:\moreproquake\proquake_434\WinQuake\keys.c"
+"E:\moreproquake\proquake_434\WinQuake\location.c"
+"E:\moreproquake\proquake_434\WinQuake\mathlib.c"
+"E:\moreproquake\proquake_434\WinQuake\matrix.c"
+"E:\moreproquake\proquake_434\WinQuake\menu.c"
+"E:\moreproquake\proquake_434\WinQuake\movie.c"
+"E:\moreproquake\proquake_434\WinQuake\movie_avi.c"
+"E:\moreproquake\proquake_434\WinQuake\net_dgrm.c"
+"E:\moreproquake\proquake_434\WinQuake\net_loop.c"
+"E:\moreproquake\proquake_434\WinQuake\net_main.c"
+"E:\moreproquake\proquake_434\WinQuake\net_vcr.c"
+"E:\moreproquake\proquake_434\WinQuake\net_win.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wins.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wipx.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_cmds.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_edict.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_exec.c"
+"E:\moreproquake\proquake_434\WinQuake\qmp3.cpp"
+"E:\moreproquake\proquake_434\WinQuake\r_part.c"
+"E:\moreproquake\proquake_434\WinQuake\registry.cpp"
+"E:\moreproquake\proquake_434\WinQuake\sbar.c"
+"E:\moreproquake\proquake_434\WinQuake\security.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_dma.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mem.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mix.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_main.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_move.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_phys.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_user.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_world.c"
+"E:\moreproquake\proquake_434\WinQuake\sys_win.c"
+"E:\moreproquake\proquake_434\WinQuake\version.c"
+"E:\moreproquake\proquake_434\WinQuake\vid_common_gl.c"
+"E:\moreproquake\proquake_434\WinQuake\vid_wgl.c"
+"E:\moreproquake\proquake_434\WinQuake\wad.c"
+"E:\moreproquake\proquake_434\WinQuake\webdownload.c"
+"E:\moreproquake\proquake_434\WinQuake\zone.c"
+"E:\moreproquake\proquake_434\WinQuake\D3DFrame\d3denum.cpp"
+"E:\moreproquake\proquake_434\WinQuake\D3DFrame\d3dframe.cpp"
+"E:\moreproquake\proquake_434\WinQuake\D3DFrame\d3dutil.cpp"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F65.tmp" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F66.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D20.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D21.tmp" with contents
 [
-d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /incremental:yes /pdb:".\release_d3d/d3dpro430.pdb" /machine:I386 /out:"e:\quakedm3\d3dpro430.exe" 
+d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /incremental:yes /pdb:".\release_d3d/d3dpro435.pdb" /machine:I386 /out:"e:\quakedm3\d3dpro435.exe" 
 .\release_d3d\cd_win.obj
 .\release_d3d\chase.obj
 .\release_d3d\cl_demo.obj
@@ -1223,7 +1223,7 @@ d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib 
 .\release_d3d\d3dutil.obj
 .\release_d3d\winquake.res
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F66.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D21.tmp"
 <h3>Output Window</h3>
 Compiling resources...
 Compiling...
@@ -1300,7 +1300,7 @@ d3denum.cpp
 d3dframe.cpp
 d3dutil.cpp
 Linking...
-   Creating library e:\quakedm3\d3dpro430.lib and object e:\quakedm3\d3dpro430.exp
+   Creating library e:\quakedm3\d3dpro435.lib and object e:\quakedm3\d3dpro435.exp
 LINK : warning LNK4049: locally defined symbol "_glTexParameterf@12" imported
 LINK : warning LNK4049: locally defined symbol "_glEnd@0" imported
 LINK : warning LNK4049: locally defined symbol "_glBegin@4" imported
@@ -1355,90 +1355,90 @@ LINK : warning LNK4049: locally defined symbol "_wglGetCurrentContext@0" importe
 
 
 <h3>Results</h3>
-d3dpro430.exe - 0 error(s), 50 warning(s)
+d3dpro435.exe - 0 error(s), 50 warning(s)
 <h3>
 --------------------Configuration: winquake - Win32 DX8 Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating command line "rc.exe /l 0x409 /fo"winquake___Win32_DX8_Release/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\winquake.rc"" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F6A.tmp" with contents
+Creating command line "rc.exe /l 0x409 /fo"winquake___Win32_DX8_Release/winquake.res" /d "NDEBUG" "E:\moreproquake\proquake_434\WinQuake\winquake.rc"" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D25.tmp" with contents
 [
 /nologo /G5 /ML /GX /O2 /I ".\dxsdk\sdk7\include" /I ".\D3DFrame" /D "NDEBUG" /D "GLQUAKE" /D "WIN32" /D "_WINDOWS" /D "DX8QUAKE" /FR"winquake___Win32_DX8_Release/" /Fp"winquake___Win32_DX8_Release/WinQuake.pch" /YX /Fo"winquake___Win32_DX8_Release/" /Fd"winquake___Win32_DX8_Release/" /FD /c 
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\chase.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_demo.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_input.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_parse.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_tent.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cl_view.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\common.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\conproc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\console.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\crc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\cvar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\dx8_gl_fakegl.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\dx8_libci.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_draw.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_fullbright.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_mesh.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_model.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_refrag.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rlight.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rmain.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rmisc.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_rsurf.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_screen.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_test.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\gl_warp.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\host_cmd.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\in_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\iplog.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\keys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\location.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\mathlib.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\matrix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\menu.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\movie_avi.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_dgrm.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_loop.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_vcr.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wins.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\net_wipx.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_cmds.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_edict.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\pr_exec.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\qmp3.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\r_part.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\registry.cpp"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sbar.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\security.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_dma.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mem.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_mix.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\snd_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_main.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_move.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_phys.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_user.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sv_world.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\sys_win.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\version.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\vid_common_gl.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\vid_wgl.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\wad.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\webdownload.c"
-"E:\moreproquake\proquake_430\proquake_solo_425\WinQuake\zone.c"
+"E:\moreproquake\proquake_434\WinQuake\cd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\chase.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_demo.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_input.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_main.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_parse.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_tent.c"
+"E:\moreproquake\proquake_434\WinQuake\cl_view.c"
+"E:\moreproquake\proquake_434\WinQuake\cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\common.c"
+"E:\moreproquake\proquake_434\WinQuake\conproc.c"
+"E:\moreproquake\proquake_434\WinQuake\console.c"
+"E:\moreproquake\proquake_434\WinQuake\crc.c"
+"E:\moreproquake\proquake_434\WinQuake\cvar.c"
+"E:\moreproquake\proquake_434\WinQuake\dx8_gl_fakegl.c"
+"E:\moreproquake\proquake_434\WinQuake\dx8_libci.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_draw.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_fullbright.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_mesh.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_model.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_refrag.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rlight.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rmain.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rmisc.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_rsurf.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_screen.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_test.c"
+"E:\moreproquake\proquake_434\WinQuake\gl_warp.c"
+"E:\moreproquake\proquake_434\WinQuake\host.c"
+"E:\moreproquake\proquake_434\WinQuake\host_cmd.c"
+"E:\moreproquake\proquake_434\WinQuake\in_win.c"
+"E:\moreproquake\proquake_434\WinQuake\iplog.c"
+"E:\moreproquake\proquake_434\WinQuake\keys.c"
+"E:\moreproquake\proquake_434\WinQuake\location.c"
+"E:\moreproquake\proquake_434\WinQuake\mathlib.c"
+"E:\moreproquake\proquake_434\WinQuake\matrix.c"
+"E:\moreproquake\proquake_434\WinQuake\menu.c"
+"E:\moreproquake\proquake_434\WinQuake\movie.c"
+"E:\moreproquake\proquake_434\WinQuake\movie_avi.c"
+"E:\moreproquake\proquake_434\WinQuake\net_dgrm.c"
+"E:\moreproquake\proquake_434\WinQuake\net_loop.c"
+"E:\moreproquake\proquake_434\WinQuake\net_main.c"
+"E:\moreproquake\proquake_434\WinQuake\net_vcr.c"
+"E:\moreproquake\proquake_434\WinQuake\net_win.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wins.c"
+"E:\moreproquake\proquake_434\WinQuake\net_wipx.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_cmds.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_edict.c"
+"E:\moreproquake\proquake_434\WinQuake\pr_exec.c"
+"E:\moreproquake\proquake_434\WinQuake\qmp3.cpp"
+"E:\moreproquake\proquake_434\WinQuake\r_part.c"
+"E:\moreproquake\proquake_434\WinQuake\registry.cpp"
+"E:\moreproquake\proquake_434\WinQuake\sbar.c"
+"E:\moreproquake\proquake_434\WinQuake\security.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_dma.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mem.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_mix.c"
+"E:\moreproquake\proquake_434\WinQuake\snd_win.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_main.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_move.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_phys.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_user.c"
+"E:\moreproquake\proquake_434\WinQuake\sv_world.c"
+"E:\moreproquake\proquake_434\WinQuake\sys_win.c"
+"E:\moreproquake\proquake_434\WinQuake\version.c"
+"E:\moreproquake\proquake_434\WinQuake\vid_common_gl.c"
+"E:\moreproquake\proquake_434\WinQuake\vid_wgl.c"
+"E:\moreproquake\proquake_434\WinQuake\wad.c"
+"E:\moreproquake\proquake_434\WinQuake\webdownload.c"
+"E:\moreproquake\proquake_434\WinQuake\zone.c"
 ]
-Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F6A.tmp" 
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F6B.tmp" with contents
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D25.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D26.tmp" with contents
 [
-advapi32.lib comctl32.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /incremental:yes /pdb:"winquake___Win32_DX8_Release/dx8pro430.pdb" /machine:I386 /out:"e:\quakedm3\dx8pro430.exe" 
+advapi32.lib comctl32.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /incremental:yes /pdb:"winquake___Win32_DX8_Release/dx8pro435.pdb" /machine:I386 /out:"e:\quakedm3\dx8pro435.exe" 
 .\winquake___Win32_DX8_Release\cd_win.obj
 .\winquake___Win32_DX8_Release\chase.obj
 .\winquake___Win32_DX8_Release\cl_demo.obj
@@ -1511,7 +1511,7 @@ advapi32.lib comctl32.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.li
 .\winquake___Win32_DX8_Release\zone.obj
 .\winquake___Win32_DX8_Release\winquake.res
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3F6B.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D26.tmp"
 <h3>Output Window</h3>
 Compiling resources...
 Compiling...
@@ -1586,12 +1586,88 @@ wad.c
 webdownload.c
 zone.c
 Linking...
-   Creating library e:\quakedm3\dx8pro430.lib and object e:\quakedm3\dx8pro430.exp
+   Creating library e:\quakedm3\dx8pro435.lib and object e:\quakedm3\dx8pro435.exp
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D2A.tmp" with contents
+[
+/nologo /o"winquake___Win32_DX8_Release/WinQuake.bsc" 
+.\winquake___Win32_DX8_Release\cd_win.sbr
+.\winquake___Win32_DX8_Release\chase.sbr
+.\winquake___Win32_DX8_Release\cl_demo.sbr
+.\winquake___Win32_DX8_Release\cl_input.sbr
+.\winquake___Win32_DX8_Release\cl_main.sbr
+.\winquake___Win32_DX8_Release\cl_parse.sbr
+.\winquake___Win32_DX8_Release\cl_tent.sbr
+.\winquake___Win32_DX8_Release\cl_view.sbr
+.\winquake___Win32_DX8_Release\cmd.sbr
+.\winquake___Win32_DX8_Release\common.sbr
+.\winquake___Win32_DX8_Release\conproc.sbr
+.\winquake___Win32_DX8_Release\console.sbr
+.\winquake___Win32_DX8_Release\crc.sbr
+.\winquake___Win32_DX8_Release\cvar.sbr
+.\winquake___Win32_DX8_Release\dx8_gl_fakegl.sbr
+.\winquake___Win32_DX8_Release\dx8_libci.sbr
+.\winquake___Win32_DX8_Release\gl_draw.sbr
+.\winquake___Win32_DX8_Release\gl_fullbright.sbr
+.\winquake___Win32_DX8_Release\gl_mesh.sbr
+.\winquake___Win32_DX8_Release\gl_model.sbr
+.\winquake___Win32_DX8_Release\gl_refrag.sbr
+.\winquake___Win32_DX8_Release\gl_rlight.sbr
+.\winquake___Win32_DX8_Release\gl_rmain.sbr
+.\winquake___Win32_DX8_Release\gl_rmisc.sbr
+.\winquake___Win32_DX8_Release\gl_rsurf.sbr
+.\winquake___Win32_DX8_Release\gl_screen.sbr
+.\winquake___Win32_DX8_Release\gl_test.sbr
+.\winquake___Win32_DX8_Release\gl_warp.sbr
+.\winquake___Win32_DX8_Release\host.sbr
+.\winquake___Win32_DX8_Release\host_cmd.sbr
+.\winquake___Win32_DX8_Release\in_win.sbr
+.\winquake___Win32_DX8_Release\iplog.sbr
+.\winquake___Win32_DX8_Release\keys.sbr
+.\winquake___Win32_DX8_Release\location.sbr
+.\winquake___Win32_DX8_Release\mathlib.sbr
+.\winquake___Win32_DX8_Release\matrix.sbr
+.\winquake___Win32_DX8_Release\menu.sbr
+.\winquake___Win32_DX8_Release\movie.sbr
+.\winquake___Win32_DX8_Release\movie_avi.sbr
+.\winquake___Win32_DX8_Release\net_dgrm.sbr
+.\winquake___Win32_DX8_Release\net_loop.sbr
+.\winquake___Win32_DX8_Release\net_main.sbr
+.\winquake___Win32_DX8_Release\net_vcr.sbr
+.\winquake___Win32_DX8_Release\net_win.sbr
+.\winquake___Win32_DX8_Release\net_wins.sbr
+.\winquake___Win32_DX8_Release\net_wipx.sbr
+.\winquake___Win32_DX8_Release\pr_cmds.sbr
+.\winquake___Win32_DX8_Release\pr_edict.sbr
+.\winquake___Win32_DX8_Release\pr_exec.sbr
+.\winquake___Win32_DX8_Release\qmp3.sbr
+.\winquake___Win32_DX8_Release\r_part.sbr
+.\winquake___Win32_DX8_Release\registry.sbr
+.\winquake___Win32_DX8_Release\sbar.sbr
+.\winquake___Win32_DX8_Release\security.sbr
+.\winquake___Win32_DX8_Release\snd_dma.sbr
+.\winquake___Win32_DX8_Release\snd_mem.sbr
+.\winquake___Win32_DX8_Release\snd_mix.sbr
+.\winquake___Win32_DX8_Release\snd_win.sbr
+.\winquake___Win32_DX8_Release\sv_main.sbr
+.\winquake___Win32_DX8_Release\sv_move.sbr
+.\winquake___Win32_DX8_Release\sv_phys.sbr
+.\winquake___Win32_DX8_Release\sv_user.sbr
+.\winquake___Win32_DX8_Release\sv_world.sbr
+.\winquake___Win32_DX8_Release\sys_win.sbr
+.\winquake___Win32_DX8_Release\version.sbr
+.\winquake___Win32_DX8_Release\vid_common_gl.sbr
+.\winquake___Win32_DX8_Release\vid_wgl.sbr
+.\winquake___Win32_DX8_Release\wad.sbr
+.\winquake___Win32_DX8_Release\webdownload.sbr
+.\winquake___Win32_DX8_Release\zone.sbr]
+Creating command line "bscmake.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP4D2A.tmp"
+Creating browse info file...
+<h3>Output Window</h3>
 
 
 
 <h3>Results</h3>
-dx8pro430.exe - 0 error(s), 0 warning(s)
+dx8pro435.exe - 0 error(s), 0 warning(s)
 </pre>
 </body>
 </html>

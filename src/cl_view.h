@@ -39,10 +39,21 @@ void V_Init (void);
 void V_RenderView (void);
 
 void V_CalcBlend (void);
+
 void SCR_DrawVolume (void);
+
 float V_CalcRoll (vec3_t angles, vec3_t velocity);
 void V_UpdatePaletteOld (void);
 
 #ifndef D3DQUAKE
 void BuildGammaTable (float g);			// JPG 3.02
 #endif
+
+#ifdef SUPPORTS_AUTOID
+#define ISDEAD(i) ((i) >= 41 && (i) <= 102)
+#endif
+
+#ifdef SUPPORTS_AUTOID_SOFTWARE
+void R_DrawNameTags(void);
+#endif
+

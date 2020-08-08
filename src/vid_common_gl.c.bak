@@ -26,17 +26,6 @@ const char *gl_version;
 const char *gl_extensions;
 qboolean gl_mtexable = false;
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-// mh - check for presence of GL_ARB_texture_env_combine
-qboolean gl_combine = false;
-
-// mh - true if using overbrights
-qboolean gl_usingoverbright = false;
-
-// mh - enable overbrights
-cvar_t gl_overbright = {"gl_overbright", "1", true};
-#endif
-
 #ifdef MACOSX
 // Baker: in windows this is in gl_vidnt.c
 int	texture_mode = GL_LINEAR;
@@ -214,20 +203,6 @@ void CheckMultiTextureExtensions(void)
    }
    else
       Con_Printf ("WARNING: Multitexture not supported\n");
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS      
-	// mh - we're only going to support combine if using ARB (per spec)
-	if (ARB)
-	{
-		gl_combine = false;
-
-		if (strstr (gl_extensions, "GL_ARB_texture_env_combine"))
-		{
-			gl_combine = true;
-			Con_Printf ("GL_ARB_texture_env_combine extensions found\n");
-		}
-	}
-#endif
 } 
 #else
 void CheckMultiTextureExtensions(void) {

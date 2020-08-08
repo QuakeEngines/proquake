@@ -145,13 +145,6 @@ typedef struct msurface_s
 #ifndef NOFULLBRIGHT
 	int draw_this_frame;
 #endif
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-
-	// mh - overbright
-	qboolean overbright;
-#endif
-
 } msurface_t;
 
 typedef struct mnode_s

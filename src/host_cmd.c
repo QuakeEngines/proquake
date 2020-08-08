@@ -861,6 +861,13 @@ This is sent just before a server changes levels
 */
 void Host_Reconnect_f (void)
 {
+
+#ifdef SUPPORTS_MULTIMAP_DEMOS
+	if (cls.demoplayback) {
+		Con_DPrintf("Demo playing; ignoring reconnect\n");
+		return;
+	}
+#endif	
 	SCR_BeginLoadingPlaque ();
 	cls.signon = 0;		// need new connection messages
 }

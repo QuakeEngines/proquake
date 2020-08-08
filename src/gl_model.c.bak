@@ -932,11 +932,6 @@ void Mod_LoadFaces (lump_t *l)
 		i = LittleLong(in->lightofs);
 		out->samples = (i == -1) ? NULL : loadmodel->lightdata + i;
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-		// mh - overbrights
-		out->overbright = gl_usingoverbright;
-#endif
-
 	// set the drawing flags flag
 		if (ISSKYTEX(out->texinfo->texture->name))	// sky
 		{

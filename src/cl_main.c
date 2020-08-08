@@ -66,8 +66,8 @@ cvar_t	pq_moveup = {"pq_moveup", "0", true};
 // JPG 3.00 - added this by request
 cvar_t	pq_smoothcam = {"pq_smoothcam", "1", true};
 #ifdef HTTP_DOWNLOAD
-cvar_t	cl_web_download		= {"cl_web_download", "1"};
-cvar_t	cl_web_download_url	= {"cl_web_download_url", "http://downloads.quake-1.com/"};
+cvar_t	cl_web_download		= {"cl_web_download", "1", true};
+cvar_t	cl_web_download_url	= {"cl_web_download_url", "http://downloads.quake-1.com/", true};
 #endif
 
 cvar_t	cl_demospeed		= {"cl_demospeed", "1"}; // Baker 3.75 - demo rewind/ff
@@ -84,6 +84,11 @@ dlight_t		cl_dlights[MAX_DLIGHTS];
 
 int				cl_numvisedicts;
 entity_t		*cl_visedicts[MAX_VISEDICTS];
+
+#ifdef SUPPORTS_AUTOID
+modelindex_t		cl_modelindex[NUM_MODELINDEX];
+char			*cl_modelnames[NUM_MODELINDEX];
+#endif
 
 extern cvar_t scr_fov;
 float			savedsensitivity;
@@ -329,7 +334,7 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 #endif // ^^ MACOSX can't support this code but Windows/Linux do
 #ifdef _WIN32
 			if (!strstr(path, ".exe") && !strstr(path, ".EXE"))
-				strcat(path, ".exe");
+				strcat (path, ".exe");
 #endif // ^^ This is Windows operating system specific; Linux does not need
 			f = fopen(path, "rb");
 			if (!f)
@@ -617,6 +622,9 @@ void CL_RelinkEntities (void)
 // if the object wasn't included in the last packet, remove it
 		if (ent->msgtime != cl.mtime[0])
 		{
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+			CL_ClearInterpolation (ent);
+#endif
 			ent->model = NULL;
 			continue;
 		}
@@ -638,6 +646,10 @@ void CL_RelinkEntities (void)
 					f = 1;		// assume a teleportation, not a motion
 			}
 
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+			if (f >= 1) CL_ClearInterpolation (ent);
+#endif
+
 		// interpolate the origin and angles
 			for (j=0 ; j<3 ; j++)
 			{
@@ -652,6 +664,14 @@ void CL_RelinkEntities (void)
 			}
 
 		}
+
+//		if (!(model = cl.model_precache[ent->modelindex]))
+//			Host_Error ("CL_RelinkEntities: bad modelindex");
+
+#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+		CL_EntityInterpolateOrigins (ent);
+		CL_EntityInterpolateAngles (ent);
+#endif
 
 // rotate binary objects locally
 		if (ent->model->flags & EF_ROTATE)
@@ -969,6 +989,9 @@ void CL_Init (void)
 	SZ_Alloc (&cls.message, 1024);
 
 	CL_InitInput ();
+#ifdef SUPPORTS_AUTOID
+	CL_InitModelnames ();
+#endif
 	CL_InitTEnts ();
 
 // register our commands

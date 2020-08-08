@@ -24,9 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	QUAKE_GAME					// as opposed to utilities
 
 #define ENGINE_NAME "ProQuake"
-#define ENGINE_VERSION 	"4.30 Beta"
+#define ENGINE_VERSION 	"4.35 Beta"
 #define ENGINE_HOMEPAGE_URL "http:////www.quakeone.com//proquake"
-#define PROQUAKE_SERIES_VERSION		4.30
+#define PROQUAKE_SERIES_VERSION		4.35
 #include "version.h"
 
 //define	PARANOID				// speed sapping error checking
@@ -331,6 +331,9 @@ extern	cvar_t	chase_active;
 void Chase_Init (void);
 void Chase_Reset (void);
 void Chase_Update (void);
+#ifdef SUPPORTS_AUTOID
+qboolean CL_Visible_To_Client (vec3_t viewer, vec3_t seen);
+#endif
 
 extern char dequake[256];	// JPG 1.05 - dedicated console translation
 extern cvar_t pq_dequake;	// JPG 1.05 - dedicated console translation

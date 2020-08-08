@@ -109,6 +109,12 @@ float	anglemod(float a);
 	:										\
 		BoxOnPlaneSide( (emins), (emaxs), (p)))
 
+#ifdef SUPPORTS_AUTOID
+#define PlaneDiff(point, plane) (				\
+	(((plane)->type < 3) ? (point)[(plane)->type] - (plane)->dist : DotProduct((point), (plane)->normal) - (plane)->dist)	\
+)
+#endif
+
 float VectorNormalize (vec3_t v);		// returns vector length
 
 void R_ConcatRotations (float in1[3][3], float in2[3][3], float out[3][3]);
@@ -120,3 +126,13 @@ int GreatestCommonDivisor (int i1, int i2);
 
 void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up);
 int BoxOnPlaneSide (vec3_t emins, vec3_t emaxs, struct mplane_s *plane);
+
+#ifdef SUPPORTS_AUTOID_SOFTWARE
+float *Matrix4_NewRotation(float a, float x, float y, float z);
+float *Matrix4_NewTranslation(float x, float y, float z);
+void Matrix4_Multiply(float *a, float *b, float *out);
+void Matrix4_Transform4(float *matrix, float *vector, float *product);
+void ML_ProjectionMatrix(float *proj, float wdivh, float fovy);
+void ML_ModelViewMatrix(float *modelview, vec3_t viewangles, vec3_t vieworg);
+void ML_Project (vec3_t in, vec3_t out, vec3_t viewangles, vec3_t vieworg, float wdivh, float fovy);
+#endif
