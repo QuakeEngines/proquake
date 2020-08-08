@@ -23,9 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 extern cvar_t	pausable;
 
+cvar_t	cl_confirmquit = {"cl_confirmquit", "1", true}; // Baker 3.60
+
 // JPG - added these for spam protection
 extern cvar_t	pq_spam_rate;
 extern cvar_t	pq_spam_grace;
+extern cvar_t   pq_connectmute; // Baker 3.99f: from Rook
 
 // JPG 3.20 - control muting of players that change colour/name
 extern cvar_t	pq_tempmute;
@@ -53,10 +56,13 @@ extern void M_Menu_Quit_f (void);
 
 void Host_Quit_f (void)
 {
+	if (cl_confirmquit.value)
+	{
 	if (key_dest != key_console && cls.state != ca_dedicated)
 	{
 		M_Menu_Quit_f ();
 		return;
+		}
 	}
 	CL_Disconnect ();
 	Host_ShutdownServer(false);
@@ -101,7 +107,7 @@ void Host_Status_f (void)
 	int			seconds;
 	int			minutes;
 	int			hours = 0;
-	int			j;
+	int			j, a, b, c; // Baker 3.60 - a,b,c added for IP
 	void		(*print) (char *fmt, ...);
 
 	if (cmd_source == src_command)
@@ -141,13 +147,17 @@ void Host_Status_f (void)
 		else
 			hours = 0;
 		print ("#%-2u %-16.16s  %3i  %2i:%02i:%02i\n", j+1, client->name, (int)client->edict->v.frags, hours, minutes, seconds);
+
+		if (cmd_source != src_command && sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3 && COM_CheckParm ("-noipmask") == 0 )  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
+         print ("   %d.%d.%d.xxx\n", a, b, c);  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
+         else  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
 		print ("   %s\n", client->netconnection->address);
 	}
 }
 
 /*
 ==================
-Host_Cheatfree_f - not commented by JPG (commented at by woods)
+Host_Cheatfree_f
 ==================
 */
 void Host_Cheatfree_f (void)
@@ -459,11 +469,7 @@ void Host_Map_f (void)
 
 	svs.serverflags = 0;			// haven't completed an episode yet
 	strcpy (name, Cmd_Argv(1));
-#ifdef QUAKE2
-	SV_SpawnServer (name, NULL);
-#else
 	SV_SpawnServer (name);
-#endif
 	if (!sv.active)
 		return;
 
@@ -495,34 +501,6 @@ Goes to a new map, taking all clients along
 */
 void Host_Changelevel_f (void)
 {
-#ifdef QUAKE2
-	char	level[MAX_QPATH];
-	char	_startspot[MAX_QPATH];
-	char	*startspot;
-
-	if (Cmd_Argc() < 2)
-	{
-		Con_Printf ("changelevel <levelname> : continue game on a new level\n");
-		return;
-	}
-	if (!sv.active || cls.demoplayback)
-	{
-		Con_Printf ("Only the server may changelevel\n");
-		return;
-	}
-
-	strcpy (level, Cmd_Argv(1));
-	if (Cmd_Argc() == 2)
-		startspot = NULL;
-	else
-	{
-		strcpy (_startspot, Cmd_Argv(2));
-		startspot = _startspot;
-	}
-
-	SV_SaveSpawnparms ();
-	SV_SpawnServer (level, startspot);
-#else
 	char	level[MAX_QPATH];
 
 	if (Cmd_Argc() != 2)
@@ -535,10 +513,20 @@ void Host_Changelevel_f (void)
 		Con_Printf ("Only the server may changelevel\n");
 		return;
 	}
+
+	//johnfitz -- check for client having map before anything else
+	//sprintf (level, "maps/%s.bsp", Cmd_Argv(1));
+	//if (COM_OpenFile (level, &i) == -1)
+	//{
+	//	Con_Printf("Host_Changelevel_f: cannot find map %s\n", level);
+	//	//shut down server, disconnect, etc.
+	//	return;
+	//}
+	//johnfitz
+
 	SV_SaveSpawnparms ();
 	strcpy (level, Cmd_Argv(1));
 	SV_SpawnServer (level);
-#endif
 }
 
 /*
@@ -551,9 +539,6 @@ Restarts the current server for a dead player
 void Host_Restart_f (void)
 {
 	char	mapname[MAX_QPATH];
-#ifdef QUAKE2
-	char	startspot[MAX_QPATH];
-#endif
 
 	if (cls.demoplayback || !sv.active)
 		return;
@@ -562,12 +547,7 @@ void Host_Restart_f (void)
 		return;
 	strcpy (mapname, sv.name);	// must copy out, because it gets cleared
 								// in sv_spawnserver
-#ifdef QUAKE2
-	strcpy(startspot, sv.startspot);
-	SV_SpawnServer (mapname, startspot);
-#else
 	SV_SpawnServer (mapname);
-#endif
 }
 
 /*
@@ -635,12 +615,8 @@ void Host_SavegameComment (char *text)
 
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
 		text[i] = ' ';
-	memcpy (text, cl.levelname, strlen(cl.levelname));
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (kills,20,"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
-#else
-	sprintf (kills,"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
-#endif /* __APPLE__ || MACOSX */
+	memcpy (text, cl.levelname, min(strlen(cl.levelname),22)); //johnfitz -- only copy 22 chars.
+	snprintf (kills,sizeof(kills),"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	memcpy (text+22, kills, strlen(kills));
 // convert space to _ to make stdio happy
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
@@ -704,11 +680,7 @@ void Host_Savegame_f (void)
 		}
 	}
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (name, 256, "%s/%s", com_gamedir, Cmd_Argv(1));
-#else
-	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
-#endif /* __APPLE__ || MACOSX */
+	snprintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".sav");
 
 	Con_Printf ("Saving game to %s...\n", name);
@@ -779,11 +751,7 @@ void Host_Loadgame_f (void)
 
 	cls.demonum = -1;		// stop demo loop in case this fails
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (name, MAX_OSPATH, "%s/%s", com_gamedir, Cmd_Argv(1));
-#else
-	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
-#endif /* __APPLE__ || MACOSX */
+	snprintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".sav");
 
 // we can't call SCR_BeginLoadingPlaque, because too much stack space has
@@ -813,22 +781,13 @@ void Host_Loadgame_f (void)
 	current_skill = (int)(tfloat + 0.1);
 	Cvar_SetValue ("skill", (float)current_skill);
 
-#ifdef QUAKE2
-	Cvar_SetValue ("deathmatch", 0);
-	Cvar_SetValue ("coop", 0);
-	Cvar_SetValue ("teamplay", 0);
-#endif
-
 	fscanf (f, "%s\n",mapname);
 	fscanf (f, "%f\n",&time);
 
 	CL_Disconnect_f ();
 
-#ifdef QUAKE2
-	SV_SpawnServer (mapname, NULL);
-#else
 	SV_SpawnServer (mapname);
-#endif
+
 	if (!sv.active)
 	{
 		Con_Printf ("Couldn't load map\n");
@@ -906,208 +865,6 @@ void Host_Loadgame_f (void)
 		Host_Reconnect_f ();
 	}
 }
-
-#ifdef QUAKE2
-void SaveGamestate()
-{
-	char	name[256];
-	FILE	*f;
-	int		i;
-	char	comment[SAVEGAME_COMMENT_LENGTH+1];
-	edict_t	*ent;
-
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (name, 256, "%s/%s.gip", com_gamedir, sv.name);
-#else
-	sprintf (name, "%s/%s.gip", com_gamedir, sv.name);
-#endif /* __APPLE__ || MACOSX */
-
-	Con_Printf ("Saving game to %s...\n", name);
-	f = fopen (name, "w");
-	if (!f)
-	{
-		Con_Printf ("ERROR: couldn't open.\n");
-		return;
-	}
-
-	fprintf (f, "%i\n", SAVEGAME_VERSION);
-	Host_SavegameComment (comment);
-	fprintf (f, "%s\n", comment);
-//	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-//		fprintf (f, "%f\n", svs.clients->spawn_parms[i]);
-	fprintf (f, "%f\n", skill.value);
-	fprintf (f, "%s\n", sv.name);
-	fprintf (f, "%f\n", sv.time);
-
-// write the light styles
-
-	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
-	{
-		if (sv.lightstyles[i])
-			fprintf (f, "%s\n", sv.lightstyles[i]);
-		else
-			fprintf (f,"m\n");
-	}
-
-
-	for (i=svs.maxclients+1 ; i<sv.num_edicts ; i++)
-	{
-		ent = EDICT_NUM(i);
-		if ((int)ent->v.flags & FL_ARCHIVE_OVERRIDE)
-			continue;
-		fprintf (f, "%i\n",i);
-		ED_Write (f, ent);
-		fflush (f);
-	}
-	fclose (f);
-	Con_Printf ("done.\n");
-}
-
-int LoadGamestate(char *level, char *startspot)
-{
-	char	name[MAX_OSPATH];
-	FILE	*f;
-	char	mapname[MAX_QPATH];
-	float	time, sk;
-	char	str[32768], *start;
-	int		i, r;
-	edict_t	*ent;
-	int		entnum;
-	int		version;
-//	float	spawn_parms[NUM_SPAWN_PARMS];
-
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (name, MAX_OSPATH, "%s/%s.gip", com_gamedir, level);
-#else
-	sprintf (name, "%s/%s.gip", com_gamedir, level);
-#endif /* __APPLE__ || MACOSX */
-
-	Con_Printf ("Loading game from %s...\n", name);
-	f = fopen (name, "r");
-	if (!f)
-	{
-		Con_Printf ("ERROR: couldn't open.\n");
-		return -1;
-	}
-
-	fscanf (f, "%i\n", &version);
-	if (version != SAVEGAME_VERSION)
-	{
-		fclose (f);
-		Con_Printf ("Savegame is version %i, not %i\n", version, SAVEGAME_VERSION);
-		return -1;
-	}
-	fscanf (f, "%s\n", str);
-//	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-//		fscanf (f, "%f\n", &spawn_parms[i]);
-	fscanf (f, "%f\n", &sk);
-	Cvar_SetValue ("skill", sk);
-
-	fscanf (f, "%s\n",mapname);
-	fscanf (f, "%f\n",&time);
-
-	SV_SpawnServer (mapname, startspot);
-
-	if (!sv.active)
-	{
-		Con_Printf ("Couldn't load map\n");
-		return -1;
-	}
-
-// load the light styles
-	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
-	{
-		fscanf (f, "%s\n", str);
-		sv.lightstyles[i] = Hunk_Alloc (strlen(str)+1);
-		strcpy (sv.lightstyles[i], str);
-	}
-
-// load the edicts out of the savegame file
-	while (!feof(f))
-	{
-		fscanf (f, "%i\n",&entnum);
-		for (i=0 ; i<sizeof(str)-1 ; i++)
-		{
-			r = fgetc (f);
-			if (r == EOF || !r)
-				break;
-			str[i] = r;
-			if (r == '}')
-			{
-				i++;
-				break;
-			}
-		}
-		if (i == sizeof(str)-1)
-			Sys_Error ("Loadgame buffer overflow");
-		str[i] = 0;
-		start = str;
-		start = COM_Parse(str);
-		if (!com_token[0])
-			break;		// end of file
-		if (strcmp(com_token,"{"))
-			Sys_Error ("First token isn't a brace");
-
-		// parse an edict
-
-		ent = EDICT_NUM(entnum);
-		memset (&ent->v, 0, progs->entityfields * 4);
-		ent->free = false;
-		ED_ParseEdict (start, ent);
-
-		// link it into the bsp tree
-		if (!ent->free)
-			SV_LinkEdict (ent, false);
-	}
-
-//	sv.num_edicts = entnum;
-	sv.time = time;
-	fclose (f);
-
-//	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-//		svs.clients->spawn_parms[i] = spawn_parms[i];
-
-	return 0;
-}
-
-// changing levels within a unit
-void Host_Changelevel2_f (void)
-{
-	char	level[MAX_QPATH];
-	char	_startspot[MAX_QPATH];
-	char	*startspot;
-
-	if (Cmd_Argc() < 2)
-	{
-		Con_Printf ("changelevel2 <levelname> : continue game on a new level in the unit\n");
-		return;
-	}
-	if (!sv.active || cls.demoplayback)
-	{
-		Con_Printf ("Only the server may changelevel\n");
-		return;
-	}
-
-	strcpy (level, Cmd_Argv(1));
-	if (Cmd_Argc() == 2)
-		startspot = NULL;
-	else
-	{
-		strcpy (_startspot, Cmd_Argv(2));
-		startspot = _startspot;
-	}
-
-	SV_SaveSpawnparms ();
-
-	// save the current level's state
-	SaveGamestate ();
-
-	// try to restore the new level
-	if (LoadGamestate (level, startspot))
-		SV_SpawnServer (level, startspot);
-}
-#endif
-
 
 //============================================================================
 
@@ -1271,6 +1028,9 @@ void Host_Say(qboolean teamonly)
 // turn on color set 1
 	if (!fromServer)
 	{
+		// R00k - dont allow new connecting players to spam obscenities...
+		if (pq_connectmute.value && (net_time - host_client->netconnection->connecttime) < pq_connectmute.value)
+			return;
 
 		// JPG - spam protection
 		if (sv.time - host_client->spam_time > pq_spam_rate.value * pq_spam_grace.value)
@@ -1507,6 +1267,7 @@ Host_Pause_f
 */
 void Host_Pause_f (void)
 {
+	cl.paused ^= 2;		// by joe: to handle demo-pause
 
 	if (cmd_source == src_command)
 	{
@@ -1658,7 +1419,7 @@ void Host_Spawn_f (void)
 		pr_global_struct->self = EDICT_TO_PROG(sv_player);
 		PR_ExecuteProgram (pr_global_struct->ClientConnect);
 
-		if ((Sys_FloatTime() - host_client->netconnection->connecttime) <= sv.time)
+		if ((Sys_DoubleTime() - host_client->netconnection->connecttime) <= sv.time)
 			Sys_Printf ("%s entered the game\n", host_client->name);
 
 		PR_ExecuteProgram (pr_global_struct->PutClientInServer);
@@ -2284,7 +2045,7 @@ void Host_Identify_f (void)
 
 	if (!iplog_size)
 	{
-		Con_Printf("IP logging not available\nUse -iplog command line option\n");
+		Con_Printf("IP logging not available\nRemove -noiplog command line option\n"); // Baker 3.83: Now -iplog is the default
 		return;
 	}
 
@@ -2486,4 +2247,6 @@ void Host_InitCommands (void)
 	Cmd_AddCommand ("identify", Host_Identify_f);	// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipdump", IPLog_Dump);			// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipmerge", IPLog_Import);		// JPG 3.00 - import an IP data file
+
+	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
 }

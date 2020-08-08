@@ -32,7 +32,27 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
-enum {m_none, m_main, m_singleplayer, m_load, m_save, m_multiplayer, m_setup, m_net, m_options, m_video, m_keys, m_help, m_quit, m_serialconfig, m_modemconfig, m_lanconfig, m_gameoptions, m_search, m_slist} m_state;
+enum {
+	m_none, 
+	m_main, 
+	m_singleplayer, 
+	m_load, 
+	m_save, 
+	m_multiplayer, 
+	m_setup, 
+	m_net, 
+	m_options, 
+	m_video, 
+	m_keys, 
+	m_help, 
+	m_quit, 
+	m_serialconfig, 
+	m_modemconfig, 
+	m_lanconfig, 
+	m_gameoptions, 
+	m_search, 
+	m_slist
+} m_state;
 
 void M_Menu_Main_f (void);
 	void M_Menu_SinglePlayer_f (void);
@@ -269,7 +289,6 @@ void M_DrawTransPicTranslate (int x, int y, qpic_t *pic)
 	Draw_TransPicTranslate (x + ((vid.width - 320)>>1), y, pic, translationTable);
 }
 
-
 void M_DrawTextBox (int x, int y, int width, int lines)
 {
 	qpic_t	*p;
@@ -390,7 +409,7 @@ void M_Main_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/mainmenu.lmp") );
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 
 	M_DrawTransPic (54, 32 + m_main_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
@@ -473,7 +492,7 @@ void M_SinglePlayer_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/sp_menu.lmp") );
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 
 	M_DrawTransPic (54, 32 + m_singleplayer_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
@@ -506,7 +525,7 @@ void M_SinglePlayer_Key (int key)
 		{
 		case 0:
 			if (sv.active)
-				if (!SCR_ModalMessage("Are you sure you want to\nstart a new game?\n"))
+				if (!SCR_ModalMessage("Are you sure you want to\nstart a new game?\n",0.0f))
 					break;
 			key_dest = key_game;
 			if (sv.active)
@@ -623,9 +642,9 @@ void M_Save_Draw (void)
 }
 
 
-void M_Load_Key (int k)
+void M_Load_Key (int key)
 {
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_SinglePlayer_f ();
@@ -665,9 +684,9 @@ void M_Load_Key (int k)
 }
 
 
-void M_Save_Key (int k)
+void M_Save_Key (int key)
 {
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_SinglePlayer_f ();
@@ -722,7 +741,7 @@ void M_MultiPlayer_Draw (void)
 	M_DrawPic ( (320-p->width)/2, 4, p);
 	M_DrawTransPic (72, 32, Draw_CachePic ("gfx/mp_menu.lmp") );
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 
 	M_DrawTransPic (54, 32 + m_multiplayer_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 
@@ -779,12 +798,8 @@ void M_MultiPlayer_Key (int key)
 int		setup_cursor = 4;
 int		setup_cursor_table[] = {40, 56, 80, 104, 140};
 
-char	setup_hostname[16];
-char	setup_myname[16];
-int		setup_oldtop;
-int		setup_oldbottom;
-int		setup_top;
-int		setup_bottom;
+char	setup_hostname[16], setup_myname[16];
+int	setup_oldtop, setup_oldbottom, setup_top, setup_bottom;
 
 #define	NUM_SETUP_CMDS	5
 
@@ -814,7 +829,8 @@ void M_Setup_Draw (void)
 
 	M_Print (64, 56, "Your name");
 	M_DrawTextBox (160, 48, 16, 1);
-	M_Print (168, 56, setup_myname);
+	M_PrintWhite (168, 56, setup_myname);  // Baker 3.83: Draw it correctly!
+
 
 	M_Print (64, 80, "Shirt color");
 	M_Print (64, 104, "Pants color");
@@ -838,17 +854,17 @@ void M_Setup_Draw (void)
 }
 
 
-void M_Setup_Key (int k)
+void M_Setup_Key (int key)
 {
 	int			l;
 
 #if defined (__APPLE__) || defined (MACOSX)
 
-        M_NumPad2Key (&k);
+        M_NumPad2Key (&key);
 
 #endif /* __APPLE__ || MACOSX */
 
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_MultiPlayer_f ();
@@ -921,30 +937,30 @@ forward:
 		break;
 
 	default:
-		if (k < 32 || k > 127)
+		if (key < 32 || key > 127)
 			break;
 		if (setup_cursor == 0)
 		{
 			l = strlen(setup_hostname);
 #if defined (__APPLE__) || defined (MACOSX)
-                        if (M_GetPasteString (k, setup_hostname, 15) == false)
+            if (M_GetPasteString (key, setup_hostname, 15) == false)
 #endif /* __APPLE__ || MACOSX */
 			if (l < 15)
 			{
 				setup_hostname[l+1] = 0;
-				setup_hostname[l] = k;
+				setup_hostname[l] = key;
 			}
 		}
 		if (setup_cursor == 1)
 		{
 			l = strlen(setup_myname);
 #if defined (__APPLE__) || defined (MACOSX)
-                        if (M_GetPasteString (k, setup_myname, 15) == false)
+            if (M_GetPasteString (key, setup_myname, 15) == false)
 #endif /* __APPLE__ || MACOSX */
 			if (l < 15)
 			{
 				setup_myname[l+1] = 0;
-				setup_myname[l] = k;
+				setup_myname[l] = key;
 			}
 		}
 	}
@@ -1078,15 +1094,15 @@ void M_Net_Draw (void)
 	M_Print (f, 158, net_helpMessage[m_net_cursor*4+2]);
 	M_Print (f, 166, net_helpMessage[m_net_cursor*4+3]);
 
-	f = (int)(host_time * 10)%6;
+	f = (int)(realtime * 10)%6;  //johnfitz -- was host_time
 	M_DrawTransPic (54, 32 + m_net_cursor * 20,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 }
 
 
-void M_Net_Key (int k)
+void M_Net_Key (int key)
 {
 again:
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_MultiPlayer_f ();
@@ -1365,9 +1381,10 @@ void M_Options_Draw (void)
 }
 
 
-void M_Options_Key (int k)
+void M_Options_Key (int key)
 {
-	switch (k)
+
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_Main_f ();
@@ -1389,6 +1406,7 @@ void M_Options_Key (int k)
 			break;
 		case 12:
 			M_Menu_Video_f ();
+
 			break;
 		default:
 			M_AdjustSliders (1);
@@ -1436,7 +1454,7 @@ void M_Options_Key (int k)
 	if (options_cursor == 12 && vid_menudrawfn == NULL)
 #endif /* __APPLE__ || MACOSX */
 	{
-		if (k == K_UPARROW)
+		if (key == K_UPARROW)
 			options_cursor = 11;
 		else
 			options_cursor = 0;
@@ -1448,7 +1466,7 @@ void M_Options_Key (int k)
 #endif /* _WIN32 || __APPLE__ || MACOSX */
 #if defined (_WIN32) || defined (__APPLE__) || defined (MACOSX)
 	{
-		if (k == K_UPARROW)
+		if (key == K_UPARROW)
                 {
 #if defined (GLQUAKE) && (defined (__APPLE__) || defined (MACOSX))
                     if (vid_menudrawfn == NULL)
@@ -1466,7 +1484,28 @@ void M_Options_Key (int k)
 //=============================================================================
 /* KEYS MENU */
 
-char *bindnames[][2] =
+char *bindnames[][2] = // Baker 3.60 - more sensible customize controls, same options just organized better
+{
+{"+attack", 		"attack"},
+{"+jump", 			"jump"},
+{"+forward", 		"move forward"},
+{"+back", 			"move back"},
+{"+moveleft", 		"move left"},
+{"+moveright", 		"move right"},
+{"+moveup", 		"swim up"},
+{"+movedown", 		"swim down"},
+{"impulse 10", 		"change weapon"},
+{"+speed", 			"run"},
+{"+left", 			"turn left"},
+{"+right", 			"turn right"},
+{"+lookup", 		"look up"},
+{"+lookdown", 		"look down"},
+{"+mlook", 			"mouse look"},
+{"+klook", 			"keyboard look"},
+{"+strafe",			"sidestep"},
+{"centerview",		"center view"}
+};
+/* Baker 3.60 -- Old menu
 {
 {"+attack", 		"attack"},
 {"impulse 10", 		"change weapon"},
@@ -1486,7 +1525,7 @@ char *bindnames[][2] =
 {"+klook", 			"keyboard look"},
 {"+moveup",			"swim up"},
 {"+movedown",		"swim down"}
-};
+}; */
 
 #define	NUMCOMMANDS	(sizeof(bindnames)/sizeof(bindnames[0]))
 
@@ -1597,7 +1636,7 @@ void M_Keys_Draw (void)
 }
 
 
-void M_Keys_Key (int k)
+void M_Keys_Key (int key)
 {
 	char	cmd[80];
 	int		keys[2];
@@ -1605,16 +1644,16 @@ void M_Keys_Key (int k)
 	if (bind_grab)
 	{	// defining a key
 		S_LocalSound ("misc/menu1.wav");
-		if (k == K_ESCAPE)
+		if (key == K_ESCAPE)
 		{
 			bind_grab = false;
 		}
-		else if (k != '`')
+		else if (key != '`')
 		{
 #if defined (__APPLE__) || defined (MACOSX)
-                    snprintf (cmd,80,"bind \"%s\" \"%s\"\n", Key_KeynumToString (k), bindnames[keys_cursor][0]);
+                    snprintf (cmd,80,"bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
 #else
-                    sprintf (cmd, "bind \"%s\" \"%s\"\n", Key_KeynumToString (k), bindnames[keys_cursor][0]);
+                    sprintf (cmd, "bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
 #endif /* __APPLE__ || MACOSX */
                     Cbuf_InsertText (cmd);
 		}
@@ -1623,7 +1662,7 @@ void M_Keys_Key (int k)
 		return;
 	}
 
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_Options_f ();
@@ -1699,7 +1738,6 @@ void M_Menu_Help_f (void)
 }
 
 
-
 // JPG - added ProQuake page
 void M_Help_Draw (void)
 {
@@ -1711,12 +1749,15 @@ void M_Help_Draw (void)
 	{
 		M_DrawTextBox (16, 16, 34, 16);
 		M_PrintWhite(32, 48,  va("     ProQuake version %4.2f        ", PROQUAKE_VERSION));
-		M_Print		(32, 72,  "   Programmed by J.P. Grossman    ");
-		M_PrintWhite(36, 80,  "                jpg@ai.mit.edu    ");
-		M_Print		(28, 96,  " http://planetquake.com/proquake  ");
-		M_Print     (32, 128, "<-- Previous            Next -->");
+		M_Print		(32, 72,  "          New Updates By Baker");
+		M_PrintWhite(32, 80,  "       http://www.quakeone.com");
 
-		f = (int)(host_time * 8)%6;
+		M_Print		(32, 96,  "   Programmed by J.P. Grossman    ");
+		M_PrintWhite(36, 112,  "                jpg@ai.mit.edu    ");
+		M_Print		(28, 120,  " http://planetquake.com/proquake  ");
+		M_Print     (32, 136, "<-- Previous            Next -->");
+
+		f = (int)(realtime * 8)%6;
 		M_DrawTransPic (48, 40 ,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
 		M_DrawTransPic (248, 40 ,Draw_CachePic( va("gfx/menudot%i.lmp", f?7-f:1) ) );
 	}
@@ -3180,9 +3221,9 @@ void M_ServerList_Draw (void)
 }
 
 
-void M_ServerList_Key (int k)
+void M_ServerList_Key (int key)
 {
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_LanConfig_f ();

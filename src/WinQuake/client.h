@@ -27,9 +27,6 @@ typedef struct
 	float	forwardmove;
 	float	sidemove;
 	float	upmove;
-#ifdef QUAKE2
-	byte	lightlevel;
-#endif
 } usercmd_t;
 
 typedef struct
@@ -56,8 +53,6 @@ typedef struct
 	int frags;
 } teamscore_t;
 
-
-
 typedef struct
 {
 	int		destcolor[3];
@@ -70,12 +65,8 @@ typedef struct
 #define	CSHIFT_POWERUP	3
 #define	NUM_CSHIFTS		4
 
-#define	NAME_LENGTH	64
 
-
-//
 // client_state_t should hold all pieces of the client state
-//
 
 #define	SIGNONS		4			// signon messages to receive before connected
 
@@ -88,11 +79,7 @@ typedef struct
 	float	decay;				// drop this each second
 	float	minlight;			// don't add when contributing less
 	int		key;
-#ifdef QUAKE2
-	qboolean	dark;			// subtracts light instead of adding
-#endif
 } dlight_t;
-
 
 #define	MAX_BEAMS	24
 typedef struct
@@ -103,11 +90,21 @@ typedef struct
 	vec3_t	start, end;
 } beam_t;
 
+
+// added by joe
+typedef struct framepos_s
+{
+	long		baz;
+	struct framepos_s *next;
+} framepos_t;
+
+extern	framepos_t	*dem_framepos;		// by joe
+
 #define	MAX_EFRAGS		640
 
 #define	MAX_MAPSTRING	2048
-#define	MAX_DEMOS		8
-#define	MAX_DEMONAME	16
+#define	MAX_DEMOS	32
+#define	MAX_DEMONAME	64
 
 typedef enum {
 ca_dedicated, 		// a dedicated server with no ability to start a client
@@ -115,10 +112,8 @@ ca_disconnected, 	// full screen console with no connection
 ca_connected		// valid netcon, talking to a server
 } cactive_t;
 
-//
 // the client_static_t structure is persistant through an arbitrary number
 // of server connections
-//
 typedef struct
 {
 	cactive_t	state;
@@ -148,14 +143,13 @@ typedef struct
 	struct qsocket_s	*netcon;
 	sizebuf_t	message;		// writing buffer to send to server
 	
+	qboolean	capturedemo;
 } client_static_t;
 
 extern client_static_t	cls;
 
-//
 // the client_state_t structure is wiped completely at every
 // server signon
-//
 typedef struct
 {
 	int			movemessages;	// since connecting to this server
@@ -210,13 +204,12 @@ typedef struct
 								// a lerp point for other data
 	double		oldtime;		// previous cl.time, time-oldtime is used
 								// to decay light values and smooth step ups
+	double		ctime;			// Baker 3.75 - joe: copy of cl.time, to avoid incidents caused by rewind
 	
 
 	float		last_received_message;	// (realtime) for net trouble icon
 
-//
 // information that is static for the entire time connected to a server
-//
 	struct model_s		*model_precache[MAX_MODELS];
 	struct sfx_s		*sound_precache[MAX_SOUNDS];
 
@@ -257,10 +250,9 @@ typedef struct
 #endif
 } client_state_t;
 
+extern	client_state_t	cl;
 
-//
 // cvars
-//
 extern	cvar_t	cl_name;
 extern	cvar_t	cl_color;
 
@@ -276,8 +268,6 @@ extern	cvar_t	cl_pitchspeed;
 
 extern	cvar_t	cl_anglespeedkey;
 
-extern	cvar_t	cl_autofire;
-
 extern	cvar_t	cl_shownet;
 extern	cvar_t	cl_nolerp;
 
@@ -291,11 +281,11 @@ extern	cvar_t	m_yaw;
 extern	cvar_t	m_forward;
 extern	cvar_t	m_side;
 
+extern	cvar_t	cl_demorewind;
+extern	cvar_t	cl_demospeed;
 
 #define	MAX_TEMP_ENTITIES	64			// lightning bolts, etc
 #define	MAX_STATIC_ENTITIES	128			// torches, etc
-
-extern	client_state_t	cl;
 
 // FIXME, allocate dynamically
 extern	efrag_t			cl_efrags[MAX_EFRAGS];
@@ -308,9 +298,7 @@ extern	beam_t			cl_beams[MAX_BEAMS];
 
 //=============================================================================
 
-//
-// cl_main
-//
+// cl_main.c
 dlight_t *CL_AllocDlight (int key);
 void	CL_DecayLights (void);
 
@@ -330,9 +318,7 @@ void CL_NextDemo (void);
 extern	int				cl_numvisedicts;
 extern	entity_t		*cl_visedicts[MAX_VISEDICTS];
 
-//
-// cl_input
-//
+// cl_input.c
 typedef struct
 {
 	int		down[2];		// key nums holding it down
@@ -344,45 +330,34 @@ extern 	kbutton_t 	in_strafe;
 extern 	kbutton_t 	in_speed;
 extern	kbutton_t	in_attack; // JPG - added this for completeness
 
+
 void CL_InitInput (void);
 void CL_SendCmd (void);
 void CL_SendMove (usercmd_t *cmd);
 void CL_SendLagMove (void); // JPG - synthetic lag
 
-void CL_ParseTEnt (void);
-void CL_UpdateTEnts (void);
-
 void CL_ClearState (void);
-
 
 int  CL_ReadFromServer (void);
 void CL_WriteToServer (usercmd_t *cmd);
 void CL_BaseMove (usercmd_t *cmd);
 
-
 float CL_KeyState (kbutton_t *key);
 char *Key_KeynumToString (int keynum);
 
-//
 // cl_demo.c
-//
 void CL_StopPlayback (void);
 int CL_GetMessage (void);
-
 void CL_Stop_f (void);
 void CL_Record_f (void);
 void CL_PlayDemo_f (void);
 void CL_TimeDemo_f (void);
 
-//
 // cl_parse.c
-//
 void CL_ParseServerMessage (void);
 void CL_NewTranslation (int slot);
 
-//
-// view
-//
+// view.c
 void V_StartPitchDrift (void);
 void V_StopPitchDrift (void);
 
@@ -392,9 +367,8 @@ void V_Register (void);
 void V_ParseDamage (void);
 void V_SetContentsColor (int contents);
 
-
-//
-// cl_tent
-//
+// cl_tent.c
 void CL_InitTEnts (void);
+void CL_ParseTEnt (void);
+void CL_UpdateTEnts (void);
 void CL_SignonReply (void);

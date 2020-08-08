@@ -195,7 +195,6 @@ keyname_t keynames[] =
 ==============================================================================
 */
 
-
 /*
 ====================
 Key_Console
@@ -309,6 +308,7 @@ void Key_Console (int key)
 		return;
 	}
 
+
 		// JPG 1.05 - fixed tab completion
 	if (key == K_TAB)
 	{
@@ -351,25 +351,6 @@ void Key_Console (int key)
 		return;
 	}
 
-	/*
-	if (key == K_TAB)
-	{	// command completion
-		cmd = Cmd_CompleteCommand (key_lines[edit_line]+1);
-		if (!cmd)
-			cmd = Cvar_CompleteVariable (key_lines[edit_line]+1);
-		if (cmd)
-		{
-			strcpy (key_lines[edit_line]+1, cmd);
-			key_linepos = strlen(cmd)+1;
-			key_lines[edit_line][key_linepos] = ' ';
-			key_linepos++;
-			key_lines[edit_line][key_linepos] = 0;
-			return;
-		}
-	}
-	*/
-
-
 	if (key == K_BACKSPACE || key == K_LEFTARROW)
 	{
 		if (key_linepos > 1)
@@ -393,13 +374,14 @@ void Key_Console (int key)
 
 	if (key == K_DOWNARROW)
 	{
-		if (history_line == edit_line) return;
+		if (history_line == edit_line) 
+			return;
 		do
 		{
 			history_line = (history_line + 1) & 31;
 		}
-		while (history_line != edit_line
-			&& !key_lines[history_line][1]);
+		while (history_line != edit_line && !key_lines[history_line][1]);
+
 		if (history_line == edit_line)
 		{
 			key_lines[edit_line][0] = ']';
@@ -463,6 +445,12 @@ qboolean team_message = false;
 void Key_Message (int key)
 {
 	static int chat_bufferlen = 0;
+	// JPG - modified FrikaC's code for pasting from clipboard
+#ifdef _WIN32
+	HANDLE  th;
+	char	*s;
+#endif
+	// end mod
 
 	if (key == K_ENTER)
 	{
@@ -519,7 +507,8 @@ the given string.  Single ascii characters return themselves, while
 the K_* names are matched up.
 ===================
 */
-int Key_StringToKeynum (char *str)
+int 
+Key_StringToKeynum (char *str)
 {
 	keyname_t	*kn;
 
@@ -579,7 +568,6 @@ char *Key_KeynumToString (int keynum)
 	return "<UNKNOWN KEYNUM>";
 }
 
-
 /*
 ===================
 Key_SetBinding
@@ -594,8 +582,7 @@ void Key_SetBinding (int keynum, char *binding)
 		return;
 
 // free old bindings
-	if (keybindings[keynum])
-	{
+	if (keybindings[keynum]) {
 		Z_Free (keybindings[keynum]);
 		keybindings[keynum] = NULL;
 	}
@@ -650,6 +637,25 @@ void Key_Unbindall_f (void)
 			Key_SetBinding (i, "");
 }
 
+/*
+============
+Key_Bindlist_f -- johnfitz
+============
+*/
+void Key_Bindlist_f (void)
+{
+	int		i, count;
+
+	count = 0;
+	for (i=0 ; i<256 ; i++)
+		if (keybindings[i])
+			if (*keybindings[i])
+			{
+				Con_SafePrintf ("   %s \"%s\"\n", Key_KeynumToString(i), keybindings[i]);
+				count++;
+			}
+	Con_SafePrintf ("%i bindings\n", count);
+}
 
 /*
 ===================
@@ -707,6 +713,7 @@ void Key_WriteBindings (FILE *f)
 {
 	int		i;
 
+	fprintf (f, "\n// Key bindings\n\n");
 	for (i=0 ; i<256 ; i++)
 		if (keybindings[i])
 			if (*keybindings[i])
@@ -807,10 +814,10 @@ void Key_Init (void)
 //
 // register our functions
 //
+	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
 	Cmd_AddCommand ("bind",Key_Bind_f);
 	Cmd_AddCommand ("unbind",Key_Unbind_f);
 	Cmd_AddCommand ("unbindall",Key_Unbindall_f);
-
 
 }
 
@@ -853,18 +860,21 @@ void Key_Event (int key, qboolean down)
 
 		// JPG 1.05 - added K_PGUP, K_PGDN, K_TAB and check to make sure that key_dest isn't key_game
 		// JPG 3.02 - added con_forcedup check
-		if ((key_repeats[key] > 1) && ((key != K_BACKSPACE && key != K_PAUSE && key != K_PGUP && key != K_PGDN && key != K_TAB) ||
-			((key_dest == key_game) && !con_forcedup)))
+		if ((key_repeats[key] > 1) && ((key != K_BACKSPACE && key != K_PAUSE && key != K_PGUP && key != K_PGDN && key != K_TAB) || ((key_dest == key_game) && !con_forcedup)))
 		{
 			return;	// ignore most autorepeats
 		}
 
-		if (key >= 200 && !keybindings[key])
+		if (key >= K_MOUSE4  && key<= K_MOUSE5 && !keybindings[key])
 			Con_Printf ("%s is unbound, hit F4 to set.\n", Key_KeynumToString (key) );
 	}
 
 	if (key == K_SHIFT)
+	{
+
 		shift_down = down;
+	}
+
 
 //
 // handle escape specialy, so the user can never unbind it
@@ -900,7 +910,7 @@ void Key_Event (int key, qboolean down)
 //
 	if (!down)
 	{
-		kb = keybindings[key];
+		kb = keybindings[key];  // Baker 3.703 is this right
 		if (kb && kb[0] == '+')
 		{
 #if defined (__APPLE__) || defined (MACOSX)

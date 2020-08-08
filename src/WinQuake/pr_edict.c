@@ -156,6 +156,7 @@ ddef_t *ED_GlobalAtOfs (int ofs)
 		if (def->ofs == ofs)
 			return def;
 	}
+
 	return NULL;
 }
 
@@ -175,6 +176,7 @@ ddef_t *ED_FieldAtOfs (int ofs)
 		if (def->ofs == ofs)
 			return def;
 	}
+
 	return NULL;
 }
 
@@ -194,6 +196,7 @@ ddef_t *ED_FindField (char *name)
 		if (!strcmp(pr_strings + def->s_name,name) )
 			return def;
 	}
+
 	return NULL;
 }
 
@@ -214,6 +217,7 @@ ddef_t *ED_FindGlobal (char *name)
 		if (!strcmp(pr_strings + def->s_name,name) )
 			return def;
 	}
+
 	return NULL;
 }
 
@@ -294,6 +298,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, "%s", pr_strings + val->string);
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	case ev_entity:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "entity %i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)) );
@@ -301,6 +306,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, "entity %i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)) );
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	case ev_function:
 		f = pr_functions + val->function;
 #if defined (__APPLE__) || defined (MACOSX)
@@ -309,6 +315,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, "%s()", pr_strings + f->s_name);
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	case ev_field:
 		def = ED_FieldAtOfs ( val->_int );
 #if defined (__APPLE__) || defined (MACOSX)
@@ -317,6 +324,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, ".%s", pr_strings + def->s_name);
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	case ev_void:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "void");
@@ -324,6 +332,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, "void");
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	case ev_float:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "%5.1f", val->_float);
@@ -331,6 +340,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, "%5.1f", val->_float);
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	case ev_vector:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "'%5.1f %5.1f %5.1f'", val->vector[0], val->vector[1], val->vector[2]);
@@ -338,6 +348,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, "'%5.1f %5.1f %5.1f'", val->vector[0], val->vector[1], val->vector[2]);
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	case ev_pointer:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "pointer");
@@ -345,6 +356,7 @@ char *PR_ValueString (etype_t type, eval_t *val)
 		sprintf (line, "pointer");
 #endif /* __APPLE__ ||ÊMACOSX */
 		break;
+
 	default:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "bad type %i", type);
@@ -382,6 +394,7 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 		sprintf (line, "%s", pr_strings + val->string);
 #endif /* __APPLE__ || MACOSX */
 		break;
+
 	case ev_entity:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "%i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)));
@@ -389,6 +402,7 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 		sprintf (line, "%i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)));
 #endif /* __APPLE__ || MACOSX */
 		break;
+
 	case ev_function:
 		f = pr_functions + val->function;
 #if defined (__APPLE__) || defined (MACOSX)
@@ -397,6 +411,7 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 		sprintf (line, "%s", pr_strings + f->s_name);
 #endif /* __APPLE__ || MACOSX */
 		break;
+
 	case ev_field:
 		def = ED_FieldAtOfs ( val->_int );
 #if defined (__APPLE__) || defined (MACOSX)
@@ -405,6 +420,7 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 		sprintf (line, "%s", pr_strings + def->s_name);
 #endif /* __APPLE__ || MACOSX */
 		break;
+
 	case ev_void:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "void");
@@ -412,6 +428,7 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 		sprintf (line, "void");
 #endif /* __APPLE__ || MACOSX */
 		break;
+
 	case ev_float:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "%f", val->_float);
@@ -419,6 +436,7 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 		sprintf (line, "%f", val->_float);
 #endif /* __APPLE__ || MACOSX */
 		break;
+
 	case ev_vector:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "%f %f %f", val->vector[0], val->vector[1], val->vector[2]);
@@ -426,6 +444,7 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 		sprintf (line, "%f %f %f", val->vector[0], val->vector[1], val->vector[2]);
 #endif /* __APPLE__ || MACOSX */
 		break;
+
 	default:
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line, 256, "bad type %i", type);
@@ -455,8 +474,7 @@ char *PR_GlobalString (int ofs)
 	static char	line[128];
 
 	val = (void *)&pr_globals[ofs];
-	def = ED_GlobalAtOfs(ofs);
-	if (!def)
+	if (!(def = ED_GlobalAtOfs(ofs)))
 #if defined (__APPLE__) || defined (MACOSX)
 		snprintf (line,128,"%i(???)", ofs);
 #else
@@ -518,12 +536,9 @@ For debugging
 */
 void ED_Print (edict_t *ed)
 {
-	int		l;
+	int		l, *v, i, j, type;
 	ddef_t	*d;
-	int		*v;
-	int		i, j;
 	char	*name;
-	int		type;
 
 	if (ed->free)
 	{
@@ -569,10 +584,8 @@ For savegames
 void ED_Write (FILE *f, edict_t *ed)
 {
 	ddef_t	*d;
-	int		*v;
-	int		i, j;
+	int	*v, i, j, type;
 	char	*name;
-	int		type;
 
 	fprintf (f, "{\n");
 
@@ -656,9 +669,8 @@ For debugging
 */
 void ED_Count (void)
 {
-	int		i;
+	int		i, active, models, solid, step;
 	edict_t	*ent;
-	int		active, models, solid, step;
 
 	active = models = solid = step = 0;
 	for (i=0 ; i<sv.num_edicts ; i++)
@@ -700,9 +712,8 @@ ED_WriteGlobals
 void ED_WriteGlobals (FILE *f)
 {
 	ddef_t		*def;
-	int			i;
+	int			i, type;
 	char		*name;
-	int			type;
 
 	fprintf (f,"{\n");
 	for (i=0 ; i<progs->numglobaldefs ; i++)
@@ -713,9 +724,7 @@ void ED_WriteGlobals (FILE *f)
 			continue;
 		type &= ~DEF_SAVEGLOBAL;
 
-		if (type != ev_string
-		&& type != ev_float
-		&& type != ev_entity)
+		if (type != ev_string && type != ev_float && type != ev_entity)
 			continue;
 
 		name = pr_strings + def->s_name;
@@ -747,15 +756,13 @@ void ED_ParseGlobals (char *data)
 		strcpy (keyname, com_token);
 
 	// parse value
-		data = COM_Parse (data);
-		if (!data)
+		if (!(data = COM_Parse (data)))
 			Sys_Error ("ED_ParseEntity: EOF without closing brace");
 
 		if (com_token[0] == '}')
 			Sys_Error ("ED_ParseEntity: closing brace without data");
 
-		key = ED_FindGlobal (keyname);
-		if (!key)
+		if (!(key = ED_FindGlobal (keyname)))
 		{
 			Con_Printf ("'%s' is not a global\n", keyname);
 			continue;
@@ -788,10 +795,7 @@ char *ED_NewString (char *string)
 		if (string[i] == '\\' && i < l-1)
 		{
 			i++;
-			if (string[i] == 'n')
-				*new_p++ = '\n';
-			else
-				*new_p++ = '\\';
+			*new_p++ = (string[i] == 'n') ? '\n' : '\\';
 		}
 		else
 			*new_p++ = string[i];
@@ -802,12 +806,12 @@ char *ED_NewString (char *string)
 
 
 /*
-=============
-ED_ParseEval
+==============
+ED_ParseEpair
 
 Can parse either fields or globals
 returns false if error
-=============
+==============
 */
 qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s)
 {
@@ -849,8 +853,7 @@ qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s)
 		break;
 
 	case ev_field:
-		def = ED_FindField (s);
-		if (!def)
+		if (!(def = ED_FindField (s)))
 		{
 			Con_Printf ("Can't find field %s\n", s);
 			return false;
@@ -859,8 +862,7 @@ qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s)
 		break;
 
 	case ev_function:
-		func = ED_FindFunction (s);
-		if (!func)
+		if (!(func = ED_FindFunction (s)))
 		{
 			Con_Printf ("Can't find function %s\n", s);
 			return false;
@@ -871,6 +873,7 @@ qboolean	ED_ParseEpair (void *base, ddef_t *key, char *s)
 	default:
 		break;
 	}
+
 	return true;
 }
 
@@ -923,7 +926,7 @@ if (!strcmp(com_token, "light"))
 
 		strcpy (keyname, com_token);
 
-		// another hack to fix heynames with trailing spaces
+		// another hack to fix keynames with trailing spaces
 		n = strlen(keyname);
 		while (n && keyname[n-1] == ' ')
 		{
@@ -932,8 +935,7 @@ if (!strcmp(com_token, "light"))
 		}
 
 	// parse value
-		data = COM_Parse (data);
-		if (!data)
+		if (!(data = COM_Parse (data)))
 			Sys_Error ("ED_ParseEntity: EOF without closing brace");
 
 		if (com_token[0] == '}')
@@ -946,8 +948,7 @@ if (!strcmp(com_token, "light"))
 		if (keyname[0] == '_')
 			continue;
 
-		key = ED_FindField (keyname);
-		if (!key)
+		if (!(key = ED_FindField (keyname)))
 		{
 			Con_Printf ("'%s' is not a field\n", keyname);
 			continue;
@@ -956,6 +957,7 @@ if (!strcmp(com_token, "light"))
 if (anglehack)
 {
 char	temp[32];
+
 #if defined (__APPLE__) || defined (MACOSX)
 strncpy (temp, com_token, 32);
 snprintf (com_token, 1024, "0 %s 0", temp);
@@ -1011,10 +1013,7 @@ void ED_LoadFromFile (char *data)
 		if (com_token[0] != '{')
 			Sys_Error ("ED_LoadFromFile: found %s when expecting {",com_token);
 
-		if (!ent)
-			ent = EDICT_NUM(0);
-		else
-			ent = ED_Alloc ();
+		ent = (!ent) ? EDICT_NUM(0) : ED_Alloc ();
 		data = ED_ParseEdict (data, ent);
 
 // remove things from different skill levels or deathmatch
@@ -1036,9 +1035,7 @@ void ED_LoadFromFile (char *data)
 			continue;
 		}
 
-//
 // immediately call spawn function
-//
 		if (!ent->v.classname)
 		{
 			Con_Printf ("No classname for:\n");
@@ -1081,9 +1078,9 @@ void PR_LoadProgs (void)
 
 	CRC_Init (&pr_crc);
 
-	progs = (dprograms_t *)COM_LoadHunkFile ("progs.dat");
-	if (!progs)
+	if (!(progs = (dprograms_t *)COM_LoadHunkFile ("progs.dat")))
 		Sys_Error ("PR_LoadProgs: couldn't load progs.dat");
+
 	Con_DPrintf ("Programs occupy %iK.\n", com_filesize/1024);
 
 	for (i=0 ; i<com_filesize ; i++)
@@ -1095,6 +1092,7 @@ void PR_LoadProgs (void)
 
 	if (progs->version != PROG_VERSION)
 		Sys_Error ("progs.dat has wrong version number (%i should be %i)", progs->version, PROG_VERSION);
+
 	if (progs->crc != PROGHEADER_CRC)
 		Sys_Error ("progs.dat system vars have been modified, progdefs.h is out of date");
 
@@ -1173,12 +1171,11 @@ void PR_Init (void)
 	Cvar_RegisterVariable (&saved4, NULL);
 }
 
-
-
 edict_t *EDICT_NUM(int n)
 {
 	if (n < 0 || n >= sv.max_edicts)
 		Sys_Error ("EDICT_NUM: bad number %i", n);
+
 	return (edict_t *)((byte *)sv.edicts+ (n)*pr_edict_size);
 }
 
@@ -1191,5 +1188,6 @@ int NUM_FOR_EDICT(edict_t *e)
 
 	if (b < 0 || b >= sv.num_edicts)
 		Sys_Error ("NUM_FOR_EDICT: bad pointer");
+
 	return b;
 }

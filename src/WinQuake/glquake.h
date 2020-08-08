@@ -171,17 +171,13 @@ extern	mplane_t	frustum[4];
 extern	int		c_brush_polys, c_alias_polys;
 
 
-//
 // view origin
-//
 extern	vec3_t	vup;
 extern	vec3_t	vpn;
 extern	vec3_t	vright;
 extern	vec3_t	r_origin;
 
-//
 // screen size info
-//
 extern	refdef_t	r_refdef;
 extern	mleaf_t		*r_viewleaf, *r_oldviewleaf;
 extern	texture_t	*r_notexture_mip;
@@ -221,6 +217,10 @@ extern	cvar_t	gl_reporttjunctions;
 extern	cvar_t	gl_flashblend;
 extern	cvar_t	gl_nocolors;
 extern	cvar_t	gl_doubleeyes;
+extern	cvar_t	gl_ringalpha;
+extern  cvar_t  gl_interpolate_animation;
+extern  cvar_t  gl_interpolate_transform;
+extern  cvar_t  gl_interpolate_weapon;
 
 extern	int		gl_lightmap_format;
 extern	int		gl_solid_format;
@@ -243,9 +243,7 @@ extern	const char *gl_extensions;
 #if defined(__APPLE__) || defined(MACOSX)
 extern void R_TranslatePlayerSkin (int playernum);
 extern void GL_Bind (int texnum);
-extern void GL_CheckTextureRAM (GLenum theTarget, GLint theLevel, GLint theInternalFormat, GLsizei theWidth,
-                                GLsizei theHeight, GLsizei theDepth , GLint theBorder, GLenum theFormat,
-                                GLenum theType);
+extern void GL_CheckTextureRAM (GLenum theTarget, GLint theLevel, GLint theInternalFormat, GLsizei theWidth, GLsizei theHeight, GLsizei theDepth , GLint theBorder, GLenum theFormat, GLenum theType);
 #else
 void R_TranslatePlayerSkin (int playernum);
 void GL_Bind (int texnum);

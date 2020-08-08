@@ -38,16 +38,16 @@ cvar_t	scr_ofsx = {"scr_ofsx","0", false};
 cvar_t	scr_ofsy = {"scr_ofsy","0", false};
 cvar_t	scr_ofsz = {"scr_ofsz","0", false};
 
-cvar_t	cl_rollspeed = {"cl_rollspeed", "200"};
-cvar_t	cl_rollangle = {"cl_rollangle", "2.0"};
+cvar_t	cl_rollspeed = {"cl_rollspeed", "200", true};
+cvar_t	cl_rollangle = {"cl_rollangle", "0", true}; // Quake classic default = 2.0
 
-cvar_t	cl_bob = {"cl_bob","0.02", false};
-cvar_t	cl_bobcycle = {"cl_bobcycle","0.6", false};
-cvar_t	cl_bobup = {"cl_bobup","0.5", false};
+cvar_t	cl_bob = {"cl_bob","0", true}; // Quake classic default = 0.02
+cvar_t	cl_bobcycle = {"cl_bobcycle","0.6", false}; // Leave it
+cvar_t	cl_bobup = {"cl_bobup","0", false}; // Quake classic default is 0.5
 
-cvar_t	v_kicktime = {"v_kicktime", "0.5", false};
-cvar_t	v_kickroll = {"v_kickroll", "0.6", false};
-cvar_t	v_kickpitch = {"v_kickpitch", "0.6", false};
+cvar_t	v_kicktime = {"v_kicktime", "0", true};  //"0.5", true};  // Baker 3.80x - Save to config
+cvar_t	v_kickroll = {"v_kickroll", "0", true};  //"0.6", true};  // Baker 3.80x - Save to config
+cvar_t	v_kickpitch = {"v_kickpitch", "0", true};  //"0.6", true};  // Baker 3.80x - Save to config
 cvar_t	v_gunkick = {"v_gunkick", "0", true};
 
 cvar_t	v_iyaw_cycle = {"v_iyaw_cycle", "2", false};
@@ -59,18 +59,18 @@ cvar_t	v_ipitch_level = {"v_ipitch_level", "0.3", false};
 
 cvar_t	v_idlescale = {"v_idlescale", "0", false};
 
-cvar_t	crosshair = {"crosshair", "0", true};
-cvar_t	cl_crossx = {"cl_crossx", "0", false};
-cvar_t	cl_crossy = {"cl_crossy", "0", false};
-
+cvar_t	crosshair = {"crosshair", "1", true};
+cvar_t	cl_crosshaircentered = {"cl_crosshaircentered", "1", true}; // Baker 3.60 - Optional centered crosshair
+cvar_t	cl_crossx = {"cl_crossx", "0", true};  // Baker 3.80x - Save to config
+cvar_t	cl_crossy = {"cl_crossy", "0", true};  // Baker 3.80x - Save to config
 cvar_t	gl_cshiftpercent = {"gl_cshiftpercent", "100", false};
 
 // JPG 1.05 - palette changes
-cvar_t	pq_waterblend = {"pq_waterblend", "1"};
-cvar_t	pq_quadblend = {"pq_quadblend", "1"};
-cvar_t	pq_ringblend = {"pq_ringblend", "1"};
-cvar_t	pq_pentblend = {"pq_pentblend", "1"};
-cvar_t	pq_suitblend = {"pq_suitblend", "1"};
+cvar_t	pq_waterblend = {"pq_waterblend", "0", true};
+cvar_t	pq_quadblend = {"pq_quadblend", "0.3", true};
+cvar_t	pq_ringblend = {"pq_ringblend", "0", true};
+cvar_t	pq_pentblend = {"pq_pentblend", "0.3", true};
+cvar_t	pq_suitblend = {"pq_suitblend", "0.3", true};
 #ifndef GLQUAKE
 cvar_t	r_polyblend = {"r_polyblend", "1"};		// JPG 3.30 - winquake version of r_polyblend
 #endif
@@ -90,23 +90,14 @@ vec3_t	forward, right, up;
 
 float V_CalcRoll (vec3_t angles, vec3_t velocity)
 {
-	float	sign;
-	float	side;
-	float	value;
+	float	sign, side;
 
 	AngleVectors (angles, forward, right, up);
 	side = DotProduct (velocity, right);
 	sign = side < 0 ? -1 : 1;
 	side = fabs(side);
 
-	value = cl_rollangle.value;
-//	if (cl.inwater)
-//		value *= 6;
-
-	if (side < cl_rollspeed.value)
-		side = side * value / cl_rollspeed.value;
-	else
-		side = value;
+	side = (side < cl_rollspeed.value) ? side * cl_rollangle.value / cl_rollspeed.value : cl_rollangle.value;
 
 	return side*sign;
 }
@@ -131,7 +122,6 @@ float V_CalcBob (void)
 // bob is proportional to velocity in the xy plane
 // (don't count Z, or jumping messes it up)
 	bob = sqrt(cl.velocity[0]*cl.velocity[0] + cl.velocity[1]*cl.velocity[1]) * cl_bob.value;
-//Con_Printf ("speed: %5.1f\n", Length(cl.velocity));
 	bob = bob*0.3 + bob*0.7*sin(cycle);
 	if (bob > 4)
 		bob = 4;
@@ -147,12 +137,9 @@ cvar_t	v_centerspeed = {"v_centerspeed","500"};
 
 void V_StartPitchDrift (void)
 {
-#if 1
 	if (cl.laststop == cl.time)
-	{
 		return;		// something else is keeping it from drifting
-	}
-#endif
+
 	if (cl.nodrift || !cl.pitchvel)
 	{
 		cl.pitchvel = v_centerspeed.value;
@@ -201,9 +188,8 @@ void V_DriftPitch (void)
 			cl.driftmove += host_frametime;
 
 		if ( cl.driftmove > v_centermove.value)
-		{
 			V_StartPitchDrift ();
-		}
+
 		return;
 	}
 
@@ -289,6 +275,9 @@ void BuildGammaTable (float g)
 V_CheckGamma
 =================
 */
+#ifdef D3DQUAKE
+void d3dSetGammaRamp(const unsigned char* gammaTable);
+#endif
 qboolean V_CheckGamma (void)
 {
 	static float oldgammavalue;
@@ -300,6 +289,9 @@ qboolean V_CheckGamma (void)
 	BuildGammaTable (v_gamma.value);
 	vid.recalc_refdef = 1;				// force a surface cache flush
 
+#ifdef D3DQUAKE
+	d3dSetGammaRamp(gammatable);
+#endif
 	return true;
 }
 
@@ -310,13 +302,10 @@ V_ParseDamage
 */
 void V_ParseDamage (void)
 {
-	int		armor, blood;
-	vec3_t	from;
-	int		i;
-	vec3_t	forward, right, up;
+	int		i, armor, blood;
+	vec3_t	from, forward, right, up;
 	entity_t	*ent;
-	float	side;
-	float	count;
+	float	side, count;
 
 	armor = MSG_ReadByte ();
 	blood = MSG_ReadByte ();
@@ -478,10 +467,8 @@ void V_CalcBlend (void)
 	float	r, g, b, a, a2;
 	int		j;
 
-	r = 0;
-	g = 0;
-	b = 0;
-	a = 0;
+	r = g = b = a = 0;
+
 
 	for (j=0 ; j<NUM_CSHIFTS ; j++)
 	{
@@ -521,28 +508,30 @@ V_UpdatePalette
 void V_UpdatePalette (void)
 {
 	int		i, j;
-	qboolean	new;
+	qboolean	blend_changed;
 	byte	*basepal, *newpal;
 	byte	pal[768];
 	float	r,g,b,a;
 	int		ir, ig, ib;
-	// qboolean force; JPG commented out a portion of this function (woods)
+#ifdef D3DQUAKE
+	qboolean force;
+#endif
 
 	V_CalcPowerupCshift ();
 
-	new = false;
+	blend_changed = false;
 
 	for (i=0 ; i<NUM_CSHIFTS ; i++)
 	{
 		if (cl.cshifts[i].percent != cl.prev_cshifts[i].percent)
 		{
-			new = true;
+			blend_changed = true;
 			cl.prev_cshifts[i].percent = cl.cshifts[i].percent;
 		}
 		for (j=0 ; j<3 ; j++)
 			if (cl.cshifts[i].destcolor[j] != cl.prev_cshifts[i].destcolor[j])
 			{
-				new = true;
+				blend_changed = true;
 				cl.prev_cshifts[i].destcolor[j] = cl.cshifts[i].destcolor[j];
 			}
 	}
@@ -557,14 +546,14 @@ void V_UpdatePalette (void)
 	if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
 		cl.cshifts[CSHIFT_BONUS].percent = 0;
 
-/* JPG not commented (woods)
-
+#ifdef D3DQUAKE
 	force = V_CheckGamma ();
-	if (!new && !force)
+	if (!blend_changed && !force)
 		return;
-		*/
-	if (!new)
+#else
+	if (!blend_changed)
 		return;
+#endif
 
 	V_CalcBlend ();
 
@@ -613,7 +602,7 @@ void V_UpdatePalette (void)
 void V_UpdatePalette (void)
 {
 	int		i, j;
-	qboolean	new;
+	qboolean	blend_changed;
 	byte	*basepal, *newpal;
 	byte	pal[768];
 	int		r,g,b;
@@ -621,19 +610,19 @@ void V_UpdatePalette (void)
 
 	V_CalcPowerupCshift ();
 
-	new = false;
+	blend_changed = false;
 
 	for (i=0 ; i<NUM_CSHIFTS ; i++)
 	{
 		if (cl.cshifts[i].percent != cl.prev_cshifts[i].percent)
 		{
-			new = true;
+			blend_changed = true;
 			cl.prev_cshifts[i].percent = cl.cshifts[i].percent;
 		}
 		for (j=0 ; j<3 ; j++)
 			if (cl.cshifts[i].destcolor[j] != cl.prev_cshifts[i].destcolor[j])
 			{
-				new = true;
+				blend_changed = true;
 				cl.prev_cshifts[i].destcolor[j] = cl.cshifts[i].destcolor[j];
 			}
 	}
@@ -649,7 +638,7 @@ void V_UpdatePalette (void)
 		cl.cshifts[CSHIFT_BONUS].percent = 0;
 
 	force = V_CheckGamma ();
-	if (!new && !force)
+	if (!blend_changed && !force)
 		return;
 
 	basepal = host_basepal;
@@ -679,11 +668,8 @@ void V_UpdatePalette (void)
 	}
 
 	VID_ShiftPalette (pal);
-
-
 }
 #endif	// !GLQUAKE
-
 
 /*
 ==============================================================================
@@ -770,21 +756,14 @@ void V_BoundOffsets (void)
 
 	ent = &cl_entities[cl.viewentity];
 
-// absolutely bound refresh reletive to entity clipping hull
+// absolutely bound refresh relative to entity clipping hull
 // so the view can never be inside a solid wall
-
-	if (r_refdef.vieworg[0] < ent->origin[0] - 14)
-		r_refdef.vieworg[0] = ent->origin[0] - 14;
-	else if (r_refdef.vieworg[0] > ent->origin[0] + 14)
-		r_refdef.vieworg[0] = ent->origin[0] + 14;
-	if (r_refdef.vieworg[1] < ent->origin[1] - 14)
-		r_refdef.vieworg[1] = ent->origin[1] - 14;
-	else if (r_refdef.vieworg[1] > ent->origin[1] + 14)
-		r_refdef.vieworg[1] = ent->origin[1] + 14;
-	if (r_refdef.vieworg[2] < ent->origin[2] - 22)
-		r_refdef.vieworg[2] = ent->origin[2] - 22;
-	else if (r_refdef.vieworg[2] > ent->origin[2] + 30)
-		r_refdef.vieworg[2] = ent->origin[2] + 30;
+	r_refdef.vieworg[0] = max(r_refdef.vieworg[0], ent->origin[0] - 14);
+	r_refdef.vieworg[0] = min(r_refdef.vieworg[0], ent->origin[0] + 14);
+	r_refdef.vieworg[1] = max(r_refdef.vieworg[1], ent->origin[1] - 14);
+	r_refdef.vieworg[1] = min(r_refdef.vieworg[1], ent->origin[1] + 14);
+	r_refdef.vieworg[2] = max(r_refdef.vieworg[2], ent->origin[2] - 22);
+	r_refdef.vieworg[2] = min(r_refdef.vieworg[2], ent->origin[2] + 30);
 }
 
 /*
@@ -830,11 +809,9 @@ void V_CalcViewRoll (void)
 
 }
 
-
 /*
 ==================
 V_CalcIntermissionRefdef
-
 ==================
 */
 void V_CalcIntermissionRefdef (void)
@@ -851,7 +828,7 @@ void V_CalcIntermissionRefdef (void)
 	VectorCopy (ent->angles, r_refdef.viewangles);
 	view->model = NULL;
 
-// allways idle in intermission
+// always idle in intermission
 	old = v_idlescale.value;
 	v_idlescale.value = 1;
 	V_AddIdle ();
@@ -861,7 +838,6 @@ void V_CalcIntermissionRefdef (void)
 /*
 ==================
 V_CalcRefdef
-
 ==================
 */
 void V_CalcRefdef (void)
@@ -884,10 +860,8 @@ void V_CalcRefdef (void)
 // transform the view offset by the model's matrix to get the offset from
 // model origin for the view
 	// JPG - viewangles -> lerpangles
-	ent->angles[YAW] = cl.lerpangles[YAW];	// the model should face
-										// the view dir
-	ent->angles[PITCH] = -cl.lerpangles[PITCH];	// the model should face
-										// the view dir
+	ent->angles[YAW] = cl.lerpangles[YAW];	// the model should face the view dir
+	ent->angles[PITCH] = -cl.lerpangles[PITCH];	// the model should face the view dir
 
 
 	bob = V_CalcBob ();
@@ -916,9 +890,7 @@ void V_CalcRefdef (void)
 	AngleVectors (angles, forward, right, up);
 
 	for (i=0 ; i<3 ; i++)
-		r_refdef.vieworg[i] += scr_ofsx.value*forward[i]
-			+ scr_ofsy.value*right[i]
-			+ scr_ofsz.value*up[i];
+		r_refdef.vieworg[i] += scr_ofsx.value*forward[i] + scr_ofsy.value*right[i] + scr_ofsz.value*up[i];
 
 
 	V_BoundOffsets ();
@@ -991,6 +963,47 @@ else
 }
 
 /*
+===============
+SCR_DrawVolume - Baker 3.80x -- from JoeQuake
+===============
+*/
+void SCR_DrawVolume (void)
+{
+	int		i, yofs;
+	float		j;
+	char		bar[11];
+	static	float	volume_time = 0;
+	extern qboolean	volume_changed;
+
+	if (realtime < volume_time - 2.0)
+	{
+		volume_time = 0;
+		return;
+	}
+
+	if (volume_changed)
+	{
+		volume_time = realtime + 2.0;
+		volume_changed = false;
+	}
+	else if (realtime > volume_time)
+	{
+		return;
+	}
+
+	for (i = 1, j = 0.1 ; i <= 10 ; i++, j += 0.1)
+		bar[i-1] = ((volume.value +0.05) >= j) ? 139 : 11; // Baker 3.60 + 0.0.5 hack for now
+
+	bar[10] = 0;
+
+		yofs = 8;
+
+	Draw_String (vid.width - 88, yofs, bar);
+	Draw_String (vid.width - 88, yofs + 8, "volume");
+}
+
+
+/*
 ==================
 V_RenderView
 
@@ -1013,8 +1026,8 @@ void V_RenderView (void)
 		Cvar_Set ("scr_ofsz", "0");
 	}
 
-	if (cl.intermission)
-	{	// intermission / finale rendering
+	if (cl.intermission) // intermission / finale rendering
+	{	
 		V_CalcIntermissionRefdef ();
 	}
 	else
@@ -1061,8 +1074,20 @@ void V_RenderView (void)
 
 #ifndef GLQUAKE
 	if (crosshair.value)
-		Draw_Character (scr_vrect.x + scr_vrect.width/2 + cl_crossx.value,
-			scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+');
+	{
+			if (!cl_crosshaircentered.value) {
+				Draw_Character (scr_vrect.x + scr_vrect.width/2 + cl_crossx.value, scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+'); // Standard off-center Quake crosshair
+			} else {
+				Draw_Character (scr_vrect.x + scr_vrect.width / 2 - 4 + cl_crossx.value, scr_vrect.y + scr_vrect.height / 2 - 4 + cl_crossy.value, '+'); // Baker 3.60 - Centered crosshair (FuhQuake)
+			}
+
+	}
+
+//	if (cl_colorshow.value && !cls.demoplayback &&  cl.maxclients>1) {
+//		// Don't display this during demo playback because we actually don't know!
+//		Draw_Fill	(12, 12, 16, 16, Sbar_ColorForMap(((int)cl_color.value) & 15<<4));	// Baker 3.99n: display pants color in top/left
+//	}
+
 #endif
 
 }
@@ -1097,6 +1122,7 @@ void V_Init (void)
 	Cvar_RegisterVariable (&crosshair, NULL);
 	Cvar_RegisterVariable (&cl_crossx, NULL);
 	Cvar_RegisterVariable (&cl_crossy, NULL);
+	Cvar_RegisterVariable (&cl_crosshaircentered, NULL); // Baker 3.60 - centered crosshair
 	Cvar_RegisterVariable (&gl_cshiftpercent, NULL);
 
 	Cvar_RegisterVariable (&scr_ofsx, NULL);

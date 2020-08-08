@@ -54,7 +54,6 @@ static void Slist_Poll(void);
 PollProcedure	slistSendProcedure = {NULL, 0.0, Slist_Send};
 PollProcedure	slistPollProcedure = {NULL, 0.0, Slist_Poll};
 
-
 sizebuf_t		net_message;
 int				net_activeconnections = 0;
 
@@ -76,7 +75,6 @@ char	server_name[MAX_QPATH];								// JPG 3.50 - use the current server if rcon
 char		rcon_buff[RCON_BUFF_SIZE];
 sizebuf_t	rcon_message = {false, false, rcon_buff, RCON_BUFF_SIZE, 0};
 qboolean	rcon_active = false;
-
 
 qboolean	configRestored = false;
 cvar_t	config_com_port = {"_config_com_port", "0x3f8", true};
@@ -106,12 +104,12 @@ double			net_time;
 
 double SetNetTime(void)
 {
-	net_time = Sys_FloatTime();
+	net_time = Sys_DoubleTime();
 	return net_time;
 }
 
 // JPG 3.00 - need this for linux build
-#ifndef WIN32
+#ifndef _WIN32
 unsigned _lrotl (unsigned x, int s)
 {
 	s &= 31;
@@ -123,8 +121,6 @@ unsigned _lrotr (unsigned x, int s)
 	return (x >> s) | (x << (32 - s));
 }
 #endif
-
-
 
 
 /*
@@ -331,7 +327,7 @@ void NET_Slist_f (void)
 	}
 
 	slistInProgress = true;
-	slistStartTime = Sys_FloatTime();
+	slistStartTime = Sys_DoubleTime();
 
 	SchedulePollProcedure(&slistSendProcedure, 0.0);
 	SchedulePollProcedure(&slistPollProcedure, 0.1);
@@ -351,7 +347,7 @@ static void Slist_Send(void)
 		dfunc.SearchForHosts (true);
 	}
 
-	if ((Sys_FloatTime() - slistStartTime) < 0.5)
+	if ((Sys_DoubleTime() - slistStartTime) < 0.5)
 		SchedulePollProcedure(&slistSendProcedure, 0.75);
 }
 
@@ -370,7 +366,7 @@ static void Slist_Poll(void)
 	if (! slistSilent)
 		PrintSlist();
 
-	if ((Sys_FloatTime() - slistStartTime) < 1.5)
+	if ((Sys_DoubleTime() - slistStartTime) < 1.5)
 	{
 		SchedulePollProcedure(&slistPollProcedure, 0.1);
 		return;
@@ -396,8 +392,7 @@ hostcache_t hostcache[HOSTCACHESIZE];
 qsocket_t *NET_Connect (char *host)
 {
 	qsocket_t		*ret;
-	int				n;
-	int				numdrivers = net_numdrivers;
+	int				n, numdrivers = net_numdrivers;
 
 	SetNetTime();
 
@@ -804,12 +799,10 @@ qboolean NET_CanSendMessage (qsocket_t *sock)
 	return r;
 }
 
-
 int NET_SendToAll(sizebuf_t *data, int blocktime)
 {
 	double		start;
-	int			i;
-	int			count = 0;
+	int		i, count = 0;
 	qboolean	state1 [MAX_SCOREBOARD];
 	qboolean	state2 [MAX_SCOREBOARD];
 
@@ -837,7 +830,7 @@ int NET_SendToAll(sizebuf_t *data, int blocktime)
 		}
 	}
 
-	start = Sys_FloatTime();
+	start = Sys_DoubleTime();
 	while (count)
 	{
 		count = 0;
@@ -851,9 +844,7 @@ int NET_SendToAll(sizebuf_t *data, int blocktime)
 					NET_SendMessage(host_client->netconnection, data);
 				}
 				else
-				{
 					NET_GetMessage (host_client->netconnection);
-				}
 				count++;
 				continue;
 			}
@@ -861,23 +852,18 @@ int NET_SendToAll(sizebuf_t *data, int blocktime)
 			if (! state2[i])
 			{
 				if (NET_CanSendMessage (host_client->netconnection))
-				{
 					state2[i] = true;
-				}
 				else
-				{
 					NET_GetMessage (host_client->netconnection);
-				}
 				count++;
 				continue;
 			}
 		}
-		if ((Sys_FloatTime() - start) > blocktime)
+		if ((Sys_DoubleTime() - start) > blocktime)
 			break;
 	}
 	return count;
 }
-
 
 //=============================================================================
 
@@ -886,11 +872,9 @@ int NET_SendToAll(sizebuf_t *data, int blocktime)
 NET_Init
 ====================
 */
-
 void NET_Init (void)
 {
-	int			i;
-	int			controlSocket;
+	int		i, controlSocket;
 	qsocket_t	*s;
 
 	if (COM_CheckParm("-playback"))
@@ -976,7 +960,6 @@ void NET_Init (void)
 	if (*my_tcpip_address)
 		Con_DPrintf("TCP/IP address %s\n", my_tcpip_address);
 
-
 			// JPG 3.20 - cheat free
 	if (pq_cheatfreeEnabled)
 	{
@@ -989,11 +972,6 @@ void NET_Init (void)
 			net_seed = 0x34719;
 	//	Security_SetSeed(net_seed, argv[0]);   // disabled because of argv (woods)
 	}
-
-
-
-
-
 }
 
 /*
@@ -1001,7 +979,6 @@ void NET_Init (void)
 NET_Shutdown
 ====================
 */
-
 void		NET_Shutdown (void)
 {
 	qsocket_t	*sock;
@@ -1011,9 +988,7 @@ void		NET_Shutdown (void)
 	for (sock = net_activeSockets; sock; sock = sock->next)
 		NET_Close(sock);
 
-//
 // shutdown the drivers
-//
 	for (net_driverlevel = 0; net_driverlevel < net_numdrivers; net_driverlevel++)
 	{
 		if (net_drivers[net_driverlevel].initialized == true)
@@ -1030,7 +1005,6 @@ void		NET_Shutdown (void)
 	}
 }
 
-
 static PollProcedure *pollProcedureList = NULL;
 
 void NET_Poll(void)
@@ -1042,7 +1016,7 @@ void NET_Poll(void)
 	{
 		if (serialAvailable)
 		{
-			if (config_com_modem.value == 1.0)
+			if (config_com_modem.value != 0) // Baker 3.99: changed from == 1.0 to != 0
 				useModem = true;
 			else
 				useModem = false;
@@ -1063,12 +1037,11 @@ void NET_Poll(void)
 	}
 }
 
-
 void SchedulePollProcedure(PollProcedure *proc, double timeOffset)
 {
 	PollProcedure *pp, *prev;
 
-	proc->nextTime = Sys_FloatTime() + timeOffset;
+	proc->nextTime = Sys_DoubleTime() + timeOffset;
 	for (pp = pollProcedureList, prev = NULL; pp; pp = pp->next)
 	{
 		if (pp->nextTime >= proc->nextTime)
@@ -1086,7 +1059,6 @@ void SchedulePollProcedure(PollProcedure *proc, double timeOffset)
 	proc->next = pp;
 	prev->next = proc;
 }
-
 
 #ifdef IDGODS
 #define IDNET	0xc0f62800

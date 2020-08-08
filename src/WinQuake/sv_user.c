@@ -43,8 +43,7 @@ usercmd_t	cmd;
 
 cvar_t	sv_idealpitchscale = {"sv_idealpitchscale","0.8"};
 
-cvar_t	pq_fullpitch = {"pq_fullpitch", "0"};	// JPG 2.01
-
+cvar_t	pq_fullpitch = {"pq_fullpitch", "0", true};	// JPG 2.01
 
 /*
 ===============
@@ -54,12 +53,10 @@ SV_SetIdealPitch
 #define	MAX_FORWARD	6
 void SV_SetIdealPitch (void)
 {
-	float	angleval, sinval, cosval;
+	float	angleval, sinval, cosval, z[MAX_FORWARD];
 	trace_t	tr;
 	vec3_t	top, bottom;
-	float	z[MAX_FORWARD];
-	int		i, j;
-	int		step, dir, steps;
+	int		i, j, step, dir, steps;
 
 	if (!((int)sv_player->v.flags & FL_ONGROUND))
 		return;
@@ -118,15 +115,12 @@ void SV_SetIdealPitch (void)
 /*
 ==================
 SV_UserFriction
-
 ==================
 */
 void SV_UserFriction (void)
 {
-	float	*vel;
-	float	speed, newspeed, control;
+	float	*vel, speed, newspeed, control, friction;
 	vec3_t	start, stop;
-	float	friction;
 	trace_t	trace;
 	
 	vel = velocity;
@@ -168,27 +162,6 @@ SV_Accelerate
 */
 cvar_t	sv_maxspeed = {"sv_maxspeed", "320", false, true};
 cvar_t	sv_accelerate = {"sv_accelerate", "10"};
-#if 0
-void SV_Accelerate (vec3_t wishvel)
-{
-	int			i;
-	float		addspeed, accelspeed;
-	vec3_t		pushvec;
-
-	if (wishspeed == 0)
-		return;
-
-	VectorSubtract (wishvel, velocity, pushvec);
-	addspeed = VectorNormalize (pushvec);
-
-	accelspeed = sv_accelerate.value*host_frametime*addspeed;
-	if (accelspeed > addspeed)
-		accelspeed = addspeed;
-	
-	for (i=0 ; i<3 ; i++)
-		velocity[i] += accelspeed*pushvec[i];	
-}
-#endif
 void SV_Accelerate (void)
 {
 	int			i;
@@ -243,7 +216,6 @@ void DropPunchAngle (void)
 /*
 ===================
 SV_WaterMove
-
 ===================
 */
 void SV_WaterMove (void)
@@ -252,9 +224,7 @@ void SV_WaterMove (void)
 	vec3_t	wishvel;
 	float	speed, newspeed, wishspeed, addspeed, accelspeed;
 
-//
 // user intentions
-//
 	AngleVectors (sv_player->v.v_angle, forward, right, up);
 
 	for (i=0 ; i<3 ; i++)
@@ -273,9 +243,7 @@ void SV_WaterMove (void)
 	}
 	wishspeed *= 0.7;
 
-//
 // water friction
-//
 	speed = Length (velocity);
 	if (speed)
 	{
@@ -285,11 +253,11 @@ void SV_WaterMove (void)
 		VectorScale (velocity, newspeed/speed, velocity);
 	}
 	else
+	{
 		newspeed = 0;
+	}
 	
-//
 // water acceleration
-//
 	if (!wishspeed)
 		return;
 
@@ -308,8 +276,7 @@ void SV_WaterMove (void)
 
 void SV_WaterJump (void)
 {
-	if (sv.time > sv_player->v.teleport_time
-	|| !sv_player->v.waterlevel)
+	if (sv.time > sv_player->v.teleport_time || !sv_player->v.waterlevel)
 	{
 		sv_player->v.flags = (int)sv_player->v.flags & ~FL_WATERJUMP;
 		sv_player->v.teleport_time = 0;
@@ -318,11 +285,9 @@ void SV_WaterJump (void)
 	sv_player->v.velocity[1] = sv_player->v.movedir[1];
 }
 
-
 /*
 ===================
 SV_AirMove
-
 ===================
 */
 void SV_AirMove (void)
@@ -393,13 +358,10 @@ void SV_ClientThink (void)
 
 	DropPunchAngle ();
 	
-//
 // if dead, behave differently
-//
 	if (sv_player->v.health <= 0)
 		return;
 
-//
 // angles
 // show 1/3 the pitch angle and all the roll angle
 	cmd = host_client->cmd;
@@ -418,11 +380,8 @@ void SV_ClientThink (void)
 		SV_WaterJump ();
 		return;
 	}
-//
 // walk
-//
-	if ( (sv_player->v.waterlevel >= 2)
-	&& (sv_player->v.movetype != MOVETYPE_NOCLIP) )
+	if ( (sv_player->v.waterlevel >= 2) && (sv_player->v.movetype != MOVETYPE_NOCLIP) )
 	{
 		SV_WaterMove ();
 		return;
@@ -431,7 +390,6 @@ void SV_ClientThink (void)
 	SV_AirMove ();	
 }
 
-
 /*
 ===================
 SV_ReadClientMove
@@ -439,17 +397,14 @@ SV_ReadClientMove
 */
 void SV_ReadClientMove (usercmd_t *move)
 {
-	int		i;
+	int		i, bits;
 	vec3_t	angle;
-	int		bits;
 	
 // read ping time
-	host_client->ping_times[host_client->num_pings%NUM_PING_TIMES]
-		= sv.time - MSG_ReadFloat ();
+	host_client->ping_times[host_client->num_pings%NUM_PING_TIMES] = sv.time - MSG_ReadFloat ();
 	host_client->num_pings++;
 
 // read current angles	
-
 	if (host_client->netconnection->mod == MOD_PROQUAKE) // JPG - precise aim for ProQuake!!
 	{
 		for (i=0 ; i<3 ; i++)
@@ -489,14 +444,8 @@ void SV_ReadClientMove (usercmd_t *move)
 	host_client->edict->v.button0 = bits & 1;
 	host_client->edict->v.button2 = (bits & 2)>>1;
 
-	i = MSG_ReadByte ();
-	if (i)
+	if ((i = MSG_ReadByte()))
 		host_client->edict->v.impulse = i;
-
-#ifdef QUAKE2
-// read light level
-	host_client->edict->v.light_level = MSG_ReadByte ();
-#endif
 }
 
 /*
@@ -508,12 +457,10 @@ Returns false if the client should be killed
 */
 qboolean SV_ReadClientMessage (void)
 {
-	int		ret;
-	int		cmd;
+	int		ret, cmd;
 	char		*s;
 	
-	do
-	{
+	do {
 nextmsg:
 		ret = NET_GetMessage (host_client->netconnection);
 		if (ret == -1)
@@ -596,6 +543,7 @@ nextmsg:
 					ret = 1;
 				else if (Q_strncasecmp(s, "ban", 3) == 0)
 					ret = 1;
+
 				if (ret == 2)
 					Cbuf_InsertText (s);
 				else if (ret == 1)
@@ -617,7 +565,6 @@ nextmsg:
 	
 	return true;
 }
-
 
 /*
 ==================

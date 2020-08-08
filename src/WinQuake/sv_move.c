@@ -29,7 +29,6 @@ SV_CheckBottom
 
 Returns false if any part of the bottom of the entity is off an edge that
 is not a staircase.
-
 =============
 */
 int c_yes, c_no;
@@ -62,9 +61,8 @@ qboolean SV_CheckBottom (edict_t *ent)
 
 realcheck:
 	c_no++;
-//
+
 // check it for real...
-//
 	start[2] = mins[2];
 	
 // the midpoint must be within 16 of the bottom
@@ -272,20 +270,15 @@ void SV_FixCheckBottom (edict_t *ent)
 	ent->v.flags = (int)ent->v.flags | FL_PARTIALGROUND;
 }
 
-
-
 /*
 ================
 SV_NewChaseDir
-
 ================
 */
 #define	DI_NODIR	-1
 void SV_NewChaseDir (edict_t *actor, edict_t *enemy, float dist)
 {
-	float		deltax,deltay;
-	float			d[3];
-	float		tdir, olddir, turnaround;
+	float		deltax, deltay, d[3], tdir, olddir, turnaround;
 
 	olddir = anglemod( (int)(actor->v.ideal_yaw/45)*45 );
 	turnaround = anglemod(olddir - 180);
@@ -325,20 +318,18 @@ void SV_NewChaseDir (edict_t *actor, edict_t *enemy, float dist)
 		d[2]=tdir;
 	}
 
-	if (d[1]!=DI_NODIR && d[1]!=turnaround 
-	&& SV_StepDirection(actor, d[1], dist))
+	if (d[1]!=DI_NODIR && d[1]!=turnaround && SV_StepDirection(actor, d[1], dist))
 			return;
 
-	if (d[2]!=DI_NODIR && d[2]!=turnaround
-	&& SV_StepDirection(actor, d[2], dist))
+	if (d[2]!=DI_NODIR && d[2]!=turnaround && SV_StepDirection(actor, d[2], dist))
 			return;
 
-/* there is no direct path to the player, so pick another direction */
+// there is no direct path to the player, so pick another direction
 
 	if (olddir!=DI_NODIR && SV_StepDirection(actor, olddir, dist))
 			return;
 
-	if (rand()&1) 	/*randomly determine direction of search*/
+	if (rand()&1) 	// randomly determine direction of search
 	{
 		for (tdir=0 ; tdir<=315 ; tdir += 45)
 			if (tdir!=turnaround && SV_StepDirection(actor, tdir, dist) )
@@ -361,13 +352,11 @@ void SV_NewChaseDir (edict_t *actor, edict_t *enemy, float dist)
 
 	if (!SV_CheckBottom (actor))
 		SV_FixCheckBottom (actor);
-
 }
 
 /*
 ======================
 SV_CloseEnough
-
 ======================
 */
 qboolean SV_CloseEnough (edict_t *ent, edict_t *goal, float dist)
@@ -387,16 +376,12 @@ qboolean SV_CloseEnough (edict_t *ent, edict_t *goal, float dist)
 /*
 ======================
 SV_MoveToGoal
-
 ======================
 */
 void SV_MoveToGoal (void)
 {
 	edict_t		*ent, *goal;
 	float		dist;
-#ifdef QUAKE2
-	edict_t		*enemy;
-#endif
 
 	ent = PROG_TO_EDICT(pr_global_struct->self);
 	goal = PROG_TO_EDICT(ent->v.goalentity);
@@ -409,19 +394,11 @@ void SV_MoveToGoal (void)
 	}
 
 // if the next step hits the enemy, return immediately
-#ifdef QUAKE2
-	enemy = PROG_TO_EDICT(ent->v.enemy);
-	if (enemy != sv.edicts &&  SV_CloseEnough (ent, enemy, dist) )
-#else
 	if ( PROG_TO_EDICT(ent->v.enemy) != sv.edicts &&  SV_CloseEnough (ent, goal, dist) )
-#endif
 		return;
 
 // bump around...
-	if ( (rand()&3)==1 ||
-	!SV_StepDirection (ent, ent->v.ideal_yaw, dist))
-	{
+	if ( (rand()&3)==1 || !SV_StepDirection (ent, ent->v.ideal_yaw, dist))
 		SV_NewChaseDir (ent, goal, dist);
-	}
-}
 
+}

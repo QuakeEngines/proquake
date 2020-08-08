@@ -69,7 +69,9 @@ void R_RemoveEfrags (entity_t *ent)
 				break;
 			}
 			else
+			{
 				prev = &walk->leafnext;
+			}
 		}
 				
 		old = ef;
@@ -96,9 +98,7 @@ void R_SplitEntityOnNode (mnode_t *node)
 	int			sides;
 	
 	if (node->contents == CONTENTS_SOLID)
-	{
 		return;
-	}
 	
 // add an efrag if the node is a leaf
 
@@ -110,8 +110,7 @@ void R_SplitEntityOnNode (mnode_t *node)
 		leaf = (mleaf_t *)node;
 
 // grab an efrag off the free list
-		ef = cl.free_efrags;
-		if (!ef)
+		if (!(ef = cl.free_efrags))
 		{
 			Con_Printf ("Too many efrags!\n");
 			return;		// no free fragments...

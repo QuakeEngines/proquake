@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define	QUAKE_GAME					// as opposed to utilities
 
-#define PROQUAKE_VERSION	3.51 // JPG - added this
+#define PROQUAKE_VERSION	3.55 // JPG - added this
 #define	VERSION				1.09
 #define	GLQUAKE_VERSION		1.00
 #define	D3DQUAKE_VERSION	0.01
@@ -34,11 +34,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 //define	PARANOID				// speed sapping error checking
 
-#ifdef QUAKE2
 #define	GAMENAME		"id1"			// directory to look in by default
-#else
-#define	GAMENAME		"id1"
-#endif
 
 #include <math.h>
 #include <string.h>
@@ -296,7 +292,7 @@ extern	double		realtime;			// not bounded in any way, changed at
 extern double last_angle_time; // JPG - need this for smooth chasecam
 
 // JPG 3.20
-#ifdef WIN32
+#ifdef _WIN32
 extern char	*argv[MAX_NUM_ARGVS];
 #else
 extern char	**argv;
@@ -309,7 +305,7 @@ void Host_Init (quakeparms_t *parms);
 void Host_Shutdown(void);
 void Host_Error (char *error, ...);
 void Host_EndGame (char *message, ...);
-void Host_Frame (float time);
+void Host_Frame (double time);
 void Host_Quit_f (void);
 void Host_ClientCommands (char *fmt, ...);
 void Host_ShutdownServer (qboolean crash);

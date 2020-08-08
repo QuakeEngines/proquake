@@ -117,7 +117,6 @@ Grab six views for environment mapping tests
 void R_Envmap_f (void)
 {
 	byte	buffer[256*256*4];
-//	char	name[1024];
 
 	glDrawBuffer  (GL_FRONT);
 	glReadBuffer  (GL_FRONT);
@@ -174,7 +173,7 @@ void R_Envmap_f (void)
 	GL_EndRendering ();
 }
 
-cvar_t r_waterwarp = {"r_waterwarp", "1"};
+cvar_t r_waterwarp = {"r_waterwarp", "0", true}; // Baker 3.60 - Save this to config now
 
 /*
 ===============
@@ -190,9 +189,10 @@ extern void Test_Init (void);
 
 void R_Init (void)
 {
-//	extern byte *hunk_base;
 	extern cvar_t gl_finish;
 	extern cvar_t r_truegunangle;
+	extern cvar_t r_farclip;
+	extern cvar_t gl_ringalpha;
 
 	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);
 	Cmd_AddCommand ("envmap", R_Envmap_f);
@@ -203,6 +203,7 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_fullbright, NULL);
 	Cvar_RegisterVariable (&r_drawentities, NULL);
 	Cvar_RegisterVariable (&r_drawviewmodel, NULL);
+	Cvar_RegisterVariable (&gl_ringalpha, NULL);
 	Cvar_RegisterVariable (&r_truegunangle, NULL);
 	Cvar_RegisterVariable (&r_shadows, NULL);
 	Cvar_RegisterVariable (&r_mirroralpha, NULL);
@@ -211,6 +212,10 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_novis, NULL);
 	Cvar_RegisterVariable (&r_speeds, NULL);
 	Cvar_RegisterVariable (&r_waterwarp, NULL);
+	Cvar_RegisterVariable (&gl_interpolate_animation, NULL);
+	Cvar_RegisterVariable (&gl_interpolate_transform, NULL);
+	Cvar_RegisterVariable (&gl_interpolate_weapon, NULL);
+	Cvar_RegisterVariable (&r_farclip, NULL);
 
 	Cvar_RegisterVariable (&gl_finish, NULL);
 	Cvar_RegisterVariable (&gl_clear, NULL);
@@ -394,8 +399,7 @@ void R_TranslatePlayerSkin (int playernum)
 		}
 	}
 #if defined (__APPLE__) || defined (MACOSX)
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, scaled_width, scaled_height, 0, 0, GL_RGBA,
-                            GL_UNSIGNED_BYTE);
+        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
@@ -406,6 +410,9 @@ void R_TranslatePlayerSkin (int playernum)
 
 }
 
+#ifdef D3DQUAKE
+void d3dEvictTextures();
+#endif
 
 /*
 ===============
@@ -415,6 +422,10 @@ R_NewMap
 void R_NewMap (void)
 {
 	int		i;
+
+#ifdef D3DQUAKE
+	d3dEvictTextures();
+#endif
 
 	for (i=0 ; i<256 ; i++)
 		d_lightstylevalue[i] = 264;		// normal light value
@@ -466,15 +477,15 @@ void R_TimeRefresh_f (void)
 	glDrawBuffer  (GL_FRONT);
 	glFinish ();
 
-	start = Sys_FloatTime ();
+	start = Sys_DoubleTime ();
 	for (i=0 ; i<128 ; i++)
 	{
-		r_refdef.viewangles[1] = i/128.0*360.0;
+		r_refdef.viewangles[1] = i * (360.0 / 128.0);
 		R_RenderView ();
 	}
 
 	glFinish ();
-	stop = Sys_FloatTime ();
+	stop = Sys_DoubleTime ();
 	time = stop-start;
 	Con_Printf ("%f seconds (%f fps)\n", time, 128/time);
 

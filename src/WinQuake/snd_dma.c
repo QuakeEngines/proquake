@@ -25,12 +25,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "winquake.h"
 #endif
 
+#ifdef _WIN32
+#include "movie.h"
+#endif
+
+
 void S_Play(void);
 void S_PlayVol(void);
 void S_SoundList(void);
 void S_Update_();
 void S_StopAllSounds(qboolean clear);
 void S_StopAllSoundsC(void);
+void S_VolumeDown_f (void); // Baker 3.60 - from JoeQuake 0.15
+void S_VolumeUp_f (void);  // Baker 3.60 - from JoeQuake 0.15
 
 // =======================================================================
 // Internal sound data & structures
@@ -76,7 +83,7 @@ cvar_t nosound = {"nosound", "0"};
 cvar_t precache = {"precache", "1"};
 cvar_t loadas8bit = {"loadas8bit", "0"};
 cvar_t bgmbuffer = {"bgmbuffer", "4096"};
-cvar_t ambient_level = {"ambient_level", "0.3"};
+cvar_t ambient_level = {"ambient_level", "0.3", true}; // Baker 3.60 - Save to config
 cvar_t ambient_fade = {"ambient_fade", "100"};
 cvar_t snd_noextraupdate = {"snd_noextraupdate", "0"};
 cvar_t snd_show = {"snd_show", "0"};
@@ -179,6 +186,8 @@ void S_Init (void)
 	Cmd_AddCommand("stopsound", S_StopAllSoundsC);
 	Cmd_AddCommand("soundlist", S_SoundList);
 	Cmd_AddCommand("soundinfo", S_SoundInfo_f);
+	Cmd_AddCommand ("volumedown", S_VolumeDown_f); // Baker 3.60 - from JoeQuake 0.15
+	Cmd_AddCommand ("volumeup", S_VolumeUp_f); // Baker 3.60 - from JoeQuake 0.15
 
 	Cvar_RegisterVariable (&nosound, NULL);
 	Cvar_RegisterVariable (&volume, NULL);
@@ -397,7 +406,7 @@ SND_Spatialize
 void SND_Spatialize(channel_t *ch)
 {
     vec_t dot;
-    vec_t /*ldist, rdist,*/ dist;
+    vec_t dist;
     vec_t lscale, rscale, scale;
     vec3_t source_vec;
 	sfx_t *snd;
@@ -813,6 +822,12 @@ void GetSoundtime(void)
 	static	int		oldsamplepos;
 	int		fullsamples;
 
+#ifdef _WIN32
+	if (Movie_GetSoundtime())
+		return;
+#endif
+
+
 	fullsamples = shm->samples / shm->channels;
 
 // it is possible to miscount buffers if it has wrapped twice between
@@ -843,9 +858,13 @@ void GetSoundtime(void)
 void S_ExtraUpdate (void)
 {
 
+
 #ifdef _WIN32
+	if (Movie_IsActive())
+		return;
 	IN_Accumulate ();
 #endif
+
 
 	if (snd_noextraupdate.value)
 		return;		// don't pollute timings
@@ -980,6 +999,28 @@ void S_SoundList(void)
 	Con_Printf ("Total resident: %i\n", total);
 }
 
+// Baker 3.60 - Volume Up/Down from JoeQuake 0.15
+qboolean	volume_changed;
+
+void S_VolumeDown_f (void)
+{
+	S_LocalSound ("misc/menu3.wav");
+	volume.value -= 0.1;
+	volume.value = bound(0, volume.value, 1);
+	Cvar_SetValue ("volume", volume.value);
+	volume_changed = true;
+}
+
+void S_VolumeUp_f (void)
+{
+	S_LocalSound ("misc/menu3.wav");
+	volume.value += 0.1;
+	volume.value = bound(0, volume.value, 1);
+	Cvar_SetValue ("volume", volume.value);
+	volume_changed = true;
+}
+
+// Baker 3.60 - End Volume Up/Down from JoeQuake 0.15
 
 void S_LocalSound (char *sound)
 {

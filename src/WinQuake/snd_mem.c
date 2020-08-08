@@ -105,8 +105,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	byte	stackbuf[1*1024];		// avoid dirtying the cache heap
 
 // see if still in memory
-	sc = Cache_Check (&s->cache);
-	if (sc)
+	if ((sc = Cache_Check (&s->cache)))
 		return sc;
 
 //Con_Printf ("S_LoadSound: %x\n", (int)stackbuf);
@@ -116,9 +115,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 
 //	Con_Printf ("loading %s\n",namebuffer);
 
-	data = COM_LoadStackFile(namebuffer, stackbuf, sizeof(stackbuf));
-
-	if (!data)
+	if (!(data = COM_LoadStackFile(namebuffer, stackbuf, sizeof(stackbuf))))
 	{
 		Con_Printf ("Couldn't load %s\n", namebuffer);
 		return NULL;

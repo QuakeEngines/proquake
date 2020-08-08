@@ -17,7 +17,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
 // cmd.h -- Command buffer and command execution
 
 //===========================================================================
@@ -77,6 +76,7 @@ typedef enum
 
 extern	cmd_source_t	cmd_source;
 
+void Cmd_CmdList_f (void);
 void	Cmd_Init (void);
 
 void	Cmd_AddCommand (char *cmd_name, xcommand_t function);
@@ -96,7 +96,7 @@ char	*Cmd_Argv (int arg);
 char	*Cmd_Args (void);
 // The functions that execute commands get their parameters with these
 // functions. Cmd_Argv () will return an empty string, not a NULL
-// if arg > argc, so string operations are allways safe.
+// if arg > argc, so string operations are always safe.
 
 int Cmd_CheckParm (char *parm);
 // Returns the position (1 to argc-1) in the command's argument list

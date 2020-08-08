@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static char     *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
 static char     *argvdummy = " ";
 
-static char     *safeargvs[NUM_SAFE_ARGVS] = {"-stdvid", "-nolan", "-nosound", "-nocdaudio", "-nojoy", "-nomouse", "-dibonly"};
+static char     *safeargvs[NUM_SAFE_ARGVS] = {"-stdvid", "-nolan", "-nosound", "-nocdaudio", "-joystick", "-nomouse", "-dibonly"};
 
 cvar_t  registered = {"registered","0"};
 cvar_t  cmdline = {"cmdline","0", false, true};
@@ -926,6 +926,33 @@ void COM_FileBase (char *in, char *out)
 
 /*
 ==================
+COM_ForceExtension
+
+If path doesn't have an extension or has a different extension, append(!) specified extension
+Extension should include the .
+==================
+*/
+void COM_ForceExtension (char *path, char *extension)
+{
+	char    *src;
+
+	src = path + strlen(path) - 1;
+
+	while (*src != '/' && src != path)
+	{
+		if (*src-- == '.')
+		{
+			COM_StripExtension (path, path);
+			strcat (path, extension);
+			return;
+		}
+	}
+
+	strncat (path, extension, MAX_OSPATH);
+}
+
+/*
+==================
 COM_DefaultExtension
 ==================
 */
@@ -1221,11 +1248,7 @@ char    *va(char *format, ...)
 	static char             string[1024];
 
 	va_start (argptr, format);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (string, 1024, format,argptr);
-#else
-	vsprintf (string, format,argptr);
-#endif /* __APPLE__ ||ÊMACOSX */
+	vsnprintf (string, sizeof(string), format,argptr);
 	va_end (argptr);
 
 	return string;
@@ -1336,11 +1359,7 @@ void COM_WriteFile (char *filename, void *data, int len)
 	int             handle;
 	char    name[MAX_OSPATH];
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (name, MAX_OSPATH, "%s/%s", com_gamedir, filename);
-#else
-	sprintf (name, "%s/%s", com_gamedir, filename);
-#endif /* __APPLE__ ||ÊMACOSX */
+	snprintf (name, sizeof(name), "%s/%s", com_gamedir, filename);
 
 	handle = Sys_FileOpenWrite (name);
 	if (handle == -1)
@@ -1477,11 +1496,7 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 					continue;
 			}
 
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf (netpath, MAX_OSPATH, "%s/%s",search->filename, filename);
-#else
-			sprintf (netpath, "%s/%s",search->filename, filename);
-#endif /* __APPLE__ || MACOSX */
+			snprintf (netpath, sizeof(netpath), "%s/%s",search->filename, filename);
 
 			findtime = Sys_FileTime (netpath);
 			if (findtime == -1)
@@ -1695,8 +1710,7 @@ pack_t *COM_LoadPackFile (char *packfile)
 		return NULL;
 	}
 	Sys_FileRead (packhandle, (void *)&header, sizeof(header));
-	if (header.id[0] != 'P' || header.id[1] != 'A'
-	|| header.id[2] != 'C' || header.id[3] != 'K')
+	if (header.id[0] != 'P' || header.id[1] != 'A'|| header.id[2] != 'C' || header.id[3] != 'K')
 		Sys_Error ("%s is not a packfile", packfile);
 	header.dirofs = LittleLong (header.dirofs);
 	header.dirlen = LittleLong (header.dirlen);
@@ -1735,6 +1749,7 @@ pack_t *COM_LoadPackFile (char *packfile)
 	pack->numfiles = numpackfiles;
 	pack->files = newfiles;
 
+	// FitzQuake has this commented out
 	Con_Printf ("Added packfile %s (%i files)\n", packfile, numpackfiles);
 	return pack;
 }
@@ -1766,11 +1781,7 @@ void COM_AddGameDirectory (char *dir)
 // add any pak files in the format pak0.pak pak1.pak, ...
 	for (i=0 ; ; i++)
 	{
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (pakfile, MAX_OSPATH, "%s/pak%i.pak", dir, i);
-#else
-		sprintf (pakfile, "%s/pak%i.pak", dir, i);
-#endif /* __APPLE__ || MACOSX */
+		snprintf (pakfile, sizeof(pakfile), "%s/pak%i.pak", dir, i);
 		pak = COM_LoadPackFile (pakfile);
 		if (!pak)
 			break;
@@ -1909,9 +1920,127 @@ void COM_ModelCRC (void)
 	com_searchpaths = search;
 }
 
+//======================================
+
+// snprintf and vsnprintf are NOT portable. Use their DP counterparts instead
+
+int dpsnprintf (char *buffer, size_t buffersize, const char *format, ...)
+{
+	va_list args;
+	int result;
+
+	va_start (args, format);
+	result = dpvsnprintf (buffer, buffersize, format, args);
+	va_end (args);
+
+	return result;
+}
 
 
+int dpvsnprintf (char *buffer, size_t buffersize, const char *format, va_list args)
+{
+	int result;
+
+	result = vsnprintf (buffer, buffersize, format, args);
+	if (result < 0 || (size_t)result >= buffersize)
+	{
+		buffer[buffersize - 1] = '\0';
+		return -1;
+	}
+
+	return result;
+}
+
+//========================================================
+// strlcat and strlcpy, from OpenBSD
+
+/*
+ * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+/*	$OpenBSD: strlcat.c,v 1.11 2003/06/17 21:56:24 millert Exp $	*/
+/*	$OpenBSD: strlcpy.c,v 1.8 2003/06/17 21:56:24 millert Exp $	*/
 
 
+#ifndef HAVE_STRLCAT
+size_t
+strlcat(char *dst, const char *src, size_t siz)
+{
+	register char *d = dst;
+	register const char *s = src;
+	register size_t n = siz;
+	size_t dlen;
+
+	/* Find the end of dst and adjust bytes left but don't go past end */
+	while (n-- != 0 && *d != '\0')
+		d++;
+	dlen = d - dst;
+	n = siz - dlen;
+
+	if (n == 0)
+		return(dlen + strlen(s));
+	while (*s != '\0') {
+		if (n != 1) {
+			*d++ = *s;
+			n--;
+		}
+		s++;
+	}
+	*d = '\0';
+
+	return(dlen + (s - src));	/* count does not include NUL */
+}
+#endif  // #ifndef HAVE_STRLCAT
 
 
+#ifndef HAVE_STRLCPY
+size_t
+strlcpy(char *dst, const char *src, size_t siz)
+{
+	register char *d = dst;
+	register const char *s = src;
+	register size_t n = siz;
+
+	/* Copy as many bytes as will fit */
+	if (n != 0 && --n != 0) {
+		do {
+			if ((*d++ = *s++) == 0)
+				break;
+		} while (--n != 0);
+	}
+
+	/* Not enough room in dst, add NUL and traverse rest of src */
+	if (n == 0) {
+		if (siz != 0)
+			*d = '\0';		/* NUL-terminate dst */
+		while (*s++)
+			;
+	}
+
+	return(s - src - 1);	/* count does not include NUL */
+}
+
+#endif  // #ifndef HAVE_STRLCPY
+
+// Baker: strip leading spaces from string
+char *strltrim(char *s) {
+	char *t;
+
+//	assert(s != NULL);
+	for (t = s; isspace(*t); ++t)
+		continue;
+	memmove(s, t, strlen(t)+1);	/* +1 so that '\0' is moved too */
+	return s;
+}

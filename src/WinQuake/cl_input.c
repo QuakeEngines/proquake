@@ -259,10 +259,10 @@ float CL_KeyState (kbutton_t *key)
 
 //==========================================================================
 
-cvar_t	cl_upspeed = {"cl_upspeed","200"};
-cvar_t	cl_forwardspeed = {"cl_forwardspeed","200", true};
-cvar_t	cl_backspeed = {"cl_backspeed","200", true};
-cvar_t	cl_sidespeed = {"cl_sidespeed","350"};
+cvar_t	cl_upspeed = {"cl_upspeed","200", true};
+cvar_t	cl_forwardspeed = {"cl_forwardspeed","400", true}; // Baker 3.99k: Defaults to 400 (always run) instead of 200
+cvar_t	cl_backspeed = {"cl_backspeed","400", true}; // Baker 3.99k: Defaults to 400 (always run) instead of 200
+cvar_t	cl_sidespeed = {"cl_sidespeed","350", true}; // 
 
 cvar_t	cl_movespeedkey = {"cl_movespeedkey","2.0"};
 
@@ -418,7 +418,6 @@ void CL_SendMove (usercmd_t *cmd)
 {
 	int		i, bits;
 	sizebuf_t *buf;	// JPG - turned into a pointer (made corresponding changes below)
-	static byte	data[128]; // JPG - replaced with lag_data
 
 	buf = &lag_buff[lag_head & 31];
 	buf->maxsize = 128;

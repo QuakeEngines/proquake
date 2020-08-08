@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -22,8 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef GLQUAKE
 #include "r_shared.h"
 
-#define ALIAS_BASE_SIZE_RATIO		(1.0 / 11.0)
-					// normalizing factor so player model works out to about
+#define ALIAS_BASE_SIZE_RATIO		(1.0 / 11.0) // normalizing factor so player model works out to about
 					//  1 pixel per triangle
 
 #define BMODEL_FULLY_CLIPPED	0x10 // value returned by R_BmodelCheckBBox ()
@@ -122,9 +121,7 @@ extern int	vstartscan;
 void R_ClearPolyList (void);
 void R_DrawPolyList (void);
 
-//
 // current entity info
-//
 extern	qboolean		insubmodel;
 extern	vec3_t			r_worldmodelorg;
 
@@ -192,14 +189,10 @@ extern int			vstartscan;
 extern fixed16_t	sadjust, tadjust;
 extern fixed16_t	bbextents, bbextentt;
 
-#define MAXBVERTINDEXES	1000	// new clipped vertices when clipping bmodels
-								//  to the world BSP
 extern mvertex_t	*r_ptverts, *r_ptvertsmax;
 
 extern vec3_t			sbaseaxis[3], tbaseaxis[3];
 extern float			entity_rotation[3][3];
-
-extern int		reinit_surfcache;
 
 extern int		r_currentkey;
 extern int		r_currentbkey;

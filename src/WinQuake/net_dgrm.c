@@ -107,7 +107,6 @@ char *StrAddr (struct qsockaddr *addr)
 #endif
 
 
-
 #ifdef BAN_TEST
 unsigned long banAddr = 0x00000000;
 unsigned long banMask = 0xffffffff;
@@ -167,12 +166,9 @@ void NET_Ban_f (void)
 }
 #endif
 
-
 int Datagram_SendMessage (qsocket_t *sock, sizebuf_t *data)
 {
-	unsigned int	packetLen;
-	unsigned int	dataLen;
-	unsigned int	eom;
+	unsigned int	packetLen, dataLen, eom;
 
 #ifdef DEBUG
 	if (data->cursize == 0)
@@ -211,15 +207,13 @@ int Datagram_SendMessage (qsocket_t *sock, sizebuf_t *data)
 
 	sock->lastSendTime = net_time;
 	packetsSent++;
+
 	return 1;
 }
 
-
 int SendMessageNext (qsocket_t *sock)
 {
-	unsigned int	packetLen;
-	unsigned int	dataLen;
-	unsigned int	eom;
+	unsigned int	packetLen, dataLen, eom;
 
 	if (sock->sendMessageLength <= MAX_DATAGRAM)
 	{
@@ -244,15 +238,13 @@ int SendMessageNext (qsocket_t *sock)
 
 	sock->lastSendTime = net_time;
 	packetsSent++;
+
 	return 1;
 }
 
-
 int ReSendMessage (qsocket_t *sock)
 {
-	unsigned int	packetLen;
-	unsigned int	dataLen;
-	unsigned int	eom;
+	unsigned int	packetLen, dataLen, eom;
 
 	if (sock->sendMessageLength <= MAX_DATAGRAM)
 	{
@@ -277,9 +269,9 @@ int ReSendMessage (qsocket_t *sock)
 
 	sock->lastSendTime = net_time;
 	packetsReSent++;
+
 	return 1;
 }
-
 
 qboolean Datagram_CanSendMessage (qsocket_t *sock)
 {
@@ -289,12 +281,10 @@ qboolean Datagram_CanSendMessage (qsocket_t *sock)
 	return sock->canSend;
 }
 
-
 qboolean Datagram_CanSendUnreliableMessage (qsocket_t *sock)
 {
 	return true;
 }
-
 
 int Datagram_SendUnreliableMessage (qsocket_t *sock, sizebuf_t *data)
 {
@@ -321,15 +311,12 @@ int Datagram_SendUnreliableMessage (qsocket_t *sock, sizebuf_t *data)
 	return 1;
 }
 
-
 int	Datagram_GetMessage (qsocket_t *sock)
 {
-	unsigned int	length;
-	unsigned int	flags;
+	unsigned int	length, flags;
 	int				ret = 0;
 	struct qsockaddr readaddr;
-	unsigned int	sequence;
-	unsigned int	count;
+	unsigned int	sequence, count;
 
 	if (!sock->canSend)
 		if ((net_time - sock->lastSendTime) > 1.0)
@@ -621,8 +608,7 @@ static void Test_Poll(void)
 static void Test_f (void)
 {
 	char	*host;
-	int		n;
-	int		max = MAX_SCOREBOARD;
+	int		n, max = MAX_SCOREBOARD;
 	struct qsockaddr sendaddr;
 
 	if (testInProgress)
@@ -703,10 +689,8 @@ PollProcedure	test2PollProcedure = {NULL, 0.0, Test2_Poll};
 static void Test2_Poll(void)
 {
 	struct qsockaddr clientaddr;
-	int		control;
-	int		len;
-	char	name[256];
-	char	value[256];
+	int		control, len;
+	char	name[256], value[256];
 
 	net_landriverlevel = testDriver;	// JPG 3.00 test2Driver->testDriver
 	name[0] = 0;
@@ -838,8 +822,7 @@ PollProcedure	rconPollProcedure = {NULL, 0.0, Rcon_Poll};
 static void Rcon_Poll(void)
 {
 	struct qsockaddr clientaddr;
-	int		control;
-	int		len;
+	int		control, len;
 
 	net_landriverlevel = testDriver;
 
@@ -877,6 +860,7 @@ static void Rcon_Poll(void)
 
 Error:
 	Con_Printf("Unexpected repsonse to rcon command\n");
+
 Done:
 	dfunc.CloseSocket(testSocket);
 	testInProgress = false;
@@ -984,8 +968,7 @@ JustDoIt:
 
 int Datagram_Init (void)
 {
-	int i;
-	int csock;
+	int	i, csock;
 
 	myDriverLevel = net_driverlevel;
 	Cmd_AddCommand ("net_stats", NET_Stats_f);
@@ -1012,14 +995,11 @@ int Datagram_Init (void)
 	return 0;
 }
 
-
 void Datagram_Shutdown (void)
 {
 	int i;
 
-//
 // shutdown the lan drivers
-//
 	for (i = 0; i < net_numlandrivers; i++)
 	{
 		if (net_landrivers[i].initialized)
@@ -1030,12 +1010,10 @@ void Datagram_Shutdown (void)
 	}
 }
 
-
 void Datagram_Close (qsocket_t *sock)
 {
 	sfunc.CloseSocket(sock->socket);
 }
-
 
 void Datagram_Listen (qboolean state)
 {
@@ -1057,6 +1035,7 @@ qsocket_t *Datagram_Reject (char *message, int acceptsock, struct qsockaddr *add
 	*((int *)net_message.data) = BigLong(NETFLAG_CTL | (net_message.cursize & NETFLAG_LENGTH_MASK));
 	dfunc.Write (acceptsock, net_message.data, net_message.cursize, addr);
 	SZ_Clear(&net_message);
+
 	return NULL;
 }
 
@@ -1124,14 +1103,15 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 		*((int *)net_message.data) = BigLong(NETFLAG_CTL | (net_message.cursize & NETFLAG_LENGTH_MASK));
 		dfunc.Write (acceptsock, net_message.data, net_message.cursize, &clientaddr);
 		SZ_Clear(&net_message);
+
 		return NULL;
 	}
 
 	if (command == CCREQ_PLAYER_INFO)
 	{
-		int			playerNumber;
-		int			activeNumber;
-		int			clientNumber;
+		int			playerNumber, activeNumber, clientNumber;
+		int         a, b, c;
+		char        address[16];
 		client_t	*client;
 
 		playerNumber = MSG_ReadByte();
@@ -1157,7 +1137,16 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 		MSG_WriteLong(&net_message, client->colors);
 		MSG_WriteLong(&net_message, (int)client->edict->v.frags);
 		MSG_WriteLong(&net_message, (int)(net_time - client->netconnection->connecttime));
+
+		if (COM_CheckParm ("-noipmask")) {
 		MSG_WriteString(&net_message, client->netconnection->address);
+		} else {
+			if (sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3) // Baker 3.60 - engine side IP masking
+			sprintf(address, "%d.%d.%d.xxx", a, b, c);
+			MSG_WriteString(&net_message, address);
+		}
+
+
 		*((int *)net_message.data) = BigLong(NETFLAG_CTL | (net_message.cursize & NETFLAG_LENGTH_MASK));
 		dfunc.Write (acceptsock, net_message.data, net_message.cursize, &clientaddr);
 		SZ_Clear(&net_message);
@@ -1255,6 +1244,7 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 	if (clientaddr.sa_family == AF_INET)
 	{
 		unsigned long testAddr;
+
 		testAddr = ((struct sockaddr_in *)&clientaddr)->sin_addr.s_addr;
 		if ((testAddr & banMask) == banAddr)
 			return Datagram_Reject("You have been banned.\n", acceptsock, &clientaddr);
@@ -1269,7 +1259,7 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 		ret = dfunc.AddrCompare(&clientaddr, &s->addr);
 		if (ret >= 0)
 		{
-			// is this a duplicate connection reqeust?
+			// is this a duplicate connection request?
 			if (ret == 0 && net_time - s->connecttime < 2.0)
 			{
 				// yes, so send a duplicate reply
@@ -1282,6 +1272,7 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 				*((int *)net_message.data) = BigLong(NETFLAG_CTL | (net_message.cursize & NETFLAG_LENGTH_MASK));
 				dfunc.Write (acceptsock, net_message.data, net_message.cursize, &clientaddr);
 				SZ_Clear(&net_message);
+
 				return NULL;
 			}
 			// it's somebody coming back in from a crash/disconnect
@@ -1381,18 +1372,15 @@ qsocket_t *Datagram_CheckNewConnections (void)
 		if (net_landrivers[net_landriverlevel].initialized)
 			if ((ret = _Datagram_CheckNewConnections ()) != NULL)
 				break;
+
 	return ret;
 }
 
-
 static void _Datagram_SearchForHosts (qboolean xmit)
 {
-	int		ret;
-	int		n;
-	int		i;
+	int		i, n, ret, control;
 	struct qsockaddr readaddr;
 	struct qsockaddr myaddr;
-	int		control;
 
 	dfunc.GetSocketAddr (dfunc.controlSock, &myaddr);
 	if (xmit)
@@ -1436,6 +1424,7 @@ static void _Datagram_SearchForHosts (qboolean xmit)
 			continue;
 
 		dfunc.GetAddrFromName(MSG_ReadString(), &readaddr);
+
 		// search the cache for this server
 		for (n = 0; n < hostCacheCount; n++)
 			if (dfunc.AddrCompare(&readaddr, &hostcache[n].addr) == 0)
@@ -1477,7 +1466,9 @@ static void _Datagram_SearchForHosts (qboolean xmit)
 					hostcache[n].name[i+1] = 0;
 				}
 				else
+				{
 					hostcache[n].name[i-1]++;
+				}
 				i = -1;
 			}
 		}
@@ -1521,6 +1512,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 	sock = NET_NewQSocket ();
 	if (sock == NULL)
 		goto ErrorReturn2;
+
 	sock->socket = newsock;
 	sock->landriver = net_landriverlevel;
 
@@ -1529,7 +1521,8 @@ static qsocket_t *_Datagram_Connect (char *host)
 		goto ErrorReturn;
 
 	// send the connection request
-	Con_Printf("trying...\n"); SCR_UpdateScreen ();
+	Con_Printf("trying...\n"); 
+	SCR_UpdateScreen ();
 	start_time = net_time;
 
 	for (reps = 0; reps < 3; reps++)
@@ -1615,11 +1608,12 @@ static qsocket_t *_Datagram_Connect (char *host)
 					continue;
 				}
 			}
-		}
-		while (ret == 0 && (SetNetTime() - start_time) < 2.5);
+		} while (ret == 0 && (SetNetTime() - start_time) < 2.5);
+
 		if (ret)
 			break;
-		Con_Printf("still trying...\n"); SCR_UpdateScreen ();
+		Con_Printf("still trying...\n"); 
+		SCR_UpdateScreen ();
 		start_time = SetNetTime();
 	}
 
@@ -1646,6 +1640,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 		reason = MSG_ReadString();
 		Con_Printf(reason);
 		Q_strncpy(m_return_reason, reason, 31);
+
 		goto ErrorReturn;
 	}
 
@@ -1728,6 +1723,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 
 ErrorReturn:
 	NET_FreeQSocket(sock);
+
 ErrorReturn2:
 	dfunc.CloseSocket(newsock);
 	if (m_return_onerror)
@@ -1736,6 +1732,7 @@ ErrorReturn2:
 		m_state = m_return_state;
 		m_return_onerror = false;
 	}
+
 	return NULL;
 }
 
@@ -1748,5 +1745,6 @@ qsocket_t *Datagram_Connect (char *host)
 		if (net_landrivers[net_landriverlevel].initialized)
 			if ((ret = _Datagram_Connect (host)) != NULL)
 				break;
+
 	return ret;
 }

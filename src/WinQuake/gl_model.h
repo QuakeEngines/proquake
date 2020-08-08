@@ -31,13 +31,6 @@ m*_t structures are in-memory
 
 */
 
-// entity effects
-
-#define	EF_BRIGHTFIELD			1
-#define	EF_MUZZLEFLASH 			2
-#define	EF_BRIGHTLIGHT 			4
-#define	EF_DIMLIGHT 			8
-
 
 /*
 ==============================================================================
@@ -48,9 +41,7 @@ BRUSH MODELS
 */
 
 
-//
 // in memory representation
-//
 // !!! if this is changed, it must be changed in asm_draw.h too !!!
 typedef struct
 {
@@ -170,8 +161,6 @@ typedef struct mnode_s
 	unsigned short		numsurfaces;
 } mnode_t;
 
-
-
 typedef struct mleaf_s
 {
 // common with node
@@ -201,6 +190,7 @@ typedef struct
 	int			lastclipnode;
 	vec3_t		clip_mins;
 	vec3_t		clip_maxs;
+	int			available;
 } hull_t;
 
 /*
@@ -314,7 +304,7 @@ typedef struct {
 	maliasframedesc_t	frames[1];	// variable sized
 } aliashdr_t;
 
-#define	MAXALIASVERTS	1024
+#define	MAXALIASVERTS	2048
 #define	MAXALIASFRAMES	256
 #define	MAXALIASTRIS	2048
 extern	aliashdr_t	*pheader;
@@ -324,9 +314,7 @@ extern	trivertx_t	*poseverts[MAXALIASFRAMES];
 
 //===================================================================
 
-//
 // Whole model
-//
 
 typedef enum {mod_brush, mod_sprite, mod_alias} modtype_t;
 
@@ -350,9 +338,7 @@ typedef struct model_s
 	
 	int			flags;
 
-//
 // volume occupied by the model graphics
-//		
 	vec3_t		mins, maxs;
 	float		radius;
 
@@ -362,9 +348,7 @@ typedef struct model_s
 	qboolean	clipbox;
 	vec3_t		clipmins, clipmaxs;
 
-//
 // brush model
-//
 	int			firstmodelsurface, nummodelsurfaces;
 
 	int			numsubmodels;
@@ -409,9 +393,7 @@ typedef struct model_s
 	byte		*lightdata;
 	char		*entities;
 
-//
 // additional model data
-//
 	cache_user_t	cache;		// only access through Mod_Extradata
 
 } model_t;

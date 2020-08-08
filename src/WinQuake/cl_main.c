@@ -60,6 +60,7 @@ cvar_t	pq_moveup = {"pq_moveup", "0", true};
 // JPG 3.00 - added this by request
 cvar_t	pq_smoothcam = {"pq_smoothcam", "1", true};
 
+cvar_t	cl_demospeed		= {"cl_demospeed", "1"}; // Baker 3.75 - demo rewind/ff
 
 client_static_t	cls;
 client_state_t	cl;
@@ -72,6 +73,10 @@ dlight_t		cl_dlights[MAX_DLIGHTS];
 
 int				cl_numvisedicts;
 entity_t		*cl_visedicts[MAX_VISEDICTS];
+
+extern cvar_t scr_fov;
+float			savedsensitivity;
+float			savedfov;
 
 /*
 =====================
@@ -175,8 +180,14 @@ void CL_EstablishConnection (char *host)
 	CL_Disconnect ();
 
 	cls.netcon = NET_Connect (host);
-	if (!cls.netcon)
-		Host_Error ("connect failed");	// JPG 3.20 - shortened this and removed \n
+	if (!cls.netcon) // Baker 3.60 - Rook's Qrack port 26000 notification on failure
+	{
+		Con_Printf ("\nsyntax: connect server:port (port is optional)\n");//r00k added
+		if (net_hostport != 26000)
+			Con_Printf ("\nTry using port 26000\n");//r00k added
+		Host_Error ("connect failed");
+	}
+
 	Con_DPrintf ("CL_EstablishConnection: connected to %s\n", host);
 
 		// JPG - proquake message
@@ -267,12 +278,7 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 		MSG_WriteString (&cls.message, va("color %i %i\n", ((int)cl_color.value)>>4, ((int)cl_color.value)&15));
 
 		MSG_WriteByte (&cls.message, clc_stringcmd);
-
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (str, 8192, "spawn %s", cls.spawnparms);
-#else
-		sprintf (str, "spawn %s", cls.spawnparms);
-#endif /* __APPLE__ || MACOSX */
+		snprintf (str, sizeof(str), "spawn %s", cls.spawnparms);
 		MSG_WriteString (&cls.message, str);
 
 		// JPG 3.20 - model and .exe checking
@@ -283,7 +289,7 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 			char path[64];
 
 		//strcpy(path, argv[0]);    commented out by woods, compile error on argv
-#ifdef WIN32
+#ifdef _WIN32
 			if (!strstr(path, ".exe") && !strstr(path, ".EXE"))
 				strcat(path, ".exe");
 #endif
@@ -362,11 +368,7 @@ void CL_NextDemo (void)
 		}
 	}
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (str,1024,"playdemo %s\n", cls.demos[cls.demonum]);
-#else
-	sprintf (str,"playdemo %s\n", cls.demos[cls.demonum]);
-#endif /* __APPLE__ || MACOSX */
+	snprintf (str,sizeof(str),"playdemo %s\n", cls.demos[cls.demonum]);
 	Cbuf_InsertText (str);
 	cls.demonum++;
 }
@@ -523,7 +525,8 @@ float	CL_LerpPoint (void)
 
 	if (!f || cl_nolerp.value || cls.timedemo || sv.active)
 	{
-		cl.time = cl.mtime[0];
+		// Baker 3.75 demo rewind
+		cl.time = cl.ctime = cl.mtime[0];
 		return 1;
 	}
 
@@ -532,14 +535,14 @@ float	CL_LerpPoint (void)
 		cl.mtime[1] = cl.mtime[0] - 0.1;
 		f = 0.1;
 	}
-	frac = (cl.time - cl.mtime[1]) / f;
-//Con_Printf ("frac: %f\n",frac);
+	frac = (cl.ctime - cl.mtime[1]) / f;
+
 	if (frac < 0)
 	{
 		if (frac < -0.01)
 		{
 SetPal(1);
-			cl.time = cl.mtime[1];
+			cl.time = cl.ctime = cl.mtime[1];
 //				Con_Printf ("low frac\n");
 		}
 		frac = 0;
@@ -549,7 +552,7 @@ SetPal(1);
 		if (frac > 1.01)
 		{
 SetPal(2);
-			cl.time = cl.mtime[0];
+			cl.time = cl.ctime = cl.mtime[0];
 //				Con_Printf ("high frac\n");
 		}
 		frac = 1;
@@ -741,8 +744,17 @@ int CL_ReadFromServer (void)
 {
 	int		ret;
 
-	cl.oldtime = cl.time;
+	/*cl.oldtime = cl.time;
+	cl.time += host_frametime;  //Baker 3.75 old way */
+
+	// Baker 3.75 - demo rewind
+	cl.oldtime = cl.ctime;
 	cl.time += host_frametime;
+	if (!cl_demorewind.value || !cls.demoplayback)	// by joe
+		cl.ctime += host_frametime;
+	else
+		cl.ctime -= host_frametime;
+	// Baker 3.75 - end demo fast rewind
 
 	do {
 		ret = CL_GetMessage ();
@@ -810,6 +822,91 @@ void CL_SendCmd (void)
 		Host_Error ("CL_WriteToServer: lost server connection");
 
 	SZ_Clear (&cls.message);
+}
+
+// Baker 3.85:  This should really be located elsewhere, but duplicating it in both gl_screen.c and screen.c is silly.
+//              Quakeworld has the equivalent in cl_cmd.c
+
+extern cvar_t default_fov;
+
+void CL_Fov_f (void) {
+	if (scr_fov.value == 90.0 && default_fov.value) {
+		if (default_fov.value == 90)
+			return; // Baker 3.99k: Don't do a message saying default FOV has been set to 90 if it is 90!
+
+		Cvar_SetValue ("fov", default_fov.value);
+		Con_Printf("fov set to default_fov %s\n", default_fov.string);
+	}
+}
+
+void CL_Default_fov_f (void) {
+	
+	if (default_fov.value == 0)
+		return; // Baker: this is totally permissible and happens with Reset to defaults.
+
+	if (default_fov.value < 10.0 || default_fov.value > 140.0) {
+		Cvar_SetValue ("default_fov", 0.0f);
+		Con_Printf("Default fov %s is out-of-range; set to 0\n", default_fov.string);
+	}
+
+}
+
+// End Baker
+
+
+
+/*
+================
+CL_SaveFOV
+
+Saves the FOV
+================
+*/
+void CL_SaveFOV_f (void) {
+	savedfov = scr_fov.value;
+}
+
+/*
+================
+CL_RestoreFOV
+
+Restores FOV to saved level
+================
+*/
+void CL_RestoreFOV_f (void) {
+	if (!savedfov) {
+		Con_Printf("RestoreFOV: No saved FOV to restore\n");
+		return;
+	}
+
+	Cvar_SetValue("fov", savedfov);
+}
+
+/*
+================
+CL_SaveSensivity
+
+Saves the Sensitivity
+================
+*/
+void CL_SaveSensitivity_f (void) {
+	savedsensitivity = sensitivity.value;
+}
+
+/*
+================
+CL_RestoreSensitivity
+
+Restores Sensitivity to saved level
+================
+*/
+void CL_RestoreSensitivity_f (void) {
+	if (!savedsensitivity) {
+		Con_Printf("RestoreSensitivity: No saved SENSITIVITY to restore\n");
+		return;
+	}
+
+	Cvar_SetValue("sensitivity", savedsensitivity);
 }
 
 /*
@@ -897,7 +994,9 @@ void CL_Init (void)
 	Cvar_RegisterVariable (&m_forward, NULL);
 	Cvar_RegisterVariable (&m_side, NULL);
 
-//	Cvar_RegisterVariable (&cl_autofire, NULL);
+//	Cvar_RegisterVariable (&cl_autofire);
+	Cvar_RegisterVariable (&cl_demorewind, NULL);
+	Cvar_RegisterVariable (&cl_demospeed, NULL);
 
 	Cmd_AddCommand ("entities", CL_PrintEntities_f);
 	Cmd_AddCommand ("disconnect", CL_Disconnect_f);
@@ -907,6 +1006,12 @@ void CL_Init (void)
 	Cmd_AddCommand ("timedemo", CL_TimeDemo_f);
 	Cmd_AddCommand ("tracepos", CL_Tracepos_f); //johnfitz
 	Cmd_AddCommand ("viewpos", CL_Viewpos_f); //Baker 3.76 - Using FitzQuake's viewpos instead of my own
+
+	Cmd_AddCommand ("savefov", CL_SaveFOV_f);
+	Cmd_AddCommand ("savesensitivity", CL_SaveSensitivity_f);
+	Cmd_AddCommand ("restorefov", CL_RestoreFOV_f);
+	Cmd_AddCommand ("restoresensitivity", CL_RestoreSensitivity_f);
+	
 
 // JPG - added these for %r formatting
 	Cvar_RegisterVariable (&pq_needrl, NULL);

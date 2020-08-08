@@ -49,7 +49,7 @@ void IPLog_Init (void)
 
 	// Attempt to load log data from iplog.dat
 //	Sys_GetLock();
-	f = fopen(va("%s/iplog.dat",com_gamedir), "r");
+	f = fopen(va("%s/id1/iplog.dat", host_parms.basedir), "r"); // Baker 3.83 ... todo: double check that -basedir operates as expected
 	if (f)
 	{
 		while(fread(&temp, 20, 1, f))
@@ -71,7 +71,7 @@ void IPLog_Import (void)
 
 	if (!iplog_size)
 	{
-		Con_Printf("IP logging not available\nUse -iplog command line option\n");
+		Con_Printf("IP logging not available\nRemove -noiplog command line option\n"); // Baker 3.83: Now -iplog is the default
 		return;
 	}
 
@@ -109,7 +109,7 @@ void IPLog_WriteLog (void)
 //	Sys_GetLock();
 
 	// first merge
-	f = fopen(va("%s/id1/iplog.dat",com_gamedir), "r");
+	f = fopen(va("%s/id1/iplog.dat",host_parms.basedir), "r");
 	if (f)
 	{
 		while(fread(&temp, 20, 1, f))
@@ -118,7 +118,7 @@ void IPLog_WriteLog (void)
 	}
 
 	// then write
-	f = fopen(va("%s/id1/iplog.dat",com_gamedir), "w");
+	f = fopen(va("%s/id1/iplog.dat",host_parms.basedir), "w");
 	if (f)
 	{
 		if (iplog_full)
@@ -310,11 +310,11 @@ void IPLog_Dump (void)
 
 	if (!iplog_size)
 	{
-		Con_Printf("IP logging not available\nUse -iplog command line option\n");
+		Con_Printf("IP logging not available\nRemove -noiplog command line option\n"); // Baker 3.83: Now -iplog is the default
 		return;
 	}
 
-	f = fopen(va("%s/id1/iplog.txt",com_gamedir), "w");
+	f = fopen(va("%s/id1/iplog.txt",host_parms.basedir), "w");
 	if (!f)
 	{
 		Con_Printf ("Couldn't write iplog.txt.\n");

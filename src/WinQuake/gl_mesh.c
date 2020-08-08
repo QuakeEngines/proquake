@@ -29,8 +29,8 @@ ALIAS MODEL DISPLAY LIST GENERATION
 =================================================================
 */
 
-model_t		*aliasmodel;
-aliashdr_t	*paliashdr;
+//model_t		*aliasmodel;
+//aliashdr_t	*paliashdr;
 
 qboolean	used[8192];
 
@@ -57,10 +57,8 @@ StripLength
 */
 int	StripLength (int starttri, int startv)
 {
-	int			m1, m2;
-	int			j;
+	int		m1, m2, j, k;
 	mtriangle_t	*last, *check;
-	int			k;
 
 	used[starttri] = 2;
 
@@ -109,8 +107,8 @@ nexttri:
 			goto nexttri;
 		}
 	}
-done:
 
+done:
 	// clear the temp used flags
 	for (j=starttri+1 ; j<pheader->numtris ; j++)
 		if (used[j] == 2)
@@ -126,10 +124,8 @@ FanLength
 */
 int	FanLength (int starttri, int startv)
 {
-	int		m1, m2;
-	int		j;
+	int		m1, m2, j, k;
 	mtriangle_t	*last, *check;
-	int		k;
 
 	used[starttri] = 2;
 
@@ -176,8 +172,8 @@ nexttri:
 			goto nexttri;
 		}
 	}
-done:
 
+done:
 	// clear the temp used flags
 	for (j=starttri+1 ; j<pheader->numtris ; j++)
 		if (used[j] == 2)
@@ -197,23 +193,11 @@ for the model, which holds for all frames
 */
 void BuildTris (void)
 {
-	int		i, j, k;
-	int		startv;
-//	mtriangle_t	*last, *check;
-//	int		m1, m2;
-//	int		striplength;
-//	trivertx_t	*v;
-//	mtriangle_t 	*tv;
+	int		i, j, k, startv, len, bestlen, besttype, type;
 	float		s, t;
-//	int		index;
-	int		len, bestlen, besttype = 0;
-	int		bestverts[1024];
-	int		besttris[1024];
-	int		type;
+	int		bestverts[1024], besttris[1024];
 
-	//
 	// build tristrips
-	//
 	numorder = 0;
 	numcommands = 0;
 	memset (used, 0, sizeof(used));
@@ -229,10 +213,7 @@ void BuildTris (void)
 		{
 			for (startv =0 ; startv < 3 ; startv++)
 			{
-				if (type == 1)
-					len = StripLength (i, startv);
-				else
-					len = FanLength (i, startv);
+				len = (type == 1) ? StripLength (i, startv) : FanLength (i, startv);
 				if (len > bestlen)
 				{
 					besttype = type;
@@ -249,10 +230,7 @@ void BuildTris (void)
 		for (j=0 ; j<bestlen ; j++)
 			used[besttris[j]] = 1;
 
-		if (besttype == 1)
-			commands[numcommands++] = (bestlen+2);
-		else
-			commands[numcommands++] = -(bestlen+2);
+		commands[numcommands++] = (besttype == 1) ? (bestlen+2) : -(bestlen+2);
 
 		for (j=0 ; j<bestlen+2 ; j++)
 		{
@@ -282,149 +260,25 @@ void BuildTris (void)
 }
 
 
-/*
-================
-GL_MakeAliasModelDisplayLists
-================
-*/
-
-// <AWE> required for reading/writing cache files in little endian:
-static void	SwapBufferEndianess()
-{
-	int i = 0;
-	
-	for (; i < numcommands; ++i)
-	{
-		commands[i] = LittleLong(commands[i]);
-	}
-
-	for (i = 0; i < numorder; ++i)
-	{
-		vertexorder[i] = LittleLong(vertexorder[i]);
-	}
-}
-
-void GL_MakeAliasModelDisplayLists (model_t *m, aliashdr_t *hdr)
-{
+void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr) {
 	int		i, j;
-//	maliasgroup_t	*paliasgroup;
 	int		*cmds;
 	trivertx_t	*verts;
-	char		cache[MAX_QPATH], fullpath[MAX_OSPATH];//, *c;
-	FILE		*f;
-	size_t		success = 0;
-//	int		len;
-//	byte		*data;
 
-	aliasmodel = m;
-	paliashdr = hdr;	// (aliashdr_t *)Mod_Extradata (m);
-
-	//
-	// look for a cached version
-	//
-	strcpy (cache, "glquake/");
-	COM_StripExtension (m->name+strlen("progs/"), cache+strlen("glquake/"));
-	strcat (cache, ".ms2");
-
-	COM_FOpenFile (cache, &f);	
-	if (f)
-	{
-		// <AWE> we always read now little endian and do more checks on fread:
-		success = fread (&numcommands, 4, 1, f);
-		
-		if (success == 1)
-		{
-			success = fread (&numorder, 4, 1, f);
-		}
-
-		numcommands	= LittleLong(numcommands);		
-		numorder	= LittleLong(numorder);
-		
-		if (numcommands >= 8192 || numorder >= 8192)
-		{
-			success = 0;
-		}
-
-		if (success == 1)
-		{
-			success = fread (&commands, numcommands * sizeof(commands[0]), 1, f);
-		}
-		
-		if (success == 1)
-		{
-			success = fread (&vertexorder, numorder * sizeof(vertexorder[0]), 1, f);
-		}
-		
-		if (success == 1)
-		{
-			SwapBufferEndianess();
-		}
-		
-		fclose (f);
-	}
-	
-	if (success == 0)
-	{
-		//
-		// build it from scratch
-		//
-		Con_Printf ("meshing %s...\n",m->name);
-
+	// Tonik: don't cache anything, because it seems just as fast
+	// (if not faster) to rebuild the tris instead of loading them from disk
 		BuildTris ();		// trifans or lists
 
-		//
-		// save out the cached version
-		//
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (fullpath, MAX_OSPATH, "%s/%s", com_gamedir, cache);
-#else
-		sprintf (fullpath, "%s/%s", com_gamedir, cache);
-#endif /* __APPLE__ || MACOSX */
-		f = fopen (fullpath, "wb");
-/*
-		if (!f) {
-			char gldir[MAX_OSPATH];
-
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf (gldir, MAX_OSPATH, "%s/glquake", com_gamedir);
-#else
-			sprintf (gldir, "%s/glquake", com_gamedir);
-#endif
-			Sys_mkdir (gldir);
-			f = fopen (fullpath, "wb");
-		}                
-*/              
-		if (f)
-		{
-			// <AWE> we always write now in little endian:
-			int littleNumCommands	= LittleLong(numcommands);
-			int littleNumOrder		= LittleLong(numorder);
-						
-			fwrite (&littleNumCommands, 4, 1, f);
-			fwrite (&littleNumOrder, 4, 1, f);
-			
-			SwapBufferEndianess();
-			
-			fwrite (&commands, numcommands * sizeof(commands[0]), 1, f);
-			fwrite (&vertexorder, numorder * sizeof(vertexorder[0]), 1, f);
-			fclose (f);
-			
-			SwapBufferEndianess();
-		}
-	}
-
-
 	// save the data out
-
 	paliashdr->poseverts = numorder;
 
 	cmds = Hunk_Alloc (numcommands * 4);
 	paliashdr->commands = (byte *)cmds - (byte *)paliashdr;
 	memcpy (cmds, commands, numcommands * 4);
 
-	verts = Hunk_Alloc (paliashdr->numposes * paliashdr->poseverts 
-		* sizeof(trivertx_t) );
+	verts = Hunk_Alloc (paliashdr->numposes * paliashdr->poseverts * sizeof(trivertx_t) );
 	paliashdr->posedata = (byte *)verts - (byte *)paliashdr;
+
 	for (i=0 ; i<paliashdr->numposes ; i++)
 		for (j=0 ; j<numorder ; j++)
 			*verts++ = poseverts[i][vertexorder[j]];

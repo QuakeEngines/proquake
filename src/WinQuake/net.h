@@ -109,14 +109,14 @@ struct qsockaddr
 #define CCREQ_SERVER_INFO	0x02
 #define CCREQ_PLAYER_INFO	0x03
 #define CCREQ_RULE_INFO		0x04
-#define CCREQ_RCON			0x05   // not commented by JPG (woods)
+#define CCREQ_RCON			0x05
 
 #define CCREP_ACCEPT		0x81
 #define CCREP_REJECT		0x82
 #define CCREP_SERVER_INFO	0x83
 #define CCREP_PLAYER_INFO	0x84
 #define CCREP_RULE_INFO		0x85
-#define CCREP_RCON			0x86   // not commented by JPG (woods)
+#define CCREP_RCON			0x86
 
 // JPG - support for mods
 #define MOD_NONE			0x00
@@ -129,7 +129,6 @@ struct qsockaddr
 // JPG 3.00 - rcon
 extern sizebuf_t	rcon_message;
 extern qboolean		rcon_active;
-
 
 typedef struct qsocket_s
 {
@@ -161,8 +160,6 @@ typedef struct qsocket_s
 	struct qsockaddr	addr;
 	char				address[NET_NAMELEN];
 
-
-
 	// JPG - new stuff here (must be after address for crmod compatibility)
 	byte			mod;
 	byte			mod_version;	// = floor(version * 10) (must fit in one byte)
@@ -170,12 +167,6 @@ typedef struct qsocket_s
 	int				client_port;
 	qboolean		net_wait;		// JPG 3.40 - wait for the client to send a packet to the private port
 	byte			encrypt;		// JPG 3.50
-
-
-
-
-
-
 } qsocket_t;
 
 extern qsocket_t	*net_activeSockets;
@@ -281,10 +272,6 @@ extern unsigned long ntohl (unsigned long netlong);
 #ifndef ntohs
 extern unsigned short ntohs (unsigned short netshort);
 #endif
-#endif
-
-#ifdef IDGODS
-qboolean IsID(struct qsockaddr *addr);
 #endif
 
 //============================================================================

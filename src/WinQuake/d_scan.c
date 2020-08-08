@@ -60,16 +60,10 @@ void D_WarpScreen (void)
 	hratio = h / (float)scr_vrect.height;
 
 	for (v=0 ; v<scr_vrect.height+AMP2*2 ; v++)
-	{
-		rowptr[v] = d_viewbuffer + (r_refdef.vrect.y * screenwidth) +
-				 (screenwidth * (int)((float)v * hratio * h / (h + AMP2 * 2)));
-	}
+		rowptr[v] = d_viewbuffer + (r_refdef.vrect.y * screenwidth) + (screenwidth * (int)((float)v * hratio * h / (h + AMP2 * 2)));
 
 	for (u=0 ; u<scr_vrect.width+AMP2*2 ; u++)
-	{
-		column[u] = r_refdef.vrect.x +
-				(int)((float)u * wratio * w / (w + AMP2 * 2));
-	}
+		column[u] = r_refdef.vrect.x + (int)((float)u * wratio * w / (w + AMP2 * 2));
 
 	turb = intsintable + ((int)(cl.time*SPEED)&(CYCLE-1));
 	dest = vid.buffer + scr_vrect.y * vid.rowbytes + scr_vrect.x;
@@ -139,8 +133,7 @@ void Turbulent8 (espan_t *pspan)
 
 	do
 	{
-		r_turb_pdest = (unsigned char *)((byte *)d_viewbuffer +
-				(screenwidth * pspan->v) + pspan->u);
+		r_turb_pdest = (unsigned char *)((byte *)d_viewbuffer + (screenwidth * pspan->v) + pspan->u);
 
 		count = pspan->count;
 
@@ -273,8 +266,7 @@ void D_DrawSpans8 (espan_t *pspan)
 
 	do
 	{
-		pdest = (unsigned char *)((byte *)d_viewbuffer +
-				(screenwidth * pspan->v) + pspan->u);
+		pdest = (unsigned char *)((byte *)d_viewbuffer + (screenwidth * pspan->v) + pspan->u);
 
 		count = pspan->count;
 
@@ -394,8 +386,7 @@ D_DrawZSpans
 */
 void D_DrawZSpans (espan_t *pspan)
 {
-	int				count, doublecount, izistep;
-	int				izi;
+	int				count, doublecount, izistep, izi;
 	short			*pdest;
 	unsigned		ltemp;
 	double			zi;

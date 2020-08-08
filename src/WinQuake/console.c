@@ -28,6 +28,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <fcntl.h>
 #include "quakedef.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <time.h> // JPG - needed for console log
 
 int 		con_linewidth;
@@ -46,6 +50,7 @@ int			con_x;				// offset in current line for next print
 char		*con_text=0;
 
 cvar_t		con_notifytime = {"con_notifytime","3"};		//seconds
+cvar_t		_con_notifylines = {"con_notifylines","4"};	    // Baker 3.60 - notifylines
 cvar_t		pq_confilter = {"pq_confilter", "0"};	// JPG 1.05 - filter out the "you got" messages
 cvar_t		pq_timestamp = {"pq_timestamp", "0"};	// JPG 1.05 - timestamp player binds during a match
 cvar_t		pq_removecr = {"pq_removecr", "1"};		// JPG 3.20 - remove \r from console output
@@ -57,6 +62,8 @@ float		con_times[NUM_CON_TIMES];	// realtime time the line was generated
 int			con_vislines;
 
 qboolean	con_debuglog;
+
+qboolean	cl_inconsole = false;//R00k
 
 #define		MAXCMDLINE	256
 extern	char	key_lines[32][MAXCMDLINE];
@@ -71,6 +78,36 @@ int			con_notifylines;		// scan lines to clear for notify lines
 extern void M_Menu_Main_f (void);
 
 char logfilename[128];	// JPG - support for different filenames
+/*
+================
+Con_Quakebar -- johnfitz -- returns a bar of the desired length, but never wider than the console
+
+includes a newline, unless len >= con_linewidth.
+================
+*/
+char *Con_Quakebar (int len)
+{
+	static char bar[42];
+	int i;
+
+	len = min(len, sizeof(bar) - 2);
+	len = min(len, con_linewidth);
+
+	bar[0] = '\35';
+	for (i = 1; i < len - 1; i++)
+		bar[i] = '\36';
+	bar[len-1] = '\37';
+
+	if (len < con_linewidth)
+	{
+		bar[len] = '\n';
+		bar[len+1] = 0;
+	}
+	else
+		bar[len] = 0;
+
+	return bar;
+}
 
 /*
 ================
@@ -84,17 +121,22 @@ void Con_ToggleConsole_f (void)
 		if (cls.state == ca_connected)
 		{
 			key_dest = key_game;
+			cl_inconsole = false;//R00k
 			key_lines[edit_line][1] = 0;	// clear any typing
 			key_linepos = 1;
 		}
 		else
 		{
 			M_Menu_Main_f ();
+			cl_inconsole = false;
 		}
 	}
 	else
+	{
 		key_dest = key_console;
+		cl_inconsole = true;
 		con_backscroll = 0; // JPG - don't want to enter console with backscroll
+	}
 
 	SCR_EndLoadingPlaque ();
 	memset (con_times, 0, sizeof(con_times));
@@ -109,6 +151,159 @@ void Con_Clear_f (void)
 {
 	if (con_text)
 		memset (con_text, ' ', CON_TEXTSIZE);
+}
+
+#ifdef _WIN32
+/*
+====================
+Con_Showtime_f // Baker 3.60 - "time" command to display current date and time in console
+
+time
+====================
+*/
+void Con_Showtime_f (void)
+{
+	time_t	ltime;
+	char	str[80];
+
+	time (&ltime);
+	strftime (str, sizeof(str)-1, "%B %d, %Y - %I:%M:%S %p", localtime(&ltime));
+
+	Con_Printf ("%s \n", str);
+
+
+//	Sys_CopyToClipboard(va("Operating System: %s\r\nThis Thing: %\r\n", cmdline.string));
+
+
+}
+
+/*
+================
+Con_Copy_f -- Baker -- adapted from Con_Dump
+================
+*/
+void Con_Copy_f (void)
+{
+	char	outstring[CON_TEXTSIZE]="";
+	int		l, x;
+	char	*line;
+	char	buffer[1024];
+
+	// skip initial empty lines
+	for (l = con_current - con_totallines + 1 ; l <= con_current ; l++)
+	{
+		line = con_text + (l%con_totallines)*con_linewidth;
+		for (x=0 ; x<con_linewidth ; x++)
+			if (line[x] != ' ')
+				break;
+		if (x != con_linewidth)
+			break;
+	}
+
+	// write the remaining lines
+	buffer[con_linewidth] = 0;
+	for ( ; l <= con_current ; l++)
+	{
+		line = con_text + (l%con_totallines)*con_linewidth;
+		strncpy (buffer, line, con_linewidth);
+		for (x=con_linewidth-1 ; x>=0 ; x--)
+		{
+			if (buffer[x] == ' ')
+				buffer[x] = 0;
+			else
+				break;
+		}
+		for (x=0; buffer[x]; x++)
+			buffer[x] &= 0x7f;
+
+		strcat(outstring, va("%s\r\n", buffer));
+
+	}
+
+	Sys_CopyToClipboard(outstring);
+	Con_Printf ("Copied console to clipboard\n");
+}
+
+#endif
+
+/*
+================
+Con_Dump_f -- johnfitz -- adapted from quake2 source
+================
+*/
+void Con_Dump_f (void)
+{
+	int		l, x;
+	char	*line;
+	FILE	*f;
+	char	buffer[1024];
+	char	name[MAX_OSPATH];
+
+#if 1
+	//johnfitz -- there is a security risk in writing files with an arbitrary filename. so,
+	//until stuffcmd is crippled to alleviate this risk, just force the default filename.
+	sprintf (name, "%s/condump.txt", com_gamedir);
+#else
+	if (Cmd_Argc() > 2)
+	{
+		Con_Printf ("usage: condump <filename>\n");
+		return;
+	}
+
+	if (Cmd_Argc() > 1)
+	{
+		if (strstr(Cmd_Argv(1), ".."))
+		{
+			Con_Printf ("Relative pathnames are not allowed.\n");
+			return;
+		}
+		sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
+		COM_DefaultExtension (name, ".txt");
+	}
+	else
+		sprintf (name, "%s/condump.txt", com_gamedir);
+#endif
+
+	COM_CreatePath (name);
+	f = fopen (name, "w");
+	if (!f)
+	{
+		Con_Printf ("ERROR: couldn't open file.\n", name);
+		return;
+	}
+
+	// skip initial empty lines
+	for (l = con_current - con_totallines + 1 ; l <= con_current ; l++)
+	{
+		line = con_text + (l%con_totallines)*con_linewidth;
+		for (x=0 ; x<con_linewidth ; x++)
+			if (line[x] != ' ')
+				break;
+		if (x != con_linewidth)
+			break;
+	}
+
+	// write the remaining lines
+	buffer[con_linewidth] = 0;
+	for ( ; l <= con_current ; l++)
+	{
+		line = con_text + (l%con_totallines)*con_linewidth;
+		strncpy (buffer, line, con_linewidth);
+		for (x=con_linewidth-1 ; x>=0 ; x--)
+		{
+			if (buffer[x] == ' ')
+				buffer[x] = 0;
+			else
+				break;
+		}
+		for (x=0; buffer[x]; x++)
+			buffer[x] &= 0x7f;
+
+		fprintf (f, "%s\n", buffer);
+	}
+
+	fclose (f);
+	Con_Printf ("Dumped console text to %s.\n", name);
 }
 
 
@@ -199,9 +394,7 @@ void Con_CheckResize (void)
 		{
 			for (j=0 ; j<numchars ; j++)
 			{
-				con_text[(con_totallines - 1 - i) * con_linewidth + j] =
-						tbuf[((con_current - i + oldtotallines) %
-							  oldtotallines) * oldwidth + j];
+				con_text[(con_totallines - 1 - i) * con_linewidth + j] = tbuf[((con_current - i + oldtotallines) % oldtotallines) * oldwidth + j];
 			}
 		}
 
@@ -279,6 +472,7 @@ void Con_Init (void)
 // register our commands
 //
 	Cvar_RegisterVariable (&con_notifytime, NULL);
+	Cvar_RegisterVariable (&_con_notifylines, NULL);
 	Cvar_RegisterVariable (&pq_confilter, NULL);	// JPG 1.05 - make "you got" messages temporary
 	Cvar_RegisterVariable (&pq_timestamp, NULL);	// JPG 1.05 - timestamp player binds during a match
 	Cvar_RegisterVariable (&pq_removecr, NULL);	// JPG 3.20 - timestamp player binds during a match
@@ -287,7 +481,13 @@ void Con_Init (void)
 	Cmd_AddCommand ("messagemode", Con_MessageMode_f);
 	Cmd_AddCommand ("messagemode2", Con_MessageMode2_f);
 	Cmd_AddCommand ("clear", Con_Clear_f);
+	Cmd_AddCommand ("condump", Con_Dump_f); //johnfitz
+#ifdef _WIN32
+	Cmd_AddCommand ("time", Con_Showtime_f); // Baker 3.60 - "time command
+	Cmd_AddCommand ("copy", Con_Copy_f); // Baker 399.m - copy console to clipboard
+#endif
 	con_initialized = true;
+	Con_Printf ("Console initialized\n");
 }
 
 
@@ -300,14 +500,11 @@ void Con_Linefeed (void)
 {
 	con_x = 0;
 	con_current++;
-	memset (&con_text[(con_current%con_totallines)*con_linewidth]
-	, ' ', con_linewidth);
+	memset (&con_text[(con_current%con_totallines)*con_linewidth], ' ', con_linewidth);
 
 	// JPG - fix backscroll
 	if (con_backscroll)
 		con_backscroll++;
-
-
 }
 
 #define DIGIT(x) ((x) >= '0' && (x) <= '9')
@@ -323,18 +520,14 @@ If no console is visible, the notify window will pop up.
 */
 void Con_Print (char *txt)
 {
-	int		y;
-	int		c, l;
+	int		y, c, l, mask;
 	static int	cr;
-	int		mask;
 
-	static int fixline = 0; // added by woods
+	static int fixline = 0;
 
 #if defined (__APPLE__) || defined (MACOSX)
-        if (con_initialized == false)
-        {
-            return;
-        }
+    if (con_initialized == false)
+        return;
 #endif /* __APPLE__ ||ÊMACOSX */
 
 	//con_backscroll = 0;  // JPG - half of a fix for an annoying problem
@@ -346,8 +539,6 @@ void Con_Print (char *txt)
 				   !strcmp(txt, "You got the ") ||
 				   !strcmp(txt, "no weapon.\n") ||
 				   !strcmp(txt, "not enough ammo.\n");
-
-
 
 	if (txt[0] == 1)
 	{
@@ -421,7 +612,6 @@ void Con_Print (char *txt)
 	while ( (c = *txt) )
 	{
 	// count word length
-
 		for (l=0 ; l< con_linewidth ; l++)
 			if ( txt[l] <= ' ')
 				break;
@@ -455,7 +645,6 @@ void Con_Print (char *txt)
 			fixline = 0;	// JPG
 			break;
 
-
 		case '\r':
 			if (pq_removecr.value)	// JPG 3.20 - optionally remove '\r'
 				c += 128;
@@ -479,14 +668,11 @@ void Con_Print (char *txt)
 }
 
 
-
-
 // JPG - increased this from 4096 to 16384 and moved it up here
 // See http://www.inside3d.com/qip/q1/bugs.htm, NVidia 5.16 drivers can cause crash
 #define	MAXPRINTMSG	16384
 
 /* JPG - took *file out of the argument list and used logfilename instead
-
 ================
 Con_DebugLog
 ================
@@ -498,13 +684,9 @@ void Con_DebugLog( /* char *file, */ char *fmt, ...)
     int fd;
 
     va_start(argptr, fmt);
-#if defined (__APPLE__) || defined (MACOSX)
-    vsnprintf(data, 1024, fmt, argptr);
-#else
-    vsprintf(data, fmt, argptr);
-#endif /* __APPLE__ || MACOSX */
+    vsnprintf(data, sizeof(data), fmt, argptr);
     va_end(argptr);
-    fd = open(va("%s/%s", com_gamedir, logfilename), O_WRONLY | O_CREAT | O_APPEND, 0666); // changed by woods
+    fd = open(va("%s/%s", com_gamedir, logfilename), O_WRONLY | O_CREAT | O_APPEND, 0666);
     write(fd, data, strlen(data));
     close(fd);
 }
@@ -517,7 +699,6 @@ Con_Printf
 Handles cursor positioning, line wrapping, etc
 ================
 */
-
 // FIXME: make a buffer size safe vsprintf?
 void Con_Printf (char *fmt, ...)
 {
@@ -526,11 +707,7 @@ void Con_Printf (char *fmt, ...)
 	static qboolean	inupdate;
 
 	va_start (argptr,fmt);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (msg,4096,fmt,argptr);
-#else
-	vsprintf (msg,fmt,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 // also echo to debugging console
@@ -579,11 +756,7 @@ void Con_DPrintf (char *fmt, ...)
 		return;			// don't confuse non-developers with techie stuff...
 
 	va_start (argptr,fmt);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (msg,MAXPRINTMSG,fmt,argptr);
-#else
-	vsprintf (msg,fmt,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 	Con_Printf ("%s", msg);
@@ -604,11 +777,7 @@ void Con_SafePrintf (char *fmt, ...)
 	int			temp;
 
 	va_start (argptr,fmt);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (msg,1024,fmt,argptr);
-#else
-	vsprintf (msg,fmt,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 	temp = scr_disabled_for_loading;
@@ -676,14 +845,14 @@ Draws the last few lines of output transparently over the game top
 */
 void Con_DrawNotify (void)
 {
-	int		x, v;
+	int		x, v, i, maxlines; //Baker 3.60 - maxlines
 	char	*text;
-	int		i;
 	float	time;
 	extern char chat_buffer[];
 
+	maxlines = bound(0, _con_notifylines.value, NUM_CON_TIMES); // Baker 3.60 -- from JoeQuake
 	v = 0;
-	for (i= con_current-NUM_CON_TIMES+1 ; i<=con_current ; i++)
+	for (i= con_current-maxlines+1 ; i<=con_current ; i++)   // Baker 3.60 - con_notifylines support from JoeQuake
 	{
 		if (i < 0)
 			continue;
@@ -716,8 +885,8 @@ void Con_DrawNotify (void)
 		// JPG - added support for team messages
 		if (team_message)
 		{
-			Draw_String (8, v, "(say):");
-			x = 7;
+			Draw_String (8, v, "(say team):");
+			x = 12; // Baker 3.90: 7 increased to 12 for "say_team"
 		}
 		else
 		{
@@ -734,7 +903,7 @@ void Con_DrawNotify (void)
 			i++;
 			if (x > con_linewidth)
 			{
-				x = team_message ? 7 : 5;
+				x = team_message ? 12 : 5; // Baker 3.90: 7 increased to 12 "(say)" ---> "(say_team)"
 				v += 8;
 			}
 		}
@@ -756,10 +925,8 @@ The typing input line at the bottom should only be drawn if typing is allowed
 */
 void Con_DrawConsole (int lines, qboolean drawinput)
 {
-	int				i, x, y;
-	int				rows;
+	int				i, x, y, j, rows;
 	char			*text;
-	int				j;
 
 	if (lines <= 0)
 		return;
@@ -812,10 +979,10 @@ void Con_NotifyBox (char *text)
 
 	do
 	{
-		t1 = Sys_FloatTime ();
+		t1 = Sys_DoubleTime ();
 		SCR_UpdateScreen ();
 		Sys_SendKeyEvents ();
-		t2 = Sys_FloatTime ();
+		t2 = Sys_DoubleTime ();
 		realtime += t2-t1;		// make the cursor blink
 	} while (key_count < 0);
 

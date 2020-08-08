@@ -721,9 +721,8 @@ D_RasterizeAliasPolySmooth
 */
 void D_RasterizeAliasPolySmooth (void)
 {
-	int				initialleftheight, initialrightheight;
+	int				initialleftheight, initialrightheight, working_lstepx, originalcount;
 	int				*plefttop, *prighttop, *pleftbottom, *prightbottom;
-	int				working_lstepx, originalcount;
 
 	plefttop = pedgetable->pleftedgevert0;
 	prighttop = pedgetable->prightedgevert0;
@@ -734,26 +733,20 @@ void D_RasterizeAliasPolySmooth (void)
 	initialleftheight = pleftbottom[1] - plefttop[1];
 	initialrightheight = prightbottom[1] - prighttop[1];
 
-//
 // set the s, t, and light gradients, which are consistent across the triangle
 // because being a triangle, things are affine
-//
 	D_PolysetCalcGradients (r_affinetridesc.skinwidth);
 
-//
 // rasterize the polygon
-//
 
-//
 // scan out the top (and possibly only) part of the left edge
-//
+
 	d_pedgespanpackage = a_spans;
 
 	ystart = plefttop[1];
 	d_aspancount = plefttop[0] - prighttop[0];
 
-	d_ptex = (byte *)r_affinetridesc.pskin + (plefttop[2] >> 16) +
-			(plefttop[3] >> 16) * r_affinetridesc.skinwidth;
+	d_ptex = (byte *)r_affinetridesc.pskin + (plefttop[2] >> 16) + (plefttop[3] >> 16) * r_affinetridesc.skinwidth;
 #if	id386
 	d_sfrac = (plefttop[2] & 0xFFFF) << 16;
 	d_tfrac = (plefttop[3] & 0xFFFF) << 16;
@@ -840,9 +833,7 @@ void D_RasterizeAliasPolySmooth (void)
 		D_PolysetScanLeftEdge (initialleftheight);
 	}
 
-//
 // scan out the bottom part of the left edge, if it exists
-//
 	if (pedgetable->numleftedges == 2)
 	{
 		int		height;
@@ -985,10 +976,8 @@ void D_PolysetSetEdgeTable (void)
 	edgetableindex = 0;	// assume the vertices are already in
 						//  top to bottom order
 
-//
 // determine which edges are right & left, and the order in which
 // to rasterize them
-//
 	if (r_p0[1] >= r_p1[1])
 	{
 		if (r_p0[1] == r_p1[1])

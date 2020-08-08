@@ -285,7 +285,6 @@ int UDP_Read (int socket, byte *buf, int len, struct qsockaddr *addr)
 	int				ret;
 
 	ret = recvfrom (socket, buf, len, 0, (struct sockaddr *)addr, &addrlen);
-
 	if (ret == -1 && (errno == EWOULDBLOCK || errno == ECONNREFUSED))
 		return 0;
 	return ret;
@@ -333,7 +332,6 @@ int UDP_Write (int socket, byte *buf, int len, struct qsockaddr *addr)
 	int ret;
 
 	ret = sendto (socket, buf, len, 0, (struct sockaddr *)addr, sizeof(struct qsockaddr));
-
 	if (ret == -1 && errno == EWOULDBLOCK)
 		return 0;
 	return ret;
@@ -347,11 +345,7 @@ char *UDP_AddrToString (struct qsockaddr *addr)
 	int haddr;
 
 	haddr = ntohl(((struct sockaddr_in *)addr)->sin_addr.s_addr);
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf(buffer, 22, "%d.%d.%d.%d:%d", (haddr >> 24) & 0xff, (haddr >> 16) & 0xff, (haddr >> 8) & 0xff, haddr & 0xff, ntohs(((struct sockaddr_in *)addr)->sin_port));
-#else
-	sprintf(buffer, "%d.%d.%d.%d:%d", (haddr >> 24) & 0xff, (haddr >> 16) & 0xff, (haddr >> 8) & 0xff, haddr & 0xff, ntohs(((struct sockaddr_in *)addr)->sin_port));
-#endif /* __APPLE__ || MACOSX */
+	snprintf(buffer, sizeof(buffer), "%d.%d.%d.%d:%d", (haddr >> 24) & 0xff, (haddr >> 16) & 0xff, (haddr >> 8) & 0xff, haddr & 0xff, ntohs(((struct sockaddr_in *)addr)->sin_port));
 	return buffer;
 }
 
@@ -381,14 +375,10 @@ int UDP_GetSocketAddr (int socket, struct qsockaddr *addr)
 	memset(addr, 0, sizeof(struct qsockaddr));
 
 #if defined (__APPLE__) || defined (MACOSX)
-
 	if (getsockname(socket, (struct sockaddr *)addr, &addrlen) != 0)
             return (-1);
-
 #else
-
 	getsockname(socket, (struct sockaddr *)addr, &addrlen);
-
 #endif /* __APPLE__ || MACOSX */
 
 	a = ((struct sockaddr_in *)addr)->sin_addr.s_addr;
@@ -404,12 +394,14 @@ int UDP_GetNameFromAddr (struct qsockaddr *addr, char *name)
 {
 	struct hostent *hostentry;
 
+	/* JPG 2.01 - commented this out because it's slow and completely useless
 	hostentry = gethostbyaddr ((char *)&((struct sockaddr_in *)addr)->sin_addr, sizeof(struct in_addr), AF_INET);
 	if (hostentry)
 	{
 		Q_strncpy (name, (char *)hostentry->h_name, NET_NAMELEN - 1);
 		return 0;
 	}
+	*/
 
 	strcpy (name, UDP_AddrToString (addr));
 	return 0;

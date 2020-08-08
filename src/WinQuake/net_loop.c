@@ -64,14 +64,14 @@ void Loop_SearchForHosts (qboolean xmit)
 
 qsocket_t *Loop_Connect (char *host)
 {
-	if (strcmp(host,"local") != 0)
+	if (strcmp(host,"local"))
 		return NULL;
 
 	localconnectpending = true;
 
 	if (!loop_client)
 	{
-		if ((loop_client = NET_NewQSocket ()) == NULL)
+		if (!(loop_client = NET_NewQSocket ()))
 		{
 			Con_Printf("Loop_Connect: no qsocket available\n");
 			return NULL;
@@ -82,11 +82,11 @@ qsocket_t *Loop_Connect (char *host)
 	loop_client->sendMessageLength = 0;
 	loop_client->canSend = true;
 	loop_client->mod = MOD_PROQUAKE; // JPG - added this
-	loop_client->client_port = 0; // JPG added this but did not comment (woods)
+	loop_client->client_port = 0;
 
 	if (!loop_server)
 	{
-		if ((loop_server = NET_NewQSocket ()) == NULL)
+		if (!(loop_server = NET_NewQSocket ()))
 		{
 			Con_Printf("Loop_Connect: no qsocket available\n");
 			return NULL;
@@ -97,7 +97,7 @@ qsocket_t *Loop_Connect (char *host)
 	loop_server->sendMessageLength = 0;
 	loop_server->canSend = true;
 	loop_server->mod = MOD_PROQUAKE; // JPG - added this
-	loop_server->client_port = 0;   // JPG added this but did not comment (woods)
+	loop_server->client_port = 0;
 
 	loop_client->driverdata = (void *)loop_server;
 	loop_server->driverdata = (void *)loop_client;

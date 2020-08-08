@@ -96,9 +96,7 @@ R_MakeSky
 */
 void R_MakeSky (void)
 {
-	int			x, y;
-	int			ofs, baseofs;
-	int			xshift, yshift;
+	int			x, y, ofs, baseofs, xshift, yshift;
 	unsigned	*pnewsky;
 	static int	xlast = -1, ylast = -1;
 
@@ -119,31 +117,23 @@ void R_MakeSky (void)
 
 // FIXME: clean this up
 #if UNALIGNED_OK
-
 		for (x=0 ; x<SKYSIZE ; x += 4)
 		{
 			ofs = baseofs + ((x+xshift) & SKYMASK);
 
 		// PORT: unaligned dword access to bottommask and bottomsky
 
-			*pnewsky = (*(pnewsky + (128 / sizeof (unsigned))) &
-						*(unsigned *)&bottommask[ofs]) |
-						*(unsigned *)&bottomsky[ofs];
+			*pnewsky = (*(pnewsky + (128 / sizeof (unsigned))) & *(unsigned *)&bottommask[ofs]) | *(unsigned *)&bottomsky[ofs];
 			pnewsky++;
 		}
-
 #else
-
 		for (x=0 ; x<SKYSIZE ; x++)
 		{
 			ofs = baseofs + ((x+xshift) & SKYMASK);
 
-			*(byte *)pnewsky = (*((byte *)pnewsky + 128) &
-						*(byte *)&bottommask[ofs]) |
-						*(byte *)&bottomsky[ofs];
+			*(byte *)pnewsky = (*((byte *)pnewsky + 128) & *(byte *)&bottommask[ofs]) | *(byte *)&bottomsky[ofs];
 			pnewsky = (unsigned *)((byte *)pnewsky + 1);
 		}
-
 #endif
 
 		pnewsky += 128 / sizeof (unsigned);
@@ -160,11 +150,8 @@ R_GenSkyTile
 */
 void R_GenSkyTile (void *pdest)
 {
-	int			x, y;
-	int			ofs, baseofs;
-	int			xshift, yshift;
-	unsigned	*pnewsky;
-	unsigned	*pd;
+	int			x, y, ofs, baseofs, xshift, yshift;
+	unsigned	*pnewsky, *pd;
 
 	xshift = skytime*skyspeed;
 	yshift = skytime*skyspeed;
@@ -178,33 +165,25 @@ void R_GenSkyTile (void *pdest)
 
 // FIXME: clean this up
 #if UNALIGNED_OK
-
 		for (x=0 ; x<SKYSIZE ; x += 4)
 		{
 			ofs = baseofs + ((x+xshift) & SKYMASK);
 
 		// PORT: unaligned dword access to bottommask and bottomsky
 
-			*pd = (*(pnewsky + (128 / sizeof (unsigned))) &
-				   *(unsigned *)&bottommask[ofs]) |
-				   *(unsigned *)&bottomsky[ofs];
+			*pd = (*(pnewsky + (128 / sizeof (unsigned))) & *(unsigned *)&bottommask[ofs]) | *(unsigned *)&bottomsky[ofs];
 			pnewsky++;
 			pd++;
 		}
-
 #else
-
 		for (x=0 ; x<SKYSIZE ; x++)
 		{
 			ofs = baseofs + ((x+xshift) & SKYMASK);
 
-			*(byte *)pd = (*((byte *)pnewsky + 128) &
-						*(byte *)&bottommask[ofs]) |
-						*(byte *)&bottomsky[ofs];
+			*(byte *)pd = (*((byte *)pnewsky + 128) & *(byte *)&bottommask[ofs]) | *(byte *)&bottomsky[ofs];
 			pnewsky = (unsigned *)((byte *)pnewsky + 1);
 			pd = (unsigned *)((byte *)pd + 1);
 		}
-
 #endif
 
 		pnewsky += 128 / sizeof (unsigned);
@@ -273,8 +252,5 @@ void R_SetSkyFrame (void)
 
 	skytime = cl.time - ((int)(cl.time / temp) * temp);
 	
-
 	r_skymade = 0;
 }
-
-

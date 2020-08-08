@@ -159,7 +159,7 @@ void Cbuf_Execute (void)
 		{
 			if (text[i] == '"')
 				quotes++;
-			if ( !(quotes&1) &&  text[i] == ';' && notcmd)   // JPG - added && cmd so that the ENTIRE line can be forwareded
+			if ( !(quotes&1) &&  text[i] == ';' && notcmd)   // added && cmd so that the ENTIRE line can be forwareded
 				break;	// don't break if inside a quoted string
 			if (text[i] == '\n')
 				break;

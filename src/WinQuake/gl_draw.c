@@ -1,3 +1,4 @@
+// D3D diff 14 of 14
 /*
 Copyright (C) 1996-1997 Id Software, Inc.
 
@@ -31,7 +32,7 @@ extern unsigned char d_15to8table[65536];
 
 cvar_t		gl_nobind = {"gl_nobind", "0"};
 cvar_t		gl_max_size = {"gl_max_size", "1024"};
-cvar_t		gl_picmip = {"gl_picmip", "0"};
+cvar_t		gl_picmip = {"gl_picmip", "0", true};
 
 byte		*draw_chars;				// 8*8 graphic characters
 qpic_t		*draw_disc;
@@ -72,6 +73,7 @@ typedef struct
 	char	identifier[64];
 	int		width, height;
 	qboolean	mipmap;
+	unsigned short crc;  // Baker 3.80x - part of GL_LoadTexture: cache mismatch fix
 } gltexture_t;
 
 #define	MAX_GLTEXTURES	1024
@@ -96,10 +98,8 @@ void GL_Bind (int texnum)
 	glBindTexture(GL_TEXTURE_2D, texnum);
 
 #if defined (__APPLE__) || defined (MACOSX)
-        if (gl_texturefilteranisotropic)
-        {
+        if (gl_texturefilteranisotropic) {
             extern GLfloat	gl_texureanisotropylevel;
-
             glTexParameterfv (GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, &gl_texureanisotropylevel);
         }
 #endif /* __APPLE__ || MACOSX */
@@ -132,7 +132,6 @@ int Scrap_AllocBlock (int w, int h, int *x, int *y)
 {
 	int		i, j;
 	int		best, best2;
-//	int		bestx;
 	int		texnum;
 
 	for (texnum=0 ; texnum<MAX_SCRAPS ; texnum++)
@@ -167,7 +166,7 @@ int Scrap_AllocBlock (int w, int h, int *x, int *y)
 	}
 
 	Sys_Error ("Scrap_AllocBlock: full");
-        return(0);
+	return (0); // Baker 3.80x - avoid compiler warning
 }
 
 int	scrap_uploads;
@@ -337,6 +336,16 @@ glmode_t modes[] = {
 
 /*
 ===============
+Draw_LoadPics -- johnfitz
+===============
+*/
+void Draw_LoadPics (void)
+{
+	draw_disc = Draw_PicFromWad ("disc");
+	draw_backtile = Draw_PicFromWad ("backtile");
+}
+/*
+===============
 Draw_TextureMode_f
 ===============
 */
@@ -383,25 +392,60 @@ void Draw_TextureMode_f (void)
 	}
 }
 
+// D3D diff 1 of 14
+#ifdef D3DQUAKE
+#define    D3D_TEXTURE_MAXANISOTROPY 0xf70001
+float gl_maxAnisotropy = 1.0;
+/*
+===============
+Draw_MaxAnisotropy_f
+===============
+*/
+void Draw_MaxAnisotropy_f (void)
+{
+	int		i;
+	gltexture_t	*glt;
+
+	if (Cmd_Argc() == 1)
+	{
+		Con_Printf ("current max anisotropy is %g\n", gl_maxAnisotropy);
+		return;
+	}
+
+	gl_maxAnisotropy = Q_atof(Cmd_Argv(1));
+
+	// change all the existing mipmap texture objects
+	for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
+	{
+		if (glt->mipmap)
+		{
+			GL_Bind (glt->texnum);
+			glTexParameterf(GL_TEXTURE_2D, D3D_TEXTURE_MAXANISOTROPY, gl_maxAnisotropy);
+		}
+	}
+}
+
+#endif
 /*
 ===============
 Draw_Init
 ===============
 */
+// D3D diff 2 of 14
+#ifdef D3DQUAKE
+float d3dGetD3DDriverVersion();
+#endif
 void Draw_Init (void)
 {
 	int		i;
 	qpic_t		*cb;
+	int		start;
 	byte		*dest;
 	int		x, y;
 	char		ver[40];
 	glpic_t		*gl;
-	int		start;
+	
 	byte		*ncdata;
-#if 0
-        byte		 *src;
-	int		f, fstep;
-#endif
 
 	Cvar_RegisterVariable (&gl_nobind, NULL);
 	Cvar_RegisterVariable (&gl_max_size, NULL);
@@ -414,6 +458,10 @@ void Draw_Init (void)
 
 	Cmd_AddCommand ("gl_texturemode", &Draw_TextureMode_f);
 
+// D3D diff 3 of 14
+#ifdef D3DQUAKE
+	Cmd_AddCommand ("d3d_maxanisotropy", &Draw_MaxAnisotropy_f);
+#endif
 	// load the console background and the charset
 	// by hand, because we need to write the version
 	// string into the background before turning
@@ -447,40 +495,9 @@ void Draw_Init (void)
 	for (x=0 ; x<y ; x++)
 		Draw_CharToConback (ver[x], dest+(x<<3));
 
-#if 0
-	conback->width = vid.conwidth;
-	conback->height = vid.conheight;
-
- 	// scale console to vid size
- 	dest = ncdata = Hunk_AllocName(vid.conwidth * vid.conheight, "conback");
-
- 	for (y=0 ; y<vid.conheight ; y++, dest += vid.conwidth)
- 	{
- 		src = cb->data + cb->width * (y*cb->height/vid.conheight);
- 		if (vid.conwidth == cb->width)
- 			memcpy (dest, src, vid.conwidth);
- 		else
- 		{
- 			f = 0;
- 			fstep = cb->width*0x10000/vid.conwidth;
- 			for (x=0 ; x<vid.conwidth ; x+=4)
- 			{
- 				dest[x] = src[f>>16];
- 				f += fstep;
- 				dest[x+1] = src[f>>16];
- 				f += fstep;
- 				dest[x+2] = src[f>>16];
- 				f += fstep;
- 				dest[x+3] = src[f>>16];
- 				f += fstep;
- 			}
- 		}
- 	}
-#else
 	conback->width = cb->width;
 	conback->height = cb->height;
 	ncdata = cb->data;
-#endif
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -504,11 +521,8 @@ void Draw_Init (void)
 	scrap_texnum = texture_extension_number;
 	texture_extension_number += MAX_SCRAPS;
 
-	//
-	// get the other pics we need
-	//
-	draw_disc = Draw_PicFromWad ("disc");
-	draw_backtile = Draw_PicFromWad ("backtile");
+	// load game pics
+	Draw_LoadPics ();
 }
 
 
@@ -524,10 +538,6 @@ smoothly scrolled off.
 */
 void Draw_Character (int x, int y, int num)
 {
-//	byte			*dest;
-//	byte			*source;
-//	unsigned short		*pusdest;
-//	int			drawline;
 	int			row, col;
 	float			frow, fcol, size;
 
@@ -595,9 +605,6 @@ Draw_AlphaPic
 */
 void Draw_AlphaPic (int x, int y, qpic_t *pic, float alpha)
 {
-//	byte			*dest, *source;
-//	unsigned short		*pusdest;
-//	int			v, u;
 	glpic_t			*gl;
 
 	if (scrap_dirty)
@@ -607,6 +614,10 @@ void Draw_AlphaPic (int x, int y, qpic_t *pic, float alpha)
 	glEnable (GL_BLEND);
 //	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 //	glCullFace(GL_FRONT);
+// D3D diff 8 of 14
+#ifdef D3DQUAKE
+	if ( alpha > 1 ) alpha = 1; // manually clamp
+#endif
 	glColor4f (1,1,1,alpha);
 	GL_Bind (gl->texnum);
 	glBegin (GL_QUADS);
@@ -632,9 +643,6 @@ Draw_Pic
 */
 void Draw_Pic (int x, int y, qpic_t *pic)
 {
-//	byte			*dest, *source;
-//	unsigned short		*pusdest;
-//	int			v, u;
 	glpic_t			*gl;
 
 	if (scrap_dirty)
@@ -654,6 +662,38 @@ void Draw_Pic (int x, int y, qpic_t *pic)
 	glEnd ();
 }
 
+void Draw_SubPic(int x, int y, qpic_t *pic, int srcx, int srcy, int width, int height)
+{
+	glpic_t			*gl;
+	float newsl, newtl, newsh, newth;
+	float oldglwidth, oldglheight;
+
+	if (scrap_dirty)
+		Scrap_Upload ();
+	gl = (glpic_t *)pic->data;
+	
+	oldglwidth = gl->sh - gl->sl;
+	oldglheight = gl->th - gl->tl;
+
+	newsl = gl->sl + (srcx*oldglwidth)/pic->width;
+	newsh = newsl + (width*oldglwidth)/pic->width;
+
+	newtl = gl->tl + (srcy*oldglheight)/pic->height;
+	newth = newtl + (height*oldglheight)/pic->height;
+	
+	glColor4f (1,1,1,1);
+	GL_Bind (gl->texnum);
+	glBegin (GL_QUADS);
+	glTexCoord2f (newsl, newtl);
+	glVertex2f (x, y);
+	glTexCoord2f (newsh, newtl);
+	glVertex2f (x+width, y);
+	glTexCoord2f (newsh, newth);
+	glVertex2f (x+width, y+height);
+	glTexCoord2f (newsl, newth);
+	glVertex2f (x, y+height);
+	glEnd ();
+}
 
 /*
 =============
@@ -662,9 +702,6 @@ Draw_TransPic
 */
 void Draw_TransPic (int x, int y, qpic_t *pic)
 {
-//	byte		*dest, *source, tbyte;
-//	unsigned short	*pusdest;
-//	int		v, u;
 
 	if (x < 0 || (unsigned)(x + pic->width) > vid.width || y < 0 ||
 		 (unsigned)(y + pic->height) > vid.height)
@@ -674,6 +711,7 @@ void Draw_TransPic (int x, int y, qpic_t *pic)
 
 	Draw_Pic (x, y, pic);
 }
+
 
 /*
 =============
@@ -778,6 +816,49 @@ void Draw_TileClear (int x, int y, int w, int h)
 	glEnd ();
 }
 
+#ifdef GLQUAKE
+/*
+=============
+Draw_AlphaFill
+
+Fills a box of pixels with a single color
+=============
+*/
+void Draw_AlphaFill(int x, int y, int w, int h, int c, float alpha) 
+{
+	alpha = bound(0, alpha, 1);
+
+	if (!alpha)
+		return;
+
+	glDisable (GL_TEXTURE_2D);
+	if (alpha < 1) 
+	{
+		glEnable (GL_BLEND);
+		glDisable(GL_ALPHA_TEST);
+		glColor4f (host_basepal[c * 3] / 255.0,  host_basepal[c * 3 + 1] / 255.0, host_basepal[c * 3 + 2] / 255.0, alpha);
+	} 
+	else 
+	{
+		glColor3f (host_basepal[c * 3] / 255.0, host_basepal[c * 3 + 1] / 255.0, host_basepal[c * 3 + 2]  /255.0);
+	}
+
+	glBegin (GL_QUADS);
+	glVertex2f (x, y);
+	glVertex2f (x + w, y);
+	glVertex2f (x + w, y + h);
+	glVertex2f (x, y + h);
+	glEnd ();
+
+	glEnable (GL_TEXTURE_2D);
+	if (alpha < 1) 
+	{
+		glEnable(GL_ALPHA_TEST);
+		glDisable (GL_BLEND);
+	}
+	glColor3f (1, 1, 1);
+}
+#endif
 
 /*
 =============
@@ -1039,6 +1120,10 @@ void GL_MipMap8Bit (byte *in, int width, int height)
 GL_Upload32
 ===============
 */
+// D3D diff 11 of 11
+#ifdef D3DQUAKE
+void d3dHint_GenerateMipMaps(int);
+#endif
 void GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap, qboolean alpha)
 {
 	int			samples;
@@ -1065,28 +1150,23 @@ static	unsigned	scaled[1024*512];	// [512*256];
 
 #if 0
 	if (mipmap)
-        {
 		gluBuild2DMipmaps (GL_TEXTURE_2D, samples, width, height, GL_RGBA, GL_UNSIGNED_BYTE, trans);
-        }
-	else
-        {
-            if (scaled_width == width && scaled_height == height)
-             {
+	else if (scaled_width == width && scaled_height == height)
+         {
 #if defined (__APPLE__) || defined (MACOSX)
                 GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, width, height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 		glTexImage2D (GL_TEXTURE_2D, 0, samples, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, trans);
-             }
-            else
-            {
+         }
+	else
+	{
                     gluScaleImage (GL_RGBA, width, height, GL_UNSIGNED_BYTE, trans,
                             scaled_width, scaled_height, GL_UNSIGNED_BYTE, scaled);
 #if defined (__APPLE__) || defined (MACOSX)
                     GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
                     glTexImage2D (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
-            }
-        }
+    }
 #else
 texels += scaled_width * scaled_height;
 
@@ -1094,10 +1174,18 @@ texels += scaled_width * scaled_height;
 	{
 		if (!mipmap)
 		{
+// D3D diff 12 of 14
+#ifdef D3DQUAKE
+			d3dHint_GenerateMipMaps(0);
+#endif
 #if defined (__APPLE__) || defined (MACOSX)
                         GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 			glTexImage2D (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+// D3D diff 13 of 14
+#ifdef D3DQUAKE
+			d3dHint_GenerateMipMaps(1);
+#endif
 			goto done;
 		}
 		memcpy (scaled, data, width*height*4);
@@ -1106,11 +1194,9 @@ texels += scaled_width * scaled_height;
 		GL_ResampleTexture (data, width, height, scaled, scaled_width, scaled_height);
 
 #if defined (__APPLE__) || defined (MACOSX)
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, 0, GL_RGBA,
-                            GL_UNSIGNED_BYTE);
+        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
-
 	if (mipmap)
 	{
 		int		miplevel;
@@ -1127,8 +1213,7 @@ texels += scaled_width * scaled_height;
 				scaled_height = 1;
 			miplevel++;
 #if defined (__APPLE__) || defined (MACOSX)
-                        GL_CheckTextureRAM (GL_TEXTURE_2D, miplevel, samples, scaled_width, scaled_height, 0, 0,
-                                            GL_RGBA, GL_UNSIGNED_BYTE);
+                        GL_CheckTextureRAM (GL_TEXTURE_2D, miplevel, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 
 			glTexImage2D (GL_TEXTURE_2D, miplevel, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
@@ -1154,8 +1239,6 @@ void GL_Upload8_EXT (byte *data, int width, int height,  qboolean mipmap, qboole
 {
 	int			i, s;
 	qboolean		noalpha;
-//	int			p;
-//	static unsigned 	j;
 	int			samples;
         static unsigned char 	scaled[1024*512];	// [512*256];
 	int			scaled_width, scaled_height;
@@ -1200,8 +1283,7 @@ void GL_Upload8_EXT (byte *data, int width, int height,  qboolean mipmap, qboole
 		if (!mipmap)
 		{
 #if defined (__APPLE__) || defined (MACOSX)
-                        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height,
-                                            0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
+                        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 			glTexImage2D (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, GL_COLOR_INDEX , GL_UNSIGNED_BYTE, data);
 			goto done;
@@ -1212,8 +1294,7 @@ void GL_Upload8_EXT (byte *data, int width, int height,  qboolean mipmap, qboole
 		GL_Resample8BitTexture (data, width, height, scaled, scaled_width, scaled_height);
 
 #if defined (__APPLE__) || defined (MACOSX)
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, 0,
-                            GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
+        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, scaled);
 	if (mipmap)
@@ -1232,8 +1313,7 @@ void GL_Upload8_EXT (byte *data, int width, int height,  qboolean mipmap, qboole
 				scaled_height = 1;
 			miplevel++;
 #if defined (__APPLE__) || defined (MACOSX)
-                        GL_CheckTextureRAM (GL_TEXTURE_2D, miplevel, GL_COLOR_INDEX8_EXT, scaled_width,
-                                            scaled_height, 0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
+            GL_CheckTextureRAM (GL_TEXTURE_2D, miplevel, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
                         glTexImage2D (GL_TEXTURE_2D, miplevel, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, scaled);
 		}
@@ -1305,46 +1385,57 @@ static	unsigned	trans[640*480];		// FIXME, temporary
 /*
 ================
 GL_LoadTexture
+Baker 3.80x - Uses LordHavoc's fix to eliminate GL_LoadTexture: Cache mismatch
+that occurs when maps with different textures using the same name are loaded.
+Code provided by Reckless
 ================
 */
 int GL_LoadTexture (char *identifier, int width, int height, byte *data, qboolean mipmap, qboolean alpha)
 {
-//	qboolean	noalpha;
-	int		i;//, p, s;
+	int			i;
 	gltexture_t	*glt;
+   unsigned short crc; // Baker 3.80x - LoadTexture fix LordHavoc provided by Reckless
 
-	// see if the texture is allready present
+   crc = CRC_Block (data, width*height); // Baker 3.80x - LoadTexture fix LordHavoc provided by Reckless
+
+   // see if the texture is already present
 	if (identifier[0])
 	{
 		for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
 		{
 			if (!strcmp (identifier, glt->identifier))
 			{
-				if (width != glt->width || height != glt->height)
-					Sys_Error ("GL_LoadTexture: cache mismatch");
+            // Baker 3.60 - LoadTexture fix LordHavoc provided by Reckless
+			if (width != glt->width || height != glt->height || crc != glt->crc)
+               goto setup;
 				return gltextures[i].texnum;
 			}
 		}
+		// Jack Palevich -- surely we want to remember this new texture.
+		// Doing this costs 1% fps per timedemo, probably because of the
+		// linear search through the texture cache, but it saves 10 MB
+		// of VM growth per level load. It also makes the GL_TEXTUREMODE
+		// console command work correctly.
+		// numgltextures++;  <---- Baker 3.70D3D - no implementing this yet, if at all
+
 	}
-	// JPG 3.02 - this shouldn't be an else clause!!
-	//else {
-		glt = &gltextures[numgltextures];
-		numgltextures++;
+//   else { get the hell rid of this :P
+      glt = &gltextures[numgltextures++];
 	//}
 
 	strcpy (glt->identifier, identifier);
-	glt->texnum = texture_extension_number;
+   glt->texnum = texture_extension_number++;
+
+setup:
 	glt->width = width;
 	glt->height = height;
 	glt->mipmap = mipmap;
+   glt->crc = crc;
 
-	GL_Bind(texture_extension_number );
-
+   GL_Bind (glt->texnum);
 	GL_Upload8 (data, width, height, mipmap, alpha);
 
-	texture_extension_number++;
-
-	return texture_extension_number-1;
+	return glt->texnum;
 }
 
 /*

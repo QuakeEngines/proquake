@@ -18,9 +18,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
 
-//
 // these are the key numbers that should be passed to Key_Event
-//
 #define	K_TAB			9
 #define	K_ENTER			13
 #define	K_ESCAPE		27
@@ -93,9 +91,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define K_PAUSE			255
 
-//
+
 // mouse buttons generate virtual keys
-//
+
 
 #if !defined (__APPLE__) && !defined (MACOSX)
 
@@ -105,18 +103,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #endif /* !__APPLE__ && !MACOSX */
 
-//
+
 // joystick buttons
-//
+
 #define	K_JOY1			203
 #define	K_JOY2			204
 #define	K_JOY3			205
 #define	K_JOY4			206
 
-//
 // aux keys are for multi-buttoned joysticks to generate so they can use
 // the normal binding process
-//
+
 #define	K_AUX1			207
 #define	K_AUX2			208
 #define	K_AUX3			209

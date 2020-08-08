@@ -21,15 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-#if defined(__APPLE__) || defined(MACOSX)
-
+// Baker: skytexturenum is "owned" rightly by gl_warp.c
 extern int			skytexturenum;
-
-#else
-
-int			skytexturenum;
-
-#endif /* APPLE || MACOSX */
 
 #ifndef GL_RGBA4
 #define	GL_RGBA4	0
@@ -148,7 +141,6 @@ void R_AddDynamicLights (msurface_t *surf)
 	}
 }
 
-
 /*
 ===============
 R_BuildLightMap
@@ -164,7 +156,6 @@ void R_BuildLightMap (msurface_t *surf, byte *dest, int stride)
 	byte		*lightmap;
 	unsigned	scale;
 	int		maps;
-//	int		lightadj[4];
 	unsigned	*bl;
 
 	surf->cached_dlight = (surf->dlightframe == r_framecount);
@@ -217,7 +208,11 @@ store:
 				t >>= 7;
 				if (t > 255)
 					t = 255;
+#ifdef D3DQUAKE
+				dest[3] = 255-t;
+#else
 				dest[3] = 255-gammatable[t];	// JPG 3.02 - t -> gammatable[t]
+#endif
 				dest += 4;
 			}
 		}
@@ -434,10 +429,15 @@ void R_DrawSequentialPoly (msurface_t *s)
 	float		*v;
 	int		i;
 	texture_t	*t;
-	vec3_t		nv;//, dir;
-//	float		ss, ss2, length;
-//	float		s1, t1;
+	vec3_t		nv;
 	glRect_t	*theRect;
+// Begin D3DQuake
+#ifdef D3DQUAKE
+int gNoSurfaces=0;
+
+	if ( gNoSurfaces ) return;
+// End D3DQuake
+#endif D3DQUAKE
 
 	//
 	// normal lightmaped poly
@@ -616,7 +616,6 @@ void DrawGLWaterPoly (glpoly_t *p)
 {
 	int		i;
 	float		*v;
-//	float		s, t, os, ot;
 	vec3_t		nv;
 
 	GL_DisableMultitexture();
@@ -640,7 +639,6 @@ void DrawGLWaterPolyLightmap (glpoly_t *p)
 {
 	int		i;
 	float		*v;
-//	float		s, t, os, ot;
 	vec3_t		nv;
 
 	GL_DisableMultitexture();
@@ -853,7 +851,6 @@ Multitexture
 */
 void R_RenderDynamicLightmaps (msurface_t *fa)
 {
-//	texture_t	*t;
 	byte		*base;
 	int		maps;
 	glRect_t    	*theRect;
@@ -920,7 +917,6 @@ void R_MirrorChain (msurface_t *s)
 
 #if 0
 /*
-/*
 ================
 R_DrawWaterSurfaces
 ================
@@ -931,7 +927,7 @@ void R_DrawWaterSurfaces (void)
 	msurface_t	*s;
 	texture_t	*t;
 
-	if (r_wateralpha.value == 1.0 || pq_cheatfree)	// JPG 3.20 - cheat protection
+	if (r_wateralpha.value >= 1.0 || pq_cheatfree)	// JPG 3.20 - cheat protection, Baker 3.99 changed in event set higher than max value of 1.0
 		return;
 
 	//
@@ -969,7 +965,6 @@ void R_DrawWaterSurfaces (void)
 	glDisable (GL_BLEND);
 }
 #else
-
 /*
 ================
 R_DrawWaterSurfaces
@@ -981,7 +976,7 @@ void R_DrawWaterSurfaces (void)
 	msurface_t	*s;
 	texture_t	*t;
 
-	if ((r_wateralpha.value == 1.0 || pq_cheatfree) && gl_texsort.value) // JPG 3.20 - cheat protection
+	if ((r_wateralpha.value >= 1.0 || pq_cheatfree) && gl_texsort.value) // JPG 3.20 - cheat protection, Baker 3.99: changed in event set higher than max value of 1
 		return;
 
 	//
@@ -1074,15 +1069,14 @@ void DrawTextureChains (void)
 			continue;
 		if (i == skytexturenum)
 			R_DrawSkyChain (s);
-		else if (i == mirrortexturenum && r_mirroralpha.value != 1.0)
+		else if (i == mirrortexturenum && r_mirroralpha.value < 1.0) // Baker 3.99: changed, max value is 1
 		{
 			R_MirrorChain (s);
 			continue;
 		}
 		else
 		{
-			if ((s->flags & SURF_DRAWTURB) && r_wateralpha.value != 1.0 && !pq_cheatfree)	// JPG 3.20 - cheat protection
-
+			if ((s->flags & SURF_DRAWTURB) && r_wateralpha.value < 1.0 && !pq_cheatfree)	// JPG 3.20 - cheat protection, Baker 3.99: changed in event r_wateralpha is above max value of 1
 				continue;	// draw translucent water later
 			for ( ; s ; s=s->texturechain)
 				R_RenderBrushPoly (s);
@@ -1099,9 +1093,9 @@ R_DrawBrushModel
 */
 void R_DrawBrushModel (entity_t *e)
 {
-	int		/* j, */ k;
+	int			k;
 	vec3_t		mins, maxs;
-	int		i;//, numsurfaces;
+	int			i;
 	msurface_t	*psurf;
 	float		dot;
 	mplane_t	*pplane;
@@ -1211,13 +1205,11 @@ R_RecursiveWorldNode
 */
 void R_RecursiveWorldNode (mnode_t *node)
 {
-	int		/* i, */ c, side;//, *pindex;
-//	vec3_t		acceptpt, rejectpt;
+	int			c, side;
 	mplane_t	*plane;
 	msurface_t	*surf, **mark;
 	mleaf_t		*pleaf;
-	double		/* d, */ dot;
-//	vec3_t		mins, maxs;
+	double		dot;
 
 	if (node->contents == CONTENTS_SOLID)
 		return;		// solid
@@ -1296,6 +1288,7 @@ void R_RecursiveWorldNode (mnode_t *node)
 			{
 				if (surf->visframe != r_framecount)
 					continue;
+
 				// don't backface underwater surfaces, because they warp // JPG - added r_waterwarp
 				if ( (!(surf->flags & SURF_UNDERWATER) || !r_waterwarp.value) && ( (dot < 0) ^ !!(surf->flags & SURF_PLANEBACK)) )
 					continue;		// wrong side
@@ -1337,7 +1330,6 @@ R_DrawWorld
 void R_DrawWorld (void)
 {
 	entity_t	ent;
-//	int		i;
 
 	memset (&ent, 0, sizeof(ent));
 	ent.model = cl.worldmodel;
@@ -1425,7 +1417,6 @@ int AllocBlock (int w, int h, int *x, int *y)
 {
 	int		i, j;
 	int		best, best2;
-//	int		bestx;
 	int		texnum;
 
 	for (texnum=0 ; texnum<MAX_LIGHTMAPS ; texnum++)
@@ -1460,7 +1451,7 @@ int AllocBlock (int w, int h, int *x, int *y)
 	}
 
 	Sys_Error ("AllocBlock: full");
-        return(0);
+	return 0;  // Baker 3.80x - avoid compiler warning
 }
 
 
@@ -1476,14 +1467,9 @@ BuildSurfaceDisplayList
 */
 void BuildSurfaceDisplayList (msurface_t *fa)
 {
-	int		i, lindex, lnumverts;//, s_axis, t_axis;
-//	float		dist, lastdist, lzi, scale, u, v, frac;
-//	unsigned	mask;
-//	vec3_t		local, transformed;
+	int			i, lindex, lnumverts;
 	medge_t		*pedges, *r_pedge;
-//	mplane_t	*pplane;
-	int		vertpage; //, newverts, newpage, lastvert;
-//	qboolean	visible;
+	int			vertpage;
 	float		*vec;
 	float		s, t;
 	glpoly_t	*poly;
@@ -1554,7 +1540,6 @@ void BuildSurfaceDisplayList (msurface_t *fa)
 		{
 			vec3_t v1, v2;
 			float *prev, *this, *next;
-			//float f;
 
 			prev = poly->verts[(i + lnumverts - 1) % lnumverts];
 			this = poly->verts[i];
@@ -1596,7 +1581,7 @@ GL_CreateSurfaceLightmap
 */
 void GL_CreateSurfaceLightmap (msurface_t *surf)
 {
-	int		smax, tmax;//, s, t, l, i;
+	int		smax, tmax;
 	byte	*base;
 
 	if (surf->flags & (SURF_DRAWSKY|SURF_DRAWTURB))
@@ -1651,11 +1636,9 @@ void GL_BuildLightmaps (void)
 
 #endif /* __APPLE__ || MACOSX */
             gl_lightmap_format = GL_LUMINANCE;
-
 	// default differently on the Permedia
 	if (isPermedia)
 		gl_lightmap_format = GL_RGBA;
-
 
 	if (COM_CheckParm ("-lm_1"))
 		gl_lightmap_format = GL_LUMINANCE;
@@ -1724,8 +1707,7 @@ void GL_BuildLightmaps (void)
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #if defined (__APPLE__) || defined (MACOSX)
-                GL_CheckTextureRAM (GL_TEXTURE_2D, 0, lightmap_bytes, BLOCK_WIDTH, BLOCK_HEIGHT, 0, 0,
-                                    gl_lightmap_format, GL_UNSIGNED_BYTE);
+                GL_CheckTextureRAM (GL_TEXTURE_2D, 0, lightmap_bytes, BLOCK_WIDTH, BLOCK_HEIGHT, 0, 0, gl_lightmap_format, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 		glTexImage2D (GL_TEXTURE_2D, 0, lightmap_bytes
 		, BLOCK_WIDTH, BLOCK_HEIGHT, 0, 

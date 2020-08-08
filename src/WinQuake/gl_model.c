@@ -30,7 +30,7 @@ char	loadname[32];	// for hunk tags
 #if defined(__APPLE__) || defined(MACOSX)
 
 extern void GL_SubdivideSurface (msurface_t *);
-extern void GL_MakeAliasModelDisplayLists (model_t *, aliashdr_t *);
+extern void GL_MakeAliasModelDisplayLists (/*model_t *,*/ aliashdr_t *);
 
 #endif /* APPLE || MACOSX */
 
@@ -198,7 +198,7 @@ model_t *Mod_FindName (char *name)
 	model_t	*mod;
 
 	if (!name[0])
-		Sys_Error ("Mod_ForName: NULL name");
+		Sys_Error ("Mod_FindName: NULL name");
 
 //
 // search the currently loaded models
@@ -378,6 +378,18 @@ void Mod_LoadTextures (lump_t *l)
 		mt->height = LittleLong (mt->height);
 		for (j=0 ; j<MIPLEVELS ; j++)
 			mt->offsets[j] = LittleLong (mt->offsets[j]);
+
+#if 1
+// Baker: let's see if this works as is
+		// HACK HACK HACK
+		if (!strcmp(mt->name, "shot1sid") && mt->width == 32 && mt->height == 32 && 
+		    CRC_Block((byte *)(mt + 1), mt->width * mt->height) == 65393)
+		{	// This texture in b_shell1.bsp has some of the first 32 pixels painted white.
+			// They are invisible in software, but look really ugly in GL. So we just copy
+			// 32 pixels from the bottom to make it look nice.
+			memcpy (mt + 1, (byte *)(mt + 1) + 32*31, 32);
+		}
+#endif
 
 		if ( (mt->width & 15) || (mt->height & 15) )
 			Sys_Error ("Texture %s is not 16 aligned", mt->name);
@@ -649,8 +661,7 @@ void Mod_LoadTexinfo (lump_t *l)
 {
 	texinfo_t *in;
 	mtexinfo_t *out;
-	int 	i, j, count;
-	int		miptex;
+	int 	i, j, count, miptex;
 	float	len1, len2;
 
 	in = (void *)(mod_base + l->fileofs);
@@ -969,7 +980,31 @@ void Mod_LoadClipnodes (lump_t *l)
 
 	loadmodel->clipnodes = out;
 	loadmodel->numclipnodes = count;
+#if 0
+	hull = &loadmodel->hulls[1];
+	hull->clipnodes = out;
+	hull->firstclipnode = 0;
+	hull->lastclipnode = count-1;
+	hull->planes = loadmodel->planes;
+	hull->clip_mins[0] = -16;
+	hull->clip_mins[1] = -16;
+	hull->clip_mins[2] = -24;
+	hull->clip_maxs[0] = 16;
+	hull->clip_maxs[1] = 16;
+	hull->clip_maxs[2] = 32;
 
+	hull = &loadmodel->hulls[2];
+	hull->clipnodes = out;
+	hull->firstclipnode = 0;
+	hull->lastclipnode = count-1;
+	hull->planes = loadmodel->planes;
+	hull->clip_mins[0] = -32;
+	hull->clip_mins[1] = -32;
+	hull->clip_mins[2] = -24;
+	hull->clip_maxs[0] = 32;
+	hull->clip_maxs[1] = 32;
+	hull->clip_maxs[2] = 64;
+#endif
 	hull = &loadmodel->hulls[1];
 	hull->clipnodes = out;
 	hull->firstclipnode = 0;
@@ -1200,6 +1235,11 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 //
 // set up the submodels (FIXME: this is confusing)
 //
+
+	// johnfitz -- okay, so that i stop getting confused every time i look at this loop, here's how it works:
+	// we're looping through the submodels starting at 0.  Submodel 0 is the main model, so we don't have to
+	// worry about clobbering data the first time through, since it's the same data.  At the end of the loop,
+	// we create a new copy of the data to use the next time through.
 	for (i=0 ; i<mod->numsubmodels ; i++)
 	{
 		bm = &mod->submodels[i];
@@ -1225,11 +1265,7 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 		{	// duplicate the basic information
 			char	name[10];
 
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf (name, 10, "*%i", i+1);
-#else
-			sprintf (name, "*%i", i+1);
-#endif /* __APPLE__ || MACOSX */
+			snprintf (name, sizeof(name), "*%i", i+1);
 			loadmodel = Mod_FindName (name);
 			*loadmodel = *mod;
 			strcpy (loadmodel->name, name);
@@ -1266,8 +1302,8 @@ Mod_LoadAliasFrame
 */
 void * Mod_LoadAliasFrame (void * pin, maliasframedesc_t *frame)
 {
-	trivertx_t		/* *pframe, */ *pinframe;
-	int			i;//, j;
+	trivertx_t		*pinframe;
+	int				i;
 	daliasframe_t		*pdaliasframe;
 
 	pdaliasframe = (daliasframe_t *)pin;
@@ -1425,14 +1461,10 @@ Mod_LoadAllSkins
 */
 void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 {
-	int			i, j, k;
+	int		i, j, k, size, groupskins;
 	char			name[32];
-	int			s;
-//	byte			*copy;
-	byte			*skin;
-	byte			*texels;
+	byte	*skin, *texels;
 	daliasskingroup_t	*pinskingroup;
-	int			groupskins;
 	daliasskininterval_t	*pinskinintervals;
 
 	skin = (byte *)(pskintype + 1);
@@ -1440,7 +1472,7 @@ void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 	if (numskins < 1 || numskins > MAX_SKINS)
 		Sys_Error ("Mod_LoadAliasModel: Invalid # of skins: %d\n", numskins);
 
-	s = pheader->skinwidth * pheader->skinheight;
+	size = pheader->skinwidth * pheader->skinheight;
 
 	for (i=0 ; i<numskins ; i++)
 	{
@@ -1449,22 +1481,18 @@ void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 
 			// save 8 bit texels for the player model to remap
 	//		if (!strcmp(loadmodel->name,"progs/player.mdl")) {
-				texels = Hunk_AllocName(s, loadname);
+				texels = Hunk_AllocName(size, loadname);
 				pheader->texels[i] = texels - (byte *)pheader;
-				memcpy (texels, (byte *)(pskintype + 1), s);
+				memcpy (texels, (byte *)(pskintype + 1), size);
 	//		}
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf (name, 32, "%s_%i", loadmodel->name, i);
-#else
-			sprintf (name, "%s_%i", loadmodel->name, i);
-#endif /* __APPLE__ || MACOSX */
+			snprintf (name, sizeof(name), "%s_%i", loadmodel->name, i);
 			pheader->gl_texturenum[i][0] =
 			pheader->gl_texturenum[i][1] =
 			pheader->gl_texturenum[i][2] =
 			pheader->gl_texturenum[i][3] =
 				GL_LoadTexture (name, pheader->skinwidth,
 				pheader->skinheight, (byte *)(pskintype + 1), true, false);
-			pskintype = (daliasskintype_t *)((byte *)(pskintype+1) + s);
+			pskintype = (daliasskintype_t *)((byte *)(pskintype+1) + size);
 		} else {
 			// animating skin group.  yuck.
 			pskintype++;
@@ -1478,19 +1506,15 @@ void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 			{
 					Mod_FloodFillSkin( skin, pheader->skinwidth, pheader->skinheight );
 					if (j == 0) {
-						texels = Hunk_AllocName(s, loadname);
+						texels = Hunk_AllocName(size, loadname);
 						pheader->texels[i] = texels - (byte *)pheader;
-						memcpy (texels, (byte *)(pskintype), s);
+						memcpy (texels, (byte *)(pskintype), size);
 					}
-#if defined (__APPLE__) || defined (MACOSX)
-					snprintf (name, 32, "%s_%i_%i", loadmodel->name, i,j);
-#else
-					sprintf (name, "%s_%i_%i", loadmodel->name, i,j);
-#endif /* __APPLE__ ||ÊMACOSX */
+					snprintf (name, sizeof(name), "%s_%i_%i", loadmodel->name, i,j);
 					pheader->gl_texturenum[i][j&3] =
 						GL_LoadTexture (name, pheader->skinwidth,
 						pheader->skinheight, (byte *)(pskintype), true, false);
-					pskintype = (daliasskintype_t *)((byte *)(pskintype) + s);
+					pskintype = (daliasskintype_t *)((byte *)(pskintype) + size);
 			}
 			k = j;
 			for (/* */; j < 4; j++)
@@ -1515,7 +1539,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	mdl_t			*pinmodel;
 	stvert_t		*pinstverts;
 	dtriangle_t		*pintriangles;
-	int			version, numframes;//, numskins;
+	int			version, numframes;
 	int			size;
 	daliasframetype_t	*pframetype;
 	daliasskintype_t	*pskintype;
@@ -1652,7 +1676,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	//
 	// build the draw lists
 	//
-	GL_MakeAliasModelDisplayLists (mod, pheader);
+	GL_MakeAliasModelDisplayLists (/*mod,*/ pheader);
 
 //
 // move the complete, relocatable alias model to the cache
@@ -1679,9 +1703,7 @@ void * Mod_LoadSpriteFrame (void * pin, mspriteframe_t **ppframe, int framenum)
 {
 	dspriteframe_t		*pinframe;
 	mspriteframe_t		*pspriteframe;
-	int			/* i,*/ width, height, size, origin[2];
-//	unsigned short		*ppixout;
-//	byte			*ppixin;
+	int					width, height, size, origin[2];
 	char			name[64];
 
 	pinframe = (dspriteframe_t *)pin;
@@ -1706,11 +1728,7 @@ void * Mod_LoadSpriteFrame (void * pin, mspriteframe_t **ppframe, int framenum)
 	pspriteframe->left = origin[0];
 	pspriteframe->right = width + origin[0];
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (name, 64, "%s_%i", loadmodel->name, framenum);
-#else
-	sprintf (name, "%s_%i", loadmodel->name, framenum);
-#endif /* __APPLE__ || MACOSX */
+	snprintf (name, sizeof(name), "%s_%i", loadmodel->name, framenum);
 	pspriteframe->gl_texturenum = GL_LoadTexture (name, width, height, (byte *)(pinframe + 1), true, true);
 
 	return (void *)((byte *)pinframe + sizeof (dspriteframe_t) + size);

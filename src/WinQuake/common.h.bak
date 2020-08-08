@@ -17,7 +17,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-// comndef.h  -- general definitions
+// common.h  -- general definitions
 
 #if !defined BYTE_DEFINED
 typedef unsigned char 		byte;
@@ -28,6 +28,20 @@ typedef unsigned char 		byte;
 #undef false
 
 typedef enum {false, true}	qboolean;
+
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
+#ifndef min
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+// by joe
+#define bound(a, b, c) ((a) >= (c) ? (a) : (b) < (a) ? (a) : (b) > (c) ? (c) : (b))
 
 //============================================================================
 
@@ -66,10 +80,6 @@ void InsertLinkAfter (link_t *l, link_t *after);
 #define	STRUCT_FROM_LINK(l,t,m) ((t *)((byte *)l - (int)&(((t *)0)->m)))
 
 //============================================================================
-
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
 
 #define Q_MAXCHAR ((char)0x7f)
 #define Q_MAXSHORT ((short)0x7fff)
@@ -124,20 +134,24 @@ float MSG_ReadPreciseAngle (void); // JPG - precise aim!!
 
 //============================================================================
 
-void memset (void *dest, int fill, int count);
-void memcpy (void *dest, void *src, int count);
-int Q_memcmp (void *m1, void *m2, int count);
-void strcpy (char *dest, char *src);
+#ifdef _WIN32
+#define	vsnprintf _vsnprintf
+#endif
+
+//void Q_strcpy (char *dest, char *src);
 void Q_strncpy (char *dest, char *src, int count);
-int strlen (char *str);
-char *Q_strrchr (char *s, char c);
-void strcat (char *dest, char *src);
-int Q_strcmp (char *s1, char *s2);
-int strncmp (char *s1, char *s2, int count);
+//int Q_strlen (char *str);
+//char *Q_strrchr (char *s, char c);
+//void Q_strcat (char *dest, char *src);
+//int Q_strcmp (char *s1, char *s2);
+//int Q_strncmp (char *s1, char *s2, int count);
 int Q_strcasecmp (char *s1, char *s2);
 int Q_strncasecmp (char *s1, char *s2, int n);
 int	Q_atoi (char *str);
 float Q_atof (char *str);
+
+void Q_strncpyz (char *dest, char *src, size_t size);
+void Q_snprintfz (char *dest, size_t size, char *fmt, ...);
 
 //============================================================================
 

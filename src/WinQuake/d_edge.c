@@ -158,9 +158,7 @@ void D_CalcGradients (msurface_t *pface)
 			((pface->texturemins[1] << 16) >> miplevel)
 			+ pface->texinfo->vecs[1][3]*t;
 
-//
 // -1 (-epsilon) so we never wander off the edge of the texture
-//
 	bbextents = ((pface->extents[0] << 16) >> miplevel) - 1;
 	bbextentt = ((pface->extents[1] << 16) >> miplevel) - 1;
 }
@@ -215,9 +213,7 @@ void D_DrawSurfaces (void)
 			if (s->flags & SURF_DRAWSKY)
 			{
 				if (!r_skymade)
-				{
 					R_MakeSky ();
-				}
 
 				D_DrawSkyScans8 (s->spans);
 				D_DrawZSpans (s->spans);
@@ -237,9 +233,7 @@ void D_DrawSurfaces (void)
 			{
 				pface = s->data;
 				miplevel = 0;
-				cacheblock = (pixel_t *)
-						((byte *)pface->texinfo->texture +
-						pface->texinfo->texture->offsets[0]);
+				cacheblock = (pixel_t *)((byte *)pface->texinfo->texture + pface->texinfo->texture->offsets[0]);
 				cachewidth = 64;
 
 				if (s->insubmodel)
@@ -248,8 +242,7 @@ void D_DrawSurfaces (void)
 				// TODO: store once at start of frame
 					currententity = s->entity;	//FIXME: make this passed in to
 												// R_RotateBmodel ()
-					VectorSubtract (r_origin, currententity->origin,
-							local_modelorg);
+					VectorSubtract (r_origin, currententity->origin, local_modelorg);
 					TransformVector (local_modelorg, transformed_modelorg);
 
 					R_RotateBmodel ();	// FIXME: don't mess with the frustum,
@@ -262,14 +255,11 @@ void D_DrawSurfaces (void)
 
 				if (s->insubmodel)
 				{
-				//
 				// restore the old drawing state
 				// FIXME: we don't want to do this every time!
 				// TODO: speed up
-				//
 					currententity = &cl_entities[0];
-					VectorCopy (world_transformed_modelorg,
-								transformed_modelorg);
+					VectorCopy (world_transformed_modelorg, transformed_modelorg);
 					VectorCopy (base_vpn, vpn);
 					VectorCopy (base_vup, vup);
 					VectorCopy (base_vright, vright);
@@ -310,14 +300,11 @@ void D_DrawSurfaces (void)
 
 				if (s->insubmodel)
 				{
-				//
 				// restore the old drawing state
 				// FIXME: we don't want to do this every time!
 				// TODO: speed up
-				//
 					currententity = &cl_entities[0];
-					VectorCopy (world_transformed_modelorg,
-								transformed_modelorg);
+					VectorCopy (world_transformed_modelorg, transformed_modelorg);
 					VectorCopy (base_vpn, vpn);
 					VectorCopy (base_vup, vup);
 					VectorCopy (base_vright, vright);

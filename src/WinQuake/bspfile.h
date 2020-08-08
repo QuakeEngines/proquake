@@ -38,12 +38,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	MAX_MAP_TEXINFO		4096
 #define	MAX_MAP_EDGES		256000
 #define	MAX_MAP_SURFEDGES	512000
-#define	MAX_MAP_TEXTURES	512
 #define	MAX_MAP_MIPTEX		0x200000
 #define	MAX_MAP_LIGHTING	0x100000
 #define	MAX_MAP_VISIBILITY	0x100000
-
-#define	MAX_MAP_PORTALS		65536
 
 // key / value pair sizes
 
@@ -54,7 +51,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
 #define BSPVERSION	29
-#define	TOOLVERSION	2
 
 typedef struct
 {
@@ -131,7 +127,6 @@ typedef struct
 	float	dist;
 	int		type;		// PLANE_X - PLANE_ANYZ ?remove? trivial to regenerate
 } dplane_t;
-
 
 
 #define	CONTENTS_EMPTY		-1
@@ -229,10 +224,6 @@ typedef struct
 
 #ifndef QUAKE_GAME
 
-#define	ANGLE_UP	-1
-#define	ANGLE_DOWN	-2
-
-
 // the utilities get to be lazy and just use large static arrays
 
 extern	int			nummodels;
@@ -281,44 +272,8 @@ extern	int			numsurfedges;
 extern	int			dsurfedges[MAX_MAP_SURFEDGES];
 
 
-void DecompressVis (byte *in, byte *decompressed);
-int CompressVis (byte *vis, byte *dest);
-
 void	LoadBSPFile (char *filename);
 void	WriteBSPFile (char *filename);
 void	PrintBSPFileSizes (void);
-
-//===============
-
-
-typedef struct epair_s
-{
-	struct epair_s	*next;
-	char	*key;
-	char	*value;
-} epair_t;
-
-typedef struct
-{
-	vec3_t		origin;
-	int			firstbrush;
-	int			numbrushes;
-	epair_t		*epairs;
-} entity_t;
-
-extern	int			num_entities;
-extern	entity_t	entities[MAX_MAP_ENTITIES];
-
-void	ParseEntities (void);
-void	UnparseEntities (void);
-
-void 	SetKeyValue (entity_t *ent, char *key, char *value);
-char 	*ValueForKey (entity_t *ent, char *key);
-// will return "" if not present
-
-vec_t	FloatForKey (entity_t *ent, char *key);
-void 	GetVectorForKey (entity_t *ent, char *key, vec3_t vec);
-
-epair_t *ParseEpair (void);
 
 #endif

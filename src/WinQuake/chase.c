@@ -25,6 +25,7 @@ cvar_t	chase_back = {"chase_back", "100"};
 cvar_t	chase_up = {"chase_up", "16"};
 cvar_t	chase_right = {"chase_right", "0"};
 cvar_t	chase_active = {"chase_active", "0"};
+cvar_t	chase_yaw	= {"chase_yaw"	, "0"};//R00k
 
 vec3_t	chase_pos;
 vec3_t	chase_angles;
@@ -38,6 +39,7 @@ void Chase_Init (void)
 	Cvar_RegisterVariable (&chase_back, NULL);
 	Cvar_RegisterVariable (&chase_up, NULL);
 	Cvar_RegisterVariable (&chase_right, NULL);
+	Cvar_RegisterVariable (&chase_yaw, NULL);//R00k
 	Cvar_RegisterVariable (&chase_active, NULL);
 }
 
@@ -61,18 +63,14 @@ void Chase_Update (void)
 {
 	int		i;
 	float	dist;
-	vec3_t	forward, up, right;
-	vec3_t	dest, stop;
-
+	vec3_t	forward, up, right, dest, stop;
 
 	// if can't see player, reset
-	AngleVectors (cl.viewangles, forward, right, up);
+	AngleVectors (cl.lerpangles, forward, right, up);
 
 	// calc exact destination
 	for (i=0 ; i<3 ; i++)
-		chase_dest[i] = r_refdef.vieworg[i]
-		- forward[i]*chase_back.value
-		- right[i]*chase_right.value;
+		chase_dest[i] = r_refdef.vieworg[i] - forward[i]*chase_back.value - right[i]*chase_right.value;
 	chase_dest[2] = r_refdef.vieworg[2] + chase_up.value;
 
 	// find the spot the player is looking at
@@ -81,12 +79,21 @@ void Chase_Update (void)
 
 	// calculate pitch to look at the same spot from camera
 	VectorSubtract (stop, r_refdef.vieworg, stop);
-	dist = DotProduct (stop, forward);
+
+	dist = max(1, DotProduct(stop, forward));
+
 	if (dist < 1)
-		dist = 1;
-	r_refdef.viewangles[PITCH] = -atan(stop[2] / dist) / M_PI * 180;
+	{
+		dist = 1;	// should never happen
+	}
+  
+	r_refdef.viewangles[PITCH] = -180 / M_PI * atan2( stop[2], dist );
+	r_refdef.viewangles[YAW] -= chase_yaw.value;
+
+	TraceLine (r_refdef.vieworg, chase_dest, stop);
+	if (stop[0] != 0 || stop[1] != 0 || stop[2] != 0)
+		VectorCopy (stop, chase_dest);
 
 	// move towards destination
 	VectorCopy (chase_dest, r_refdef.vieworg);
 }
-

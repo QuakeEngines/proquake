@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -19,9 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // sys.h -- non-portable functions
 
-//
 // file IO
-//
 
 // returns the file size
 // return -1 if file is not present
@@ -36,14 +34,10 @@ int Sys_FileWrite (int handle, void *data, int count);
 int	Sys_FileTime (char *path);
 void Sys_mkdir (char *path);
 
-//
 // memory protection
-//
 void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length);
 
-//
 // system IO
-//
 void Sys_DebugLog(char *file, char *fmt, ...);
 
 void Sys_Error (char *error, ...);
@@ -54,7 +48,7 @@ void Sys_Printf (char *fmt, ...);
 
 void Sys_Quit (void);
 
-double Sys_FloatTime (void);
+double Sys_DoubleTime (void);
 
 char *Sys_ConsoleInput (void);
 

@@ -40,8 +40,7 @@ Can safely be performed in place.
 */
 void W_CleanupName (char *in, char *out)
 {
-	int		i;
-	int		c;
+	int	i, c;
 	
 	for (i=0 ; i<16 ; i++ )
 	{
@@ -58,8 +57,6 @@ void W_CleanupName (char *in, char *out)
 		out[i] = 0;
 }
 
-
-
 /*
 ====================
 W_LoadWadFile
@@ -72,16 +69,12 @@ void W_LoadWadFile (char *filename)
 	unsigned		i;
 	int				infotableofs;
 	
-	wad_base = COM_LoadHunkFile (filename);
-	if (!wad_base)
+	if (!(wad_base = COM_LoadHunkFile (filename)))
 		Sys_Error ("W_LoadWadFile: couldn't load %s", filename);
 
 	header = (wadinfo_t *)wad_base;
 	
-	if (header->identification[0] != 'W'
-	|| header->identification[1] != 'A'
-	|| header->identification[2] != 'D'
-	|| header->identification[3] != '2')
+	if (memcmp(header->identification, "WAD2", 4))
 		Sys_Error ("Wad file %s doesn't have WAD2 id\n",filename);
 		
 	wad_numlumps = LittleLong(header->numlumps);

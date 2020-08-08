@@ -45,9 +45,6 @@ typedef struct
 	double		lastchecktime;
 	
 	char		name[64];			// map name
-#ifdef QUAKE2
-	char		startspot[64];
-#endif
 	char		modelname[64];		// maps/<name>.bsp, for model_precache[0]
 	struct model_s 	*worldmodel;
 	char		*model_precache[MAX_MODELS];	// NULL terminated
@@ -140,10 +137,6 @@ typedef struct client_s
 #define	MOVETYPE_NOCLIP			8
 #define	MOVETYPE_FLYMISSILE		9		// extra size to monsters
 #define	MOVETYPE_BOUNCE			10
-#ifdef QUAKE2
-#define MOVETYPE_BOUNCEMISSILE	11		// bounce w/o gravity
-#define MOVETYPE_FOLLOW			12		// track movement of aiment
-#endif
 
 // edict->solid values
 #define	SOLID_NOT				0		// no interaction with other objects
@@ -164,7 +157,6 @@ typedef struct client_s
 // edict->flags
 #define	FL_FLY					1
 #define	FL_SWIM					2
-//#define	FL_GLIMPSE				4
 #define	FL_CONVEYOR				4
 #define	FL_CLIENT				8
 #define	FL_INWATER				16
@@ -176,10 +168,7 @@ typedef struct client_s
 #define	FL_PARTIALGROUND		1024	// not all corners are valid
 #define	FL_WATERJUMP			2048	// player jumping out of water
 #define	FL_JUMPRELEASED			4096	// for jump debouncing
-#ifdef QUAKE2
-#define FL_FLASHLIGHT			8192
-#define FL_ARCHIVE_OVERRIDE		1048576
-#endif
+#define FL_LOW_BANDWIDTH_CLIENT 8192    // Baker 3.99b: Slot Zero's anti-lag server/mod option for dialup users
 
 // entity effects
 
@@ -187,28 +176,12 @@ typedef struct client_s
 #define	EF_MUZZLEFLASH 			2
 #define	EF_BRIGHTLIGHT 			4
 #define	EF_DIMLIGHT 			8
-#ifdef QUAKE2
-#define EF_DARKLIGHT			16
-#define EF_DARKFIELD			32
-#define EF_LIGHT				64
-#define EF_NODRAW				128
-#endif
+#define EF_MAYBE_DRAW       32768   // Baker 3.99b: Slot Zero's anti-lag server/mod option for dialup users
 
 #define	SPAWNFLAG_NOT_EASY			256
 #define	SPAWNFLAG_NOT_MEDIUM		512
 #define	SPAWNFLAG_NOT_HARD			1024
 #define	SPAWNFLAG_NOT_DEATHMATCH	2048
-
-#ifdef QUAKE2
-// server flags
-#define	SFL_EPISODE_1		1
-#define	SFL_EPISODE_2		2
-#define	SFL_EPISODE_3		4
-#define	SFL_EPISODE_4		8
-#define	SFL_NEW_UNIT		16
-#define	SFL_NEW_EPISODE		32
-#define	SFL_CROSS_TRIGGERS	65280
-#endif
 
 //============================================================================
 
@@ -232,13 +205,13 @@ extern	double		host_time;
 
 extern	edict_t		*sv_player;
 
+
 //===========================================================
 
 void SV_Init (void);
 
 void SV_StartParticle (vec3_t org, vec3_t dir, int color, int count);
-void SV_StartSound (edict_t *entity, int channel, char *sample, int volume,
-    float attenuation);
+void SV_StartSound (edict_t *entity, int channel, char *sample, int volume,float attenuation);
 
 void SV_DropClient (qboolean crash);
 
@@ -269,8 +242,4 @@ void SV_MoveToGoal (void);
 void SV_CheckForNewClients (void);
 void SV_RunClients (void);
 void SV_SaveSpawnparms ();
-#ifdef QUAKE2
-void SV_SpawnServer (char *server, char *startspot);
-#else
 void SV_SpawnServer (char *server);
-#endif

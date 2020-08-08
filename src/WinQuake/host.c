@@ -21,10 +21,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 #include "r_local.h"
+#ifdef _WIN32
+#include "movie.h"
+#endif
 
 /*
 
-A server can allways be started, even if the system started out as a client
+A server can always be started, even if the system started out as a client
 to a remote system.
 
 A client can NOT be started if the system started as a dedicated server.
@@ -57,8 +60,9 @@ byte		*host_colormap;
 
 cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
 cvar_t	host_speeds = {"host_speeds","0"};			// set for running times
+cvar_t	host_timescale = {"host_timescale", "0"}; //johnfitz
 
-cvar_t	sys_ticrate = {"sys_ticrate","0.05"};
+cvar_t	sys_ticrate = {"sys_ticrate","0.05", false, true};
 cvar_t	serverprofile = {"serverprofile","0"};
 
 cvar_t	fraglimit = {"fraglimit","0",false,true};
@@ -90,11 +94,14 @@ cvar_t	proquake = {"proquake", "L33T"}; // JPG - added this
 // allowed a temporary grace of pq_spam_grace messages.  Once used up,
 // this grace regenerates while the client shuts up at a rate of one
 // message per pq_spam_rate seconds.
-cvar_t	pq_spam_rate = {"pq_spam_rate", "1.5"};
-cvar_t	pq_spam_grace = {"pq_spam_grace", "10"};
+cvar_t	pq_spam_rate = {"pq_spam_rate", "0"};  // Baker 3.80x - Set to default of 0; was 1.5 -- bad for coop
+cvar_t	pq_spam_grace = {"pq_spam_grace", "999"}; // Baker 3.80x - Set to default of 999; was 10 -- bad for coop
+
+// Baker 3.99g - from Rook ... protect against players connecting and spamming before banfile can kick in
+cvar_t	pq_connectmute = {"pq_connectmute", "0", false, true};  // (value in seconds)
 
 // JPG 3.20 - control muting of players that change colour/name
-cvar_t	pq_tempmute = {"pq_tempmute", "1"};
+cvar_t	pq_tempmute = {"pq_tempmute", "0"};  // Baker 3.80x - Changed default to 0; was 1 -- interfered with coop
 
 // JPG 3.20 - optionally write player binds to server log
 cvar_t	pq_logbinds = {"pq_logbinds", "0"};
@@ -117,11 +124,7 @@ void Host_EndGame (char *message, ...)
 	char		string[1024];
 
 	va_start (argptr,message);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (string,1024,message,argptr);
-#else
-	vsprintf (string,message,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (string,sizeof(string),message,argptr);
 	va_end (argptr);
 	Con_DPrintf ("Host_EndGame: %s\n",string);
 
@@ -162,11 +165,7 @@ void Host_Error (char *error, ...)
 	SCR_EndLoadingPlaque ();		// reenable screen updates
 
 	va_start (argptr,error);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (string,1024,error,argptr);
-#else
-	vsprintf (string,error,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (string,sizeof(string),error,argptr);
 	va_end (argptr);
 	Con_Printf ("Host_Error: %s\n",string);
 
@@ -237,12 +236,6 @@ void	Host_FindMaxClients (void)
 
 char dequake[256];	// JPG 1.05
 
-
-
-
-
-
-
 /*
 =======================
 Host_InitDeQuake
@@ -279,19 +272,6 @@ void Host_InitDeQuake (void)
 	dequake[141] = '>';
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
 =======================
 Host_InitLocal
@@ -303,6 +283,7 @@ void Host_InitLocal (void)
 
 	Cvar_RegisterVariable (&host_framerate, NULL);
 	Cvar_RegisterVariable (&host_speeds, NULL);
+	Cvar_RegisterVariable (&host_timescale, NULL); //johnfitz
 
 	Cvar_RegisterVariable (&sys_ticrate, NULL);
 	Cvar_RegisterVariable (&serverprofile, NULL);
@@ -324,6 +305,7 @@ void Host_InitLocal (void)
 	Cvar_RegisterVariable (&proquake, NULL);		// JPG - added this so QuakeC can find it
 	Cvar_RegisterVariable (&pq_spam_rate, NULL);	// JPG - spam protection
 	Cvar_RegisterVariable (&pq_spam_grace, NULL);	// JPG - spam protection
+	Cvar_RegisterVariable (&pq_connectmute, NULL);	// Baker 3.99g: from Rook, protection against repeatedly connecting + spamming
 	Cvar_RegisterVariable (&pq_tempmute, NULL);	// JPG 3.20 - temporary muting
 	Cvar_RegisterVariable (&pq_showedict, NULL);	// JPG 3.11 - feature request from Slot Zero
 	Cvar_RegisterVariable (&pq_dequake, NULL);	// JPG 1.05 - translate dedicated console output to plain text
@@ -384,11 +366,7 @@ void SV_ClientPrintf (char *fmt, ...)
 	char		string[1024];
 
 	va_start (argptr,fmt);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (string, 1024, fmt,argptr);
-#else
-	vsprintf (string, fmt,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (string, sizeof(string),fmt,argptr);
 	va_end (argptr);
 
 	MSG_WriteByte (&host_client->message, svc_print);
@@ -409,11 +387,7 @@ void SV_BroadcastPrintf (char *fmt, ...)
 	int			i;
 
 	va_start (argptr,fmt);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (string, 1024, fmt,argptr);
-#else
-	vsprintf (string, fmt,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (string, sizeof(string),fmt,argptr);
 	va_end (argptr);
 
 	for (i=0 ; i<svs.maxclients ; i++)
@@ -437,11 +411,7 @@ void Host_ClientCommands (char *fmt, ...)
 	char		string[1024];
 
 	va_start (argptr,fmt);
-#if defined (__APPLE__) || defined (MACOSX)
-	vsnprintf (string, 1024, fmt,argptr);
-#else
-	vsprintf (string, fmt,argptr);
-#endif /* __APPLE__ || MACOSX */
+	vsnprintf (string, sizeof(string), fmt,argptr);
 	va_end (argptr);
 
 	MSG_WriteByte (&host_client->message, svc_stufftext);
@@ -488,11 +458,9 @@ void SV_DropClient (qboolean crash)
 		Sys_Printf ("Client %s removed\n",host_client->name);
 	}
 
-
 	// JPG 3.00 - check to see if it's a qsmack client
 	if (host_client->netconnection->mod == MOD_QSMACK)
 		qsmackActive = false;
-
 
 // break the net connection
 	NET_Close (host_client->netconnection);
@@ -530,8 +498,7 @@ This only happens at the end of a game, not between levels
 */
 void Host_ShutdownServer(qboolean crash)
 {
-	int				i;
-	int				count;
+	int		i, count;
 	sizebuf_t		buf;
 	unsigned char	message[4];
 	double			start;
@@ -546,7 +513,7 @@ void Host_ShutdownServer(qboolean crash)
 		CL_Disconnect ();
 
 // flush any pending messages - like the score!!!
-	start = Sys_FloatTime();
+	start = Sys_DoubleTime();
 	do
 	{
 		count = 0;
@@ -566,7 +533,7 @@ void Host_ShutdownServer(qboolean crash)
 				}
 			}
 		}
-		if ((Sys_FloatTime() - start) > 3.0)
+		if ((Sys_DoubleTime() - start) > 3.0)
 			break;
 	}
 	while (count);
@@ -614,8 +581,11 @@ void Host_ClearMemory (void)
 }
 
 
-//============================================================================
-
+//==============================================================================
+//
+// Host Frame
+//
+//==============================================================================
 
 /*
 ===================
@@ -632,25 +602,31 @@ qboolean Host_FilterTime (float time)
 
 	fps = max(10, pq_maxfps.value);
 
-	if (!cls.timedemo && realtime - oldrealtime < 1.0/fps)
+	if (!cls.capturedemo && !cls.timedemo && realtime - oldrealtime < 1.0 / fps)
 		return false;		// framerate is too high
 
+#ifdef _WIN32
+	if (Movie_IsActive())
+		host_frametime = Movie_FrameTime ();
+	else
+#endif
+
 	host_frametime = realtime - oldrealtime;
+	if (cls.demoplayback)
+		host_frametime *= bound(0, cl_demospeed.value, 20);
 	oldrealtime = realtime;
 
-	if (host_framerate.value > 0)
+	//johnfitz -- host_timescale is more intuitive than host_framerate
+	if (host_timescale.value > 0)
+		host_frametime *= host_timescale.value;
+	//johnfitz
+	else if (host_framerate.value > 0)
 		host_frametime = host_framerate.value;
-	else
-	{	// don't allow really long or short frames
-		if (host_frametime > 0.1)
-			host_frametime = 0.1;
-		if (host_frametime < 0.001)
-			host_frametime = 0.001;
-	}
+	else // don't allow really long or short frames
+		host_frametime = bound(0.001, host_frametime, 0.1);
 
 	return true;
 }
-
 
 /*
 ===================
@@ -672,11 +648,9 @@ void Host_GetConsoleCommands (void)
 	}
 }
 
-
 /*
 ==================
 Host_ServerFrame
-
 ==================
 */
 #ifdef FPS_20
@@ -729,7 +703,6 @@ void Host_ServerFrame (void)
 
 void Host_ServerFrame (void)
 {
-
 // JPG 3.00 - stuff the port number into the server console once every minute
 	static double port_time = 0;
 
@@ -738,8 +711,6 @@ void Host_ServerFrame (void)
 		port_time = sv.time;
 		Cmd_ExecuteString(va("port %d\n", net_hostport), src_command);
 	}
-
-
 
 // run the world state
 	pr_global_struct->frametime = host_frametime;
@@ -764,7 +735,6 @@ void Host_ServerFrame (void)
 
 #endif
 
-
 /*
 ==================
 Host_Frame
@@ -772,11 +742,9 @@ Host_Frame
 Runs all active servers
 ==================
 */
-void _Host_Frame (float time)
+void _Host_Frame (double time)
 {
-	static double		time1 = 0;
-	static double		time2 = 0;
-	static double		time3 = 0;
+	static double		time1 = 0, time2 = 0, time3 = 0;
 	int			pass1, pass2, pass3;
 
 	if (setjmp (host_abortserver) )
@@ -838,44 +806,49 @@ void _Host_Frame (float time)
 
 // fetch results from server
 	if (cls.state == ca_connected)
-	{
                 CL_ReadFromServer ();
-	}
+
+	if (host_speeds.value)
+		time1 = Sys_DoubleTime ();
 
 // update video
-	if (host_speeds.value)
-		time1 = Sys_FloatTime ();
-
 	SCR_UpdateScreen ();
 
 	if (host_speeds.value)
-		time2 = Sys_FloatTime ();
+		time2 = Sys_DoubleTime ();
 
-// update audio
 	if (cls.signon == SIGNONS)
 	{
+		// update audio
 		S_Update (r_origin, vpn, vright, vup);
 		CL_DecayLights ();
 	}
 	else
+	{
 		S_Update (vec3_origin, vec3_origin, vec3_origin, vec3_origin);
+	}
 
 	CDAudio_Update();
 
 	if (host_speeds.value)
 	{
 		pass1 = (time1 - time3)*1000;
-		time3 = Sys_FloatTime ();
+		time3 = Sys_DoubleTime ();
 		pass2 = (time2 - time1)*1000;
 		pass3 = (time3 - time2)*1000;
-		Con_Printf ("%3i tot %3i server %3i gfx %3i snd\n",
-					pass1+pass2+pass3, pass1, pass2, pass3);
+		Con_Printf ("%3i tot %3i server %3i gfx %3i snd\n", pass1+pass2+pass3, pass1, pass2, pass3);
+	}
+
+	if (!cls.demoplayback && cl_demorewind.value)
+	{
+		Cvar_Set ("cl_demorewind", "0");
+		Con_Printf ("Demorewind is only enabled during playback\n");
 	}
 
 	host_framecount++;
 }
 
-void Host_Frame (float time)
+void Host_Frame (double time)
 {
 	double	time1, time2;
 	static double	timetotal;
@@ -888,9 +861,9 @@ void Host_Frame (float time)
 		return;
 	}
 
-	time1 = Sys_FloatTime ();
+	time1 = Sys_DoubleTime ();
 	_Host_Frame (time);
-	time2 = Sys_FloatTime ();
+	time2 = Sys_DoubleTime ();
 
 	timetotal += time2 - time1;
 	timecount++;
@@ -899,14 +872,11 @@ void Host_Frame (float time)
 		return;
 
 	m = timetotal*1000/timecount;
-	timecount = 0;
-	timetotal = 0;
+	timecount = timetotal = 0;
 	c = 0;
 	for (i=0 ; i<svs.maxclients ; i++)
-	{
 		if (svs.clients[i].active)
 			c++;
-	}
 
 	Con_Printf ("serverprofile: %2i clients %2i msec\n",  c,  m);
 }
@@ -937,12 +907,12 @@ void Host_InitVCR (quakeparms_t *parms)
 			Sys_Error("Invalid signature in vcr file\n");
 
 		Sys_FileRead (vcrFile, &com_argc, sizeof(int));
-		com_argv = malloc(com_argc * sizeof(char *));
+		com_argv = Q_malloc(com_argc * sizeof(char *));
 		com_argv[0] = parms->argv[0];
 		for (i = 0; i < com_argc; i++)
 		{
 			Sys_FileRead (vcrFile, &len, sizeof(int));
-			p = malloc(len);
+			p = Q_malloc(len);
 			Sys_FileRead (vcrFile, p, len);
 			com_argv[i+1] = p;
 		}
@@ -983,6 +953,16 @@ Host_Init
 */
 void Host_Init (quakeparms_t *parms)
 {
+#ifdef _WIN32
+#ifdef GLQUAKE
+	FILE *fp = fopen("opengl32.dll","r");
+	if (fp) {
+		// exists
+		fclose(fp);
+		Sys_Error ("OpenGL32.dll found in Quake folder.  You must delete this file from your Quake folder to run this engine.");
+	}
+#endif
+#endif
 
 	if (standard_quake)
 		minimum_memory = MINIMUM_MEMORY;
@@ -1001,7 +981,7 @@ void Host_Init (quakeparms_t *parms)
 	com_argv = parms->argv;
 
 		// JPG 3.00 - moved this here
-#ifdef WIN32
+#ifdef _WIN32
 	srand(time(NULL) ^ _getpid());
 #else
 	srand(time(NULL) ^ getpid());

@@ -22,6 +22,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 
 #ifdef _WIN32
+#include "movie.h"
+#endif
+
+#ifdef _WIN32
 #include "winquake.h"
 #else
 #define DWORD	unsigned long
@@ -38,8 +42,7 @@ void Snd_WriteLinearBlastStereo16 (void);
 #if	!id386
 void Snd_WriteLinearBlastStereo16 (void)
 {
-	int		i;
-	int		val;
+	int	i, val;
 
 	for (i=0 ; i<snd_linear_count ; i+=2)
 	{
@@ -64,13 +67,11 @@ void Snd_WriteLinearBlastStereo16 (void)
 
 void S_TransferStereo16 (int endtime)
 {
-	int		lpos;
-	int		lpaintedtime;
+	int		lpos, lpaintedtime;
 	DWORD	*pbuf;
 #ifdef _WIN32
 	int		reps;
-	DWORD	dwSize,dwSize2;
-	DWORD	*pbuf2;
+	DWORD	dwSize, dwSize2, *pbuf2;
 	HRESULT	hresult;
 #endif
 
@@ -84,8 +85,7 @@ void S_TransferStereo16 (int endtime)
 	{
 		reps = 0;
 
-		while ((hresult = pDSBuf->lpVtbl->Lock(pDSBuf, 0, gSndBufSize, &pbuf, &dwSize,
-									   &pbuf2, &dwSize2, 0)) != DS_OK)
+		while ((hresult = pDSBuf->lpVtbl->Lock(pDSBuf, 0, gSndBufSize, &pbuf, &dwSize, &pbuf2, &dwSize2, 0)) != DS_OK)
 		{
 			if (hresult != DSERR_BUFFERLOST)
 			{
@@ -128,6 +128,10 @@ void S_TransferStereo16 (int endtime)
 
 		snd_p += snd_linear_count;
 		lpaintedtime += (snd_linear_count>>1);
+
+#ifdef _WIN32
+		Movie_TransferStereo16 ();
+#endif
 	}
 
 #ifdef _WIN32
@@ -138,18 +142,11 @@ void S_TransferStereo16 (int endtime)
 
 void S_TransferPaintBuffer(int endtime)
 {
-	int 	out_idx;
-	int 	count;
-	int 	out_mask;
-	int 	*p;
-	int 	step;
-	int		val;
-	int		snd_vol;
+	int 	out_idx, count, out_mask, *p, step, val, snd_vol;
 	DWORD	*pbuf;
 #ifdef _WIN32
 	int		reps;
-	DWORD	dwSize,dwSize2;
-	DWORD	*pbuf2;
+	DWORD	dwSize,dwSize2, *pbuf2;
 	HRESULT	hresult;
 #endif
 
@@ -260,11 +257,9 @@ void SND_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int endtime);
 
 void S_PaintChannels(int endtime)
 {
-	int 	i;
-	int 	end;
+	int		i, end, ltime, count;
 	channel_t *ch;
 	sfxcache_t	*sc;
-	int		ltime, count;
 
 	while (paintedtime < endtime)
 	{
@@ -284,8 +279,7 @@ void S_PaintChannels(int endtime)
 				continue;
 			if (!ch->leftvol && !ch->rightvol)
 				continue;
-			sc = S_LoadSound (ch->sfx);
-			if (!sc)
+			if (!(sc = S_LoadSound (ch->sfx)))
 				continue;
 
 			ltime = paintedtime;
@@ -345,10 +339,8 @@ void SND_InitScaletable (void)
 
 void SND_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count)
 {
-	int 	data;
-	int		*lscale, *rscale;
+	int 		i, data, *lscale, *rscale;
 	unsigned char *sfx;
-	int		i;
 
 	if (ch->leftvol > 255)
 		ch->leftvol = 255;
@@ -374,9 +366,7 @@ void SND_PaintChannelFrom8 (channel_t *ch, sfxcache_t *sc, int count)
 
 void SND_PaintChannelFrom16 (channel_t *ch, sfxcache_t *sc, int count)
 {
-	int data;
-	int left, right;
-	int leftvol, rightvol;
+	int data, left, right, leftvol, rightvol;
 	signed short *sfx;
 	int	i;
 

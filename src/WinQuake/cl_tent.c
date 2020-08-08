@@ -32,14 +32,10 @@ sfx_t			*cl_sfx_ric1;
 sfx_t			*cl_sfx_ric2;
 sfx_t			*cl_sfx_ric3;
 sfx_t			*cl_sfx_r_exp3;
-#ifdef QUAKE2
-sfx_t			*cl_sfx_imp;
-sfx_t			*cl_sfx_rail;
-#endif
 
 /*
 =================
-CL_ParseTEnt
+CL_InitTEnts
 =================
 */
 void CL_InitTEnts (void)
@@ -51,10 +47,6 @@ void CL_InitTEnts (void)
 	cl_sfx_ric2 = S_PrecacheSound ("weapons/ric2.wav");
 	cl_sfx_ric3 = S_PrecacheSound ("weapons/ric3.wav");
 	cl_sfx_r_exp3 = S_PrecacheSound ("weapons/r_exp3.wav");
-#ifdef QUAKE2
-	cl_sfx_imp = S_PrecacheSound ("shambler/sattck1.wav");
-	cl_sfx_rail = S_PrecacheSound ("weapons/lstart.wav");
-#endif
 }
 
 /*
@@ -64,10 +56,9 @@ CL_ParseBeam
 */
 void CL_ParseBeam (model_t *m)
 {
-	int		ent;
+	int	i, ent;
 	vec3_t	start, end;
 	beam_t	*b;
-	int		i;
 	
 	ent = MSG_ReadShort ();
 	
@@ -104,6 +95,7 @@ void CL_ParseBeam (model_t *m)
 			return;
 		}
 	}
+
 	Con_Printf ("beam list overflow!\n");	
 }
 
@@ -124,9 +116,6 @@ void CL_ParseTEnt (void)
 {
 	int		type;
 	vec3_t	pos;
-#ifdef QUAKE2
-	vec3_t	endpos;
-#endif
 	dlight_t	*dl;
 	int		rnd;
 	int		colorStart, colorLength;
@@ -268,33 +257,6 @@ void CL_ParseTEnt (void)
 		S_StartSound (-1, 0, cl_sfx_r_exp3, pos, 1, 1);
 		break;
 		
-#ifdef QUAKE2
-	case TE_IMPLOSION:
-		pos[0] = MSG_ReadCoord ();
-		pos[1] = MSG_ReadCoord ();
-		pos[2] = MSG_ReadCoord ();
-		S_StartSound (-1, 0, cl_sfx_imp, pos, 1, 1);
-		break;
-
-	case TE_RAILTRAIL:
-		pos[0] = MSG_ReadCoord ();
-		pos[1] = MSG_ReadCoord ();
-		pos[2] = MSG_ReadCoord ();
-		endpos[0] = MSG_ReadCoord ();
-		endpos[1] = MSG_ReadCoord ();
-		endpos[2] = MSG_ReadCoord ();
-		S_StartSound (-1, 0, cl_sfx_rail, pos, 1, 1);
-		S_StartSound (-1, 1, cl_sfx_r_exp3, endpos, 1, 1);
-		R_RocketTrail (pos, endpos, 0+128);
-		R_ParticleExplosion (endpos);
-		dl = CL_AllocDlight (-1);
-		VectorCopy (endpos, dl->origin);
-		dl->radius = 350;
-		dl->die = cl.time + 0.5;
-		dl->decay = 300;
-		break;
-#endif
-
 	default:
 		Sys_Error ("CL_ParseTEnt: bad type");
 	}
@@ -312,8 +274,10 @@ entity_t *CL_NewTempEntity (void)
 
 	if (cl_numvisedicts == MAX_VISEDICTS)
 		return NULL;
+
 	if (num_temp_entities == MAX_TEMP_ENTITIES)
 		return NULL;
+
 	ent = &cl_temp_entities[num_temp_entities];
 	memset (ent, 0, sizeof(*ent));
 	num_temp_entities++;
@@ -323,7 +287,6 @@ entity_t *CL_NewTempEntity (void)
 	ent->colormap = vid.colormap;
 	return ent;
 }
-
 
 /*
 =================
@@ -341,6 +304,8 @@ void CL_UpdateTEnts (void)
 	float		forward;
 
 	num_temp_entities = 0;
+
+	srand ((int) (cl.time * 1000)); //johnfitz -- freeze beams when paused
 
 // update lightning
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
@@ -398,5 +363,4 @@ void CL_UpdateTEnts (void)
 	}
 	
 }
-
 

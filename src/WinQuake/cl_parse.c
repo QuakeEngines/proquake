@@ -82,6 +82,7 @@ entity_t	*CL_EntityNum (int num)
 	{
 		if (num >= MAX_EDICTS)
 			Host_Error ("CL_EntityNum: %i is an invalid number",num);
+
 		while (cl.num_entities<=num)
 		{
 			cl_entities[cl.num_entities].colormap = vid.colormap;
@@ -92,7 +93,6 @@ entity_t	*CL_EntityNum (int num)
 	return &cl_entities[num];
 }
 
-
 /*
 ==================
 CL_ParseStartSoundPacket
@@ -101,12 +101,8 @@ CL_ParseStartSoundPacket
 void CL_ParseStartSoundPacket(void)
 {
     vec3_t  pos;
-    int 	channel, ent;
-    int 	sound_num;
-    int 	volume;
-    int 	field_mask;
+    int 	i, channel, ent, sound_num, volume, field_mask;
     float 	attenuation;
- 	int		i;
 
     field_mask = MSG_ReadByte();
 
@@ -160,18 +156,20 @@ void CL_KeepaliveMessage (void)
 	old = net_message;
 	memcpy (olddata, net_message.data, net_message.cursize);
 
-	do
-	{
+	do {
 		ret = CL_GetMessage ();
 		switch (ret)
 		{
 		default:
 			Host_Error ("CL_KeepaliveMessage: CL_GetMessage failed");
+
 		case 0:
 			break;	// nothing waiting
+
 		case 1:
 			Host_Error ("CL_KeepaliveMessage: received a message");
 			break;
+
 		case 2:
 			if (MSG_ReadByte() != svc_nop)
 				Host_Error ("CL_KeepaliveMessage: datagram wasn't a nop");
@@ -183,7 +181,7 @@ void CL_KeepaliveMessage (void)
 	memcpy (net_message.data, olddata, net_message.cursize);
 
 // check time
-	time = Sys_FloatTime ();
+	time = Sys_DoubleTime ();
 	if (time - lastmsg < 5)
 		return;
 	lastmsg = time;
@@ -203,16 +201,14 @@ CL_ParseServerInfo
 */
 void CL_ParseServerInfo (void)
 {
-	char	*str;
-	int		i;
-	int		nummodels, numsounds;
+	char	*str, tempname[MAX_QPATH];
+	int		i, nummodels, numsounds;
 	char	model_precache[MAX_MODELS][MAX_QPATH];
 	char	sound_precache[MAX_SOUNDS][MAX_QPATH];
 
 	Con_DPrintf ("Serverinfo packet received.\n");
-//
+
 // wipe the client_state_t struct
-//
 	CL_ClearState ();
 
 // parse protocol version number
@@ -244,11 +240,9 @@ void CL_ParseServerInfo (void)
 	Con_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n");
 	Con_Printf ("%c%s\n", 2, str);
 
-//
 // first we go through and touch all of the precache data that still
 // happens to be in the cache, so precaching something else doesn't
 // needlessly purge it
-//
 
 // precache models
 	memset (cl.model_precache, 0, sizeof(cl.model_precache));
@@ -282,10 +276,7 @@ void CL_ParseServerInfo (void)
 		S_TouchSound (str);
 	}
 
-//
 // now we try to load everything else until a cache allocation fails
-//
-
 	for (i=1 ; i<nummodels ; i++)
 	{
 		cl.model_precache[i] = Mod_ForName (model_precache[i], false);
@@ -305,11 +296,11 @@ void CL_ParseServerInfo (void)
 	}
 	S_EndPrecaching ();
 
-
 // local state
 	cl_entities[0].model = cl.worldmodel = cl.model_precache[1];
 
 	LOC_LoadLocations();	// JPG - read in the location data for the new map
+	COM_StripExtension (COM_SkipPath(model_precache[1]), tempname);
 
 	R_NewMap ();
 
@@ -331,15 +322,14 @@ int	bitcounts[16];
 
 void CL_ParseUpdate (int bits)
 {
-	int			i;
+	int		i, num;
 	model_t		*model;
 	int			modnum;
 	qboolean	forcelink;
 	entity_t	*ent;
-	int			num;
 #ifdef GLQUAKE
 	int			skin;
-#endif /* GLQUAKE */
+#endif
 
 	if (cls.signon == SIGNONS - 1)
 	{	// first update is the final signon stage
@@ -384,8 +374,7 @@ if (bits&(1<<i))
 	if (model != ent->model)
 	{
 		ent->model = model;
-	// automatic animation (torches, etc) can be either all together
-	// or randomized
+	// automatic animation (torches, etc) can be either all together or randomized
 		if (model)
 		{
 			if (model->synctype == ST_RAND)
@@ -396,10 +385,8 @@ if (bits&(1<<i))
 		else
 			forcelink = true;	// hack to make null model players work
 #ifdef GLQUAKE
-
 		if (num > 0 && num <= cl.maxclients)
 			R_TranslatePlayerSkin (num - 1);
-
 #endif
 	}
 
@@ -431,7 +418,6 @@ if (bits&(1<<i))
 		if (num > 0 && num <= cl.maxclients)
 			R_TranslatePlayerSkin (num - 1);
 	}
-
 #else
 
 	if (bits & U_SKIN)
@@ -508,7 +494,6 @@ void CL_ParseBaseline (entity_t *ent)
 		ent->baseline.angles[i] = MSG_ReadAngle ();
 	}
 }
-
 
 /*
 ==================
@@ -587,6 +572,8 @@ void CL_ParseClientdata (int bits)
 	i = MSG_ReadShort ();
 	if (cl.stats[STAT_HEALTH] != i)
 	{
+		if (i <= 0)
+			memcpy(cl.death_location, cl_entities[cl.viewentity].origin, sizeof(vec3_t));
 		cl.stats[STAT_HEALTH] = i;
 		Sbar_Changed ();
 	}
@@ -633,11 +620,9 @@ void CL_ParseClientdata (int bits)
 CL_NewTranslation
 =====================
 */
-
 void CL_NewTranslation (int slot)
 {
-	int		i, j;
-	int		top, bottom;
+	int		i, j, top, bottom;
 	byte	*dest, *source;
 
 	if (slot > cl.maxclients)
@@ -647,15 +632,14 @@ void CL_NewTranslation (int slot)
 	memcpy (dest, vid.colormap, sizeof(cl.scores[slot].translations));
 	top = cl.scores[slot].colors & 0xf0;
 	bottom = (cl.scores[slot].colors &15)<<4;
+
 #ifdef GLQUAKE
-
 	R_TranslatePlayerSkin (slot);
-
 #endif
 
 	for (i=0 ; i<VID_GRADES ; i++, dest += 256, source+=256)
 	{
-		if (top < 128)	// the artists made some backwards ranges.  sigh.
+		if (top < 128)	// the artists made some backward ranges.  sigh.
 			memcpy (dest + TOP_RANGE, source + top, 16);
 		else
 			for (j=0 ; j<16 ; j++)
@@ -706,8 +690,7 @@ CL_ParseStaticSound
 void CL_ParseStaticSound (void)
 {
 	vec3_t		org;
-	int			sound_num, vol, atten;
-	int			i;
+	int			i, sound_num, vol, atten;
 
 	for (i=0 ; i<3 ; i++)
 		org[i] = MSG_ReadCoord ();
@@ -730,7 +713,6 @@ int MSG_ReadShortPQ (void)
 	return MSG_ReadBytePQ() * 256 + MSG_ReadBytePQ();
 }
 
-
 /* JPG - added this function for ProQuake messages
 =======================
 CL_ParseProQuakeMessage
@@ -738,7 +720,7 @@ CL_ParseProQuakeMessage
 */
 void CL_ParseProQuakeMessage (void)
 {
-	int cmd, i, j;
+	int cmd, i;
 	int team, frags, shirt, ping;
 
 	MSG_ReadByte();
@@ -816,6 +798,47 @@ void CL_ParseProQuakeMessage (void)
 	}
 }
 
+//  Q_VERSION
+
+/*
+=======================
+VersionString
+======================
+*/
+char *VersionString (void)
+{
+	static char str[32];
+#ifdef GLQUAKE
+#ifdef D3DQUAKE
+	Q_snprintfz (str, sizeof(str), "direct 3d pro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
+#else
+	Q_snprintfz (str, sizeof(str), "glpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
+#endif
+#else
+	Q_snprintfz (str, sizeof(str), "wqpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
+#endif
+
+	return str;
+}
+void Q_Version(char *s)
+{
+	char *t;
+	int l = 0, n = 0;
+
+	t = s;
+	l = strlen(t);
+
+	while (n < l)
+	{
+		if (!strncmp(t, "q_version", 9))
+		{
+				Cbuf_AddText (va("say ProQuake version %s\n", VersionString()));
+
+				Cbuf_Execute ();
+		}
+		n += 1;t += 1;
+	}
+}
 extern cvar_t pq_scoreboard_pings; // JPG - need this for CL_ParseProQuakeString
 
 /* JPG - on a svc_print, check to see if the string contains useful information
@@ -970,10 +993,8 @@ void CL_ParseProQuakeString (char *string)
 				*string = 0;
 		}
 	}
+	Q_Version(string);//R00k: look for "q_version" requests
 }
-
-
-
 
 #define SHOWNET(x) if(cl_shownet.value==2)Con_Printf ("%3i:%s\n", msg_readcount-1, x);
 
@@ -984,23 +1005,20 @@ CL_ParseServerMessage
 */
 void CL_ParseServerMessage (void)
 {
-	int			cmd;
-	int			i;
-	char		*s;    // JPG did not comment here (added by woods)
+	int			cmd, i;
+	char		*str;
 
-//
 // if recording demos, copy the message out
-//
 	if (cl_shownet.value == 1)
 		Con_Printf ("%i ",net_message.cursize);
 	else if (cl_shownet.value == 2)
 		Con_Printf ("------------------\n");
 
 	cl.onground = false;	// unless the server says otherwise
-//
+
 // parse the message
-//
 	MSG_BeginReading ();
+
 	while (1)
 	{
 		if (msg_badread)
@@ -1028,7 +1046,7 @@ void CL_ParseServerMessage (void)
 		switch (cmd)
 		{
 		default:
-			Host_Error ("CL_ParseServerMessage: Illegible server message\n");
+			Host_Error ("CL_ParseServerMessage: Illegible server message");
 			break;
 
 		case svc_nop:
@@ -1048,7 +1066,7 @@ void CL_ParseServerMessage (void)
 		case svc_version:
 			i = MSG_ReadLong ();
 			if (i != PROTOCOL_VERSION)
-				Host_Error ("CL_ParseServerMessage: Server is protocol %i instead of %i\n", i, PROTOCOL_VERSION);
+				Host_Error ("CL_ParseServerMessage: Server is protocol %i instead of %i", i, PROTOCOL_VERSION);
 			break;
 
 		case svc_disconnect:
@@ -1056,10 +1074,11 @@ void CL_ParseServerMessage (void)
 
 		case svc_print:
 			// JPG - check to see if the message contains useful information
-			s = MSG_ReadString();
-			CL_ParseProQuakeString(s);
-			Con_Printf ("%s", s);
+			str = MSG_ReadString();
+			CL_ParseProQuakeString(str);
+			Con_Printf ("%s", str);
 			break;
+
 		case svc_centerprint:
 			SCR_CenterPrint (MSG_ReadString ());
 			break;
@@ -1158,9 +1177,11 @@ void CL_ParseServerMessage (void)
 			// must use CL_EntityNum() to force cl.num_entities up
 			CL_ParseBaseline (CL_EntityNum(i));
 			break;
+
 		case svc_spawnstatic:
 			CL_ParseStatic ();
 			break;
+
 		case svc_temp_entity:
 			CL_ParseTEnt ();
 			break;
@@ -1195,10 +1216,17 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_killedmonster:
+			if (cls.demoplayback && cl_demorewind.value)
+				cl.stats[STAT_MONSTERS]--;
+			else
 			cl.stats[STAT_MONSTERS]++;
+
 			break;
 
 		case svc_foundsecret:
+			if (cls.demoplayback && cl_demorewind.value)
+				cl.stats[STAT_SECRETS]--;
+			else
 			cl.stats[STAT_SECRETS]++;
 			break;
 
@@ -1224,7 +1252,9 @@ void CL_ParseServerMessage (void)
 
 		case svc_intermission:
 			cl.intermission = 1;
-			cl.completed_time = cl.time;
+//			cl.completed_time = cl.time;
+			// intermission bugfix -- by joe
+			cl.completed_time = cl.mtime[0];
 			vid.recalc_refdef = true;	// go to full screen
 			break;
 
@@ -1248,4 +1278,3 @@ void CL_ParseServerMessage (void)
 		}
 	}
 }
-

@@ -17,10 +17,13 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
-// screen.c -- master for refresh, status bar, console, chat, notify, etc
+// gl_screen.c -- master for refresh, status bar, console, chat, notify, etc
 
 #include "quakedef.h"
+
+#ifdef _WIN32
+#include "movie.h"
+#endif
 
 /*
 
@@ -58,7 +61,7 @@ Con_Printf ();
 net
 turn off messages option
 
-the refresh is allways rendered, unless the console is full screen
+the refresh is always rendered, unless the console is full screen
 
 
 console is:
@@ -81,8 +84,9 @@ float		scr_conlines;		// lines of console to display
 
 float		oldscreensize, oldfov;
 cvar_t		scr_viewsize = {"viewsize","100", true};
-cvar_t		scr_fov = {"fov","90"};	// 10 - 170
-cvar_t		scr_conspeed = {"scr_conspeed","300"};
+cvar_t		scr_fov = {"fov","90", true};	// 10 - 170  // Baker 3.60 - Save to config
+cvar_t		default_fov = {"default_fov","0", true, 7};	// Baker 3.85 - Default_fov from FuhQuake
+cvar_t		scr_conspeed = {"scr_conspeed","99999", true};  // Baker 3.60 - Save to config
 cvar_t		scr_centertime = {"scr_centertime","2"};
 cvar_t		scr_showram = {"showram","1"};
 cvar_t		scr_showturtle = {"showturtle","0"};
@@ -90,9 +94,12 @@ cvar_t		scr_showpause = {"showpause","1"};
 cvar_t		scr_printspeed = {"scr_printspeed","8"};
 cvar_t		gl_triplebuffer = {"gl_triplebuffer", "1", true };
 
-cvar_t      pq_drawfps = {"pq_drawfps", "0", false}; // JPG - draw frames per second
+cvar_t      pq_drawfps = {"pq_drawfps", "0", true}; // JPG - draw frames per second
+cvar_t      show_speed = {"show_speed", "0", false}; // JPG - draw frames per second
 
 extern	cvar_t	crosshair;
+extern  cvar_t	cl_crosshaircentered; // Baker 3.60 - centered crosshair
+//extern  cvar_t  cl_colorshow; // Baker 3.99n - show color @ top/left of screen
 extern	cvar_t	cl_crossx;	// JPG - added this
 extern	cvar_t	cl_crossy;  // JPG - added this
 
@@ -178,10 +185,7 @@ void SCR_CenterPrint (char *str)
 void SCR_DrawCenterString (void)
 {
 	char	*start;
-	int		l;
-	int		j;
-	int		x, y;
-	int		remaining;
+	int	l, j, x, y, remaining;
 
 // the finale prints the characters one at a time
 	if (cl.intermission)
@@ -197,8 +201,7 @@ void SCR_DrawCenterString (void)
 	else
 		y = 48;
 
-	do
-	{
+	do {
 	// scan the width of the line
 		for (l=0 ; l<40 ; l++)
 			if (start[l] == '\n' || !start[l])
@@ -247,18 +250,14 @@ CalcFov
 */
 float CalcFov (float fov_x, float width, float height)
 {
-        float   a;
-        float   x;
+	float   a, x;
 
         if (fov_x < 1 || fov_x > 179)
                 Sys_Error ("Bad fov: %f", fov_x);
 
         x = width/tan(fov_x/360*M_PI);
-
         a = atan (height/x);
-
         a = a*360/M_PI;
-
         return a;
 }
 
@@ -272,9 +271,8 @@ Internal use only
 */
 static void SCR_CalcRefdef (void)
 {
-//	vrect_t		vrect;
-	float		size;
 	int		h;
+	float		size;
 	qboolean	full = false;
 
 
@@ -314,8 +312,10 @@ static void SCR_CalcRefdef (void)
 	if (scr_viewsize.value >= 100.0) {
 		full = true;
 		size = 100.0;
-	} else
+	} else {
 		size = scr_viewsize.value;
+	}
+
 	if (cl.intermission)
 	{
 		full = true;
@@ -336,7 +336,7 @@ static void SCR_CalcRefdef (void)
 	r_refdef.vrect.height = vid.height * size;
 	if (r_refdef.vrect.height > vid.height - sb_lines)
 		r_refdef.vrect.height = vid.height - sb_lines;
-	if (r_refdef.vrect.height > vid.height)
+	if (r_refdef.vrect.height > (int) vid.height)
 			r_refdef.vrect.height = vid.height;
 	r_refdef.vrect.x = (vid.width - r_refdef.vrect.width)/2;
 	if (full)
@@ -344,9 +344,16 @@ static void SCR_CalcRefdef (void)
 	else
 		r_refdef.vrect.y = (h - r_refdef.vrect.height)/2;
 
+	//r_refdef.fov_x = scr_fov.value;
+	//r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
+
+	if ((glwidth/glheight) > 1.34) {
+        r_refdef.fov_y = CalcFov (scr_fov.value, r_refdef.vrect.height * (320.0f / 240.0f), r_refdef.vrect.height);
+        r_refdef.fov_x = CalcFov (r_refdef.fov_y, vid.height, r_refdef.vrect.width);
+    } else {
 	r_refdef.fov_x = scr_fov.value;
 	r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
-
+	}
 	scr_vrect = r_refdef.vrect;
 }
 
@@ -378,6 +385,7 @@ void SCR_SizeDown_f (void)
 	vid.recalc_refdef = 1;
 }
 
+
 //============================================================================
 
 /*
@@ -385,10 +393,13 @@ void SCR_SizeDown_f (void)
 SCR_Init
 ==================
 */
+void CL_Default_fov_f(void);
+void CL_Fov_f(void);
 void SCR_Init (void)
 {
 
-	Cvar_RegisterVariable (&scr_fov, NULL);
+	Cvar_RegisterVariable (&default_fov, &CL_Default_fov_f);
+	Cvar_RegisterVariable (&scr_fov, &CL_Fov_f);
 	Cvar_RegisterVariable (&scr_viewsize, NULL);
 	Cvar_RegisterVariable (&scr_conspeed, NULL);
 	Cvar_RegisterVariable (&scr_showram, NULL);
@@ -399,10 +410,10 @@ void SCR_Init (void)
 	Cvar_RegisterVariable (&gl_triplebuffer, NULL);
 
 	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
+	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
 
-//
 // register our commands
-//
+
 	Cmd_AddCommand ("screenshot",SCR_ScreenShot_f);
 	Cmd_AddCommand ("sizeup",SCR_SizeUp_f);
 	Cmd_AddCommand ("sizedown",SCR_SizeDown_f);
@@ -410,6 +421,10 @@ void SCR_Init (void)
 	scr_ram = Draw_PicFromWad ("ram");
 	scr_net = Draw_PicFromWad ("net");
 	scr_turtle = Draw_PicFromWad ("turtle");
+
+#ifdef _WIN32
+	Movie_Init ();
+#endif
 
 	scr_initialized = true;
 }
@@ -472,10 +487,6 @@ void SCR_DrawNet (void)
 	Draw_Pic (scr_vrect.x+64, scr_vrect.y, scr_net);
 }
 
-
-
-
-
 /* JPG - draw frames per second
 ==============
 SCR_DrawFPS
@@ -500,22 +511,72 @@ void SCR_DrawFPS (void)
 	if (!pq_drawfps.value)
 		return;
 
-	sprintf(buff, "%d", fps);
-	ch = buff;
+	sprintf(buff, "%3d", fps);
 	x = vid.width - 48;
+
+	ch = buff;
+
 	while (*ch)
 	{
-		Draw_Character(x, 8, *ch);
+		Draw_Character(x, (!show_speed.value ? 8 : 16), *ch);
 		x += 8;
 		ch++;
 	}
 }
 
+/*
+==============
+SCR_DrawSpeed - Baker 3.67 from JoeQuake
+==============
+*/
+void SCR_DrawSpeed (void)
+{
+	int		x;
+	char buff[10];
+	char *ch;
+	float		speed, vspeed;
+	vec3_t		vel;
+	static	float	maxspeed = 0, display_speed = -1;
+	static	double	lastrealtime = 0;
 
+	if (!show_speed.value)
+		return;
 
+	if (lastrealtime > realtime)
+	{
+		lastrealtime = 0;
+		display_speed = -1;
+		maxspeed = 0;
+	}
 
+	VectorCopy (cl.velocity, vel);
+	vspeed = vel[2];
+	vel[2] = 0;
+	speed = VectorLength (vel);
 
+	if (speed > maxspeed)
+		maxspeed = speed;
 
+	if (display_speed >= 0)
+	{
+		sprintf (buff, "%3d", (int)display_speed);
+	ch = buff;
+	x = vid.width - 48;
+	while (*ch)
+	{
+			Draw_Character(x, 8, (*ch)+128);
+		x += 8;
+		ch++;
+	}
+}
+
+	if (realtime - lastrealtime >= 0.1)
+	{
+		lastrealtime = realtime;
+		display_speed = maxspeed;
+		maxspeed = 0;
+	}
+}
 
 
 
@@ -535,8 +596,7 @@ void SCR_DrawPause (void)
 		return;
 
 	pic = Draw_CachePic ("gfx/pause.lmp");
-	Draw_Pic ( (vid.width - pic->width)/2,
-		(vid.height - 48 - pic->height)/2, pic);
+	Draw_Pic ( (vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
 
 
@@ -554,8 +614,7 @@ void SCR_DrawLoading (void)
 		return;
 
 	pic = Draw_CachePic ("gfx/loading.lmp");
-	Draw_Pic ( (vid.width - pic->width)/2,
-		(vid.height - 48 - pic->height)/2, pic);
+	Draw_Pic ( (vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
 }
 
 
@@ -570,6 +629,11 @@ SCR_SetUpToDrawConsole
 */
 void SCR_SetUpToDrawConsole (void)
 {
+	//johnfitz -- let's hack away the problem of slow console when host_timescale is <0
+	extern cvar_t host_timescale;
+	float timescale;
+	//johnfitz
+
 	Con_CheckResize ();
 
 	if (scr_drawloading)
@@ -588,24 +652,24 @@ void SCR_SetUpToDrawConsole (void)
 	else
 		scr_conlines = 0;				// none visible
 
+	timescale = (host_timescale.value > 0) ? host_timescale.value : 1; //johnfitz -- timescale
+
 	if (scr_conlines < scr_con_current)
 	{
-		scr_con_current -= scr_conspeed.value*host_frametime;
+		scr_con_current -= scr_conspeed.value*host_frametime/timescale; //johnfitz -- timescale
 		if (scr_conlines > scr_con_current)
 			scr_con_current = scr_conlines;
 
 	}
 	else if (scr_conlines > scr_con_current)
 	{
-		scr_con_current += scr_conspeed.value*host_frametime;
+		scr_con_current += scr_conspeed.value*host_frametime/timescale; //johnfitz -- timescale
 		if (scr_conlines < scr_con_current)
 			scr_con_current = scr_conlines;
 	}
 
 	if (clearconsole++ < vid.numpages)
-	{
 		Sbar_Changed ();
-	}
 	else if (clearnotify++ < vid.numpages)
 	{
 	}
@@ -696,7 +760,7 @@ void SCR_ScreenShot_f (void)
 
 #if !defined (__APPLE__) && !defined (MACOSX)
 
-	buffer = malloc(glwidth*glheight*3 + 18);
+	buffer = Q_malloc(glwidth*glheight*3 + 18);
         if (buffer != NULL)
         {
             memset (buffer, 0, 18);
@@ -708,6 +772,7 @@ void SCR_ScreenShot_f (void)
             buffer[16] = 24;	// pixel size
 
             glReadPixels (glx, gly, glwidth, glheight, GL_RGB, GL_UNSIGNED_BYTE, buffer+18 );
+
             // swap rgb to bgr
             c = 18+glwidth*glheight*3;
             for (i=18 ; i<c ; i+=3)
@@ -785,16 +850,13 @@ qboolean	scr_drawdialog;
 void SCR_DrawNotifyString (void)
 {
 	char	*start;
-	int		l;
-	int		j;
-	int		x, y;
+	int	l, j, x, y;
 
 	start = scr_notifystring;
 
 	y = vid.height*0.35;
 
-	do
-	{
+	do {
 	// scan the width of the line
 		for (l=0 ; l<40 ; l++)
 			if (start[l] == '\n' || !start[l])
@@ -822,8 +884,10 @@ Displays a text string in the center of the screen and waits for a Y or N
 keypress.
 ==================
 */
-int SCR_ModalMessage (char *text)
+int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
+	double time1, time2; //johnfitz -- timeout
+
 	if (cls.state == ca_dedicated)
 		return true;
 
@@ -839,17 +903,25 @@ int SCR_ModalMessage (char *text)
 
 	S_ClearBuffer ();		// so dma doesn't loop current sound
 
-	do
-	{
+	time1 = Sys_DoubleTime () + timeout; //johnfitz -- timeout
+	time2 = 0.0f; //johnfitz -- timeout
+
+	do 	{
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
-	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE);
+		if (timeout) time2 = Sys_DoubleTime (); //johnfitz -- zero timeout means wait forever.
+	} while (key_lastpress != 'y' && key_lastpress != 'n' && key_lastpress != K_ESCAPE  && time2 <= time1);
 
 #if defined (__APPLE__) || defined (MACOSX)
         scr_drawdialog = false;
 #endif /* __APPLE__ || MACOSX */
 	scr_fullupdate = 0;
 	SCR_UpdateScreen ();
+
+	//johnfitz -- timeout
+	if (time2 > time1)
+		return false;
+	//johnfitz
 
 	return key_lastpress == 'y';
 }
@@ -881,23 +953,20 @@ void SCR_TileClear (void)
 {
 	if (r_refdef.vrect.x > 0) {
 		// left
-		Draw_TileClear (0, 0, r_refdef.vrect.x, vid.height - sb_lines);
+		Draw_TileClear (0, 0, r_refdef.vrect.x, 
+			vid.height - sb_lines);
 		// right
 		Draw_TileClear (r_refdef.vrect.x + r_refdef.vrect.width, 0,
-			vid.width - r_refdef.vrect.x + r_refdef.vrect.width,
-			vid.height - sb_lines);
+			vid.width - r_refdef.vrect.x + r_refdef.vrect.width, vid.height - sb_lines);
 	}
+
 	if (r_refdef.vrect.y > 0) {
 		// top
 		Draw_TileClear (r_refdef.vrect.x, 0,
-			r_refdef.vrect.x + r_refdef.vrect.width,
-			r_refdef.vrect.y);
+			r_refdef.vrect.x + r_refdef.vrect.width, r_refdef.vrect.y);
 		// bottom
-		Draw_TileClear (r_refdef.vrect.x,
-			r_refdef.vrect.y + r_refdef.vrect.height,
-			r_refdef.vrect.width,
-			vid.height - sb_lines -
-			(r_refdef.vrect.height + r_refdef.vrect.y));
+		Draw_TileClear (r_refdef.vrect.x, r_refdef.vrect.y + r_refdef.vrect.height, r_refdef.vrect.width,
+			vid.height - sb_lines - (r_refdef.vrect.height + r_refdef.vrect.y));
 	}
 }
 
@@ -920,18 +989,10 @@ void SCR_UpdateScreen (void)
 	if (block_drawing)
 		return;
 
-	vid.numpages = 2 + gl_triplebuffer.value;
-
-	scr_copytop = 0;
-	scr_copyeverything = 0;
-
 	if (scr_disabled_for_loading)
 	{
 		if (realtime - scr_disabled_time > 60)
-		{
-			scr_disabled_for_loading = false;
-			Con_Printf ("load failed.\n");
-		}
+			scr_disabled_for_loading = false; // Con_Printf ("load failed.\n");
 		else
 			return;
 	}
@@ -939,12 +1000,23 @@ void SCR_UpdateScreen (void)
 	if (!scr_initialized || !con_initialized)
 		return;				// not initialized yet
 
+#ifdef _WIN32
+	{	// don't suck up any cpu if minimized
+		extern	int	Minimized;
+	
+		if (Minimized)
+			return;
+	}
+#endif
+
+	vid.numpages = 2 + (gl_triplebuffer.value ? 1 : 0); //johnfitz -- in case gl_triplebuffer is not 0 or 1
+	scr_copytop = 0;
+	scr_copyeverything = 0;
 
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 
-	//
 	// determine size of refresh window
-	//
+
 	if (oldfov != scr_fov.value)
 	{
 		oldfov = scr_fov.value;
@@ -960,52 +1032,70 @@ void SCR_UpdateScreen (void)
 	if (vid.recalc_refdef)
 		SCR_CalcRefdef ();
 
-//
+
 // do 3D refresh drawing, and then update the screen
-//
 	SCR_SetUpToDrawConsole ();
 
 	V_RenderView ();
 
 	GL_Set2D ();
 
-	//
 	// draw any areas not covered by the refresh
-	//
 	SCR_TileClear ();
 
-	if (scr_drawdialog)
+	if (scr_drawdialog)  //new game confirm
 	{
 		Sbar_Draw ();
 		Draw_FadeScreen ();
 		SCR_DrawNotifyString ();
 		scr_copyeverything = true;
 	}
-	else if (scr_drawloading)
+	else if (scr_drawloading)  //loading
 	{
 		SCR_DrawLoading ();
 		Sbar_Draw ();
 	}
-	else if (cl.intermission == 1 && key_dest == key_game)
+	else if (cl.intermission == 1 && key_dest == key_game) //end of level
 	{
 		Sbar_IntermissionOverlay ();
+		SCR_DrawVolume (); // Baker 3.60 - Draw volume
 	}
-	else if (cl.intermission == 2 && key_dest == key_game)
+	else if (cl.intermission == 2 && key_dest == key_game) //end of episode
 	{
 		Sbar_FinaleOverlay ();
 		SCR_CheckDrawCenterString ();
+		SCR_DrawVolume (); // Baker 3.60 - Draw volume
 	}
 	else
 	{
-		if (crosshair.value) // JPG - added cl_crossx, cl_crossy
+		if (crosshair.value)
+		{
+			if (!cl_crosshaircentered.value)  // Baker 3.60 - centered crosshair
+			{
+				// Standard off-center Quake crosshair
 			Draw_Character (scr_vrect.x + scr_vrect.width/2 + cl_crossx.value, scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+');
+			} else
+			{
+				// Baker 3.60 - Centered crosshair (FuhQuake)
+				Draw_Character (scr_vrect.x + scr_vrect.width / 2 - 4 + cl_crossx.value, scr_vrect.y + scr_vrect.height / 2 - 4 + cl_crossy.value, '+');
+			}
+		}
+
+
+//		if (cl_colorshow.value && !cls.demoplayback &&  cl.maxclients>1) {
+//			// Don't display this during demo playback because we actually don't know!
+//			Draw_AlphaFill	(12, 12, 16, 16, Sbar_ColorForMap(((int)cl_color.value) & 15<<4), 0.8);	// Baker 3.99n: display pants color in top/left
+//
+//		}
 
 		SCR_DrawRam ();
 		SCR_DrawNet ();
 		SCR_DrawTurtle ();
 		SCR_DrawPause ();
 		SCR_DrawFPS (); // JPG - draw FPS
+		SCR_DrawSpeed (); // JPG - draw FPS
 		SCR_CheckDrawCenterString ();
+		SCR_DrawVolume (); // Baker 3.60 - JoeQuake 0.15
 		Sbar_Draw ();
 		SCR_DrawConsole ();
 		M_Draw ();
@@ -1013,7 +1103,9 @@ void SCR_UpdateScreen (void)
 	}
 
 	V_UpdatePalette ();
+#ifdef _WIN32
+	Movie_UpdateScreen ();
+#endif
 
 	GL_EndRendering ();
 }
-

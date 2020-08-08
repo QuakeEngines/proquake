@@ -134,6 +134,9 @@ float MSG_ReadPreciseAngle (void); // JPG - precise aim!!
 
 //============================================================================
 
+#ifdef _WIN32
+#define	vsnprintf _vsnprintf
+#endif
 
 //void Q_strcpy (char *dest, char *src);
 void Q_strncpy (char *dest, char *src, int count);
@@ -167,6 +170,7 @@ void COM_InitArgv (int argc, char **argv);
 
 char *COM_SkipPath (char *pathname);
 void COM_StripExtension (char *in, char *out);
+char *COM_FileExtension (char *in);
 void COM_FileBase (char *in, char *out);
 void COM_DefaultExtension (char *path, char *extension);
 
@@ -180,6 +184,9 @@ extern int com_filesize;
 struct cache_user_s;
 
 extern	char	com_gamedir[MAX_OSPATH];
+extern char	com_basedir[MAX_OSPATH];
+
+void COM_ForceExtension (char *path, char *extension);	// by joe
 
 void COM_WriteFile (char *filename, void *data, int len);
 int COM_OpenFile (char *filename, int *hndl);

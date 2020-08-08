@@ -150,7 +150,6 @@ void GL_SubdivideSurface (msurface_t *fa)
 	int		i;
 	int		lindex;
 	float		*vec;
-//	texture_t	*t;
 
 	warpface = fa;
 
@@ -273,9 +272,6 @@ will have them chained together.
 */
 void EmitBothSkyLayers (msurface_t *fa)
 {
-//	int		i;
-//	int		lindex;
-//	float		*vec;
 
 	GL_DisableMultitexture();
 
@@ -407,7 +403,7 @@ void LoadPCX (FILE *f)
 	fseek (f, sizeof(pcxbuf) - 4, SEEK_SET);
 
 	count = (pcx->xmax+1) * (pcx->ymax+1);
-	pcx_rgb = malloc( count * 4);
+	pcx_rgb = Q_malloc( count * 4);
 
 	for (y=0 ; y<=pcx->ymax ; y++)
 	{
@@ -517,7 +513,7 @@ void LoadTGA (FILE *fin)
 	rows = targa_header.height;
 	numPixels = columns * rows;
 
-	targa_rgba = malloc (numPixels*4);
+	targa_rgba = Q_malloc (numPixels*4);
 	
 	if (targa_header.id_length != 0)
 		fseek(fin, targa_header.id_length, SEEK_CUR);  // skip TARGA image comment
@@ -662,8 +658,7 @@ void R_LoadSkys (void)
 		LoadTGA (f);
 //		LoadPCX (f);
 #if defined (__APPLE__) || defined (MACOSX)
-                GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, 256, 256, 0, 0, GL_RGBA,
-                                    GL_UNSIGNED_BYTE);
+                GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, 256, 256, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
 #endif /* __APPLE__ || MACOSX */
 		glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, targa_rgba);
 //		glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, 256, 256, 0, GL_RGBA, GL_UNSIGNED_BYTE, pcx_rgb);
@@ -945,20 +940,18 @@ void R_ClearSkyBox (void)
 
 void MakeSkyVec (float s, float t, int axis)
 {
+	int	j, k, farclip;
 	vec3_t		v, b;
-	int			j, k;
 
-	b[0] = s*2048;
-	b[1] = t*2048;
-	b[2] = 2048;
+	farclip = max((int)r_farclip.value, 4096);
+	b[0] = s * (farclip >> 1);
+	b[1] = t * (farclip >> 1);
+	b[2] = (farclip >> 1);
 
 	for (j=0 ; j<3 ; j++)
 	{
 		k = st_to_vec[axis][j];
-		if (k < 0)
-			v[j] = -b[-k - 1];
-		else
-			v[j] = b[k - 1];
+		v[j] = (k < 0) ? -b[-k-1] : b[k-1];
 		v[j] += r_origin[j];
 	}
 
@@ -1046,7 +1039,6 @@ void R_InitSky (texture_t *mt)
 	unsigned	transpix;
 	int		r, g, b;
 	unsigned	*rgba;
-//	extern	int	skytexturenum;
 
 	src = (byte *)mt + mt->offsets[0];
 

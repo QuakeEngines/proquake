@@ -5,6 +5,9 @@
 		activeBuildConfigurationName = Release;
 		activeExecutable = 9A7A6E250EAD5C50007D6929 /* GLQuake */;
 		activeTarget = D29BE26709C61E0C00EBE023 /* GLQuake */;
+		addToTargets = (
+			8D1107260486CEB800E47090 /* Quake */,
+		);
 		codeSenseManager = 9A7A6E410EAD5C89007D6929 /* Code sense */;
 		executables = (
 			9A7A6E240EAD5C50007D6929 /* Quake */,
@@ -114,8 +117,8 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 246376017;
-			PBXWorkspaceStateSaveDate = 246376017;
+			PBXPerProjectTemplateStateSaveDate = 246485146;
+			PBXWorkspaceStateSaveDate = 246485146;
 		};
 		sourceControlManager = 9A7A6E400EAD5C89007D6929 /* Source Control */;
 		userBuildSettings = {
@@ -344,19 +347,11 @@
 			sepNavVisRange = "{11280, 197}";
 		};
 	};
-	D29BE58A09C624FA00EBE023 /* cl_main.c */ = {
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {813, 13104}}";
-			sepNavSelRange = "{22439, 0}";
-			sepNavVisRange = "{8631, 206}";
-			sepNavWindowFrame = "{{84, 120}, {750, 558}}";
-		};
-	};
 	D29BE60509C6265A00EBE023 /* gl_test.c */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {691, 2464}}";
+			sepNavIntBoundsRect = "{{0, 0}, {691, 2478}}";
 			sepNavSelRange = "{1391, 0}";
-			sepNavVisRange = "{1127, 522}";
+			sepNavVisRange = "{1062, 576}";
 			sepNavWindowFrame = "{{301, 220}, {750, 526}}";
 		};
 	};

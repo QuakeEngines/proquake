@@ -46,7 +46,9 @@ typedef struct edict_s
 	entvars_t	v;					// C exported fields from progs
 // other fields from progs come immediately after
 } edict_t;
+
 #define	EDICT_FROM_AREA(l) STRUCT_FROM_LINK(l,edict_t,area)
+eval_t *GetEdictFieldValue(edict_t *ed, char *field);
 
 //============================================================================
 
@@ -129,6 +131,4 @@ void PR_RunError (char *error, ...);
 
 void ED_PrintEdicts (void);
 void ED_PrintNum (int ent);
-
-eval_t *GetEdictFieldValue(edict_t *ed, char *field);
 

@@ -130,9 +130,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define svc_cutscene		34
 
-//
+
 // client to server
-//
 #define	clc_bad			0
 #define	clc_nop 		1
 #define	clc_disconnect	2
@@ -150,12 +149,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define pqc_ping_times	7
 // JPG - end mod
 
-
-
-
-//
 // temp entity events
-//
 #define	TE_SPIKE			0
 #define	TE_SUPERSPIKE		1
 #define	TE_GUNSHOT			2

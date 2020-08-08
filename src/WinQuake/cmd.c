@@ -302,14 +302,11 @@ void Cmd_Exec_f (void)
 	}
 #if defined (__APPLE__) || defined (MACOSX)
         {
+// Baker: this replaces carriage return characters with linefeeds
             char *	myData = f;
-
-            while (*myData != 0x00)
-            {
-                if (*myData == 0x0D)
-                {
-                    *myData = 0x0A;
-                }
+            while (*myData != 0x00) {
+                if (*myData == 0x0D)                    
+					*myData = 0x0A;
                 myData++;
             }
         }

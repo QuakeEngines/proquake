@@ -59,8 +59,7 @@ int R_ClipSpriteFace (int nump, clipplane_t *pclipplane)
 {
 	int		i, outcount;
 	float	dists[MAXWORKINGVERTS+1];
-	float	frac, clipdist, *pclipnormal;
-	float	*in, *instep, *outstep, *vert2;
+	float	frac, clipdist, *pclipnormal, *in, *instep, *outstep, *vert2;
 
 	clipdist = pclipplane->dist;
 	pclipnormal = pclipplane->normal;
@@ -370,8 +369,7 @@ void R_DrawSprite (void)
 	else if (psprite->type == SPR_ORIENTED)
 	{
 	// generate the sprite's axes, according to the sprite's world orientation
-		AngleVectors (currententity->angles, r_spritedesc.vpn,
-					  r_spritedesc.vright, r_spritedesc.vup);
+		AngleVectors (currententity->angles, r_spritedesc.vpn, r_spritedesc.vright, r_spritedesc.vup);
 	}
 	else if (psprite->type == SPR_VP_PARALLEL_ORIENTED)
 	{
