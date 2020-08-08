@@ -39,7 +39,7 @@
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
 					433,
-					272,
+					272.20849609375,
 				);
 				PBXFileTableDataSourceColumnsKey = (
 					PBXErrorsWarningsDataSource_TypeID,
@@ -117,8 +117,8 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 246485146;
-			PBXWorkspaceStateSaveDate = 246485146;
+			PBXPerProjectTemplateStateSaveDate = 246823321;
+			PBXWorkspaceStateSaveDate = 246823321;
 		};
 		sourceControlManager = 9A7A6E400EAD5C89007D6929 /* Source Control */;
 		userBuildSettings = {
@@ -339,6 +339,38 @@
 		executables = (
 			9AA2AC760EAD798C00F99104 /* qwfwd */,
 		);
+	};
+	D29BE47D09C621C300EBE023 /* Quake.m */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {764, 23142}}";
+			sepNavSelRange = "{58464, 0}";
+			sepNavVisRange = "{57815, 918}";
+			sepNavWindowFrame = "{{15, 183}, {750, 558}}";
+		};
+	};
+	D29BE48409C621C300EBE023 /* sys_osx.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {764, 714}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRange = "{916, 978}";
+			sepNavWindowFrame = "{{107, 99}, {750, 558}}";
+		};
+	};
+	D29BE4D609C6234E00EBE023 /* common.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {788, 28476}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRange = "{0, 1083}";
+			sepNavWindowFrame = "{{61, 141}, {750, 558}}";
+		};
+	};
+	D29BE4DE09C6234E00EBE023 /* host_cmd.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {848, 34342}}";
+			sepNavSelRange = "{6284, 0}";
+			sepNavVisRange = "{5917, 720}";
+			sepNavWindowFrame = "{{84, 120}, {750, 558}}";
+		};
 	};
 	D29BE58909C624FA00EBE023 /* cl_input.c */ = {
 		uiCtxt = {

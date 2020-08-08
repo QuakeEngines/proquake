@@ -565,11 +565,7 @@ void M_ScanSaves (void)
 	{
 		strcpy (m_filenames[i], "--- UNUSED SLOT ---");
 		loadable[i] = false;
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (name, MAX_OSPATH, "%s/s%i.sav", com_gamedir, i);
-#else
-		sprintf (name, "%s/s%i.sav", com_gamedir, i);
-#endif /* __APPLE__ || MACOSX */
+		snprintf (name, sizeof(name), "%s/s%i.sav", com_gamedir, i);
 		f = fopen (name, "r");
 		if (!f)
 			continue;
@@ -1161,7 +1157,7 @@ again:
 /* OPTIONS MENU */
 
 #if defined (_WIN32) || defined (__APPLE__) || defined (MACOSX)
-#define	OPTIONS_ITEMS	14
+#define	OPTIONS_ITEMS	16 // Was 14
 #else
 #define	OPTIONS_ITEMS	13
 #endif /* _WIN32 ||Ê__APPLE__ ||ÊMACOSX */
@@ -1176,7 +1172,7 @@ void M_Menu_Options_f (void)
 	m_state = m_options;
 	m_entersound = true;
 
-#if defined (_WIN32)
+#if defined _WIN32
 	if ((options_cursor == 13) && (modestate != MS_WINDOWED))
 	{
 		options_cursor = 0;
@@ -1184,7 +1180,7 @@ void M_Menu_Options_f (void)
 #endif /* _WIN32 */
 
 #if defined (__APPLE__) || defined (MACOSX)
-	if ((options_cursor == 13) && (gVidDisplayFullscreen != false))
+	if ((options_cursor == 15) && (gVidDisplayFullscreen != false))
 	{
 		options_cursor = 0;
 	}
@@ -1194,6 +1190,7 @@ void M_Menu_Options_f (void)
 
 void M_AdjustSliders (int dir)
 {
+	extern cvar_t scr_fov;
 	S_LocalSound ("misc/menu3.wav");
 
 	switch (options_cursor)
@@ -1206,7 +1203,15 @@ void M_AdjustSliders (int dir)
 			scr_viewsize.value = 120;
 		Cvar_SetValue ("viewsize", scr_viewsize.value);
 		break;
-	case 4:	// gamma
+	case 4:	// Baker 3.60 --- fov size
+		scr_fov.value += dir * 1;
+		if (scr_fov.value < 90)
+			scr_fov.value = 90;
+		if (scr_fov.value > 110) // Baker 3.60 -- Will increase range after ProQuake FOV bug is fixed
+			scr_fov.value = 110;  // Baker 3.60 -- Will increase range after ProQuake FOV bug is fixed
+		Cvar_SetValue ("fov", scr_fov.value);
+		break;
+	case 5:	// gamma
 		v_gamma.value -= dir * 0.05;
 		if (v_gamma.value < 0.5)
 			v_gamma.value = 0.5;
@@ -1214,7 +1219,7 @@ void M_AdjustSliders (int dir)
 			v_gamma.value = 1;
 		Cvar_SetValue ("gamma", v_gamma.value);
 		break;
-	case 5:	// mouse speed
+	case 6:	// mouse speed
 		sensitivity.value += dir * 0.5;
 		if (sensitivity.value < 1)
 			sensitivity.value = 1;
@@ -1222,12 +1227,12 @@ void M_AdjustSliders (int dir)
 		if (sensitivity.value > 32)
 			sensitivity.value = 32;
 #else
-		if (sensitivity.value > 11)
-			sensitivity.value = 11;
+		if (sensitivity.value > 21)
+			sensitivity.value = 21;  // Baker 3.60 increased top range to 21 from 11
 #endif /* __APPLE__ || MACOSX */
 		Cvar_SetValue ("sensitivity", sensitivity.value);
 		break;
-	case 6:	// music volume
+	case 7:	// music volume
 #ifdef _WIN32
 		bgmvolume.value += dir * 1.0;
 #else
@@ -1239,7 +1244,7 @@ void M_AdjustSliders (int dir)
 			bgmvolume.value = 1;
 		Cvar_SetValue ("bgmvolume", bgmvolume.value);
 		break;
-	case 7:	// sfx volume
+	case 8:	// sfx volume
 		volume.value += dir * 0.1;
 		if (volume.value < 0)
 			volume.value = 0;
@@ -1248,7 +1253,7 @@ void M_AdjustSliders (int dir)
 		Cvar_SetValue ("volume", volume.value);
 		break;
 
-	case 8:	// allways run
+	case 9:	// always run
 		if (cl_forwardspeed.value > 200)
 		{
 			Cvar_SetValue ("cl_forwardspeed", 200);
@@ -1261,20 +1266,24 @@ void M_AdjustSliders (int dir)
 		}
 		break;
 
-	case 9:	// invert mouse
+	case 10:	// freelook
+		Cvar_SetValue ("freelook", !freelook.value);
+		break;
+
+	case 11:	// invert mouse
 		Cvar_SetValue ("m_pitch", -m_pitch.value);
 		break;
 
-	case 10:	// lookspring
+	case 12:	// lookspring
 		Cvar_SetValue ("lookspring", !lookspring.value);
 		break;
 
-	case 11:	// lookstrafe
+	case 13:	// lookstrafe
 		Cvar_SetValue ("lookstrafe", !lookstrafe.value);
 		break;
 
 #if defined (_WIN32) || defined (__APPLE__) || defined (MACOSX)
-	case 13:	// _windowed_mouse
+	case 15:	// _windowed_mouse
 
 		Cvar_SetValue ("_windowed_mouse", !_windowed_mouse.value);
 		break;
@@ -1316,6 +1325,7 @@ void M_Options_Draw (void)
 {
 	float		r;
 	qpic_t	*p;
+	extern cvar_t scr_fov;
 
 	M_DrawTransPic (16, 4, Draw_CachePic ("gfx/qplaque.lmp") );
 	p = Draw_CachePic ("gfx/p_option.lmp");
@@ -1329,40 +1339,50 @@ void M_Options_Draw (void)
 	r = (scr_viewsize.value - 30) / (120 - 30);
 	M_DrawSlider (220, 56, r);
 
-	M_Print (16, 64, "            Brightness");
-	r = (1.0 - v_gamma.value) / 0.5;
+	M_Print (16, 64, "         Field of view");
+	r = (scr_fov.value - 90) / (110 - 90);
 	M_DrawSlider (220, 64, r);
 
-	M_Print (16, 72, "           Mouse Speed");
+	M_Print (16, 72, "            Brightness");
+	r = (1.0 - v_gamma.value) / 0.5;
+	M_DrawSlider (220, 72, r);
+
+	M_Print (16, 80, "           Mouse Speed");
 #if defined (__APPLE__) || defined (MACOSX)
 	r = (sensitivity.value - 1)/31;
 #else
 	r = (sensitivity.value - 1)/10;
 #endif /* __APPLE__ || MACOSX */
-	M_DrawSlider (220, 72, r);
-
-	M_Print (16, 80, "       CD Music Volume");
-	r = bgmvolume.value;
 	M_DrawSlider (220, 80, r);
 
-	M_Print (16, 88, "          Sound Volume");
-	r = volume.value;
+	M_Print (16, 88, "       CD Music Volume");
+	r = bgmvolume.value;
 	M_DrawSlider (220, 88, r);
 
-	M_Print (16, 96,  "            Always Run");
-	M_DrawCheckbox (220, 96, cl_forwardspeed.value > 200);
+	M_Print (16, 96, "          Sound Volume");
+	r = volume.value;
+	M_DrawSlider (220, 96, r);
 
-	M_Print (16, 104, "          Invert Mouse");
-	M_DrawCheckbox (220, 104, m_pitch.value < 0);
+	M_Print (16, 104,  "            Always Run");
 
-	M_Print (16, 112, "            Lookspring");
-	M_DrawCheckbox (220, 112, lookspring.value);
+	M_DrawCheckbox (220, 104, cl_forwardspeed.value > 200);
 
-	M_Print (16, 120, "            Lookstrafe");
-	M_DrawCheckbox (220, 120, lookstrafe.value);
+	// Baker 3.60 - the "freelook" standard variable in Quake2, Quake3, etc.
+	M_Print (16, 112, "            Mouse Look");
+	M_DrawCheckbox (220, 112, freelook.value);
+	// End
+
+	M_Print (16, 120, "          Invert Mouse");
+	M_DrawCheckbox (220, 120, m_pitch.value < 0);
+
+	M_Print (16, 128, "            Lookspring");
+	M_DrawCheckbox (220, 128, lookspring.value);
+
+	M_Print (16, 136, "            Lookstrafe");
+	M_DrawCheckbox (220, 136, lookstrafe.value);
 
 	if (vid_menudrawfn)
-		M_Print (16, 128, "         Video Options");
+		M_Print (16, 144, "         Video Options");
 
 #if defined (_WIN32)
     if (modestate == MS_WINDOWED)
@@ -1371,8 +1391,8 @@ void M_Options_Draw (void)
 #endif /* _WIN32 ||Ê__APPLE__ ||ÊMACOSX */
 #if defined (_WIN32) || defined (__APPLE__) || defined (MACOSX)
 	{
-		M_Print (16, 136, "             Use Mouse");
-		M_DrawCheckbox (220, 136, _windowed_mouse.value);
+		M_Print (16, 152, "             Use Mouse");
+		M_DrawCheckbox (220, 152, _windowed_mouse.value);
 	}
 #endif /* _WIN32 ||Ê__APPLE__ ||ÊMACOSX */
 
@@ -1404,7 +1424,8 @@ void M_Options_Key (int key)
 		case 2:
 			Cbuf_AddText ("exec default.cfg\n");
 			break;
-		case 12:
+
+		case 14:
 			M_Menu_Video_f ();
 
 			break;
@@ -1418,9 +1439,9 @@ void M_Options_Key (int key)
 		S_LocalSound ("misc/menu1.wav");
 		options_cursor--;
 #if defined (__APPLE__) || defined (MACOSX)
-                if (options_cursor == 12 && vid_menudrawfn == NULL && gVidDisplayFullscreen == false)
+                if (options_cursor == 14 && vid_menudrawfn == NULL && gVidDisplayFullscreen == false)
                 {
-                    options_cursor = 11;
+                    options_cursor = 13;
                 }
 #endif /* __APPLE__ || MACOSX */
 		if (options_cursor < 0)
@@ -1431,9 +1452,9 @@ void M_Options_Key (int key)
 		S_LocalSound ("misc/menu1.wav");
 		options_cursor++;
 #if defined (__APPLE__) || defined (MACOSX)
-                if (options_cursor == 12 && vid_menudrawfn == NULL && gVidDisplayFullscreen == false)
+                if (options_cursor == 14 && vid_menudrawfn == NULL && gVidDisplayFullscreen == false)
                 {
-                    options_cursor = 13;
+                    options_cursor = 15;
                 }
 #endif /* __APPLE__ || MACOSX */
 		if (options_cursor >= OPTIONS_ITEMS)
@@ -1449,20 +1470,20 @@ void M_Options_Key (int key)
 		break;
 	}
 #if defined (__APPLE__) || defined (MACOSX)
-	if (options_cursor == 12 && vid_menudrawfn == NULL && gVidDisplayFullscreen != false)
+	if (options_cursor == 14 && vid_menudrawfn == NULL && gVidDisplayFullscreen != false)
 #else
 	if (options_cursor == 12 && vid_menudrawfn == NULL)
 #endif /* __APPLE__ || MACOSX */
 	{
 		if (key == K_UPARROW)
-			options_cursor = 11;
+			options_cursor = 13;
 		else
 			options_cursor = 0;
 	}
 #if defined (_WIN32)
 	if ((options_cursor == 13) && (modestate != MS_WINDOWED))
 #elif defined (__APPLE__) || defined (MACOSX)
-	if ((options_cursor == 13) && (gVidDisplayFullscreen != false))
+	if ((options_cursor == 15) && (gVidDisplayFullscreen != false))
 #endif /* _WIN32 || __APPLE__ || MACOSX */
 #if defined (_WIN32) || defined (__APPLE__) || defined (MACOSX)
 	{
@@ -1470,10 +1491,10 @@ void M_Options_Key (int key)
                 {
 #if defined (GLQUAKE) && (defined (__APPLE__) || defined (MACOSX))
                     if (vid_menudrawfn == NULL)
-			options_cursor = 11;
+			options_cursor = 13;
                     else
 #endif /* GLQUAKE && (__APPLE__ ||ÊMACOSX) */
-			options_cursor = 12;
+			options_cursor = 14;
                 }
                 else
 			options_cursor = 0;
@@ -1650,11 +1671,7 @@ void M_Keys_Key (int key)
 		}
 		else if (key != '`')
 		{
-#if defined (__APPLE__) || defined (MACOSX)
-                    snprintf (cmd,80,"bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
-#else
-                    sprintf (cmd, "bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
-#endif /* __APPLE__ || MACOSX */
+                    snprintf (cmd, sizeof(cmd),"bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
                     Cbuf_InsertText (cmd);
 		}
 
@@ -3201,17 +3218,9 @@ void M_ServerList_Draw (void)
 	for (n = 0; n < hostCacheCount; n++)
 	{
 		if (hostcache[n].maxusers)
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf(string, 64, "%-15.15s %-15.15s %2u/%2u\n", hostcache[n].name, hostcache[n].map, hostcache[n].users, hostcache[n].maxusers);
-#else
-			sprintf(string, "%-15.15s %-15.15s %2u/%2u\n", hostcache[n].name, hostcache[n].map, hostcache[n].users, hostcache[n].maxusers);
-#endif /* __APPLE__ || MACOSX */
+			snprintf(string, sizeof(string), "%-15.15s %-15.15s %2u/%2u\n", hostcache[n].name, hostcache[n].map, hostcache[n].users, hostcache[n].maxusers);
 		else
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf(string, 64, "%-15.15s %-15.15s\n", hostcache[n].name, hostcache[n].map);
-#else
-			sprintf(string, "%-15.15s %-15.15s\n", hostcache[n].name, hostcache[n].map);
-#endif /* __APPLE__ || MACOSX */
+			snprintf(string, sizeof(string), "%-15.15s %-15.15s\n", hostcache[n].name, hostcache[n].map);
 		M_Print (16, 32 + 8*n, string);
 	}
 	M_DrawCharacter (0, 32 + slist_cursor*8, 12+((int)(realtime*4)&1));

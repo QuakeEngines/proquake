@@ -225,6 +225,8 @@ void SCR_DrawCenterString (void)
 	} while (1);
 }
 
+extern cvar_t cl_scoreboard_clean;
+extern qboolean sb_showscores;
 void SCR_CheckDrawCenterString (void)
 {
 	scr_copytop = 1;
@@ -237,6 +239,10 @@ void SCR_CheckDrawCenterString (void)
 		return;
 	if (key_dest != key_game)
 		return;
+
+	if (sb_showscores && cl_scoreboard_clean.value)
+		return;
+
 
 	SCR_DrawCenterString ();
 }
@@ -385,7 +391,6 @@ void SCR_SizeDown_f (void)
 	vid.recalc_refdef = 1;
 }
 
-
 //============================================================================
 
 /*
@@ -511,7 +516,7 @@ void SCR_DrawFPS (void)
 	if (!pq_drawfps.value)
 		return;
 
-	sprintf(buff, "%3d", fps);
+	snprintf (buff, sizeof(buff), "%3d", fps);
 	x = vid.width - 48;
 
 	ch = buff;
@@ -559,7 +564,7 @@ void SCR_DrawSpeed (void)
 
 	if (display_speed >= 0)
 	{
-		sprintf (buff, "%3d", (int)display_speed);
+		snprintf(buff, sizeof(buff), "%3d", (int)display_speed);
 	ch = buff;
 	x = vid.width - 48;
 	while (*ch)
@@ -740,11 +745,8 @@ void SCR_ScreenShot_f (void)
 	{
 		pcxname[5] = i/10 + '0';
 		pcxname[6] = i%10 + '0';
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (checkname, MAX_OSPATH, "%s/%s", com_gamedir, pcxname);
-#else
-		sprintf (checkname, "%s/%s", com_gamedir, pcxname);
-#endif /* __APPLE__ ||ÊMACOSX */
+
+		snprintf (checkname, sizeof(checkname), "%s/%s", com_gamedir, pcxname);
 		if (Sys_FileTime(checkname) == -1)
 			break;	// file doesn't exist
 	}
@@ -953,20 +955,16 @@ void SCR_TileClear (void)
 {
 	if (r_refdef.vrect.x > 0) {
 		// left
-		Draw_TileClear (0, 0, r_refdef.vrect.x, 
-			vid.height - sb_lines);
+		Draw_TileClear (0, 0, r_refdef.vrect.x,  vid.height - sb_lines);
 		// right
-		Draw_TileClear (r_refdef.vrect.x + r_refdef.vrect.width, 0,
-			vid.width - r_refdef.vrect.x + r_refdef.vrect.width, vid.height - sb_lines);
+		Draw_TileClear (r_refdef.vrect.x + r_refdef.vrect.width, 0, vid.width - r_refdef.vrect.x + r_refdef.vrect.width, vid.height - sb_lines);
 	}
 
 	if (r_refdef.vrect.y > 0) {
 		// top
-		Draw_TileClear (r_refdef.vrect.x, 0,
-			r_refdef.vrect.x + r_refdef.vrect.width, r_refdef.vrect.y);
+		Draw_TileClear (r_refdef.vrect.x, 0, r_refdef.vrect.x + r_refdef.vrect.width, r_refdef.vrect.y);
 		// bottom
-		Draw_TileClear (r_refdef.vrect.x, r_refdef.vrect.y + r_refdef.vrect.height, r_refdef.vrect.width,
-			vid.height - sb_lines - (r_refdef.vrect.height + r_refdef.vrect.y));
+		Draw_TileClear (r_refdef.vrect.x, r_refdef.vrect.y + r_refdef.vrect.height, r_refdef.vrect.width, vid.height - sb_lines - (r_refdef.vrect.height + r_refdef.vrect.y));
 	}
 }
 
@@ -983,8 +981,6 @@ needs almost the entire 256k of stack space!
 */
 void SCR_UpdateScreen (void)
 {
-//	static float	oldscr_viewsize;
-//	vrect_t		vrect;
 
 	if (block_drawing)
 		return;

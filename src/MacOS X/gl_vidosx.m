@@ -119,15 +119,15 @@ const char						*gl_renderer,
 
 cvar_t							vid_mode = { "vid_mode", "0", 0 },
 								vid_redrawfull = { "vid_redrawfull", "0", 0 },
-								vid_wait = { "vid_wait", "1", 1 },
+								vid_wait = { "vid_vsync", "1", 1 },
 								vid_overbright = { "gamma_overbright", "1", 1 },
 								_vid_default_mode = { "_vid_default_mode", "0", 1 },
 								_vid_default_blit_mode = { "_vid_default_blit_mode", "0", 1 },
-								_windowed_mouse = { "_windowed_mouse","0", 0 },
+								_windowed_mouse = { "_windowed_mouse","1", 0 },
 								gl_anisotropic = { "gl_anisotropic", "0", 1 },
 								gl_fsaa = { "gl_fsaa", "0", 0 },
 								gl_truform = { "gl_truform", "-1", 1 },
-								gl_ztrick = { "gl_ztrick", "1" },
+								gl_ztrick = { "gl_ztrick", "0" },
                                 gl_multitexture = { "gl_multitexture", "0", 1 };
 
 unsigned						d_8to24table[256];
@@ -689,7 +689,8 @@ BOOL	VID_SetDisplayMode (void)
 }
 
 //__________________________________________________________________________________________________________________VID_Init()
-
+void VID_Consize_f(void);
+extern cvar_t vid_consize;
 void	VID_Init (unsigned char *thePalette)
 {
     char		myGLDir[MAX_OSPATH];
@@ -702,6 +703,7 @@ void	VID_Init (unsigned char *thePalette)
     Cvar_RegisterVariable (&vid_wait, NULL);
     Cvar_RegisterVariable (&vid_redrawfull, NULL);
     Cvar_RegisterVariable (&vid_overbright, NULL);
+    Cvar_RegisterVariable (&vid_consize, &VID_Consize_f); //Baker 3.97: this supercedes vid_conwidth/vid_conheight cvars
     Cvar_RegisterVariable (&_windowed_mouse, NULL);
     Cvar_RegisterVariable (&gl_anisotropic, NULL);
     Cvar_RegisterVariable (&gl_fsaa, NULL);
@@ -759,12 +761,14 @@ void	VID_Init (unsigned char *thePalette)
     if (vid.conheight < VID_CONSOLE_MIN_HEIGHT)
         vid.conheight = VID_CONSOLE_MIN_HEIGHT;
 
+    VID_Consize_f();
+    
     // setup OpenGL:
     GL_Init ();
 
-    // setup the "glquake" folder within the "id1" folder:
-    snprintf (myGLDir, MAX_OSPATH, "%s/glquake", com_gamedir);
-    Sys_mkdir (myGLDir);
+//    // setup the "glquake" folder within the "id1" folder:
+//    snprintf (myGLDir, MAX_OSPATH, "%s/glquake", com_gamedir);
+//    Sys_mkdir (myGLDir);
 
     // enable the video options menu:
     vid_menudrawfn = VID_MenuDraw;
@@ -1381,6 +1385,10 @@ void	GL_Init (void)
     glClearColor (1,0,0,0);
     glEnable (GL_TEXTURE_2D);
     glAlphaFunc (GL_GREATER, 0.666f);
+    // Get rid of Z-fighting for textures by offsetting the
+    // drawing of entity models compared to normal polygons.
+    // (Only works if gl_ztrick is turned off)
+    glPolygonOffset(0.05, 0);
     glEnable (GL_ALPHA_TEST);
     glPolygonMode (GL_FRONT_AND_BACK, GL_FILL);
     glCullFace (GL_FRONT);

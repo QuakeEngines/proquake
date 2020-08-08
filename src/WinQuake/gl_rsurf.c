@@ -431,10 +431,10 @@ void R_DrawSequentialPoly (msurface_t *s)
 	texture_t	*t;
 	vec3_t		nv;
 	glRect_t	*theRect;
+
 // Begin D3DQuake
 #ifdef D3DQUAKE
 int gNoSurfaces=0;
-
 	if ( gNoSurfaces ) return;
 // End D3DQuake
 #endif D3DQUAKE
@@ -1451,7 +1451,7 @@ int AllocBlock (int w, int h, int *x, int *y)
 	}
 
 	Sys_Error ("AllocBlock: full");
-	return 0;  // Baker 3.80x - avoid compiler warning
+        return(0);
 }
 
 

@@ -161,11 +161,7 @@ void R_ReadPointFile_f (void)
 	particle_t	*p;
 	char	name[MAX_OSPATH];
 	
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (name,MAX_OSPATH,"maps/%s.pts", sv.name);
-#else
-	sprintf (name,"maps/%s.pts", sv.name);
-#endif /* __APPLE__ ||ÊMACOSX */
+	snprintf(name, sizeof(name),"maps/%s.pts", sv.name);
 
 	COM_FOpenFile (name, &f);
 	if (!f)

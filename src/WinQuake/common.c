@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // common.c -- misc functions used in client and server
 
 #include "quakedef.h"
+#include <assert.h>
 
 #define NUM_SAFE_ARGVS  7
 
@@ -46,6 +47,7 @@ void COM_InitFilesystem (void);
 #define PAK0_CRC                32981
 
 char	com_token[1024];
+char	com_basedir[MAX_OSPATH];	// c:/quake
 int		com_argc;
 char	**com_argv;
 
@@ -1359,6 +1361,8 @@ void COM_WriteFile (char *filename, void *data, int len)
 	int             handle;
 	char    name[MAX_OSPATH];
 
+	Sys_mkdir (com_gamedir); //johnfitz -- if we've switched to a nonexistant gamedir, create it now so we don't crash
+
 	snprintf (name, sizeof(name), "%s/%s", com_gamedir, filename);
 
 	handle = Sys_FileOpenWrite (name);
@@ -1509,13 +1513,13 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 			{
 #if defined(_WIN32)
 				if ((strlen(netpath) < 2) || (netpath[1] != ':'))
-					sprintf (cachepath,"%s%s", com_cachedir, netpath);
+					snprintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath);
 				else
-					sprintf (cachepath,"%s%s", com_cachedir, netpath+2);
+					snprintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath+2);
 #elif defined (__APPLE__) || defined (MACOSX)
-				snprintf (cachepath,MAX_OSPATH,"%s%s", com_cachedir, netpath);
+				snprintf (cachepath,sizeof(cachepath),"%s%s", com_cachedir, netpath);
 #else
-				sprintf (cachepath,"%s%s", com_cachedir, netpath);
+				snprintf (cachepath,sizeof(cachepath),"%s%s", com_cachedir, netpath);
 #endif
 
 				cachetime = Sys_FileTime (cachepath);
@@ -1685,7 +1689,7 @@ byte *COM_LoadStackFile (char *path, void *buffer, int bufsize)
 
 /*
 =================
-COM_LoadPackFile
+COM_LoadPackFile -- johnfitz -- modified based on topaz's tutorial
 
 Takes an explicit (not game tree related) path to a pak file.
 
@@ -1723,7 +1727,10 @@ pack_t *COM_LoadPackFile (char *packfile)
 	if (numpackfiles != PAK0_COUNT)
 		com_modified = true;    // not the original file
 
-	newfiles = Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
+	//johnfitz -- dynamic gamedir loading
+    //Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
+	newfiles = Z_Malloc(numpackfiles * sizeof(packfile_t));
+	//johnfitz
 
 	Sys_FileSeek (packhandle, header.dirofs);
 	Sys_FileRead (packhandle, (void *)info, header.dirlen);
@@ -1743,7 +1750,11 @@ pack_t *COM_LoadPackFile (char *packfile)
 		newfiles[i].filelen = LittleLong(info[i].filelen);
 	}
 
-	pack = Hunk_Alloc (sizeof (pack_t));
+	//johnfitz -- dynamic gamedir loading
+	//pack = Hunk_Alloc (sizeof (pack_t));
+	pack = Z_Malloc (sizeof (pack_t));
+	//johnfitz
+
 	strcpy (pack->filename, packfile);
 	pack->handle = packhandle;
 	pack->numfiles = numpackfiles;
@@ -1757,7 +1768,7 @@ pack_t *COM_LoadPackFile (char *packfile)
 
 /*
 ================
-COM_AddGameDirectory
+COM_AddGameDirectory -- johnfitz -- modified based on topaz's tutorial
 
 Sets com_gamedir, adds the directory to the head of the path,
 then loads and adds pak1.pak pak2.pak ...
@@ -1773,7 +1784,7 @@ void COM_AddGameDirectory (char *dir)
 	strcpy (com_gamedir, dir);
 
 // add the directory to the search path
-	search = Hunk_Alloc (sizeof(searchpath_t));
+	search = Z_Malloc(sizeof(searchpath_t));
 	strcpy (search->filename, dir);
 	search->next = com_searchpaths;
 	com_searchpaths = search;
@@ -1785,7 +1796,7 @@ void COM_AddGameDirectory (char *dir)
 		pak = COM_LoadPackFile (pakfile);
 		if (!pak)
 			break;
-		search = Hunk_Alloc (sizeof(searchpath_t));
+		search = Z_Malloc(sizeof(searchpath_t));
 		search->pack = pak;
 		search->next = com_searchpaths;
 		com_searchpaths = search;
@@ -1797,12 +1808,11 @@ void COM_AddGameDirectory (char *dir)
 COM_InitFilesystem
 =================
 */
-void COM_InitFilesystem (void)
+void COM_InitFilesystem () //johnfitz -- modified based on topaz's tutorial
 {
 	int             i, j;
 	char    basedir[MAX_OSPATH];
 	searchpath_t    *search;
-
 
 //
 // -basedir <path>
@@ -1842,6 +1852,7 @@ void COM_InitFilesystem (void)
 
 // start up with GAMENAME by default (id1)
 	COM_AddGameDirectory (va("%s/"GAMENAME, basedir) );
+	strcpy (com_gamedir, va("%s/"GAMENAME, basedir));   // Baker 3.60 - From FitzQuake
 
 	if (COM_CheckParm ("-rogue"))
 		COM_AddGameDirectory (va("%s/rogue", basedir) );
@@ -2038,7 +2049,7 @@ strlcpy(char *dst, const char *src, size_t siz)
 char *strltrim(char *s) {
 	char *t;
 
-//	assert(s != NULL);
+	assert(s != NULL);
 	for (t = s; isspace(*t); ++t)
 		continue;
 	memmove(s, t, strlen(t)+1);	/* +1 so that '\0' is moved too */

@@ -270,6 +270,7 @@ cvar_t	cl_yawspeed = {"cl_yawspeed","140"};
 cvar_t	cl_pitchspeed = {"cl_pitchspeed","150"};
 
 cvar_t	cl_anglespeedkey = {"cl_anglespeedkey","1.5"};
+cvar_t	m_accel = {"m_accel", "0"};
 
 cvar_t	freelook = {"freelook", "1", true};    // Baker 3.60 - Freelook cvar support
 cvar_t	pq_lag = {"pq_lag", "0"};			// JPG - synthetic lag
@@ -418,6 +419,7 @@ void CL_SendMove (usercmd_t *cmd)
 {
 	int		i, bits;
 	sizebuf_t *buf;	// JPG - turned into a pointer (made corresponding changes below)
+	static byte	data[128]; // JPG - replaced with lag_data
 
 	buf = &lag_buff[lag_head & 31];
 	buf->maxsize = 128;

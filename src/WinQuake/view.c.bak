@@ -275,6 +275,9 @@ void BuildGammaTable (float g)
 V_CheckGamma
 =================
 */
+#ifdef D3DQUAKE
+void d3dSetGammaRamp(const unsigned char* gammaTable);
+#endif
 qboolean V_CheckGamma (void)
 {
 	static float oldgammavalue;
@@ -543,14 +546,14 @@ void V_UpdatePalette (void)
 	if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
 		cl.cshifts[CSHIFT_BONUS].percent = 0;
 
-/* JPG not commented (woods)
-
+#ifdef D3DQUAKE
 	force = V_CheckGamma ();
 	if (!blend_changed && !force)
 		return;
-		*/
+#else
 	if (!blend_changed)
 		return;
+#endif
 
 	V_CalcBlend ();
 
@@ -958,6 +961,47 @@ else
 	if (chase_active.value && !pq_cheatfree)	// JPG 3.20 - added pq_cheatfree
 		Chase_Update ();
 }
+
+/*
+===============
+SCR_DrawVolume - Baker 3.80x -- from JoeQuake
+===============
+*/
+void SCR_DrawVolume (void)
+{
+	int		i, yofs;
+	float		j;
+	char		bar[11];
+	static	float	volume_time = 0;
+	extern qboolean	volume_changed;
+
+	if (realtime < volume_time - 2.0)
+	{
+		volume_time = 0;
+		return;
+	}
+
+	if (volume_changed)
+	{
+		volume_time = realtime + 2.0;
+		volume_changed = false;
+	}
+	else if (realtime > volume_time)
+	{
+		return;
+	}
+
+	for (i = 1, j = 0.1 ; i <= 10 ; i++, j += 0.1)
+		bar[i-1] = ((volume.value +0.05) >= j) ? 139 : 11; // Baker 3.60 + 0.0.5 hack for now
+
+	bar[10] = 0;
+
+		yofs = 8;
+
+	Draw_String (vid.width - 88, yofs, bar);
+	Draw_String (vid.width - 88, yofs + 8, "volume");
+}
+
 
 /*
 ==================

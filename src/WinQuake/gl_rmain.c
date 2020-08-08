@@ -102,6 +102,7 @@ cvar_t	gl_polyblend = {"gl_polyblend","1", true};
 cvar_t	gl_flashblend = {"gl_flashblend","1", true};
 cvar_t	gl_playermip = {"gl_playermip","0", true};
 cvar_t	gl_nocolors = {"gl_nocolors","0"};
+cvar_t	vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
 
 #if defined(__APPLE__) || defined(MACOSX)
 cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","1"};
@@ -1002,7 +1003,22 @@ void R_DrawEntitiesOnList (void)
 			break;
 
 		case mod_brush:
+
+				// Get rid of Z-fighting for textures by offsetting the
+				// drawing of entity models compared to normal polygons.
+				// (Only works if gl_ztrick is turned off)
+				if(!gl_ztrick.value)
+				{
+					glEnable(GL_POLYGON_OFFSET_FILL);
+				}
+
 			R_DrawBrushModel (currententity);
+				
+				if(!gl_ztrick.value)
+				{
+					glDisable(GL_POLYGON_OFFSET_FILL);
+				}
+				
 			break;
 
 		default:

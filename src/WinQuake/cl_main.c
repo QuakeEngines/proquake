@@ -287,8 +287,9 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 			FILE *f;
 			unsigned crc;
 			char path[64];
-
-		//strcpy(path, argv[0]);    commented out by woods, compile error on argv
+#ifdef CHEATFREE
+			strcpy(path, argv[0]);
+#endif
 #ifdef _WIN32
 			if (!strstr(path, ".exe") && !strstr(path, ".EXE"))
 				strcat(path, ".exe");
@@ -361,7 +362,13 @@ void CL_NextDemo (void)
 		cls.demonum = 0;
 		if (!cls.demos[cls.demonum][0])
 		{
-			Con_Printf ("No demos listed with startdemos\n");
+#ifdef _WIN32
+			if (nostartdemos)
+				nostartdemos = false; // Baker 3.76 -- part of hack to avoid start demos with dem autoplay
+			else
+#endif
+			Con_DPrintf ("No demos listed with startdemos\n");
+
 			CL_Disconnect();	// JPG 1.05 - patch by CSR to fix crash
 			cls.demonum = -1;
 			return;

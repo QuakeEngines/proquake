@@ -382,7 +382,7 @@ void	Sys_Error (char *theError, ...)
     [[NSApp delegate] setHostInitialized: NO];
     
     IN_ShowCursor (YES);
-    IN_SetKeyboardRepeatEnabled (YES);
+//    IN_SetKeyboardRepeatEnabled (YES);
     IN_SetF12EjectEnabled (YES);
     
     NSRunCriticalAlertPanel (@"An error has occured:", [NSString stringWithCString: myString],
@@ -487,7 +487,7 @@ void	Sys_Quit (void)
     // shutdown host:
     Host_Shutdown ();
     [[NSApp delegate] setHostInitialized: NO];
-    IN_SetKeyboardRepeatEnabled (YES);
+//    IN_SetKeyboardRepeatEnabled (YES);
     IN_SetF12EjectEnabled (YES);
     fcntl (0, F_SETFL, fcntl (0, F_GETFL, 0) & ~FNDELAY);
     fflush (stdout);
@@ -658,7 +658,12 @@ void *	Sys_GetProcAddress (const char *theName, Boolean theSafeMode)
     return ((mySymbol != NULL) ? NSAddressOfSymbol (mySymbol) : NULL);
 }
 
-//______________________________________________________________________________________________________Sys_GetClipboardData()
+//______________________________________________________________________________________________________
+
+void Sys_CopyToClipboard(char *text) {
+	return;
+}
+
 
 char *	Sys_GetClipboardData (void)
 {

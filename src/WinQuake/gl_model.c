@@ -30,7 +30,7 @@ char	loadname[32];	// for hunk tags
 #if defined(__APPLE__) || defined(MACOSX)
 
 extern void GL_SubdivideSurface (msurface_t *);
-extern void GL_MakeAliasModelDisplayLists (/*model_t *,*/ aliashdr_t *);
+extern void GL_MakeAliasModelDisplayLists (aliashdr_t *);
 
 #endif /* APPLE || MACOSX */
 
@@ -1016,6 +1016,7 @@ void Mod_LoadClipnodes (lump_t *l)
 	hull->clip_maxs[0] = 16;
 	hull->clip_maxs[1] = 16;
 	hull->clip_maxs[2] = 32;
+		hull->available = true;
 
 	hull = &loadmodel->hulls[2];
 	hull->clipnodes = out;
@@ -1028,6 +1029,21 @@ void Mod_LoadClipnodes (lump_t *l)
 	hull->clip_maxs[0] = 32;
 	hull->clip_maxs[1] = 32;
 	hull->clip_maxs[2] = 64;
+		hull->available = true;
+
+		hull = &loadmodel->hulls[3];
+		hull->clipnodes = out;
+		hull->firstclipnode = 0;
+		hull->lastclipnode = count-1;
+		hull->planes = loadmodel->planes;
+		hull->clip_mins[0] = -16;
+		hull->clip_mins[1] = -16;
+		hull->clip_mins[2] = -6;
+		hull->clip_maxs[0] = 16;
+		hull->clip_maxs[1] = 16;
+		hull->clip_maxs[2] = 30;
+		hull->available = false;
+
 
 	for (i=0 ; i<count ; i++, out++, in++)
 	{

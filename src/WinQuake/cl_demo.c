@@ -394,7 +394,7 @@ void CL_Record_f (void)
 	else
 		track = -1;	
 
-	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
+	snprintf(name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 	
 //
 // start the map up
@@ -544,11 +544,18 @@ void CL_PlayDemo_f (void)
 		COM_FOpenFile (name, &cls.demofile); */
 	
 	COM_FOpenFile (name, &cls.demofile);
-	if (!cls.demofile)
-	{
-		Con_Printf ("ERROR: couldn't open.\n");
-		cls.demonum = -1;		// stop demo loop
-		return;
+	if (!cls.demofile) {
+#ifdef _WIN32
+		// Baker 3.76 - Check outside the demos folder!
+		cls.demofile = fopen(name, "rb"); // Baker 3.76 - check DarkPlaces file system
+
+		if (!cls.demofile)  // Baker 3.76 - still failed
+#endif
+		{
+			Con_Printf ("ERROR: couldn't open %s\n", name);
+			cls.demonum = -1;		// stop demo loop
+			return;
+		}
 	}
 
 	Con_Printf ("Playing demo from %s\n", COM_SkipPath(name));

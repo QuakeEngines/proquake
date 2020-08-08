@@ -644,11 +644,7 @@ void R_LoadSkys (void)
 	for (i=0 ; i<6 ; i++)
 	{
 		GL_Bind (SKY_TEX + i);
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (name, 64, "gfx/env/bkgtst%s.tga", suf[i]);
-#else
-		sprintf (name, "gfx/env/bkgtst%s.tga", suf[i]);
-#endif /* __APPLE__ || MACOSX */
+		snprintf(name, sizeof(name), "gfx/env/bkgtst%s.tga", suf[i]);
 		COM_FOpenFile (name, &f);
 		if (!f)
 		{

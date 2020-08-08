@@ -327,7 +327,7 @@ int SV_FlyMove (edict_t *ent, float time, trace_t *steptrace)
 		}
 
 // if original velocity is against the original velocity, stop dead
-// to avoid tiny occilations in sloping corners
+// to avoid tiny oscillations in sloping corners
 		if (DotProduct (ent->v.velocity, primal_velocity) <= 0)
 		{
 			VectorCopy (vec3_origin, ent->v.velocity);

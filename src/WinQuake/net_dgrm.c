@@ -1142,7 +1142,7 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 		MSG_WriteString(&net_message, client->netconnection->address);
 		} else {
 			if (sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3) // Baker 3.60 - engine side IP masking
-			sprintf(address, "%d.%d.%d.xxx", a, b, c);
+			snprintf (address, sizeof(address), "%d.%d.%d.xxx", a, b, c);
 			MSG_WriteString(&net_message, address);
 		}
 
@@ -1622,6 +1622,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 		reason = "No Response";
 		Con_Printf("%s\n", reason);
 		strcpy(m_return_reason, reason);
+
 		goto ErrorReturn;
 	}
 
@@ -1630,6 +1631,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 		reason = "Network Error";
 		Con_Printf("%s\n", reason);
 		strcpy(m_return_reason, reason);
+
 		goto ErrorReturn;
 	}
 
@@ -1670,7 +1672,9 @@ static qsocket_t *_Datagram_Connect (char *host)
 			{
 				pq_cheatfree = true;
 				net_seed = MSG_ReadLong();
-		//		Security_SetSeed(net_seed, argv[0]);   // disabled because of argv (woods)
+#ifdef CHEATFREE
+				Security_SetSeed(net_seed, argv[0]);
+#endif
 			}
 			else
 			{
@@ -1688,6 +1692,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 		reason = "Bad Response";
 		Con_Printf("%s\n", reason);
 		strcpy(m_return_reason, reason);
+
 		goto ErrorReturn;
 	}
 
@@ -1715,6 +1720,7 @@ static qsocket_t *_Datagram_Connect (char *host)
 		reason = "Connect to Game failed";
 		Con_Printf("%s\n", reason);
 		strcpy(m_return_reason, reason);
+
 		goto ErrorReturn;
 	}
 

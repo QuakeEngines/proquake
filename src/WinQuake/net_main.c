@@ -448,8 +448,10 @@ JustDoIt:
 		if (net_drivers[net_driverlevel].initialized == false)
 			continue;
 		ret = dfunc.Connect (host);
-	//	if (!sv.active && pq_cheatfree)
-	//		Security_SetSeed(_lrotr(net_seed, 17), argv[0]);      // woods prblems compiling here with argv
+#ifdef CHEATFREE
+		if (!sv.active && pq_cheatfree)
+			Security_SetSeed(_lrotr(net_seed, 17), argv[0]);
+#endif
 		if (ret)
 			return ret;
 		}
@@ -970,7 +972,9 @@ void NET_Init (void)
 		net_seed |= 1;
 		if (net_seed <= 1)
 			net_seed = 0x34719;
-	//	Security_SetSeed(net_seed, argv[0]);   // disabled because of argv (woods)
+#ifdef CHEATFREE
+		Security_SetSeed(net_seed, argv[0]);
+#endif
 	}
 }
 

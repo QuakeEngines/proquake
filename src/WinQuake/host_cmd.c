@@ -70,6 +70,270 @@ void Host_Quit_f (void)
 	Sys_Quit ();
 }
 
+//==============================================================================
+//johnfitz -- dynamic gamedir stuff
+//==============================================================================
+
+// Declarations shared with common.c:
+typedef struct
+{
+	char    name[MAX_QPATH];
+	int             filepos, filelen;
+} packfile_t;
+
+typedef struct pack_s
+{
+	char    filename[MAX_OSPATH];
+	int             handle;
+	int             numfiles;
+	packfile_t      *files;
+} pack_t;
+
+typedef struct searchpath_s
+{
+	char    filename[MAX_OSPATH];
+	pack_t  *pack;          // only one of filename / pack will be used
+	struct searchpath_s *next;
+} searchpath_t;
+
+extern qboolean com_modified;
+extern searchpath_t *com_searchpaths;
+pack_t *COM_LoadPackFile (char *packfile);
+
+// Kill all the search packs until the game path is found. Kill it, then return
+// the next path to it.
+void KillGameDir(searchpath_t *search)
+{
+	searchpath_t *search_killer;
+	while (search)
+	{
+		if (*search->filename)
+		{
+			com_searchpaths = search->next;
+			Z_Free(search);
+			return; //once you hit the dir, youve already freed the paks
+		}
+		Sys_FileClose (search->pack->handle); //johnfitz
+		search_killer = search->next;
+		Z_Free(search->pack->files);
+		Z_Free(search->pack);
+		Z_Free(search);
+		search = search_killer;
+	}
+}
+
+// Return the number of games in memory
+int NumGames(searchpath_t *search)
+{
+	int found = 0;
+	while (search)
+	{
+		if (*search->filename)
+			found++;
+		search = search->next;
+	}
+	return found;
+}
+
+
+/*
+==================
+Host_Game_f
+==================
+*/
+void Host_Game_f (void)
+{
+	int i;
+	searchpath_t *search = com_searchpaths;
+	pack_t *pak;
+	char   pakfile[MAX_OSPATH]; //FIXME: it's confusing to use this string for two different things
+
+	if (Cmd_Argc() > 1)
+	{
+
+		if (!registered.value) //disable command for shareware quake
+		{
+			Con_Printf("You must have the registered version to use modified games\n");
+			return;
+		}
+
+		if (strstr(Cmd_Argv(1), ".."))
+		{
+			Con_Printf ("Relative pathnames are not allowed.\n");
+			return;
+		}
+
+		strcpy (pakfile, va("%s/%s", host_parms.basedir, Cmd_Argv(1)));
+		if (!strcasecmp(pakfile, com_gamedir)) //no change
+		{
+			Con_Printf("\"game\" is already \"%s\"\n", COM_SkipPath(com_gamedir));
+			return;
+		}
+
+		Con_Printf("Cheatfree has been disabled\n");
+		pq_cheatfreeEnabled = false; // Baker: 3.94 -- disallow cheat-free if gamedir is switched (revisit this later, is not ideal at all).
+		com_modified = true;
+
+		//Kill the server
+		CL_Disconnect ();
+		Host_ShutdownServer(true);
+
+		//Write config file
+		Host_WriteConfiguration ();
+
+		//Kill the extra game if it is loaded
+		if (NumGames(com_searchpaths) > 1)
+			KillGameDir(com_searchpaths);
+
+		strcpy (com_gamedir, pakfile);
+
+		if (strcasecmp(Cmd_Argv(1), GAMENAME)) //game is not id1
+		{
+			search = Z_Malloc(sizeof(searchpath_t));
+			strcpy (search->filename, pakfile);
+			search->next = com_searchpaths;
+			com_searchpaths = search;
+
+			//Load the paks if any are found:
+			for (i = 0; ; i++)
+			{
+				snprintf(pakfile, sizeof(pakfile), "%s/pak%i.pak", com_gamedir, i);
+				pak = COM_LoadPackFile (pakfile);
+				if (!pak)
+				break;
+				search = Z_Malloc(sizeof(searchpath_t));
+				search->pack = pak;
+				search->next = com_searchpaths;
+				com_searchpaths = search;
+			}
+		}
+
+		//clear out and reload appropriate data
+		Cache_Flush ();
+		/*if (!isDedicated)
+		{
+			W_LoadWadFile ("gfx.wad");  // Baker 3.78 - I'm not so sure about this
+			Draw_Init(); // Baker 3.78 - I'm not so sure about this
+			Draw_ConsoleBackground (vid.height); // Baker 3.78 - I'm not so sure about this
+		}*/
+		//ExtraMaps_NewGame ();
+		//Cbuf_InsertText ("exec quake.rc\n");
+
+		Con_Printf("\"gamedir\" changed to \"%s\"\n", COM_SkipPath(com_gamedir));
+	}
+	else //Diplay the current gamedir
+		Con_Printf("\"gamedir\" is \"%s\"\n", COM_SkipPath(com_gamedir));
+}
+
+//==============================================================================
+//johnfitz -- modlist management
+//==============================================================================
+
+typedef struct mod_s
+{
+	char			name[MAX_OSPATH];
+	struct mod_s	*next;
+} mod_t;
+
+mod_t	*modlist;
+
+void Modlist_Add (char *name)
+{
+	mod_t	*mod,*cursor,*prev;
+
+	//ingore duplicate
+	for (mod = modlist; mod; mod = mod->next)
+		if (!strcmp (name, mod->name))
+			return;
+
+	mod = Z_Malloc(sizeof(mod_t));
+	strcpy (mod->name, name);
+
+	//insert each entry in alphabetical order
+    if (modlist == NULL || strcasecmp(mod->name, modlist->name) < 0) //insert at front
+	{
+        mod->next = modlist;
+        modlist = mod;
+    }
+    else //insert later
+	{
+        prev = modlist;
+        cursor = modlist->next;
+        while (cursor && (strcasecmp(mod->name, cursor->name) > 0))
+		{
+            prev = cursor;
+            cursor = cursor->next;
+        }
+        mod->next = prev->next;
+        prev->next = mod;
+    }
+}
+
+/*
+void Modlist_Init (void) //TODO: move win32 specific stuff to sys_win.c
+{
+#ifdef _WIN32
+	WIN32_FIND_DATA	FindFileData, FindChildData;
+	HANDLE			Find, FindProgs, FindPak;
+	char			filestring[MAX_OSPATH], childstring[MAX_OSPATH];
+	int				count=0, temp;
+
+	snprintf(filestring, sizeof(filestring),"%s/*", host_parms.basedir);
+	Find = FindFirstFile(filestring, &FindFileData);
+	if (Find == INVALID_HANDLE_VALUE)
+	{
+		FindClose (Find);
+		return;
+	}
+
+	do
+	{
+		snprintf(childstring, sizeof(childstring),"%s/%s/progs.dat", host_parms.basedir, FindFileData.cFileName);
+		FindProgs = FindFirstFile(childstring, &FindChildData);
+
+		snprintf(childstring, sizeof(childstring),"%s/%s/*.pak", host_parms.basedir, FindFileData.cFileName);
+		FindPak = FindFirstFile(childstring, &FindChildData);
+
+		if (FindProgs == INVALID_HANDLE_VALUE && FindPak == INVALID_HANDLE_VALUE)
+			continue;
+
+		Modlist_Add (FindFileData.cFileName);
+
+		FindClose (FindProgs);
+		FindClose (FindPak);
+		count++;
+	} while (FindNextFile(Find, &FindFileData));
+	FindClose (Find);
+
+	//make sure these get closed too
+	FindClose (FindProgs);
+	FindClose (FindPak);
+#endif
+}
+
+/*
+==================
+Host_Mods_f -- johnfitz
+
+list all potential mod directories (contain either a pak file or a progs.dat)
+==================
+*/ /*
+void Host_Mods_f (void)
+{
+	int i;
+	mod_t	*mod;
+
+	for (mod = modlist, i=0; mod; mod = mod->next, i++)
+		Con_SafePrintf ("   %s\n", mod->name);
+
+	if (i)
+		Con_SafePrintf ("%i mod(s)\n", i);
+	else
+		Con_SafePrintf ("no mods found\n");
+} */
+
+//==============================================================================
+
 /*
 =============
 Host_Mapname_f -- johnfitz
@@ -101,6 +365,8 @@ void Host_Mapname_f (void)
 Host_Status_f
 ==================
 */
+
+extern cvar_t sv_cullentities;
 void Host_Status_f (void)
 {
 	client_t	*client;
@@ -123,7 +389,7 @@ void Host_Status_f (void)
 	else
 		print = SV_ClientPrintf;
 
-	print ("host:    %s\n", Cvar_VariableString ("hostname"));
+	print ("host:    %s (anti-wallhack %s)\n", Cvar_VariableString ("hostname"), sv_cullentities.value ? "on [mode: players]" : "off");
 	print ("version: ProQuake %4.2f %s\n", PROQUAKE_VERSION, pq_cheatfree ? "cheat-free" : ""); // JPG - added ProQuake
 	if (tcpipAvailable)
 		print ("tcp/ip:  %s\n", my_tcpip_address);
@@ -443,7 +709,7 @@ void Host_Map_f (void)
 		return;
 
 	//johnfitz -- check for client having map before anything else
-	//	sprintf (name, "maps/%s.bsp", Cmd_Argv(1));
+	//	snprintf(name, sizeof(name), "maps/%s.bsp", Cmd_Argv(1));
 	//	if (COM_OpenFile (name, &i) == -1)
 	//	{
 	//		Con_Printf("Host_Map_f: cannot find map %s\n", name);
@@ -515,7 +781,7 @@ void Host_Changelevel_f (void)
 	}
 
 	//johnfitz -- check for client having map before anything else
-	//sprintf (level, "maps/%s.bsp", Cmd_Argv(1));
+	//snprintf(level, sizeof(level), "maps/%s.bsp", Cmd_Argv(1));
 	//if (COM_OpenFile (level, &i) == -1)
 	//{
 	//	Con_Printf("Host_Changelevel_f: cannot find map %s\n", level);
@@ -1047,9 +1313,9 @@ void Host_Say(qboolean teamonly)
 		if (pq_showedict.value)
 			Sys_Printf("#%d ", NUM_FOR_EDICT(host_client->edict));
 		if (teamplay.value && teamonly) // JPG - added () for mm2
-			sprintf (text, "%c(%s): ", 1, save->name);
+			snprintf(text, sizeof(text), "%c(%s): ", 1, save->name);
 		else
-			sprintf (text, "%c%s: ", 1, save->name);
+			snprintf(text, sizeof(text), "%c%s: ", 1, save->name);
 
 		// JPG 3.20 - optionally remove '\r'
 		if (pq_removecr.value)
@@ -1063,21 +1329,7 @@ void Host_Say(qboolean teamonly)
 		}
 	}
 	else
-		sprintf (text, "%c<%s> ", 1, hostname.string);
-
-
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf ((char*) text, 64, "%c%s: ", 1, save->name);
-#else
-		sprintf (text, "%c%s: ", 1, save->name);
-#endif /* __APPLE__ || MACOSX */
-	// deleted else clause (woods)
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf ((char*) text, 64, "%c<%s> ", 1, hostname.string);
-#else
-		sprintf (text, "%c<%s> ", 1, hostname.string);
-#endif /* __APPLE__ || MACOSX */
-
+		snprintf((char*)text, sizeof(text), "%c<%s> ", 1, hostname.string);
 
 	j = sizeof(text) - 2 - strlen(text);  // -2 for /n and null terminator
 	if (strlen(p) > j)
@@ -1932,6 +2184,16 @@ void Host_Startdemos_f (void)
 {
 	int		i, c;
 
+#ifdef _WIN32
+	if (nostartdemos)
+	{
+		// Baker 3.76
+		// This is hack to prevent demo auto-play from having demos in queue play
+		// after a file associated demo plays
+		return;
+	}
+#endif
+
 	if (cls.state == ca_dedicated)
 	{
 		if (!sv.active)
@@ -2199,6 +2461,7 @@ void Host_InitCommands (void)
 
 
 	Cmd_AddCommand ("status", Host_Status_f);
+	Cmd_AddCommand ("gamedir", Host_Game_f); //johnfitz
 	Cmd_AddCommand ("cheatfree", Host_Cheatfree_f);	// JPG 3.50 - print cheat-free status
 	Cmd_AddCommand ("quit", Host_Quit_f);
 	Cmd_AddCommand ("god", Host_God_f);

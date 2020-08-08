@@ -516,7 +516,7 @@ extern void 			M_Menu_Quit_f (void);
     }
     
     IN_ShowCursor (YES);
-    IN_SetKeyboardRepeatEnabled (YES);
+//    IN_SetKeyboardRepeatEnabled (YES);
     IN_SetF12EjectEnabled (YES);
 }
 
@@ -534,7 +534,7 @@ extern void 			M_Menu_Quit_f (void);
         IN_ShowCursor (NO);
     }
     
-    IN_SetKeyboardRepeatEnabled (NO);
+//    IN_SetKeyboardRepeatEnabled (NO);
     IN_SetF12EjectEnabled (NO);
 }
 
@@ -554,7 +554,7 @@ extern void 			M_Menu_Quit_f (void);
     VID_HideFullscreen (YES);
 #endif /* !GLQUAKE */
     IN_ShowCursor (YES);
-    IN_SetKeyboardRepeatEnabled (YES);
+//    IN_SetKeyboardRepeatEnabled (YES);
     IN_SetF12EjectEnabled (YES);
 
     if (mFrameTimer != NULL)
@@ -578,7 +578,7 @@ extern void 			M_Menu_Quit_f (void);
         IN_ShowCursor (NO);
     }
     
-    IN_SetKeyboardRepeatEnabled (NO);
+//    IN_SetKeyboardRepeatEnabled (NO);
     IN_SetF12EjectEnabled (NO);
 #if !defined (GLQUAKE)
     VID_HideFullscreen (NO);
@@ -1606,9 +1606,9 @@ extern void 			M_Menu_Quit_f (void);
     myParameters.argv = com_argv;
 
 #ifdef GLQUAKE
-    myParameters.memsize = 16*1024*1024*2;
+    myParameters.memsize = 32*1024*1024;
 #else
-    myParameters.memsize = 8*1024*1024*2;
+    myParameters.memsize = 32*1024*1024;
 #endif /* GLQUAKE */
     j = COM_CheckParm ("-mem");
     if (j)
@@ -1626,7 +1626,7 @@ extern void 			M_Menu_Quit_f (void);
     [NSApp setServicesProvider: self];
 
     // disable keyboard repeat:
-    IN_SetKeyboardRepeatEnabled (NO);
+ //   IN_SetKeyboardRepeatEnabled (NO);
     IN_SetF12EjectEnabled (NO);
 
     // some nice console output for credits:

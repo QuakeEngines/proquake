@@ -418,7 +418,6 @@ void CL_SendMove (usercmd_t *cmd)
 {
 	int		i, bits;
 	sizebuf_t *buf;	// JPG - turned into a pointer (made corresponding changes below)
-//	static byte	data[128]; // JPG - replaced with lag_data
 
 	buf = &lag_buff[lag_head & 31];
 	buf->maxsize = 128;

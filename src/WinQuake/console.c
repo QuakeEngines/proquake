@@ -153,7 +153,6 @@ void Con_Clear_f (void)
 		memset (con_text, ' ', CON_TEXTSIZE);
 }
 
-#ifdef _WIN32
 /*
 ====================
 Con_Showtime_f // Baker 3.60 - "time" command to display current date and time in console
@@ -175,6 +174,87 @@ void Con_Showtime_f (void)
 //	Sys_CopyToClipboard(va("Operating System: %s\r\nThis Thing: %\r\n", cmdline.string));
 
 
+}
+
+
+/*
+================
+Con_Dump_f -- johnfitz -- adapted from quake2 source
+================
+*/
+void Con_Dump_f (void)
+{
+	int		l, x;
+	char	*line;
+	FILE	*f;
+	char	buffer[1024];
+	char	name[MAX_OSPATH];
+
+#if 1
+	//johnfitz -- there is a security risk in writing files with an arbitrary filename. so,
+	//until stuffcmd is crippled to alleviate this risk, just force the default filename.
+	snprintf(name, sizeof(name), "%s/condump.txt", com_gamedir);
+#else
+	if (Cmd_Argc() > 2)
+	{
+		Con_Printf ("usage: condump <filename>\n");
+		return;
+	}
+
+	if (Cmd_Argc() > 1)
+	{
+		if (strstr(Cmd_Argv(1), ".."))
+		{
+			Con_Printf ("Relative pathnames are not allowed.\n");
+			return;
+		}
+		snprintf(name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
+		COM_DefaultExtension (name, ".txt");
+	}
+	else
+		snprintf(name, sizeof(name), "%s/condump.txt", com_gamedir);
+#endif
+
+	COM_CreatePath (name);
+	f = fopen (name, "w");
+	if (!f)
+	{
+		Con_Printf ("ERROR: couldn't open file.\n", name);
+		return;
+	}
+
+	// skip initial empty lines
+	for (l = con_current - con_totallines + 1 ; l <= con_current ; l++)
+	{
+		line = con_text + (l%con_totallines)*con_linewidth;
+		for (x=0 ; x<con_linewidth ; x++)
+			if (line[x] != ' ')
+				break;
+		if (x != con_linewidth)
+			break;
+	}
+
+	// write the remaining lines
+	buffer[con_linewidth] = 0;
+	for ( ; l <= con_current ; l++)
+	{
+		line = con_text + (l%con_totallines)*con_linewidth;
+		strncpy (buffer, line, con_linewidth);
+		for (x=con_linewidth-1 ; x>=0 ; x--)
+		{
+			if (buffer[x] == ' ')
+				buffer[x] = 0;
+			else
+				break;
+		}
+		for (x=0; buffer[x]; x++)
+			buffer[x] &= 0x7f;
+
+		fprintf (f, "%s\n", buffer);
+	}
+
+	fclose (f);
+	Con_Printf ("Dumped console text to %s.\n", name);
 }
 
 /*
@@ -222,88 +302,6 @@ void Con_Copy_f (void)
 
 	Sys_CopyToClipboard(outstring);
 	Con_Printf ("Copied console to clipboard\n");
-}
-
-#endif
-
-/*
-================
-Con_Dump_f -- johnfitz -- adapted from quake2 source
-================
-*/
-void Con_Dump_f (void)
-{
-	int		l, x;
-	char	*line;
-	FILE	*f;
-	char	buffer[1024];
-	char	name[MAX_OSPATH];
-
-#if 1
-	//johnfitz -- there is a security risk in writing files with an arbitrary filename. so,
-	//until stuffcmd is crippled to alleviate this risk, just force the default filename.
-	sprintf (name, "%s/condump.txt", com_gamedir);
-#else
-	if (Cmd_Argc() > 2)
-	{
-		Con_Printf ("usage: condump <filename>\n");
-		return;
-	}
-
-	if (Cmd_Argc() > 1)
-	{
-		if (strstr(Cmd_Argv(1), ".."))
-		{
-			Con_Printf ("Relative pathnames are not allowed.\n");
-			return;
-		}
-		sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
-		COM_DefaultExtension (name, ".txt");
-	}
-	else
-		sprintf (name, "%s/condump.txt", com_gamedir);
-#endif
-
-	COM_CreatePath (name);
-	f = fopen (name, "w");
-	if (!f)
-	{
-		Con_Printf ("ERROR: couldn't open file.\n", name);
-		return;
-	}
-
-	// skip initial empty lines
-	for (l = con_current - con_totallines + 1 ; l <= con_current ; l++)
-	{
-		line = con_text + (l%con_totallines)*con_linewidth;
-		for (x=0 ; x<con_linewidth ; x++)
-			if (line[x] != ' ')
-				break;
-		if (x != con_linewidth)
-			break;
-	}
-
-	// write the remaining lines
-	buffer[con_linewidth] = 0;
-	for ( ; l <= con_current ; l++)
-	{
-		line = con_text + (l%con_totallines)*con_linewidth;
-		strncpy (buffer, line, con_linewidth);
-		for (x=con_linewidth-1 ; x>=0 ; x--)
-		{
-			if (buffer[x] == ' ')
-				buffer[x] = 0;
-			else
-				break;
-		}
-		for (x=0; buffer[x]; x++)
-			buffer[x] &= 0x7f;
-
-		fprintf (f, "%s\n", buffer);
-	}
-
-	fclose (f);
-	Con_Printf ("Dumped console text to %s.\n", name);
 }
 
 
@@ -433,16 +431,16 @@ void Con_Init (void)
 				do
 				{
 					n = n + 1;
-					sprintf(logfilename, com_argv[con_debuglog+1], n);
+					snprintf (logfilename, sizeof(logfilename), com_argv[con_debuglog+1], n);
 					strcat(logfilename, ".log");
-					sprintf(temp, "%s/%s", com_gamedir, logfilename);
+					snprintf (temp, sizeof(temp), "%s/%s", com_gamedir, logfilename);
 					fd = open(temp, O_CREAT | O_EXCL | O_WRONLY, 0666);
 				}
 				while (fd == -1);
 				close(fd);
 			}
 			else
-				sprintf(logfilename, "%s.log", com_argv[con_debuglog+1]);
+				snprintf (logfilename, sizeof(logfilename), "%s.log", com_argv[con_debuglog+1]);
 		}
 		else
 			strcpy(logfilename, "qconsole.log");
@@ -450,7 +448,7 @@ void Con_Init (void)
 		// JPG - changed t2 to logfilename
 		if (strlen (com_gamedir) < (MAXGAMEDIRLEN - strlen (logfilename)))
 		{
-			sprintf (temp, "%s/%s", com_gamedir, logfilename); // JPG - added the '/'
+			snprintf(temp, sizeof(temp), "%s/%s", com_gamedir, logfilename); // JPG - added the '/'
 			unlink (temp);
 		}
 
@@ -482,10 +480,9 @@ void Con_Init (void)
 	Cmd_AddCommand ("messagemode2", Con_MessageMode2_f);
 	Cmd_AddCommand ("clear", Con_Clear_f);
 	Cmd_AddCommand ("condump", Con_Dump_f); //johnfitz
-#ifdef _WIN32
 	Cmd_AddCommand ("time", Con_Showtime_f); // Baker 3.60 - "time command
 	Cmd_AddCommand ("copy", Con_Copy_f); // Baker 399.m - copy console to clipboard
-#endif
+
 	con_initialized = true;
 	Con_Printf ("Console initialized\n");
 }
@@ -524,7 +521,6 @@ void Con_Print (char *txt)
 	static int	cr;
 
 	static int fixline = 0;
-
 #if defined (__APPLE__) || defined (MACOSX)
     if (con_initialized == false)
         return;
@@ -581,9 +577,9 @@ void Con_Print (char *txt)
 			if (msg_time < match_time - 2 || msg_time > match_time + 2)
 			{
 				if (pq_timestamp.value == 1)
-					sprintf(buff, "%d%c%02d", minutes, 'X' + 128, seconds);
+					snprintf (buff, sizeof(buff), "%d%c%02d", minutes, 'X' + 128, seconds);
 				else
-					sprintf(buff, "%02d", seconds);
+					snprintf (buff, sizeof(buff), "%02d", seconds);
 
 				if (cr)
 				{

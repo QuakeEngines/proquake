@@ -17,16 +17,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-
-
+#include "quakedef.h"
 
 #if defined (__APPLE__) || defined (MACOSX)
-
 #include <ctype.h>
-
 #endif /* __APPLE__ || MACOSX */
-
-#include "quakedef.h"
 
 /*
 
@@ -913,11 +908,7 @@ void Key_Event (int key, qboolean down)
 		kb = keybindings[key];  // Baker 3.703 is this right
 		if (kb && kb[0] == '+')
 		{
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf (cmd, 1024, "-%s %i\n", kb+1, key);
-#else
-			sprintf (cmd, "-%s %i\n", kb+1, key);
-#endif /* __APPLE__ || MACOSX */
+			snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
 			Cbuf_AddText (cmd);
 		}
 		if (keyshift[key] != key)
@@ -925,11 +916,7 @@ void Key_Event (int key, qboolean down)
 			kb = keybindings[keyshift[key]];
 			if (kb && kb[0] == '+')
 			{
-#if defined (__APPLE__) || defined (MACOSX)
-				snprintf (cmd, 1024, "-%s %i\n", kb+1, key);
-#else
-				sprintf (cmd, "-%s %i\n", kb+1, key);
-#endif /* __APPLE__ || MACOSX */
+				snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
 				Cbuf_AddText (cmd);
 			}
 		}
@@ -957,11 +944,7 @@ void Key_Event (int key, qboolean down)
 		{
 			if (kb[0] == '+')
 			{	// button commands add keynum as a parm
-#if defined (__APPLE__) || defined (MACOSX)
-				snprintf (cmd, 1024, "%s %i\n", kb, key);
-#else
-				sprintf (cmd, "%s %i\n", kb, key);
-#endif /* __APPLE__ || MACOSX */
+				snprintf (cmd, sizeof(cmd), "%s %i\n", kb, key);
 				Cbuf_AddText (cmd);
 			}
 			else

@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 cvar_t	pq_teamscores = {"pq_teamscores", "1", false}; // JPG - show teamscores
 cvar_t	pq_timer = {"pq_timer", "1", false}; // JPG - show timer
 cvar_t	pq_scoreboard_pings = {"pq_scoreboard_pings", "1", false};	// JPG - show ping times in the scoreboard
+//cvar_t  cl_scoreboardback = {"cl_scoreboardback", "0", true}; // Baker 3.99n: "easy read scoreboard" derived from Qrack
+cvar_t  cl_scoreboard_clean = {"cl_scoreboard_clean", "0", true}; // Baker 3.99q: idea from FitzQuake's don't draw centerprint while paused
 
 int			sb_updates;		// if >= vid.numpages, no update needed
 
@@ -483,11 +485,7 @@ void Sbar_UpdateScoreboard (void)
 	{
 		k = fragsort[i];
 		s = &cl.scores[k];
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (&scoreboardtext[i][1], 19, "%3i %s", s->frags, s->name);
-#else
-		sprintf (&scoreboardtext[i][1], "%3i %s", s->frags, s->name);
-#endif /* __APPLE__ ||ÊMACOSX */
+		snprintf (&scoreboardtext[i][1], sizeof(&scoreboardtext[i][1]), "%3i %s", s->frags, s->name);
 
 		top = s->colors & 0xf0;
 		bottom = (s->colors & 15) <<4;
@@ -505,21 +503,13 @@ Sbar_SoloScoreboard
 void Sbar_SoloScoreboard (void)
 {
 	char	str[80];
-	int		minutes, seconds, tens, units;
-	int		l;
+	int		len, minutes, seconds, tens, units;
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (str,80,"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
-#else
-	sprintf (str,"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
-#endif /* __APPLE__ ||ÊMACOSX */
+
+	snprintf (str,sizeof(str),"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	Sbar_DrawString (8, 4, str);
 
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (str,80,"Secrets :%3i /%3i", cl.stats[STAT_SECRETS], cl.stats[STAT_TOTALSECRETS]);
-#else
-	sprintf (str,"Secrets :%3i /%3i", cl.stats[STAT_SECRETS], cl.stats[STAT_TOTALSECRETS]);
-#endif /* __APPLE__ ||ÊMACOSX */
+	snprintf (str, sizeof(str),"Secrets :%3i /%3i", cl.stats[STAT_SECRETS], cl.stats[STAT_TOTALSECRETS]);
 	Sbar_DrawString (8, 12, str);
 
 // time
@@ -527,16 +517,12 @@ void Sbar_SoloScoreboard (void)
 	seconds = cl.time - 60*minutes;
 	tens = seconds / 10;
 	units = seconds - 10*tens;
-#if defined (__APPLE__) || defined (MACOSX)
-	snprintf (str,80,"Time :%3i:%i%i", minutes, tens, units);
-#else
-	sprintf (str,"Time :%3i:%i%i", minutes, tens, units);
-#endif /* __APPLE__ ||ÊMACOSX */
+	snprintf (str,sizeof(str),"Time :%3i:%i%i", minutes, tens, units);
 	Sbar_DrawString (184, 4, str);
 
 // draw level name
-	l = strlen (cl.levelname);
-	Sbar_DrawString (232 - l*4, 12, cl.levelname);
+	len = strlen (cl.levelname);
+	Sbar_DrawString (232 - len*4, 12, cl.levelname);
 }
 
 /*
@@ -549,51 +535,6 @@ void Sbar_DrawScoreboard (void)
 	Sbar_SoloScoreboard ();
 	if (cl.gametype == GAME_DEATHMATCH)
 		Sbar_DeathmatchOverlay ();
-#if 0
-	int		i, j, c;
-	int		x, y;
-	int		l;
-	int		top, bottom;
-	scoreboard_t	*s;
-
-	if (cl.gametype != GAME_DEATHMATCH)
-	{
-		Sbar_SoloScoreboard ();
-		return;
-	}
-
-	Sbar_UpdateScoreboard ();
-
-	l = scoreboardlines <= 6 ? scoreboardlines : 6;
-
-	for (i=0 ; i<l ; i++)
-	{
-		x = 20*(i&1);
-		y = i/2 * 8;
-
-		s = &cl.scores[fragsort[i]];
-		if (!s->name[0])
-			continue;
-
-	// draw background
-		top = s->colors & 0xf0;
-		bottom = (s->colors & 15)<<4;
-		top = Sbar_ColorForMap (top);
-		bottom = Sbar_ColorForMap (bottom);
-
-		Draw_Fill ( x*8+10 + ((vid.width - 320)>>1), y + vid.height - SBAR_HEIGHT, 28, 4, top);
-		Draw_Fill ( x*8+10 + ((vid.width - 320)>>1), y+4 + vid.height - SBAR_HEIGHT, 28, 4, bottom);
-
-	// draw text
-		for (j=0 ; j<20 ; j++)
-		{
-			c = scoreboardtext[i][j];
-			if (c == 0 || c == ' ')
-				continue;
-			Sbar_DrawCharacter ( (x+j)*8, y, c);
-		}
-	}
-#endif
 }
 
 //=============================================================================
@@ -605,20 +546,17 @@ Sbar_DrawInventory
 */
 void Sbar_DrawInventory (void)
 {
-	int		i;
+	int		i, flashon;
 	char	num[6];
 	float	time;
-	int		flashon;
 
-	if (rogue)
-	{
+
+	if (rogue) {
 		if ( cl.stats[STAT_ACTIVEWEAPON] >= RIT_LAVA_NAILGUN )
 			Sbar_DrawPic (0, -24, rsb_invbar[0]);
 		else
 			Sbar_DrawPic (0, -24, rsb_invbar[1]);
-	}
-	else
-	{
+	} else {
 		Sbar_DrawPic (0, -24, sb_ibar);
 	}
 
@@ -637,7 +575,6 @@ void Sbar_DrawInventory (void)
 				flashon = (flashon%5) + 2;
 
          Sbar_DrawPic (i*24, -16, sb_weapons[flashon][i]);
-
 			if (flashon > 1)
 				sb_updates = 0;		// force update to remove flash
 		}
@@ -658,12 +595,7 @@ void Sbar_DrawInventory (void)
 				if (flashon < 0)
 					flashon = 0;
             if (flashon >= 10)
-            {
-               if ( cl.stats[STAT_ACTIVEWEAPON] == (1<<hipweapons[i])  )
-                  flashon = 1;
-               else
-                  flashon = 0;
-            }
+					flashon = (cl.stats[STAT_ACTIVEWEAPON] == (1 << hipweapons[i])) ? 1 : 0;
             else
                flashon = (flashon%5) + 2;
 
@@ -719,11 +651,7 @@ void Sbar_DrawInventory (void)
 // ammo counts
 	for (i=0 ; i<4 ; i++)
 	{
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (num, 6, "%3i",cl.stats[STAT_SHELLS+i] );
-#else
-		sprintf (num, "%3i",cl.stats[STAT_SHELLS+i] );
-#endif /* __APPLE__ || MACOSX */
+		snprintf (num, sizeof(num), "%3i",cl.stats[STAT_SHELLS+i] );
 		if (num[0] != ' ')
 			Sbar_DrawCharacter ( (6*i+1)*8 - 2, -24, 18 + num[0] - '0');
 		if (num[1] != ' ')
@@ -856,7 +784,7 @@ void Sbar_DrawFrags (void)
 		else if (cl.minutes || cl.seconds)
 		{
 			if (cl.seconds >= 128)
-				sprintf (num, " -0:%02d", cl.seconds - 128);
+				snprintf (num, sizeof(num), " -0:%02d", cl.seconds - 128);
 			else
 			{
 				if (cl.match_pause_time)
@@ -865,7 +793,7 @@ void Sbar_DrawFrags (void)
 					match_time = ceil(60.0 * cl.minutes + cl.seconds - (cl.time - cl.last_match_time));
 				minutes = match_time / 60;
 				seconds = match_time - 60 * minutes;
-				sprintf (num, "%3d:%02d", minutes, seconds);
+				snprintf (num, sizeof(num), "%3d:%02d", minutes, seconds);
 				if (!minutes)
 					mask = 128;
 			}
@@ -875,7 +803,7 @@ void Sbar_DrawFrags (void)
 			minutes = cl.time / 60;
 			seconds = cl.time - 60 * minutes;
 			minutes = minutes & 511;
-			sprintf (num, "%3d:%02d", minutes, seconds);
+			snprintf (num, sizeof(num), "%3d:%02d", minutes, seconds);
 		}
 
 		for (i = 0 ; i < 6 ; i++)
@@ -911,7 +839,7 @@ void Sbar_DrawFrags (void)
 		Draw_Fill (xofs + x*8 + 10, y+4, 28, 3, bottom);
 
 	// draw number
-		sprintf (num, "%3i",f);
+		snprintf (num, sizeof(num), "%3i",f);
 
 		Sbar_DrawCharacter ( (x+1)*8 , -24, num[0]);
 		Sbar_DrawCharacter ( (x+2)*8 , -24, num[1]);
@@ -969,11 +897,7 @@ void Sbar_DrawFace (void)
 
 		// draw number
 		f = s->frags;
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (num, 12, "%3i",f);
-#else
-		sprintf (num, "%3i",f);
-#endif /* __APPLE__ || MACOSX */
+		snprintf (num, sizeof(num), "%3i",f);
 
 		if (top==8)
 		{
@@ -1032,6 +956,9 @@ void Sbar_DrawFace (void)
 	Sbar_DrawPic (112, 0, sb_faces[f][anim]);
 }
 
+// Begin D3DQuake
+int gNoStatusBar;
+// End D3DQuake
 /*
 ===============
 Sbar_Draw
@@ -1039,6 +966,9 @@ Sbar_Draw
 */
 void Sbar_Draw (void)
 {
+// Begin D3DQuake
+	if ( gNoStatusBar ) return;
+// End D3DQuake
 	if (scr_con_current == vid.height)
 		return;		// console is full screen
 
@@ -1048,8 +978,9 @@ void Sbar_Draw (void)
 	scr_copyeverything = 1;
 	sb_updates++;
 
-	if (sb_lines && vid.width > 320)
+	if (sb_lines && vid.width > 320) {
 		Draw_TileClear (0, vid.height - sb_lines, vid.width, sb_lines);
+	}
 
 	if (sb_lines > 24)
 	{
@@ -1265,11 +1196,7 @@ void Sbar_DeathmatchOverlay (void)
 
 	// draw number
 		f = s->frags;
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (num, 12, "%3i",f);
-#else
-		sprintf (num, "%3i",f);
-#endif /* __APPLE__ || MACOSX */
+		snprintf (num, sizeof(num), "%3i",f);
 
 		Draw_Character ( x+8 , y, num[0]);
 		Draw_Character ( x+16 , y, num[1]);
@@ -1294,11 +1221,7 @@ void Sbar_DeathmatchOverlay (void)
 		tens = n/10;
 		units = n%10;
 
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (num, 12, "%3i:%i%i", minutes, tens, units);
-#else
-		sprintf (num, "%3i:%i%i", minutes, tens, units);
-#endif /* __APPLE__ ||ÊMACOSX */
+		snprintf (num, sizeof(num), "%3i:%i%i", minutes, tens, units);
 
 		Draw_String ( x+48 , y, num);
 }
@@ -1374,11 +1297,7 @@ void Sbar_MiniDeathmatchOverlay (void)
 
 	// draw number
 		f = s->frags;
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (num, 12, "%3i",f);
-#else
-		sprintf (num, "%3i",f);
-#endif /* __APPLE__ || MACOSX */
+		snprintf (num, sizeof(num), "%3i",f);
 
 		Draw_Character ( x+8 , y, num[0]);
 		Draw_Character ( x+16 , y, num[1]);
@@ -1402,11 +1321,7 @@ void Sbar_MiniDeathmatchOverlay (void)
 		tens = n/10;
 		units = n%10;
 
-#if defined (__APPLE__) || defined (MACOSX)
-		snprintf (num, 12, "%3i:%i%i", minutes, tens, units);
-#else
-		sprintf (num, "%3i:%i%i", minutes, tens, units);
-#endif /* __APPLE__ ||ÊMACOSX */
+		snprintf (num, sizeof(num), "%3i:%i%i", minutes, tens, units);
 
 		Draw_String ( x+48 , y, num);
 }

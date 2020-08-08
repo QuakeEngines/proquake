@@ -61,6 +61,7 @@ cvar_t	v_idlescale = {"v_idlescale", "0", false};
 
 cvar_t	crosshair = {"crosshair", "1", true};
 cvar_t	cl_crosshaircentered = {"cl_crosshaircentered", "1", true}; // Baker 3.60 - Optional centered crosshair
+cvar_t	cl_colorshow = {"cl_colorshow", "0", true}; // Baker 3.99n - Show pants color @ top of screen
 cvar_t	cl_crossx = {"cl_crossx", "0", true};  // Baker 3.80x - Save to config
 cvar_t	cl_crossy = {"cl_crossy", "0", true};  // Baker 3.80x - Save to config
 cvar_t	gl_cshiftpercent = {"gl_cshiftpercent", "100", false};
@@ -1083,10 +1084,10 @@ void V_RenderView (void)
 
 	}
 
-//	if (cl_colorshow.value && !cls.demoplayback &&  cl.maxclients>1) {
-//		// Don't display this during demo playback because we actually don't know!
-//		Draw_Fill	(12, 12, 16, 16, Sbar_ColorForMap(((int)cl_color.value) & 15<<4));	// Baker 3.99n: display pants color in top/left
-//	}
+	if (cl_colorshow.value && !cls.demoplayback &&  cl.maxclients>1) {
+		// Don't display this during demo playback because we actually don't know!
+		Draw_Fill	(12, 12, 16, 16, Sbar_ColorForMap(((int)cl_color.value) & 15<<4));	// Baker 3.99n: display pants color in top/left
+	}
 
 #endif
 
@@ -1123,6 +1124,7 @@ void V_Init (void)
 	Cvar_RegisterVariable (&cl_crossx, NULL);
 	Cvar_RegisterVariable (&cl_crossy, NULL);
 	Cvar_RegisterVariable (&cl_crosshaircentered, NULL); // Baker 3.60 - centered crosshair
+	Cvar_RegisterVariable (&cl_colorshow, NULL);
 	Cvar_RegisterVariable (&gl_cshiftpercent, NULL);
 
 	Cvar_RegisterVariable (&scr_ofsx, NULL);

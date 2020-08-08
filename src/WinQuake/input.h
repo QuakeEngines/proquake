@@ -33,4 +33,6 @@ void IN_ClearStates (void);
 // restores all button and position states to defaults
 
 extern	cvar_t	freelook;   // Baker 3.60 - Freelook cvar support
+extern cvar_t	m_accel;
+
 #define mlook_active	(freelook.value || (in_mlook.state & 1))   // Baker 3.60 - Freelook cvar support from JoeQuake

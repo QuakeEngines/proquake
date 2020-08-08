@@ -136,6 +136,7 @@ float MSG_ReadPreciseAngle (void); // JPG - precise aim!!
 
 #ifdef _WIN32
 #define	vsnprintf _vsnprintf
+#define snprintf _snprintf
 #endif
 
 //void Q_strcpy (char *dest, char *src);

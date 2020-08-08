@@ -48,12 +48,10 @@ int			mirrortexturenum;	// quake texturenum, not gltexturenum
 qboolean	mirror;
 mplane_t	*mirror_plane;
 
-
 #if defined (__APPLE__) || defined (MACOSX)
-GLfloat				gldepthmin,
-                                gldepthmax;
+// Baker: this is defined in other engines in gl_vidnt.c, vid_wgl.c, etc.
+GLfloat				gldepthmin, gldepthmax;
 #endif /* __APPLE__ || MACOSX */
-
 
 // view origin
 vec3_t	vup;
@@ -106,13 +104,9 @@ cvar_t	gl_playermip = {"gl_playermip","0", true};
 cvar_t	gl_nocolors = {"gl_nocolors","0"};
 
 #if defined(__APPLE__) || defined(MACOSX)
-
 cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","1"};
-
 #else
-
 cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","0"};
-
 #endif /* __APPLE__ ||ÊMACOSX */
 
 cvar_t	gl_reporttjunctions = {"gl_reporttjunctions","0"};
@@ -1008,7 +1002,22 @@ void R_DrawEntitiesOnList (void)
 			break;
 
 		case mod_brush:
+
+				// Get rid of Z-fighting for textures by offsetting the
+				// drawing of entity models compared to normal polygons.
+				// (Only works if gl_ztrick is turned off)
+				if(!gl_ztrick.value)
+				{
+					glEnable(GL_POLYGON_OFFSET_FILL);
+				}
+
 			R_DrawBrushModel (currententity);
+				
+				if(!gl_ztrick.value)
+				{
+					glDisable(GL_POLYGON_OFFSET_FILL);
+				}
+				
 			break;
 
 		default:

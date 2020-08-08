@@ -94,6 +94,7 @@ void *Q_realloc (void *ptr, size_t size)
 	return p;
 }
 
+#ifdef _WIN32
 /*
 ===================
 Q_strdup
@@ -102,12 +103,13 @@ Q_strdup
 void *Q_strdup (const char *str)
 {
 	char	*p;
-//
-//	if (!(p = _strdup(str)))
-//		Sys_Error ("Not enough memory free; check disk space");
-//
+
+	if (!(p = _strdup(str)))
+		Sys_Error ("Not enough memory free; check disk space");
+
 	return p;
 }
+#endif
 
 /*
 ==============================================================================
@@ -935,7 +937,6 @@ void *Cache_Alloc (cache_user_t *c, int size, char *name)
 	// free the least recently used cahedat
 		if (cache_head.lru_prev == &cache_head)
 			Sys_Error ("Cache_Alloc: out of memory"); // not enough memory at all
-			
 		Cache_Free ( cache_head.lru_prev->user );
 	}
 

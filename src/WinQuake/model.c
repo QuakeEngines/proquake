@@ -1250,11 +1250,7 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 		{	// duplicate the basic information
 			char	name[10];
 
-#if defined (__APPLE__) || defined (MACOSX)
-			snprintf (name, 10, "*%i", i+1);
-#else
-			sprintf (name, "*%i", i+1);
-#endif /* __APPLE__ ||ÊMACOSX */
+			snprintf(name, sizeof(name), "*%i", i+1);
 			loadmodel = Mod_FindName (name);
 			*loadmodel = *mod;
 			strcpy (loadmodel->name, name);

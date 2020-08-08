@@ -100,6 +100,7 @@ void GL_Bind (int texnum)
 #if defined (__APPLE__) || defined (MACOSX)
         if (gl_texturefilteranisotropic) {
             extern GLfloat	gl_texureanisotropylevel;
+
             glTexParameterfv (GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, &gl_texureanisotropylevel);
         }
 #endif /* __APPLE__ || MACOSX */
@@ -166,7 +167,7 @@ int Scrap_AllocBlock (int w, int h, int *x, int *y)
 	}
 
 	Sys_Error ("Scrap_AllocBlock: full");
-	return (0); // Baker 3.80x - avoid compiler warning
+        return(0);
 }
 
 int	scrap_uploads;
@@ -426,6 +427,72 @@ void Draw_MaxAnisotropy_f (void)
 }
 
 #endif
+
+/*
+===============
+Draw_SmoothFont_f
+===============
+*/
+static qboolean smoothfont = 1;
+qboolean smoothfont_init =false;
+
+static void SetSmoothFont (void)
+{
+	smoothfont_init = true; // This is now available
+	GL_Bind (char_texture);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, smoothfont ? GL_LINEAR : GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, smoothfont ? GL_LINEAR : GL_NEAREST);
+}
+
+
+void SmoothFontSet(qboolean smoothfont_choice) {
+	smoothfont = smoothfont_choice;
+	if (smoothfont_init)
+		SetSmoothFont();
+}
+
+void Draw_SmoothFont_f (void)
+{
+	if (Cmd_Argc() == 1)
+	{
+		Con_Printf ("gl_smoothfont is %d\n", smoothfont);
+		return;
+	}
+
+	smoothfont = Q_atoi (Cmd_Argv(1));
+	SetSmoothFont ();
+}
+
+static void Load_CharSet (void)
+{
+	int  i;
+	byte *dest, *src;
+
+	// load the console background and the charset
+	// by hand, because we need to write the version
+	// string into the background before turning
+	// it into a texture
+	draw_chars = W_GetLumpName ("conchars");
+	for (i=0 ; i<256*64 ; i++)
+		if (draw_chars[i] == 0)
+			draw_chars[i] = 255;	// proper transparent color
+
+	// Expand charset texture with blank lines in between to avoid in-line distortion
+	dest = Q_malloc (128 * 256);
+	memset (dest, 0, 128 * 256);
+	src = draw_chars;
+
+	for (i = 0; i < 16; ++i)
+		memcpy (&dest[8 * 128 * 2 * i], &src[8 * 128 * i], 8 * 128); // Copy each line
+
+	// now turn them into textures
+	char_texture = GL_LoadTexture ("charset", 128, 256, dest, false, true/*, 1, false */);
+
+	free (dest);
+
+	SetSmoothFont ();
+}
+
 /*
 ===============
 Draw_Init
@@ -435,6 +502,7 @@ Draw_Init
 #ifdef D3DQUAKE
 float d3dGetD3DDriverVersion();
 #endif
+void Draw_InitConback_Old(void);
 void Draw_Init (void)
 {
 	int		i;
@@ -457,7 +525,7 @@ void Draw_Init (void)
 		Cvar_Set ("gl_max_size", "256");
 
 	Cmd_AddCommand ("gl_texturemode", &Draw_TextureMode_f);
-
+	Cmd_AddCommand ("gl_smoothfont", &Draw_SmoothFont_f);
 // D3D diff 3 of 14
 #ifdef D3DQUAKE
 	Cmd_AddCommand ("d3d_maxanisotropy", &Draw_MaxAnisotropy_f);
@@ -466,13 +534,78 @@ void Draw_Init (void)
 	// by hand, because we need to write the version
 	// string into the background before turning
 	// it into a texture
-	draw_chars = W_GetLumpName ("conchars");
+/*	draw_chars = W_GetLumpName ("conchars");
 	for (i=0 ; i<256*64 ; i++)
 		if (draw_chars[i] == 0)
 			draw_chars[i] = 255;	// proper transparent color
 
 	// now turn them into textures
-	char_texture = GL_LoadTexture ("charset", 128, 128, draw_chars, false, true);
+	char_texture = GL_LoadTexture ("charset", 128, 128, draw_chars, false, true);*/
+
+	Load_CharSet ();
+
+/*	start = Hunk_LowMark();
+
+	cb = (qpic_t *)COM_LoadTempFile ("gfx/conback.lmp");
+	if (!cb)
+		Sys_Error ("Couldn't load gfx/conback.lmp");
+	SwapPic (cb);
+
+	// hack the version number directly into the pic
+#if defined(__linux__)
+	snprintf (ver, sizeof(ver), "(Linux %2.2f, gl %4.2f) %4.2f", (float)LINUX_VERSION, (float)GLQUAKE_VERSION, (float)VERSION);
+#elif defined (__APPLE__) || defined (__MACOSX__)
+	snprintf(ver, sizeof(ver), "(ProQuake) %4.2f", (float)PROQUAKE_VERSION); // JPG - obvious change
+#else
+	snprintf(ver, sizeof(ver), "(ProQuake) %4.2f", (float)PROQUAKE_VERSION); 
+#endif
+	dest = cb->data + 320*186 + 320 - 11 - 8*strlen(ver);
+	y = strlen(ver);
+	for (x=0 ; x<y ; x++)
+		Draw_CharToConback (ver[x], dest+(x<<3));
+
+	conback->width = cb->width;
+	conback->height = cb->height;
+	ncdata = cb->data;
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	gl = (glpic_t *)conback->data;
+	gl->texnum = GL_LoadTexture ("conback", conback->width, conback->height, ncdata, false, false);
+	gl->sl = 0;
+	gl->sh = 1;
+	gl->tl = 0;
+	gl->th = 1;
+	conback->width = vid.width;
+	conback->height = vid.height;
+
+	// free loaded console
+	Hunk_FreeToLowMark(start); */
+
+	Draw_InitConback_Old();
+
+	// save a texture slot for translated picture
+	translate_texture = texture_extension_number++;
+
+	// save slots for scraps
+	scrap_texnum = texture_extension_number;
+	texture_extension_number += MAX_SCRAPS;
+
+	// load game pics
+	Draw_LoadPics ();
+}
+
+void Draw_InitConback_Old(void) {
+	int		i;
+	qpic_t	*cb;
+	int		start;
+	byte	*dest;
+	int		x, y;
+	char	ver[40];
+	glpic_t	*gl;
+
+	byte	*ncdata;
 
 	start = Hunk_LowMark();
 
@@ -483,12 +616,16 @@ void Draw_Init (void)
 
 	// hack the version number directly into the pic
 #if defined(__linux__)
-	sprintf (ver, "(Linux %2.2f, gl %4.2f) %4.2f", (float)LINUX_VERSION, (float)GLQUAKE_VERSION, (float)VERSION);
-#elif defined (__APPLE__) || defined (__MACOSX__)
-	sprintf(ver, "(ProQuake) %4.2f", (float)PROQUAKE_VERSION); // JPG - obvious change
-
+	snprintf (ver, sizeof(ver), "(Linux %2.2f, gl %4.2f) %4.2f", (float)LINUX_VERSION, (float)GLQUAKE_VERSION, (float)VERSION);
 #else
-	sprintf (ver, "(gl %4.2f) %4.2f", (float)GLQUAKE_VERSION, (float)VERSION);
+// D3D diff 4 of 14
+#ifdef D3DQUAKE
+	//snprintf (ver, sizeof(ver), "(gl %4.2f) %4.2f", (float)GLQUAKE_VERSION, (float)VERSION);
+	sprintf(ver, "(D3DProQuake) %4.2f", (float)PROQUAKE_VERSION); // JPG - obvious change
+// D3D diff 5 of 14
+#else
+	sprintf(ver, "(ProQuake) %4.2f", (float)PROQUAKE_VERSION); // JPG - obvious change
+#endif
 #endif
 	dest = cb->data + 320*186 + 320 - 11 - 8*strlen(ver);
 	y = strlen(ver);
@@ -513,18 +650,7 @@ void Draw_Init (void)
 
 	// free loaded console
 	Hunk_FreeToLowMark(start);
-
-	// save a texture slot for translated picture
-	translate_texture = texture_extension_number++;
-
-	// save slots for scraps
-	scrap_texnum = texture_extension_number;
-	texture_extension_number += MAX_SCRAPS;
-
-	// load game pics
-	Draw_LoadPics ();
 }
-
 
 
 /*
@@ -536,18 +662,28 @@ It can be clipped to the top of the screen to allow the console to be
 smoothly scrolled off.
 ================
 */
-void Draw_Character (int x, int y, int num)
+// D3D diff 6 of 14
+// Begin D3DQuake
+int gNoChars;
+// End D3DQuake
+
+static qboolean IsValid (int y, int num)
 {
-	int			row, col;
-	float			frow, fcol, size;
-
-	if (num == 32)
-		return;		// space
-
-	num &= 255;
+	if ((num & 127) == 32)
+		return false; // space
 
 	if (y <= -8)
-		return;			// totally off screen
+		return false; // totally off screen
+
+	return true;
+}
+
+static void Character (int x, int y, int num)
+{
+	int			row, col;
+	float	frow, fcol, size, offset;
+
+	num &= 255;
 
 	row = num>>4;
 	col = num&15;
@@ -555,18 +691,33 @@ void Draw_Character (int x, int y, int num)
 	frow = row*0.0625;
 	fcol = col*0.0625;
 	size = 0.0625;
+//	offset = 0.002; // slight offset to avoid in-between lines distortion
+	offset = 0.03125; // offset to match expanded charset texture
 
-	GL_Bind (char_texture);
-
-	glBegin (GL_QUADS);
 	glTexCoord2f (fcol, frow);
 	glVertex2f (x, y);
 	glTexCoord2f (fcol + size, frow);
 	glVertex2f (x+8, y);
-	glTexCoord2f (fcol + size, frow + size);
+	glTexCoord2f (fcol + size, frow + size - offset);
 	glVertex2f (x+8, y+8);
-	glTexCoord2f (fcol, frow + size);
+	glTexCoord2f (fcol, frow + size - offset);
 	glVertex2f (x, y+8);
+}
+
+void Draw_Character (int x, int y, int num)
+{
+// D3D diff 7 of 14
+// Begin D3DQuake
+	if ( gNoChars ) return;
+// End D3DQuake
+	if (!IsValid (y, num))
+		return;
+
+	GL_Bind (char_texture);
+	glBegin (GL_QUADS);
+
+	Character (x, y, num);
+
 	glEnd ();
 }
 
@@ -577,12 +728,19 @@ Draw_String
 */
 void Draw_String (int x, int y, char *str)
 {
+	GL_Bind (char_texture);
+	glBegin (GL_QUADS);
+
 	while (*str)
 	{
-		Draw_Character (x, y, *str);
+		if (IsValid (y, *str))
+			Character (x, y, *str);
+
 		str++;
 		x += 8;
 	}
+
+	glEnd ();
 }
 
 /*
@@ -774,21 +932,137 @@ Draw_ConsoleBackground
 
 ================
 */
+// D3D diff 9 of 14
+// Begin D3DQuake
+int noConsoleBackground;
+// End D3DQuake
 void Draw_ConsoleBackground (int lines)
 {
 	int y = (vid.height * 3) >> 2;
-
+// D3D diff 10 of 14
+// Begin D3DQuake
+	if (noConsoleBackground)
+		return;
+// End D3DQuake
+#if 0
 #if defined(__APPLE__) || defined (MACOSX)
 
 	conback->width	= vid.width;
 	conback->height	= vid.height;
 
 #endif // __APPLE__ || MACOSX
-
+#endif
 	if (lines > y)
 		Draw_Pic(0, lines - vid.height, conback);
 	else
 		Draw_AlphaPic (0, lines - vid.height, conback, (float)(1.2 * lines)/y);
+}
+
+/*
+==================
+VID_Consize_f -- Baker -- called when vid_consize changes
+==================
+*/
+extern qpic_t *conback;
+//qboolean vid_smoothfont = false;
+extern qboolean smoothfont_init;
+extern int gGLDisplayWidth;
+extern int gGLDisplayHeight;
+void VID_Consize_f(void) {
+
+	float startwidth;
+	float startheight;
+	float desiredwidth;
+	extern cvar_t vid_consize;
+	int contype = vid_consize.value;
+	int exception = 0;
+	
+#ifdef _WIN32
+	startwidth = vid.width = modelist[vid_default].width;
+	startheight = vid.height = modelist[vid_default].height;
+#else
+	startwidth = vid.width = gGLDisplayWidth;
+	startheight = vid.height = gGLDisplayHeight;
+
+#endif 
+
+//	Con_Printf("Entering ...\n");
+//	Con_Printf("vid.width is %d and vid.height is %d\n", vid.width, vid.height);
+//	Con_Printf("vid.conwidth is %d and vid.conheight is %d\n", vid.conwidth, vid.conheight);
+
+	// Baker 3.97
+	// We need to appropriately set vid.width, vid.height, vid.smoothfont (?)
+
+//	vid_smoothfont = false; // Assume it is unnecessary
+
+	if (contype == -1) {
+		// Automatic consize to avoid microscopic text
+		if (vid.width>=1024)
+			contype = 1;
+		else
+			contype = 0;
+	}
+
+	switch (contype) {
+
+		case 0: // consize is width
+
+			desiredwidth = vid.width;
+			break;
+
+		case 1: // consize is 50% width (if possible)
+
+			// if resolution is < 640, must use the resolution itself.
+			if (vid.width < 640) {
+				exception = 1; // Notify later about console resolution unavailable
+				desiredwidth = vid.width;
+				break;
+			}
+
+			desiredwidth = (int)(vid.width/2);
+			break;
+
+		case 3:
+			desiredwidth = 320;
+			break;
+
+		default:
+			// If vid.width is under 640, must use 320?
+			if (vid.width < 640) {
+				exception = 2; // Notify later about console resolution unavailable
+				desiredwidth = vid.width;
+				break;
+			}
+			desiredwidth = 640;
+			break;
+	}
+
+	vid.conwidth = CLAMP (320, desiredwidth, vid.width);
+	vid.conwidth &= 0xFFFFFFF8;                      // But this must be a multiple of 8
+	vid.conheight = vid.conwidth * vid.height / vid.width;  // Now set height using proper aspect ratio
+	vid.conheight &= 0xFFFFFFF8;					  // This too must be a multiple of 8
+
+	conback->width = vid.width = vid.conwidth; // = vid.width;
+	conback->height = vid.height = vid.conheight; // = vid.height;
+
+	//  Determine if smooth font is needed
+
+	if ((int)(startwidth / vid.conwidth) == ((startwidth + 0.0f) / (vid.conwidth + 0.0f)) /*&& (int)(startheight / vid.conheight) == ((startheight + 0.0f) / (vid.conheight + 0.0f))*/) {
+		SmoothFontSet (false);
+	} else {
+		SmoothFontSet (true);
+	}
+
+	// Print messages AFTER console resizing to ensure they print right
+	if (exception) {
+		if (exception == 1)
+			Con_Printf ("VID_Consize_f: 50%% console size unavailable, using 100%% for this resolution.\n");
+		else
+			Con_Printf ("VID_Consize_f: 640 console size unavailable, using 100%% for this resolution.\n");
+	}
+
+	vid.recalc_refdef = 1;
+
 }
 
 

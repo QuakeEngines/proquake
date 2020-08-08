@@ -122,6 +122,7 @@ void	Force_CenterView_f (void)
     cl.viewangles[PITCH] = 0; 
 }
 
+#if 0
 //_______________________________________________________________________________________________IN_SetKeyboardRepeatEnabled()
 
 void	IN_SetKeyboardRepeatEnabled (BOOL theState)
@@ -153,6 +154,8 @@ void	IN_SetKeyboardRepeatEnabled (BOOL theState)
     NXCloseEventStatus (myEventStatus);
     myKeyboardRepeatEnabled = theState;
 }
+
+#endif
 
 //____________________________________________________________________________________________________________IN_GetIOHandle()
 
@@ -371,8 +374,10 @@ void	IN_InitMouse (void)
 
 void 	IN_Init (void)
 {
+    extern cvar_t m_accel;
     // register variables:
     Cvar_RegisterVariable (&m_filter, NULL);
+    Cvar_RegisterVariable (&m_accel, NULL);
     Cvar_RegisterVariable (&aux_look, NULL);
     
     // register console commands:
@@ -465,8 +470,19 @@ void	IN_MouseMove (usercmd_t *cmd)
     gInMouseOldPosition.X = myMouseX;
     gInMouseOldPosition.Y = myMouseY;
 
-    gInMousePosition.X *= sensitivity.value;
-    gInMousePosition.Y *= sensitivity.value;
+	{
+		extern cvar_t m_accel;
+		if (m_accel.value) {
+			float mx =  gInMousePosition.X -  gInMouseOldPosition.X;
+			float my =  gInMousePosition.Y -  gInMouseOldPosition.Y;
+			float mousespeed = sqrt (mx * mx + my * my);
+			gInMousePosition.X *= (mousespeed * m_accel.value + sensitivity.value);
+			gInMousePosition.Y *= (mousespeed * m_accel.value + sensitivity.value);
+		} else {
+			gInMousePosition.X *= sensitivity.value;
+			gInMousePosition.Y *= sensitivity.value;
+		}
+	}
 
     // lookstrafe or view?
     if ((in_strafe.state & 1) || (lookstrafe.value && mlook_active))

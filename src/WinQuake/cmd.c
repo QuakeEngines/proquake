@@ -159,7 +159,7 @@ void Cbuf_Execute (void)
 		{
 			if (text[i] == '"')
 				quotes++;
-			if ( !(quotes&1) &&  text[i] == ';' && notcmd)   // added && cmd so that the ENTIRE line can be forwareded
+			if ( !(quotes&1) &&  text[i] == ';' && notcmd)   // JPG - added && cmd so that the ENTIRE line can be forwareded
 				break;	// don't break if inside a quoted string
 			if (text[i] == '\n')
 				break;
@@ -204,6 +204,49 @@ void Cbuf_Execute (void)
 
 /*
 ===============
+Cmd_Baker_Inject_Aliases
+
+Adds commonly used aliases in and reassigns the sound keys.
+Occurs with stuffcmds and reset to defaults.
+Should never be used with dedicated server.
+This is hacky, eventually the "right" way to do this
+will be decided, but ProQuake isn't a gamedir engine
+so the options are limited.
+===============
+*/
+
+void Cmd_Baker_Inject_Aliases () {
+
+	if (COM_CheckParm ("-noinjectaliases") == 0) {
+		// Baker 3.70 - Alias injection point
+		Cbuf_AddText ("alias +quickgrenade \"-attack;wait;impulse 6;wait;+attack\"\n");
+		Cbuf_AddText ("alias -quickgrenade \"-attack;wait;bestweapon 7 8 5 3 4 2 1\"\n");
+		Cbuf_AddText ("alias +quickrocket \"-attack;wait;impulse 7;wait;+attack\"\n");
+		Cbuf_AddText ("alias -quickrocket \"-attack;wait;bestweapon 8 5 3 4 2 7 1\"\n");
+		Cbuf_AddText ("alias +quickshaft \"-attack;wait;impulse 8;wait;+attack\"\n");
+		Cbuf_AddText ("alias -quickshaft \"-attack;wait;bestweapon 7 5 8 3 4 2 1\"\n");
+		Cbuf_AddText ("alias +quickshot \"-attack;wait;impulse 2;wait;+attack\"\n");
+		Cbuf_AddText ("alias -quickshot \"-attack;wait;bestweapon 7 8 5 3 4 2 1\"\n");
+		Cbuf_AddText ("alias bestsafe \"bestweapon 8 5 3 4 2 1\"\n");
+		Cbuf_AddText ("alias teamloc \"say_team I am at %l with %h health/%a armor\"\n");
+		if (COM_CheckParm ("-nosoundkeys") == 0) {
+			Cbuf_AddText ("bind \"-\" \"volumedown\"\n");
+			Cbuf_AddText ("bind \"=\" \"volumeup\"\n");
+		} else {
+			Con_Printf ("Automatic sound keys disabled\n");
+		}
+		Cbuf_AddText ("alias +zoom \"savefov; savesensitivity; fov 70; sensitivity 4; wait; fov 58; sensitivity 3.25; wait; fov 45; sensitivity 2.50; wait; fov 32; sensitivity 1.74; wait; fov 20; sensitivity 14.0\"\n");
+		Cbuf_AddText ("alias -zoom \"fov 32; sensitivity 1.75; wait; fov 45; sensitivity 2.50; wait; fov 58; sensitivity 3.25; wait; sensitivity 4; wait; restoresensitivity; restorefov\"\n");
+		Con_Printf ("Extended aliases initialized\n");
+		// Baker 3.70 - End Alias injection point
+	} else {
+		Con_Printf ("Automatic aliases disabled\n");
+	}
+}
+
+
+/*
+===============
 Cmd_StuffCmds_f
 
 Adds command line parameters as script statements
@@ -223,6 +266,11 @@ void Cmd_StuffCmds_f (void)
 		Con_Printf ("stuffcmds : execute command line parameters\n");
 		return;
 	}
+
+	// Baker 3.67 - Inject commonly used aliases
+	if (cls.state != ca_dedicated)
+		Cmd_Baker_Inject_Aliases();
+
 
 // build the combined string to parse from
 	s = 0;
@@ -1020,7 +1068,6 @@ void Cmd_ForwardToServer (void)
 	else
 		SZ_Print (&cls.message, "\n");
 }
-
 
 
 /*
