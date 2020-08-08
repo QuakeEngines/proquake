@@ -220,9 +220,10 @@ extern	cvar_t	gl_flashblend;
 extern	cvar_t	gl_nocolors;
 extern	cvar_t	gl_doubleeyes;
 extern	cvar_t	gl_ringalpha;
-extern  cvar_t  r_interpolate_model_animation;
-extern  cvar_t  r_interpolate_model_transform;
-extern  cvar_t  r_interpolate_model_weapon;
+extern  cvar_t  gl_interpolate_animation;
+extern  cvar_t  gl_interpolate_transform;
+extern  cvar_t  gl_interpolate_weapon;
+extern	cvar_t	r_farclip;
 
 extern	int		gl_lightmap_format;
 extern	int		gl_solid_format;

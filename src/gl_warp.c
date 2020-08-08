@@ -934,20 +934,18 @@ void R_ClearSkyBox (void)
 
 void MakeSkyVec (float s, float t, int axis)
 {
+	int	j, k, farclip;
 	vec3_t		v, b;
-	int			j, k;
 
-	b[0] = s*2048;
-	b[1] = t*2048;
-	b[2] = 2048;
+	farclip = max((int)r_farclip.value, 4096);
+	b[0] = s * (farclip >> 1);
+	b[1] = t * (farclip >> 1);
+	b[2] = (farclip >> 1);
 
 	for (j=0 ; j<3 ; j++)
 	{
 		k = st_to_vec[axis][j];
-		if (k < 0)
-			v[j] = -b[-k - 1];
-		else
-			v[j] = b[k - 1];
+		v[j] = (k < 0) ? -b[-k-1] : b[k-1];
 		v[j] += r_origin[j];
 	}
 

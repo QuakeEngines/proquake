@@ -82,9 +82,10 @@ cvar_t	r_mirroralpha = {"r_mirroralpha","1"};
 cvar_t	r_wateralpha = {"r_wateralpha","1",true};
 cvar_t	r_dynamic = {"r_dynamic","1"};
 cvar_t	r_novis = {"r_novis","0",true};
-cvar_t  r_interpolate_model_animation = {"r_interpolate_model_animation", "1", true};
-cvar_t  r_interpolate_model_transform = {"r_interpolate_model_transform", "1", true};
-cvar_t  r_interpolate_model_weapon = {"r_interpolate_model_weapon", "1", true};
+cvar_t  gl_interpolate_animation = {"gl_interpolate_animation", "0", true};
+cvar_t  gl_interpolate_transform = {"gl_interpolate_transform", "0", true};
+cvar_t  gl_interpolate_weapon = {"gl_interpolate_weapon", "0", true};
+cvar_t	r_farclip = {"r_farclip","16384",true};
 
 cvar_t	gl_finish = {"gl_finish","0"};
 cvar_t	gl_clear = {"gl_clear","0"};
@@ -141,15 +142,15 @@ void R_BlendedRotateForEntity (entity_t *e)
 	float	blend;
 	vec3_t	d;
 	int		i;
-	
+
 	// positional interpolation
-	
+
 	if (e->translate_start_time == 0) {
 		e->translate_start_time = realtime;
 		VectorCopy (e->origin, e->origin1);
 		VectorCopy (e->origin, e->origin2);
 	}
-	
+
 	if (!VectorCompare (e->origin, e->origin2)) {
 		e->translate_start_time = realtime;
 		VectorCopy (e->origin2, e->origin1);
@@ -157,25 +158,25 @@ void R_BlendedRotateForEntity (entity_t *e)
 		blend = 0;
 	} else {
 		blend = (realtime - e->translate_start_time) / 0.1;
-		
+
 		if (cl.paused || blend > 1) blend = 1;
 	}
-	
+
 	VectorSubtract (e->origin2, e->origin1, d);
-	
+
 	glTranslatef (
 		e->origin1[0] + (blend * d[0]),
 		e->origin1[1] + (blend * d[1]),
 		e->origin1[2] + (blend * d[2]));
-	
+
 	// orientation interpolation (Euler angles, yuck!)
-	
+
 	if (e->rotate_start_time == 0) {
 		e->rotate_start_time = realtime;
 		VectorCopy (e->angles, e->angles1);
 		VectorCopy (e->angles, e->angles2);
 	}
-	
+
 	if (!VectorCompare (e->angles, e->angles2)) {
 		e->rotate_start_time = realtime;
 		VectorCopy (e->angles2, e->angles1);
@@ -183,12 +184,12 @@ void R_BlendedRotateForEntity (entity_t *e)
 		blend = 0;
 	} else {
 		blend = (realtime - e->rotate_start_time) / 0.1;
-		
+
 		if (cl.paused || blend > 1) blend = 1;
 	}
-	
+
 	VectorSubtract (e->angles2, e->angles1, d);
-	
+
 	// always interpolate along the shortest path
 	for (i = 0; i < 3; i++)  {
 		if (d[i] > 180) {
@@ -197,7 +198,7 @@ void R_BlendedRotateForEntity (entity_t *e)
 			d[i] += 360;
 		}
 	}
-	
+
 	glRotatef ( e->angles1[1] + ( blend * d[1]),  0, 0, 1);
 	glRotatef (-e->angles1[0] + (-blend * d[0]),  0, 1, 0);
 	glRotatef ( e->angles1[2] + ( blend * d[2]),  1, 0, 0);
@@ -449,31 +450,31 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
     int*        order;
     int         count;
     vec3_t      d;
-	
+
 	// Baker 3.80x - Transparent weapon (invisibility ring option)
 	alpha = (currententity == &cl.viewent) ? ((cl.items & IT_INVISIBILITY) ? (gl_ringalpha.value < 1 ? gl_ringalpha.value : 0) : (r_drawviewmodel.value ? 1: 0)) : 1;
-    
+
 	lastposenum0 = pose1;
     lastposenum  = pose2;
-	
+
     verts1  = (trivertx_t *)((byte *)paliashdr + paliashdr->posedata);
     verts2  = verts1;
-	
+
     verts1 += pose1 * paliashdr->poseverts;
     verts2 += pose2 * paliashdr->poseverts;
-	
+
     order = (int *)((byte *)paliashdr + paliashdr->commands);
-	
+
 	if (alpha < 1)  // Baker 3.60 - gl_ringalpha
-		glEnable (GL_BLEND);  // Baker 3.60 - 
+		glEnable (GL_BLEND);  // Baker 3.60 -
 
     for (;;)
 	{
 		// get the vertex count and primitive type
 		count = *order++;
-        
+
 		if (!count) break;
-        
+
 		if (count < 0)
 		{
 			count = -count;
@@ -483,30 +484,30 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
 		{
 			glBegin (GL_TRIANGLE_STRIP);
 		}
-		
+
 		do
 		{
 			// texture coordinates come from the draw list
 			glTexCoord2f (((float *)order)[0], ((float *)order)[1]);
 			order += 2;
-			
+
 			// normals and vertexes come from the frame list
 			// blend the light intensity from the two frames together
 			d[0] = shadedots[verts2->lightnormalindex] -
 				shadedots[verts1->lightnormalindex];
-			
+
 			l = shadelight * (shadedots[verts1->lightnormalindex] + (blend * d[0]));
 			glColor3f (l, l, l);
-			
+
 			VectorSubtract(verts2->v, verts1->v, d);
-			
+
 			// blend the vertex positions from each frame together
 			glColor4f (l, l, l, alpha); // Baker 3.80x - transparent weapon
 			glVertex3f (
 				verts1->v[0] + (blend * d[0]),
 				verts1->v[1] + (blend * d[1]),
 				verts1->v[2] + (blend * d[2]));
-			
+
 			verts1++;
 			verts2++;
 		} while (--count);
@@ -583,7 +584,7 @@ void GL_DrawAliasShadow (aliashdr_t *paliashdr, int posenum)
 /*
 =============
 GL_DrawAliasBlendedShadow
-         
+
 fenix@io.com: model animation interpolation
 =============
 */
@@ -599,29 +600,29 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 	float       lheight;
 	int         count;
 	float       blend;
-	
+
 	blend = (realtime - e->frame_start_time) / e->frame_interval;
-	
+
 	if (blend > 1) blend = 1;
-	
+
 	lheight = e->origin[2] - lightspot[2];
 	height  = -lheight + 1.0;
-	
+
 	verts1 = (trivertx_t *)((byte *)paliashdr + paliashdr->posedata);
 	verts2 = verts1;
-	
+
 	verts1 += pose1 * paliashdr->poseverts;
 	verts2 += pose2 * paliashdr->poseverts;
-	
+
 	order = (int *)((byte *)paliashdr + paliashdr->commands);
-	
+
 	for (;;)
 	{
 		// get the vertex count and primitive type
 		count = *order++;
-		
+
 		if (!count) break;
-		
+
 		if (count < 0)
 		{
 			count = -count;
@@ -631,37 +632,37 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 		{
 			glBegin (GL_TRIANGLE_STRIP);
 		}
-		
+
 		do
 		{
 			order += 2;
-			
+
 			point1[0] = verts1->v[0] * paliashdr->scale[0] + paliashdr->scale_origin[0];
 			point1[1] = verts1->v[1] * paliashdr->scale[1] + paliashdr->scale_origin[1];
 			point1[2] = verts1->v[2] * paliashdr->scale[2] + paliashdr->scale_origin[2];
-			
+
 			point1[0] -= shadevector[0]*(point1[2]+lheight);
 			point1[1] -= shadevector[1]*(point1[2]+lheight);
-			
+
 			point2[0] = verts2->v[0] * paliashdr->scale[0] + paliashdr->scale_origin[0];
 			point2[1] = verts2->v[1] * paliashdr->scale[1] + paliashdr->scale_origin[1];
 			point2[2] = verts2->v[2] * paliashdr->scale[2] + paliashdr->scale_origin[2];
-			
+
 			point2[0] -= shadevector[0]*(point2[2]+lheight);
 			point2[1] -= shadevector[1]*(point2[2]+lheight);
-			
+
 			VectorSubtract(point2, point1, d);
-			
-			glVertex3f (point1[0] + (blend * d[0]), 
-				point1[1] + (blend * d[1]), 
+
+			glVertex3f (point1[0] + (blend * d[0]),
+				point1[1] + (blend * d[1]),
 				height);
-			
+
 			verts1++;
 			verts2++;
 		} while (--count);
-		
+
 		glEnd ();
-	}       
+	}
 }
 
 
@@ -707,22 +708,22 @@ void R_SetupAliasBlendedFrame (int frame, aliashdr_t *paliashdr, entity_t* e)
 	int   pose;
 	int   numposes;
 	float blend;
-	
+
 	if ((frame >= paliashdr->numframes) || (frame < 0))
 	{
 		Con_DPrintf ("R_AliasSetupFrame: no such frame %d\n", frame);
 		frame = 0;
 	}
-	
+
 	pose = paliashdr->frames[frame].firstpose;
 	numposes = paliashdr->frames[frame].numposes;
-	
+
 	if (numposes > 1)
 	{
 		e->frame_interval = paliashdr->frames[frame].interval;
 		pose += (int)(cl.time / e->frame_interval) % numposes;
 	}
-	else 
+	else
 	{
 	/* One tenth of a second is a good for most Quake animations.
 	If the nextthink is longer then the animation is usually meant to pause
@@ -732,7 +733,7 @@ void R_SetupAliasBlendedFrame (int frame, aliashdr_t *paliashdr, entity_t* e)
 		assumption. */
 		e->frame_interval = 0.1;
 	}
-	
+
 	if (e->pose2 != pose)
 	{
 		e->frame_start_time = realtime;
@@ -744,10 +745,10 @@ void R_SetupAliasBlendedFrame (int frame, aliashdr_t *paliashdr, entity_t* e)
 	{
 		blend = (realtime - e->frame_start_time) / e->frame_interval;
 	}
-	
+
 	// wierd things start happening if blend passes 1
 	if (cl.paused || blend > 1) blend = 1;
-	
+
 	GL_DrawAliasBlendedFrame (paliashdr, e->pose1, e->pose2, blend);
 }
 
@@ -853,9 +854,9 @@ void R_DrawAliasModel (entity_t *e)
 	GL_DisableMultitexture();
 
     glPushMatrix ();
-	
+
      // fenix@io.com: model transform interpolation
-	if (r_interpolate_model_transform.value && !torch && (client_no != cl.viewentity || !chase_active.value || !cls.demoplayback)) // Don't interpolate the player in chasecam during demo playback
+	if (gl_interpolate_transform.value && !torch && (client_no != cl.viewentity || !chase_active.value || !cls.demoplayback)) // Don't interpolate the player in chasecam during demo playback
 		R_BlendedRotateForEntity (e);
 	else {
 		R_RotateForEntity (e);
@@ -890,7 +891,7 @@ void R_DrawAliasModel (entity_t *e)
 		glHint (GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 
         // fenix@io.com: model animation interpolation
-    if (r_interpolate_model_animation.value) {
+    if (gl_interpolate_animation.value) {
 		R_SetupAliasBlendedFrame (currententity->frame, paliashdr, currententity);
     } else {
 	R_SetupAliasFrame (currententity->frame, paliashdr);
@@ -904,13 +905,13 @@ void R_DrawAliasModel (entity_t *e)
 
 	glPopMatrix ();
 
-	
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
+
 	if (r_shadows.value) 	{
 		//
 		// Test for models that we don't want to shadow. KH
@@ -937,11 +938,11 @@ void R_DrawAliasModel (entity_t *e)
 		glColor4f (0.0f, 0.0f, 0.0f, 1.0f); // KH
 
 		// fenix@io.com: model animation interpolation
-		if (r_interpolate_model_animation.value) {
+		if (gl_interpolate_animation.value) {
             GL_DrawAliasBlendedShadow (paliashdr, lastposenum0, lastposenum, currententity);
 		} else {
-		} 
-		
+		}
+
 
 		glEnable (GL_TEXTURE_2D);
 		glDisable (GL_BLEND);
@@ -1074,13 +1075,13 @@ void R_DrawViewModel (void)
 
 	// hack the depth range to prevent view model from poking into walls
 	glDepthRange (gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
-        
+
         // fenix@io.com: model transform interpolation
-    old_interpolate_model_transform = r_interpolate_model_transform.value;
-    r_interpolate_model_transform.value = false;
+    old_interpolate_model_transform = gl_interpolate_transform.value;
+    gl_interpolate_transform.value = false;
 	R_DrawAliasModel (currententity);
-    r_interpolate_model_transform.value = old_interpolate_model_transform;
-	
+    gl_interpolate_transform.value = old_interpolate_model_transform;
+
 	glDepthRange (gldepthmin, gldepthmax);
 }
 
@@ -1393,7 +1394,7 @@ void R_SetupGL (void)
 {
 	float	screenaspect;
 	extern	int glwidth, glheight;
-	int		x, x2, y2, y, w, h;
+	int		x, x2, y2, y, w, h, farclip;
 
 	// set up viewpoint
 	glMatrixMode(GL_PROJECTION);
@@ -1425,7 +1426,8 @@ void R_SetupGL (void)
 	glViewport (glx + x, gly + y2, w, h);
     screenaspect = (float)r_refdef.vrect.width/r_refdef.vrect.height;
 //	yfov = 2*atan((float)r_refdef.vrect.height/r_refdef.vrect.width)*180/M_PI;
-    MYgluPerspective (r_refdef.fov_y,  screenaspect,  4,  4096);
+    farclip = max((int)r_farclip.value, 4096);
+	MYgluPerspective (r_refdef.fov_y,  screenaspect,  4,  farclip); // 4096
 
 	if (mirror)
 	{

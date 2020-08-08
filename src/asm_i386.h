@@ -27,10 +27,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define C(label) _##label
 #endif
 
-//
 // !!! note that this file must match the corresponding C structures at all
 // times !!!
-//
 
 // plane_t structure
 // !!! if this is changed, it must be changed in model.h too !!!

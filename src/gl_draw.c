@@ -407,6 +407,61 @@ void Draw_MaxAnisotropy_f (void)
 
 #endif
 
+/*
+===============
+Draw_SmoothFont_f
+===============
+*/
+static qboolean smoothfont = 1;
+
+static void SetSmoothFont (void)
+{
+	GL_Bind (char_texture);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, smoothfont ? GL_LINEAR : GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, smoothfont ? GL_LINEAR : GL_NEAREST);
+}
+
+void Draw_SmoothFont_f (void)
+{
+	if (Cmd_Argc() == 1)
+	{
+		Con_Printf ("gl_smoothfont is %d\n", smoothfont);
+		return;
+	}
+
+	smoothfont = Q_atoi (Cmd_Argv(1));
+	SetSmoothFont ();
+}
+
+static void Load_CharSet (void)
+{
+	int  i;
+	byte *dest, *src;
+
+	// load the console background and the charset
+	// by hand, because we need to write the version
+	// string into the background before turning
+	// it into a texture
+	draw_chars = W_GetLumpName ("conchars");
+	for (i=0 ; i<256*64 ; i++)
+		if (draw_chars[i] == 0)
+			draw_chars[i] = 255;	// proper transparent color
+
+	// Expand charset texture with blank lines in between to avoid in-line distortion
+	dest = malloc (128 * 256);
+	memset (dest, 0, 128 * 256);
+	src = draw_chars;
+
+	for (i = 0; i < 16; ++i)
+		memcpy (&dest[8 * 128 * 2 * i], &src[8 * 128 * i], 8 * 128); // Copy each line
+
+	// now turn them into textures
+	char_texture = GL_LoadTexture ("charset", 128, 256, dest, false, true/*, 1, false */);
+
+	free (dest);
+
+	SetSmoothFont ();
+}
 
 /*
 ===============
@@ -440,6 +495,7 @@ void Draw_Init (void)
 		Cvar_Set ("gl_max_size", "256");
 
 	Cmd_AddCommand ("gl_texturemode", &Draw_TextureMode_f);
+	Cmd_AddCommand ("gl_smoothfont", &Draw_SmoothFont_f);
 // D3D diff 3 of 14
 #ifdef D3DQUAKE
 	Cmd_AddCommand ("d3d_maxanisotropy", &Draw_MaxAnisotropy_f);
@@ -448,13 +504,15 @@ void Draw_Init (void)
 	// by hand, because we need to write the version
 	// string into the background before turning
 	// it into a texture
-	draw_chars = W_GetLumpName ("conchars");
+/*	draw_chars = W_GetLumpName ("conchars");
 	for (i=0 ; i<256*64 ; i++)
 		if (draw_chars[i] == 0)
 			draw_chars[i] = 255;	// proper transparent color
 
 	// now turn them into textures
-	char_texture = GL_LoadTexture ("charset", 128, 128, draw_chars, false, true);
+	char_texture = GL_LoadTexture ("charset", 128, 128, draw_chars, false, true); */
+
+	Load_CharSet ();
 
 /*	start = Hunk_LowMark();
 
@@ -618,22 +676,24 @@ smoothly scrolled off.
 // Begin D3DQuake
 int gNoChars;
 // End D3DQuake
-void Draw_Character (int x, int y, int num)
-{	
-	int				row, col;
-	float			frow, fcol, size;
-// D3D diff 7 of 14
-// Begin D3DQuake
-	if ( gNoChars ) return;
-// End D3DQuake
 
-	if (num == 32)
-		return;		// space
+static qboolean IsValid (int y, int num)
+{
+	if ((num & 127) == 32)
+		return false; // space
+
+	if (y <= -8)
+		return false; // totally off screen
+
+	return true;
+}
+
+static void Character (int x, int y, int num)
+{
+	int	row, col;
+	float	frow, fcol, size, offset;
 
 	num &= 255;
-	
-	if (y <= -8)
-		return;			// totally off screen
 
 	row = num>>4;
 	col = num&15;
@@ -641,18 +701,33 @@ void Draw_Character (int x, int y, int num)
 	frow = row*0.0625;
 	fcol = col*0.0625;
 	size = 0.0625;
+//	offset = 0.002; // slight offset to avoid in-between lines distortion
+	offset = 0.03125; // offset to match expanded charset texture
 
-	GL_Bind (char_texture);
-
-	glBegin (GL_QUADS);
 	glTexCoord2f (fcol, frow);
 	glVertex2f (x, y);
 	glTexCoord2f (fcol + size, frow);
 	glVertex2f (x+8, y);
-	glTexCoord2f (fcol + size, frow + size);
+	glTexCoord2f (fcol + size, frow + size - offset);
 	glVertex2f (x+8, y+8);
-	glTexCoord2f (fcol, frow + size);
+	glTexCoord2f (fcol, frow + size - offset);
 	glVertex2f (x, y+8);
+}
+
+void Draw_Character (int x, int y, int num)
+{
+// D3D diff 7 of 14
+// Begin D3DQuake
+	if ( gNoChars ) return;
+// End D3DQuake
+	if (!IsValid (y, num))
+		return;
+
+	GL_Bind (char_texture);
+	glBegin (GL_QUADS);
+
+	Character (x, y, num);
+
 	glEnd ();
 }
 
@@ -663,12 +738,19 @@ Draw_String
 */
 void Draw_String (int x, int y, char *str)
 {
+	GL_Bind (char_texture);
+	glBegin (GL_QUADS);
+
 	while (*str)
 	{
-		Draw_Character (x, y, *str);
+		if (IsValid (y, *str))
+			Character (x, y, *str);
+
 		str++;
 		x += 8;
 	}
+	
+	glEnd ();
 }
 
 /*

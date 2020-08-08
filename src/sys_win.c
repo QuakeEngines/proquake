@@ -850,12 +850,14 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 	sprintf(exeline, "%s %%1", com_basedir);
 
-	// Build registry entries
-	CreateSetKeyExtension();
-	CreateSetKeyDescription();
-	CreateSetKeyCommandLine(exeline);
-	Con_Printf("Registry Init\n");
-	// End build entries
+	if (COM_CheckParm ("-noassocdem") == 0) {
+		// Build registry entries
+		CreateSetKeyExtension();
+		CreateSetKeyDescription();
+		CreateSetKeyCommandLine(exeline);
+		Con_Printf("Registry Init\n");
+		// End build entries
+	}
 
 	// Strip to the bare path; needed for demos started outside Quake folder
 	for (e = com_basedir+strlen(com_basedir)-1; e >= com_basedir; e--)

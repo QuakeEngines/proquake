@@ -192,10 +192,10 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_novis, NULL);
 	Cvar_RegisterVariable (&r_speeds, NULL);
 	Cvar_RegisterVariable (&r_waterwarp, NULL);
-	Cvar_RegisterVariable (&r_interpolate_model_animation, NULL);
-	Cvar_RegisterVariable (&r_interpolate_model_transform, NULL);
-	Cvar_RegisterVariable (&r_interpolate_model_weapon, NULL);
-
+	Cvar_RegisterVariable (&gl_interpolate_animation, NULL);
+	Cvar_RegisterVariable (&gl_interpolate_transform, NULL);
+	Cvar_RegisterVariable (&gl_interpolate_weapon, NULL);
+	Cvar_RegisterVariable (&r_farclip, NULL);
 
 	Cvar_RegisterVariable (&gl_finish, NULL);
 	Cvar_RegisterVariable (&gl_clear, NULL);
