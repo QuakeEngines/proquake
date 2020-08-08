@@ -140,9 +140,6 @@ Translates a skin texture by the per-player color lookup
 ===============
 */
 
-#ifdef MACOSX
-static unsigned int	pixels[512*256];
-#endif /* MACOSX */
 
 qboolean recentcolor_isSet[MAX_SCOREBOARD];
 int recentcolor[MAX_SCOREBOARD];
@@ -156,10 +153,10 @@ void R_TranslatePlayerSkin (int playernum)
 	model_t		*model;
 	aliashdr_t 	*paliashdr;
 	byte		*original;
-#if !defined(MACOSX)
+
 	unsigned	pixels[512*256];
-#endif // Baker: play with this and remove this discrepancy
-        unsigned	*out;
+
+    unsigned	*out;
 	unsigned	scaled_width, scaled_height;
 	int		inwidth, inheight;
 	byte		*inrow;

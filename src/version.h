@@ -103,7 +103,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 	// GLQUAKE additive features on top of _WIN32 only
 
-	# define SUPPORTS_GLVIDEO_MODESWITCH  		// Windows only for now.  Probably can be multiplat in future.
+//	# define SUPPORTS_GLVIDEO_MODESWITCH  		// Windows only for now.  Probably can be multiplat in future.
 	# define SUPPORTS_VSYNC 					// Vertical sync; only GL does this for now
 	# define SUPPORTS_TRANSPARENT_SBAR 			// Not implemented in OSX?
 

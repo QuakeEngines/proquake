@@ -450,7 +450,7 @@ int VID_SetMode (int modenum, unsigned char *palette)
 
 	S_BlockSound ();
 	S_ClearBuffer ();
-	CDAudio_Pause ();
+//	CDAudio_Pause ();
 
 	if (vid_modenum == NO_MODE)
 		original_mode = windowed_default;
@@ -486,7 +486,7 @@ int VID_SetMode (int modenum, unsigned char *palette)
 	VID_UpdateWindowStatus ();
 
 	S_UnblockSound ();
-	CDAudio_Resume ();
+//	CDAudio_Resume ();
 	scr_disabled_for_loading = temp;
 
 	if (!stat)
@@ -560,7 +560,7 @@ void D3D_WrapResetMode (int newmodenum, qboolean newmode_is_windowed)
 
 	S_BlockSound ();
 	S_ClearBuffer ();
-	CDAudio_Pause ();
+//	CDAudio_Pause ();
 
 //	ShowWindow (dibwindow, SW_SHOWDEFAULT);
 //	UpdateWindow (dibwindow);
@@ -648,7 +648,7 @@ void D3D_WrapResetMode (int newmodenum, qboolean newmode_is_windowed)
 	VID_SetPaletteOld (host_basepal);
 	Key_ClearAllStates ();
 	S_UnblockSound ();
-	CDAudio_Resume ();
+//	CDAudio_Resume ();
 
 	scr_disabled_for_loading = temp;
 	vid.recalc_refdef = 1;
@@ -1411,7 +1411,7 @@ void AppActivate(BOOL fActive, BOOL minimize)
 		{
 			IN_Mouse_Acquire ();
 		}
-
+		IN_Keyboard_Acquire ();
 
 		if (using_hwgamma && vid_hwgamma_enabled)
 			if (vid_canalttab && /* !Minimized &&*/ currentgammaramp)
@@ -1441,6 +1441,7 @@ void AppActivate(BOOL fActive, BOOL minimize)
 		{
 			IN_Mouse_Unacquire ();
 		}
+		IN_Keyboard_Unacquire ();
 	}
 }
 
@@ -1623,13 +1624,14 @@ LONG WINAPI MainWndProc (HWND    hWnd, UINT    uMsg, WPARAM  wParam, LPARAM  lPa
             PostQuitMessage (0);
         break;
 
-#ifdef BUILD_MP3_VERSION
+/*
 		case WM_GRAPHNOTIFY:
 #else
 		case MM_MCINOTIFY:
 #endif
             lRet = CDAudio_MessageHandler (hWnd, uMsg, wParam, lParam);
 			break;
+			*/
 
     	default:
             // pass all unhandled messages to DefWindowProc

@@ -100,7 +100,11 @@ void S_ClearBuffer (void);
 void S_Update (vec3_t origin, vec3_t v_forward, vec3_t v_right, vec3_t v_up);
 void S_ExtraUpdate (void);
 
-sfx_t *S_PrecacheSound (char *sample);
+//sfx_t *S_PrecacheSound (char *sample);
+sfx_t *S_PrecacheSound (char *name, qboolean *precached_ok);
+qboolean S_PrecacheSound_Again (sfx_t *sfx);
+
+
 void S_TouchSound (char *sample);
 void S_ClearPrecache (void);
 void S_BeginPrecaching (void);

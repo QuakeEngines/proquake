@@ -78,13 +78,13 @@ int 		desired_bits = 16;
 
 int sound_started=0;
 
-cvar_t bgmvolume = {"bgmvolume", "1", true};
+
 cvar_t volume = {"volume", "0.7", true};
 
 cvar_t nosound = {"nosound", "0"};
 cvar_t precache = {"precache", "1"};
 cvar_t loadas8bit = {"loadas8bit", "0"};
-cvar_t bgmbuffer = {"bgmbuffer", "4096"};
+
 cvar_t ambient_level = {"ambient_level", "0.3", true}; // Baker 3.60 - Save to config
 
 cvar_t ambient_fade = {"ambient_fade", "100"};
@@ -190,12 +190,7 @@ void S_Init (void)
 	Cvar_RegisterVariable (&volume, NULL);
 	Cvar_RegisterVariable (&precache, NULL);
 	Cvar_RegisterVariable (&loadas8bit, NULL);
-#ifdef BUILD_MP3_VERSION
-	Cvar_RegisterVariable (&bgmvolume, CDAudioSetVolume);
-#else
-	Cvar_RegisterVariable (&bgmvolume, NULL);
-#endif
-	Cvar_RegisterVariable (&bgmbuffer, NULL);
+
 	Cvar_RegisterVariable (&ambient_level, NULL);
 	Cvar_RegisterVariable (&ambient_fade, NULL);
 	Cvar_RegisterVariable (&snd_noextraupdate, NULL);
@@ -244,8 +239,8 @@ void S_Init (void)
 //	if (shm->buffer)
 //		shm->buffer[4] = shm->buffer[5] = 0x7f;	// force a pop for debugging
 
-	ambient_sfx[AMBIENT_WATER] = S_PrecacheSound ("ambience/water1.wav");
-	ambient_sfx[AMBIENT_SKY] = S_PrecacheSound ("ambience/wind2.wav");
+	ambient_sfx[AMBIENT_WATER] = S_PrecacheSound ("ambience/water1.wav", NULL);
+	ambient_sfx[AMBIENT_SKY] = S_PrecacheSound ("ambience/wind2.wav", NULL);
 
 	S_StopAllSounds (true);
 }
@@ -332,7 +327,7 @@ S_PrecacheSound
 
 ==================
 */
-sfx_t *S_PrecacheSound (char *name)
+sfx_t *S_PrecacheSound (char *name, qboolean *precached_ok)
 {
 	sfx_t	*sfx;
 
@@ -343,9 +338,21 @@ sfx_t *S_PrecacheSound (char *name)
 
 // cache it in
 	if (precache.value)
-		S_LoadSound (sfx);
-
+	{
+		if (S_LoadSound (sfx) == NULL)
+			if (precached_ok)
+				*precached_ok = false;
+	}
 	return sfx;
+}
+
+qboolean S_PrecacheSound_Again (sfx_t *sfx)
+{
+	if (S_LoadSound (sfx))
+		return true;
+
+	return false;
+	
 }
 
 
@@ -956,7 +963,7 @@ void S_Play_f(void)
 		}
 		else
 			strcpy (name, Cmd_Argv(i));
-		sfx = S_PrecacheSound(name);
+		sfx = S_PrecacheSound(name, NULL);
 		S_StartSound(hash++, 0, sfx, listener_origin, 1.0, 1.0);
 		i++;
 	}
@@ -988,7 +995,7 @@ void S_PlayVol_f(void)
 		}
 		else
 			strcpy(name, Cmd_Argv(i));
-		sfx = S_PrecacheSound(name);
+		sfx = S_PrecacheSound(name, NULL);
 		vol = atof(Cmd_Argv(i+1));
 		S_StartSound(hash++, 0, sfx, listener_origin, vol, 1.0);
 		i+=2;
@@ -1049,7 +1056,7 @@ void S_LocalSound (char *sound)
 	if (!sound_started)
 		return;
 
-	if (!(sfx = S_PrecacheSound (sound)))
+	if (!(sfx = S_PrecacheSound (sound, NULL)))
 
 	{
 		Con_Printf ("S_LocalSound: can't cache %s\n", sound);

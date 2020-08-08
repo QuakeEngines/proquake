@@ -135,59 +135,14 @@ void Sys_ReleaseLock (void)
 	unlink(va("%s/lock.dat",com_gamedir));
 }
 
-#ifndef WITHOUT_WINKEYHOOK
-
-static HHOOK WinKeyHook;
-static qboolean WinKeyHook_isActive;
-
-LRESULT CALLBACK LLWinKeyHook(int Code, WPARAM wParam, LPARAM lParam);
-//qboolean OnChange_sys_disableWinKeys(cvar_t *var, char *string);
-cvar_t	sys_disableWinKeys = {"sys_disableWinKeys", "0", true};
-
-void OnChange_sys_disableWinKeys (void) /*(cvar_t *var, char *string)*/ {
-	if (sys_disableWinKeys.value) { //(atof(string)) {
-		if (!WinKeyHook_isActive) {
-			if ((WinKeyHook = SetWindowsHookEx(13, LLWinKeyHook, global_hInstance, 0))) {
-				WinKeyHook_isActive = true;
-			} else {
-				Con_Printf("Failed to install winkey hook.\n");
-				Con_Printf("Microsoft Windows NT 4.0, 2000 or XP is required.\n");
-				return; // true;
-			}
-		}
-	} else {
-		if (WinKeyHook_isActive) {
-			UnhookWindowsHookEx(WinKeyHook);
-			WinKeyHook_isActive = false;
-		}
-	}
-	return; // false;
-}
-
-LRESULT CALLBACK LLWinKeyHook(int Code, WPARAM wParam, LPARAM lParam) {
-	PKBDLLHOOKSTRUCT p;
-
-	p = (PKBDLLHOOKSTRUCT) lParam;
-
-//	Baker 3.99r: we aren't allowing these to be bound, at least now right now
-	if (ActiveApp) {
-		switch(p->vkCode) {
-			case VK_LWIN: /*Key_Event (K_LWIN, !(p->flags & LLKHF_UP));*/ return 1;
-			case VK_RWIN: /*Key_Event (K_RWIN, !(p->flags & LLKHF_UP));*/ return 1;
-			case VK_APPS: /*Key_Event (K_MENU, !(p->flags & LLKHF_UP));*/ return 1;
-		}
-	}
-
-	return CallNextHookEx(NULL, Code, wParam, lParam);
-}
-
-#endif
 
 
-int Sys_SetPriority(int priority) {
+int Sys_SetPriority(int priority) 
+{
     DWORD p;
 
-	switch (priority) {
+	switch (priority) 
+	{
 		case 0:	p = IDLE_PRIORITY_CLASS; break;
 		case 1:	p = NORMAL_PRIORITY_CLASS; break;
 		case 2:	p = HIGH_PRIORITY_CLASS; break;
@@ -198,24 +153,31 @@ int Sys_SetPriority(int priority) {
 	return SetPriorityClass(GetCurrentProcess(), p);
 }
 
-void OnChange_sys_highpriority (void) /*(cvar_t *var, char *s)*/ {
+void OnChange_sys_highpriority (void) /*(cvar_t *var, char *s)*/ 
+{
 	int ok, q_priority;
 	char *desc;
 	float priority;
 
 	priority = (int)sys_highpriority.value; //atof(s);
-	if (priority == 1) {
+	if (priority == 1) 
+	{
 		q_priority = 2;
 		desc = "high";
-	} else if (priority == -1) {
+	}
+	else if (priority == -1) 
+	{
 		q_priority = 0;
 		desc = "low";
-	} else {
+	} 
+	else 
+	{
 		q_priority = 1;
 		desc = "normal";
 	}
 
-	if (!(ok = Sys_SetPriority(q_priority))) {
+	if (!(ok = Sys_SetPriority(q_priority))) 
+	{
 		Con_Printf("Changing process priority failed\n");
 		return; // true;
 	}
@@ -401,7 +363,8 @@ void Sys_Error (char *error, ...)
 	static int	in_sys_error2 = 0;
 	static int	in_sys_error3 = 0;
 
-	if (!in_sys_error3) {
+	if (!in_sys_error3) 
+	{
 		in_sys_error3 = 1;
 	}
 
@@ -504,10 +467,7 @@ void Sys_Quit (void)
 
 	if (isDedicated)
 		FreeConsole ();
-#ifndef WITHOUT_WINKEYHOOK
-	if (WinKeyHook_isActive)
-		UnhookWindowsHookEx(WinKeyHook);
-#endif
+
 	// shut down QHOST hooks if necessary
 	DeinitConProc ();
 
@@ -697,7 +657,8 @@ void SleepUntilInput (int time)
 
 #define	SYS_CLIPBOARD_SIZE		256
 
-char *Sys_GetClipboardData (void) {
+char *Sys_GetClipboardData (void) 
+{
 	HANDLE		th;
 	char		*clipText, *s, *t;
 	static	char	clipboard[SYS_CLIPBOARD_SIZE];
@@ -705,12 +666,14 @@ char *Sys_GetClipboardData (void) {
 	if (!OpenClipboard(NULL))
 		return NULL;
 
-	if (!(th = GetClipboardData(CF_TEXT))) {
+	if (!(th = GetClipboardData(CF_TEXT))) 
+	{
 		CloseClipboard ();
 		return NULL;
 	}
 
-	if (!(clipText = GlobalLock(th))) {
+	if (!(clipText = GlobalLock(th))) 
+	{
 		CloseClipboard ();
 		return NULL;
 	}
@@ -728,24 +691,28 @@ char *Sys_GetClipboardData (void) {
 }
 
 // copies given text to clipboard
-void Sys_CopyToClipboard(char *text) {
+void Sys_CopyToClipboard(char *text) 
+{
 	char *clipText;
 	HGLOBAL hglbCopy;
 
 	if (!OpenClipboard(NULL))
 		return;
 
-	if (!EmptyClipboard()) {
+	if (!EmptyClipboard()) 
+	{
 		CloseClipboard();
 		return;
 	}
 
-	if (!(hglbCopy = GlobalAlloc(GMEM_DDESHARE, strlen(text) + 1))) {
+	if (!(hglbCopy = GlobalAlloc(GMEM_DDESHARE, strlen(text) + 1))) 
+	{
 		CloseClipboard();
 		return;
 	}
 
-	if (!(clipText = GlobalLock(hglbCopy))) {
+	if (!(clipText = GlobalLock(hglbCopy))) 
+	{
 		CloseClipboard();
 		return;
 	}
@@ -808,7 +775,8 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 //	sprintf(exeline, "%s %%1", com_basedir);
 	SNPrintf(exeline, sizeof(exeline), "%s \"%%1\"", com_basedir);
 #if 0
-	if (COM_CheckParm ("-noassocdem") == 0) {
+	if (COM_CheckParm ("-noassocdem") == 0) 
+	{
 		void CreateSetKeyExtension(void);
 		void CreateSetKeyDescription(void);
 		void CreateSetKeyCommandLine(const char*  exeline);
@@ -831,8 +799,6 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 			}
 
 	SNPrintf (cwd, sizeof(cwd), "%s", com_basedir);
-
-
 
 	if (fpak0 = fopen(fpaktest, "rb"))  
 	{
@@ -1047,12 +1013,15 @@ void Sys_HomePage_f(void)
 
 char q_system_string[1024] = "";
 
-void Sys_InfoPrint_f(void) {
+void Sys_InfoPrint_f(void) 
+{
 	Con_Printf ("%s\n", q_system_string);
 }
 
-void Sys_Sleep_f (void) {
-	if (Cmd_Argc() == 1) {
+void Sys_Sleep_f (void) 
+{
+	if (Cmd_Argc() == 1) 
+	{
 		Con_Printf ("Usage: %s <milliseconds> : let system sleep and yield cpu\n", Cmd_Argv(0));
 		return;
 	}
@@ -1081,7 +1050,6 @@ void Sys_InfoInit(void)
 	HKEY            hKey;
 	OSVERSIONINFO	vinfo;
 	vinfo.dwOSVersionInfoSize = sizeof(vinfo);
-
 
 	if (!GetVersionEx(&vinfo))
 		Sys_Error ("Couldn't get OS info");
@@ -1117,7 +1085,8 @@ void Sys_InfoInit(void)
 	          "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
 	          &hKey);
 
-	if (ret == ERROR_SUCCESS) {
+	if (ret == ERROR_SUCCESS) 
+	{
 		DWORD type;
 		byte  data[1024];
 		DWORD datasize;
@@ -1135,7 +1104,7 @@ void Sys_InfoInit(void)
 			SYSINFO_MHz = *((DWORD *)data);
 
 		datasize = 1024;
-		ret = RegQueryValueEx(
+		ret = RegQueryValueEx (
 		          hKey,
 		          "ProcessorNameString",
 		          NULL,
@@ -1160,18 +1129,20 @@ void Sys_InfoInit(void)
 
 	SNPrintf (q_system_string, sizeof(q_system_string), "%dMB", (int)(SYSINFO_memory / 1024. / 1024. + .5));
 
-
-
-	if (SYSINFO_processor_description) {
+	if (SYSINFO_processor_description) 
+	{
 		char	myprocessor[256];
 		SNPrintf(myprocessor, 256, (const char*)strltrim(SYSINFO_processor_description));
 		strlcat (q_system_string, ", ", sizeof(q_system_string));
 		strlcat (q_system_string, myprocessor, sizeof(q_system_string));
 	}
-	if (SYSINFO_MHz) {
+	
+	if (SYSINFO_MHz) 
+	{
 		strlcat (q_system_string, va(" %dMHz", SYSINFO_MHz), sizeof(q_system_string));
 	}
-	if (SYSINFO_3D_description) {
+	if (SYSINFO_3D_description) 
+	{
 		strlcat (q_system_string, ", ", sizeof(q_system_string));
 		strlcat (q_system_string, SYSINFO_3D_description, sizeof(q_system_string));
 	}
@@ -1181,7 +1152,7 @@ void Sys_InfoInit(void)
 	Cmd_AddCommand ("openquakefolder", Sys_OpenQuakeFolder_f);
 	Cmd_AddCommand ("sysinfo", Sys_InfoPrint_f);
 	Cmd_AddCommand ("sleep", Sys_Sleep_f);
-	Cvar_RegisterVariable(&sys_disableWinKeys, OnChange_sys_disableWinKeys);
+
 	Cvar_RegisterVariable(&sys_highpriority, OnChange_sys_highpriority);
 }
 

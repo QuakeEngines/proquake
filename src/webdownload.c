@@ -251,7 +251,7 @@ new_file:
 	code = curl_easy_perform( curl );
 
 	if (progress != NULL)
-		Con_Printf( "Downloading %s from %s\n", name, url );
+		Con_DPrintf( "Downloading %s from %s\n", name, url );
 
 	if( code != CURLE_OK )
 	{

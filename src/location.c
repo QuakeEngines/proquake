@@ -21,29 +21,21 @@ LOC_LoadLocations
 Load the locations for the current level from the location file
 ===============
 */
-void LOC_LoadLocations (void)
+qboolean LOC_LoadLocations (char* loc_file_name)
 {
 	FILE *f;
-	char *mapname, *ch;
-	char filename[64] = "locs/";
+	char *ch;
 	char buff[256];
 	location_t *l;
 	int i;
 	float temp;
 
 	numlocations = 0;
-	mapname = cl.worldmodel->name;
-	if (strncasecmp(mapname, "maps/", 5))
-		return;
-	strcpy(filename + 5, mapname + 5);
-	ch = strrchr(filename, '.');
-	if (ch)
-		*ch = 0;
-	strlcat (filename, ".loc", sizeof(filename));
 
-	COM_FOpenFile(filename, &f);
+
+	COM_FOpenFile(loc_file_name, &f);
 	if (!f)
-		return;
+		return false;
 
 	l = locations;
 	while (!feof(f) && numlocations < MAX_LOCATIONS)
@@ -80,6 +72,7 @@ void LOC_LoadLocations (void)
 	}
 
 	fclose(f);
+	return true;
 }
 
 /*

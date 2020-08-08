@@ -26,12 +26,9 @@ qsocket_t	*net_activeSockets = NULL;
 qsocket_t	*net_freeSockets = NULL;
 int			net_numsockets = 0;
 
-qboolean	serialAvailable = false;
+//qboolean	serialAvailable = false;
 qboolean	ipxAvailable = false;
 qboolean	tcpipAvailable = false;
-#ifdef PSP_NETWORKING_CODE
-qboolean	tcpipAdhoc = false;
-#endif
 
 int			net_hostport;
 int			DEFAULTnet_hostport = 26000;
@@ -39,10 +36,12 @@ int			DEFAULTnet_hostport = 26000;
 char		my_ipx_address[NET_NAMELEN];
 char		my_tcpip_address[NET_NAMELEN];
 
+/*
 void (*GetComPortConfig) (int portNumber, int *port, int *irq, int *baud, qboolean *useModem);
 void (*SetComPortConfig) (int portNumber, int port, int irq, int baud, qboolean useModem);
 void (*GetModemConfig) (int portNumber, char *dialType, char *clear, char *init, char *hangup);
 void (*SetModemConfig) (int portNumber, char *dialType, char *clear, char *init, char *hangup);
+*/
 
 static qboolean	listening = false;
 
@@ -79,15 +78,15 @@ char		rcon_buff[RCON_BUFF_SIZE];
 sizebuf_t	rcon_message = {false, false, rcon_buff, RCON_BUFF_SIZE, 0};
 qboolean	rcon_active = false;
 
-qboolean	configRestored = false;
-cvar_t	config_com_port = {"_config_com_port", "0x3f8", true};
+//qboolean	configRestored = false;
+/*cvar_t	config_com_port = {"_config_com_port", "0x3f8", true};
 cvar_t	config_com_irq = {"_config_com_irq", "4", true};
 cvar_t	config_com_baud = {"_config_com_baud", "57600", true};
 cvar_t	config_com_modem = {"_config_com_modem", "1", true};
 cvar_t	config_modem_dialtype = {"_config_modem_dialtype", "T", true};
 cvar_t	config_modem_clear = {"_config_modem_clear", "ATZ", true};
 cvar_t	config_modem_init = {"_config_modem_init", "", true};
-cvar_t	config_modem_hangup = {"_config_modem_hangup", "AT H", true};
+cvar_t	config_modem_hangup = {"_config_modem_hangup", "AT H", true};*/
 
 #ifdef IDGODS
 cvar_t	idgods = {"idgods", "0"};
@@ -934,14 +933,6 @@ void NET_Init (void)
 	Cvar_RegisterVariable (&pq_password, NULL);			// JPG 3.00 - password protection
 	Cvar_RegisterVariable (&rcon_password, NULL);			// JPG 3.00 - rcon password
 	Cvar_RegisterVariable (&rcon_server, NULL);			// JPG 3.00 - rcon server
-	Cvar_RegisterVariable (&config_com_port, NULL);
-	Cvar_RegisterVariable (&config_com_irq, NULL);
-	Cvar_RegisterVariable (&config_com_baud, NULL);
-	Cvar_RegisterVariable (&config_com_modem, NULL);
-	Cvar_RegisterVariable (&config_modem_dialtype, NULL);
-	Cvar_RegisterVariable (&config_modem_clear, NULL);
-	Cvar_RegisterVariable (&config_modem_init, NULL);
-	Cvar_RegisterVariable (&config_modem_hangup, NULL);
 
 #ifdef PSP_NETWORKING_CODE
 	if(!host_initialized)
@@ -1024,21 +1015,6 @@ static PollProcedure *pollProcedureList = NULL;
 void NET_Poll(void)
 {
 	PollProcedure *pp;
-	qboolean	useModem;
-
-	if (!configRestored)
-	{
-		if (serialAvailable)
-		{
-			if (config_com_modem.value != 0) // Baker 3.99: changed from == 1.0 to != 0
-				useModem = true;
-			else
-				useModem = false;
-			SetComPortConfig (0, (int)config_com_port.value, (int)config_com_irq.value, (int)config_com_baud.value, useModem);
-			SetModemConfig (0, config_modem_dialtype.string, config_modem_clear.string, config_modem_init.string, config_modem_hangup.string);
-		}
-		configRestored = true;
-	}
 
 	SetNetTime();
 

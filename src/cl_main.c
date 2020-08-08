@@ -63,6 +63,7 @@ cvar_t	pq_moveup = {"pq_moveup", "0", true};
 
 // JPG 3.00 - added this by request
 cvar_t	pq_smoothcam = {"pq_smoothcam", "1", true};
+
 #ifdef HTTP_DOWNLOAD
 cvar_t	cl_web_download		= {"cl_web_download", "1", true};
 cvar_t	cl_web_download_url	= {"cl_web_download_url", "http://downloads.quake-1.com/", true};
@@ -136,7 +137,7 @@ void CL_Disconnect (void)
 	S_StopAllSounds (true);
 
 // CDAudio_Stop
-	CDAudio_Stop();
+//	CDAudio_Stop();
 
 
 // bring the console down and fade the colors back to normal

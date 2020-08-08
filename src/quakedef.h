@@ -24,9 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	QUAKE_GAME					// as opposed to utilities
 
 #define ENGINE_NAME "ProQuake"
-#define ENGINE_VERSION 	"4.90 Beta"
+#define ENGINE_VERSION 	"4.91 Beta"
 #define ENGINE_HOMEPAGE_URL "http:////www.quakeone.com//proquake"
-#define PROQUAKE_SERIES_VERSION		4.90
+#define PROQUAKE_SERIES_VERSION		4.91
 #include "version.h"
 
 //define	PARANOID				// speed sapping error checking
@@ -209,8 +209,6 @@ typedef struct
 #include "view.h"
 #include "menu.h"
 #include "crc.h"
-#include "cdaudio.h"
-
 
 #include "glquake.h"
 

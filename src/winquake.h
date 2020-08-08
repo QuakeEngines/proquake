@@ -58,7 +58,7 @@ void S_BlockSound (void);
 void S_UnblockSound (void);
 
 // CD
-LONG CDAudio_MessageHandler (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+//LONG CDAudio_MessageHandler (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 // Handles
 extern	HINSTANCE	global_hInstance;

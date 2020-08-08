@@ -41,4 +41,7 @@ void IN_MouseWheel (void);
 extern	cvar_t	freelook;   // Baker 3.60 - Freelook cvar support
 extern cvar_t	m_accel;
 
+void IN_Keyboard_Acquire (void);
+void IN_Keyboard_Unacquire (void);
+
 #define mlook_active	(freelook.value || (in_mlook.state & 1))   // Baker 3.60 - Freelook cvar support from JoeQuake

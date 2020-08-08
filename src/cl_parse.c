@@ -65,23 +65,6 @@ char *svc_strings[] =
 	"svc_cdtrack",			// [byte] track [byte] looptrack
 	"svc_sellscreen",
 	"svc_cutscene",
-	"svc_showlmp",		// [string] iconlabel [string] lmpfile [byte] x [byte] y
-	"svc_hidelmp",		// [string] iconlabel
-	"svc_skybox",		// [string] skyname
-	"?", // 38
-	"?", // 39
-	"?", // 40
-	"?", // 41
-	"?", // 42
-	"?", // 43
-	"?", // 44
-	"?", // 45
-	"?", // 46
-	"?", // 47
-	"?", // 48
-	"?", // 49
-	"?", // 50
-	"svc_fog"		// [byte] enable <optional past this point, only included if enable is true> [float] density [byte] red [byte] green [byte] blue
 };
 
 
@@ -218,6 +201,8 @@ static int CL_WebDownloadProgress( double percent )
 	static double time, oldtime, newtime;
 
 	cls.download.percent = percent;
+	
+	if (sv.active || cls.demoplayback)
 		CL_KeepaliveMessage();
 
 	newtime = Sys_FloatTime ();
@@ -235,6 +220,69 @@ void CL_NewMap (void)
 {
 
 }
+
+qboolean Download_Attempt (const char* file_to_download)
+{	
+	extern cvar_t cl_web_download;
+	extern cvar_t cl_web_download_url;
+	extern int Web_Get( const char *url, const char *referer, const char *name, int resume, int max_downloading_time, int timeout, int ( *_progress )(double) );
+	
+	char local_tempname[MAX_OSPATH];
+	char remote_url[1024];
+
+	if (!cl_web_download.value || cl_web_download_url.string == NULL)
+		return false;
+
+	// Local temp file for download; make the path in case it doesn't exist
+	SNPrintf (local_tempname, sizeof(local_tempname), "%s/%s.tmp", com_gamedir, file_to_download);
+	COM_CreatePath (local_tempname);
+
+	// Remote URL for download
+	SNPrintf (remote_url, sizeof(remote_url), "%s%s", cl_web_download_url.string, file_to_download);
+
+	Con_Printf ("Web downloading: %s (%s)\n", file_to_download, cl_web_download_url.string);
+
+	cls.download.web = true;
+	cls.download.disconnect = false;
+	cls.download.percent = 0.0;
+
+	SCR_EndLoadingPlaque ();
+
+	{
+		// let libCURL do it's magic!!
+		qboolean success = Web_Get(remote_url, NULL, local_tempname, false, 600, 30, CL_WebDownloadProgress);
+		cls.download.web = false;
+
+		if (success)
+		{
+			char download_finalname[MAX_OSPATH];
+			SNPrintf (download_finalname, sizeof(download_finalname), "%s/%s", com_gamedir, file_to_download);
+
+			//Rename the .tmp file to the final precache filename
+//			Con_Printf("Web download successful: %s\n", file_to_download);
+			rename (local_tempname, download_finalname);
+
+			CL_KeepaliveMessage ();
+
+			if (cls.download.disconnect) // if the user type disconnect in the middle of the download
+			{
+				cls.download.disconnect = false;
+				CL_Disconnect_f();
+			}
+		
+			return true;
+		}
+		else
+		{
+			remove (local_tempname);
+			Con_Printf( "Web download of %s failed\n", local_tempname );
+			CL_KeepaliveMessage ();
+			return false;
+		}
+	}
+
+}
+
 /*
 ==================
 CL_ParseServerInfo
@@ -246,12 +294,6 @@ static void CL_ParseServerInfo (void)
 	int		i, nummodels, numsounds;
 	char	model_precache[MAX_MODELS][MAX_QPATH];
 	char	sound_precache[MAX_SOUNDS][MAX_QPATH];
-
-#ifdef HTTP_DOWNLOAD
-	extern cvar_t cl_web_download;
-	extern cvar_t cl_web_download_url;
-	extern int Web_Get( const char *url, const char *referer, const char *name, int resume, int max_downloading_time, int timeout, int ( *_progress )(double) );
-#endif
 
 	Con_DPrintf ("Serverinfo packet received.\n");
 
@@ -337,86 +379,18 @@ static void CL_ParseServerInfo (void)
 		cl.model_precache[i] = Mod_ForName (model_precache[i], false);
 		if (cl.model_precache[i] == NULL)
 		{
-#ifdef HTTP_DOWNLOAD
-			if (!cls.demoplayback && cl_web_download.value && cl_web_download_url.string)
+// download start
+			qboolean download_try_worked = cls.demoplayback || sv.active ? false : Download_Attempt (model_precache[i] );
+				   
+			if (download_try_worked)
 			{
-				char url[1024];
-				qboolean success = false;
-				char download_tempname[MAX_OSPATH];
-				char download_finalname[MAX_OSPATH];
-				extern char server_name[MAX_QPATH];
-				extern int net_hostport;
-
-				//Create the FULL path where the file should be written
-				SNPrintf (download_tempname, sizeof(download_tempname), "%s/%s.tmp", com_gamedir, model_precache[i]);
-
-				COM_CreatePath (download_tempname); // COM_CreatePath drills down.  We don't need to waste time purifying the filename to just a path.
-				Con_Printf( "Web downloading: %s from %s%s\n", model_precache[i], cl_web_download_url.string, model_precache[i]);
-
-				//assign the url + path + file + extension we want
-				SNPrintf( url, sizeof( url ), "%s%s", cl_web_download_url.string, model_precache[i]);
-
-				cls.download.web = true;
-				cls.download.disconnect = false;
-				cls.download.percent = 0.0;
-
-				SCR_EndLoadingPlaque ();
-
-				//let libCURL do it's magic!!
-				success = Web_Get(url, NULL, download_tempname, false, 600, 30, CL_WebDownloadProgress);
-
-				cls.download.web = false;
-
-
-#if 0
-				if (success)
-				{
-					Con_Printf("Web download successful: %s\n", download_tempname);
-					//Rename the .tmp file to the final precache filename
-					SNPrintf (download_finalname, sizeof(download_finalname), "%s/%s", com_gamedir, model_precache[i]);
-					rename (download_tempname, download_finalname);
-
-#if 0
-					Cbuf_AddText (va("connect %s:%u\n",server_name,net_hostport));//reconnect after each success
-					return;
-#endif
-
-
-				}
-#else
-				if (success)
-				{
-				   Con_Printf("Web download successful: %s\n", download_tempname);
-				   //Rename the .tmp file to the final precache filename
-				   SNPrintf (download_finalname, sizeof(download_finalname), "%s/%s", com_gamedir, model_precache[i]);
-				   rename (download_tempname, download_finalname);
-
-				   CL_KeepaliveMessage ();
-				   i--; // Subtract 1 so we try this model again in next iteration
-				   continue;  // Bail on loop and resume
-				}
-#endif
-				else
-				{
-					remove (download_tempname);
-					Con_Printf( "Web download of %s failed\n", download_tempname );
-					return;
-				}
-
-				if( cls.download.disconnect )//if the user type disconnect in the middle of the download
-				{
-					cls.download.disconnect = false;
-					CL_Disconnect_f();
-					return;
-				}
-			} 
-			else
-#endif
-			{
-				Con_Printf("Model %s not found\n", model_precache[i]);
-				//don't disconnect, let them sit in console and ask for help.
-				return;
+				i--; // Subtract 1 so we try this model again in next iteration
+				continue;  // Bail on loop and resume
 			}
+
+			Con_Printf ("Model %s not found\n", model_precache[i]);
+			
+			return;  //don't disconnect, let them sit in console and ask for help.
 		}
 		CL_KeepaliveMessage ();
 	}
@@ -424,7 +398,17 @@ static void CL_ParseServerInfo (void)
 	S_BeginPrecaching ();
 	for (i=1 ; i<numsounds ; i++)
 	{
-		cl.sound_precache[i] = S_PrecacheSound (sound_precache[i]);
+		qboolean precached_worked = true;
+		cl.sound_precache[i] = S_PrecacheSound (sound_precache[i], &precached_worked);
+		if (precached_worked == false)
+		{
+// download start
+			qboolean download_try_worked = cls.demoplayback || sv.active ? false : Download_Attempt (va ("sound/%s", sound_precache[i]) ) ;
+				   
+			if (download_try_worked)
+				S_PrecacheSound_Again (cl.sound_precache[i]);
+		
+		}
 		CL_KeepaliveMessage ();
 	}
 	S_EndPrecaching ();
@@ -432,7 +416,24 @@ static void CL_ParseServerInfo (void)
 // local state
 	cl_entities[0].model = cl.worldmodel = cl.model_precache[1];
 
-	LOC_LoadLocations();	// JPG - read in the location data for the new map
+	
+	{
+		char mapname[MAX_QPATH];
+		char locs_file_name[MAX_QPATH];
+		
+		COM_StripExtension (model_precache[1], mapname);
+		SNPrintf (locs_file_name, sizeof(locs_file_name), "locs/%s.loc", COM_SkipPath(mapname) );
+		
+		if (LOC_LoadLocations(locs_file_name) == false && cls.demoplayback == false && sv.active == false)
+		{
+			if (Download_Attempt (locs_file_name) )
+				LOC_LoadLocations(locs_file_name);
+
+		}
+
+	}
+
+	
 	COM_StripExtension (COM_SkipPath(model_precache[1]), tempname);
 
 	R_NewMap ();
@@ -589,9 +590,9 @@ static void CL_ParseUpdate (int bits)
 	model_t		*model;
 	qboolean	forcelink;
 	entity_t	*ent;
-#ifdef GL_QUAKE_SKIN_METHOD
+//#ifdef GL_QUAKE_SKIN_METHOD
 	int			skin;
-#endif
+//#endif
 
 	if (cls.signon == SIGNONS - 1)
 	{	// first update is the final signon stage
@@ -645,10 +646,10 @@ if (bits&(1<<i))
 		if (!(bits & U_SKIN)) ent->skinnum = 0;
 #endif
 
-#ifdef GL_QUAKE_SKIN_METHOD
+//#ifdef GL_QUAKE_SKIN_METHOD
 		if (num > 0 && num <= cl.maxclients)
 			R_TranslatePlayerSkin (num - 1);
-#endif
+//#endif
 	}
 
 	ent->frame = (bits & U_FRAME) ? MSG_ReadByte() : ent->baseline.frame;
@@ -1368,11 +1369,12 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_setpause:
-			if ((cl.paused = MSG_ReadByte ()))
-				CDAudio_Pause ();
 
-			else
-				CDAudio_Resume ();
+			cl.paused = MSG_ReadByte ();
+//				CDAudio_Pause ();
+//
+//			else
+//				CDAudio_Resume ();
 
 			break;
 
@@ -1413,10 +1415,11 @@ void CL_ParseServerMessage (void)
 		case svc_cdtrack:
 			cl.cdtrack = MSG_ReadByte ();
 			cl.looptrack = MSG_ReadByte ();
+/*
 			if ( (cls.demoplayback || cls.demorecording) && (cls.forcetrack != -1) )
 				CDAudio_Play ((byte)cls.forcetrack, true);
 			else
-				CDAudio_Play ((byte)cl.cdtrack, true);
+				CDAudio_Play ((byte)cl.cdtrack, true);*/
 			break;
 
 		case svc_intermission:

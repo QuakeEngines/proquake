@@ -297,7 +297,7 @@ typedef struct {
 	int			numskins;
 	int			skinwidth;
 	int			skinheight;
-	int			numverts;
+	int			numvertsperframe;
 	int			numtris;
 	int			numframes;
 	synctype_t	synctype;
@@ -316,10 +316,6 @@ typedef struct {
 #define	MAXALIASVERTS	4096
 #define	MAXALIASFRAMES	256
 #define	MAXALIASTRIS	4096
-extern	aliashdr_t	*pheader;
-extern	stvert_t	stverts[MAXALIASVERTS];
-extern	mtriangle_t	triangles[MAXALIASTRIS];
-extern	trivertx_t	*poseverts[MAXALIASFRAMES];
 
 //===================================================================
 

@@ -82,6 +82,7 @@ cvar_t	r_mirroralpha = {"r_mirroralpha","1"};
 cvar_t	r_wateralpha = {"r_wateralpha","1",true};
 cvar_t	r_dynamic = {"r_dynamic","1"};
 cvar_t	r_novis = {"r_novis","0"};
+cvar_t	r_colored_dead_bodies = {"r_colored_dead_bodies","1"};
 cvar_t  r_interpolate_animation = {"r_interpolate_animation", "0", true};
 cvar_t  r_interpolate_transform = {"r_interpolate_transform", "0", true};
 cvar_t  r_interpolate_weapon = {"r_interpolate_weapon", "0", true};
@@ -678,28 +679,128 @@ void R_SetupAliasBlendedFrame (int frame, aliashdr_t *paliashdr, entity_t* e)
 
 /*
 =================
+R_CullBox -- replaced with new function from lordhavoc
+
+Returns true if the box is completely outside the frustum
+=================
+*/
+qboolean R_CullBoxA (const vec3_t emins, const vec3_t emaxs)
+{
+	int i;
+	mplane_t *p;
+	for (i = 0;i < 4;i++)
+	{
+		p = frustum + i;
+		switch(p->signbits)
+		{
+		default:
+		case 0:
+			if (p->normal[0]*emaxs[0] + p->normal[1]*emaxs[1] + p->normal[2]*emaxs[2] < p->dist)
+				return true;
+			break;
+		case 1:
+			if (p->normal[0]*emins[0] + p->normal[1]*emaxs[1] + p->normal[2]*emaxs[2] < p->dist)
+				return true;
+			break;
+		case 2:
+			if (p->normal[0]*emaxs[0] + p->normal[1]*emins[1] + p->normal[2]*emaxs[2] < p->dist)
+				return true;
+			break;
+		case 3:
+			if (p->normal[0]*emins[0] + p->normal[1]*emins[1] + p->normal[2]*emaxs[2] < p->dist)
+				return true;
+			break;
+		case 4:
+			if (p->normal[0]*emaxs[0] + p->normal[1]*emaxs[1] + p->normal[2]*emins[2] < p->dist)
+				return true;
+			break;
+		case 5:
+			if (p->normal[0]*emins[0] + p->normal[1]*emaxs[1] + p->normal[2]*emins[2] < p->dist)
+				return true;
+			break;
+		case 6:
+			if (p->normal[0]*emaxs[0] + p->normal[1]*emins[1] + p->normal[2]*emins[2] < p->dist)
+				return true;
+			break;
+		case 7:
+			if (p->normal[0]*emins[0] + p->normal[1]*emins[1] + p->normal[2]*emins[2] < p->dist)
+				return true;
+			break;
+		}
+	}
+	return false;
+}
+
+/*
+=================
+R_CullSphere
+
+Returns true if the sphere is completely outside the frustum
+=================
+*/
+#define PlaneDiff(point, plane) (((plane)->type < 3 ? (point)[(plane)->type] : DotProduct((point), (plane)->normal)) - (plane)->dist)
+qboolean R_CullSphere (const vec3_t centre, const float radius)
+{
+	int		i;
+	mplane_t	*p;
+
+	for (i=0, p=frustum ; i<4 ; i++, p++)
+	{
+		if (PlaneDiff(centre, p) <= -radius)
+			return true;
+	}
+
+	return false;
+}
+
+qboolean R_CullForEntity (const entity_t *ent/*, vec3_t returned_center*/)
+{
+	vec3_t		mins, maxs;
+
+	if (ent->angles[0] || ent->angles[1] || ent->angles[2])
+		return R_CullSphere(ent->origin, ent->model->radius);		// Angles turned; do sphere cull test
+
+	// Angles all 0; do box cull test
+
+	VectorAdd (ent->origin, ent->model->mins, mins);			// Add entity origin and model mins to calc mins
+	VectorAdd (ent->origin, ent->model->maxs, maxs);			// Add entity origin and model maxs to calc maxs
+
+//	if (returned_center)
+//		LerpVector (mins, maxs, 0.5, returned_center);
+	return R_CullBoxA (mins, maxs);
+
+}
+
+
+/*
+=================
 R_DrawAliasModel
 =================
 */
 void R_DrawAliasModel (entity_t *ent)
 {
-	int			client_no;
+	int			client_no = currententity - cl_entities;
+	qboolean	isPlayer = (client_no >= 1 && client_no <= cl.maxclients) ? true : false;
 	int			lnum;
 	vec3_t		dist;
 	float		add;
-	model_t		*clmodel;
+	model_t		*clmodel = currententity->model;
 	vec3_t		mins, maxs;
 	aliashdr_t	*paliashdr;
 	float		an;
 	int			anim;
 
 	qboolean	torch = false; // Flags is this model is a torch
-	clmodel = currententity->model;
+
+
 
 	VectorAdd (currententity->origin, clmodel->mins, mins);
 	VectorAdd (currententity->origin, clmodel->maxs, maxs);
 
-	if (R_CullBox (mins, maxs))
+//	if (R_CullBox (mins, maxs))
+//		return;
+
+	if (R_CullForEntity (ent))
 		return;
 
 	VectorCopy (currententity->origin, r_entorigin);
@@ -735,8 +836,8 @@ void R_DrawAliasModel (entity_t *ent)
 		shadelight = 192 - ambientlight;
 
 	// ZOID: never allow players to go totally black
-	client_no = currententity - cl_entities;
-	if (client_no >= 1 && client_no<=cl.maxclients /* && !strcmp (currententity->model->name, "progs/player.mdl") */)
+	//client_no = currententity - cl_entities;
+	if (isPlayer /*client_no >= 1 && client_no<=cl.maxclients /* && !strcmp (currententity->model->name, "progs/player.mdl") */)
 		if (ambientlight < 8)
 			ambientlight = shadelight = 8;
 
@@ -785,17 +886,16 @@ void R_DrawAliasModel (entity_t *ent)
 	}
 
 	anim = (int)(cl.time*10) & 3;
-    GL_Bind(paliashdr->gl_texturenum[currententity->skinnum][anim]);
+    
 
 	// we can't dynamically colormap textures, so they are cached
 	// seperately for the players.  Heads are just uncolored.
-	if (1 <= currententity->colormap && currententity->colormap <= MAX_SCOREBOARD && !gl_nocolors.value) 
-	{
-		if (currententity->model->flags & MOD_PLAYER)
-//		client_no = currententity - cl_entities;
-//		if (client_no >= 1 && client_no<=cl.maxclients /* && !strcmp (currententity->model->name, "progs/player.mdl") */)
-			GL_Bind(playertextures - 1 + currententity->colormap /*client_no*/);
-	}
+	if (1 <= currententity->colormap && currententity->colormap <= MAX_SCOREBOARD &&	// color map is valid 
+		!gl_nocolors.value &&															// No colors isn't on
+		(currententity->model->flags & MOD_PLAYER) &&									// And is a player model
+		(r_colored_dead_bodies.value || isPlayer ) )										// Either we want colored dead bodies or it is a player
+				GL_Bind (playertextures - 1 + currententity->colormap /*client_no*/);
+	else GL_Bind (paliashdr->gl_texturenum[currententity->skinnum][anim]);
 		    
 	if (gl_smoothmodels.value)
 		glShadeModel (GL_SMOOTH);
@@ -1377,6 +1477,7 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_wateralpha, NULL);
 	Cvar_RegisterVariable (&r_dynamic, NULL);
 	Cvar_RegisterVariable (&r_novis, NULL);
+	Cvar_RegisterVariable (&r_colored_dead_bodies, NULL);
 	Cvar_RegisterVariable (&r_speeds, NULL);
 	Cvar_RegisterVariable (&r_waterwarp, NULL);
 	Cvar_RegisterVariable (&r_farclip, NULL);

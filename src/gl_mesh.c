@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -21,6 +21,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
+extern	stvert_t	stverts[MAXALIASVERTS];
+extern	mtriangle_t	triangles[MAXALIASTRIS];
+extern	trivertx_t	*poseverts[MAXALIASFRAMES];
+
 /*
 =================================================================
 
@@ -29,33 +33,31 @@ ALIAS MODEL DISPLAY LIST GENERATION
 =================================================================
 */
 
-//model_t		*aliasmodel;
-//aliashdr_t	*paliashdr;
 
-qboolean	used[8192];
+static qboolean	used[8192];
 
 // the command list holds counts and s/t values that are valid for
 // every frame
-int		commands[8192];
-int		numcommands;
+static int		commands[8192];
+static int		numcommands;
 
 // all frames will have their vertexes rearranged and expanded
 // so they are in the order expected by the command list
-int		vertexorder[8192];
-int		numorder;
+static int		vertexorder[8192];
+static int		numorder;
 
-int		allverts, alltris;
+static int		allverts, alltris;
 
-int		stripverts[128];
-int		striptris[128];
-int		stripcount;
+static int		stripverts[128];
+static int		striptris[128];
+static int		stripcount;
 
 /*
 ================
 StripLength
 ================
 */
-int	StripLength (int starttri, int startv)
+static int StripLength (const aliashdr_t *paliashdr_strip, int starttri, int startv)
 {
 	int		m1, m2, j, k;
 	mtriangle_t	*last, *check;
@@ -76,7 +78,7 @@ int	StripLength (int starttri, int startv)
 
 	// look for a matching triangle
 nexttri:
-	for (j=starttri+1, check=&triangles[starttri+1] ; j<pheader->numtris ; j++, check++)
+	for (j=starttri+1, check=&triangles[starttri+1] ; j<paliashdr_strip->numtris ; j++, check++)
 	{
 		if (check->facesfront != last->facesfront)
 			continue;
@@ -111,7 +113,7 @@ nexttri:
 
 done:
 	// clear the temp used flags
-	for (j=starttri+1 ; j<pheader->numtris ; j++)
+	for (j=starttri+1 ; j<paliashdr_strip->numtris ; j++)
 		if (used[j] == 2)
 			used[j] = 0;
 
@@ -123,7 +125,7 @@ done:
 FanLength
 ===========
 */
-int	FanLength (int starttri, int startv)
+static int FanLength (const aliashdr_t *paliashdr_fan, int starttri, int startv)
 {
 	int		m1, m2, j, k;
 	mtriangle_t	*last, *check;
@@ -144,7 +146,7 @@ int	FanLength (int starttri, int startv)
 
 	// look for a matching triangle
 nexttri:
-	for (j=starttri+1, check=&triangles[starttri+1] ; j<pheader->numtris ; j++, check++)
+	for (j=starttri+1, check=&triangles[starttri+1] ; j<paliashdr_fan->numtris ; j++, check++)
 	{
 		if (check->facesfront != last->facesfront)
 			continue;
@@ -176,7 +178,7 @@ nexttri:
 
 done:
 	// clear the temp used flags
-	for (j=starttri+1 ; j<pheader->numtris ; j++)
+	for (j=starttri+1 ; j<paliashdr_fan->numtris ; j++)
 		if (used[j] == 2)
 			used[j] = 0;
 
@@ -190,7 +192,7 @@ BuildTris
 Generate a list of trifans or strips for the model, which holds for all frames
 ================
 */
-void BuildTris (void)
+static void BuildTris (const aliashdr_t *paliashdr_tris)
 {
 	int		i, j, k, startv, len, bestlen, besttype, type, bestverts[1024], besttris[1024];
 	float		s, t;
@@ -199,7 +201,7 @@ void BuildTris (void)
 	numorder = 0;
 	numcommands = 0;
 	memset (used, 0, sizeof(used));
-	for (i=0 ; i<pheader->numtris ; i++)
+	for (i=0 ; i<paliashdr_tris->numtris ; i++)
 	{
 		// pick an unused triangle and start the trifan
 		if (used[i])
@@ -211,7 +213,7 @@ void BuildTris (void)
 		{
 			for (startv =0 ; startv < 3 ; startv++)
 			{
-				len = (type == 1) ? StripLength (i, startv) : FanLength (i, startv);
+				len = (type == 1) ? StripLength (paliashdr_tris, i, startv) : FanLength (paliashdr_tris, i, startv);
 				if (len > bestlen)
 				{
 					besttype = type;
@@ -240,9 +242,9 @@ void BuildTris (void)
 			s = stverts[k].s;
 			t = stverts[k].t;
 			if (!triangles[besttris[0]].facesfront && stverts[k].onseam)
-				s += pheader->skinwidth / 2;	// on back side
-			s = (s + 0.5) / pheader->skinwidth;
-			t = (t + 0.5) / pheader->skinheight;
+				s += paliashdr_tris->skinwidth / 2;	// on back side
+			s = (s + 0.5) / paliashdr_tris->skinwidth;
+			t = (t + 0.5) / paliashdr_tris->skinheight;
 
 			*(float *)&commands[numcommands++] = s;
 			*(float *)&commands[numcommands++] = t;
@@ -251,20 +253,21 @@ void BuildTris (void)
 
 	commands[numcommands++] = 0;		// end of list marker
 
-	Con_DPrintf ("%3i tri %3i vert %3i cmd\n", pheader->numtris, numorder, numcommands);
+	Con_DPrintf ("%3i tri %3i vert %3i cmd\n", paliashdr_tris->numtris, numorder, numcommands);
 
 	allverts += numorder;
-	alltris += pheader->numtris;
+	alltris += paliashdr_tris->numtris;
 }
 
 
-void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr) {
+void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr) 
+{
 	int		i, j, *cmds;
 	trivertx_t	*verts;
 
 	// Tonik: don't cache anything, because it seems just as fast
 	// (if not faster) to rebuild the tris instead of loading them from disk
-		BuildTris ();		// trifans or lists
+		BuildTris (paliashdr);		// trifans or lists
 
 	// save the data out
 	paliashdr->poseverts = numorder;

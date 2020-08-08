@@ -119,6 +119,7 @@ void IN_Restart(void)
 	// For now, let's just do it no matter what!
 
 	IN_Mouse_Acquire ();
+	IN_Keyboard_Acquire ();
 
 //	IN_PrintStatus("IN_Restart End");
 }
@@ -358,7 +359,8 @@ int	wheel_dn_count = 0;
 		INPUT_CASE_DIMOFS_BUTTON(6);	\
 		INPUT_CASE_DIMOFS_BUTTON(7);		\
 
-DWORD WINAPI IN_SMouseProc (void *lpParameter) {
+DWORD WINAPI IN_SMouseProc (void *lpParameter) 
+{
 	// read	mouse events and generate history tables
 	DWORD	ret;
 	while (1) {
@@ -422,7 +424,8 @@ DWORD WINAPI IN_SMouseProc (void *lpParameter) {
 	}
 }
 
-void IN_SMouseRead (int *mx, int *my) {
+void IN_SMouseRead (int *mx, int *my) 
+{
 	static	acc_x, acc_y;
 	int	x = 0, y = 0;
 	double	t1, t2, maxtime, mintime;
@@ -553,7 +556,8 @@ void IN_SMouseInit (void) {
 	SetThreadPriority (thread, THREAD_PRIORITY_HIGHEST);
 	ResumeThread (thread);
 
-	if (!flex_firstmsinit) {
+	if (!flex_firstmsinit) 
+	{
 		Cvar_RegisterVariable (&m_rate, NULL);
 		Cvar_RegisterVariable (&m_showrate, NULL);
 		flex_firstmsinit = true;
@@ -563,11 +567,13 @@ void IN_SMouseInit (void) {
 
 
 
-void Force_CenterView_f (void) {
+void Force_CenterView_f (void) 
+{
 	cl.viewangles[PITCH] = 0;
 }
 
-void IN_UpdateClipCursor (void) {
+void IN_UpdateClipCursor (void) 
+{
 // Baker: this is placing limits on the mousecursor movement
 //        and locking it to the window, right?
 
@@ -582,10 +588,12 @@ void IN_UpdateClipCursor (void) {
 		ClipCursor (&window_rect);
 }
 
-void IN_ShowMouse (void) {
+void IN_ShowMouse (void) 
+{
 //Baker notes: Harmless, 100% 3.50 equivalent
 //	Con_SafePrintf("Mouse: IN_ShowMouse 1\n");
-	if (!mouse_is_showing) {
+	if (!mouse_is_showing) 
+	{
 		ShowCursor (TRUE);
 		mouse_is_showing = true;
 	}
@@ -682,19 +690,23 @@ qboolean IN_InitDInput (void)
 	};
 
 //	Con_SafePrintf("Mouse: IN_InitDInput 1\n");
-	if (!hInstDI) {
+	if (!hInstDI) 
+	{
 		hInstDI = LoadLibrary(TEXT("dinput.dll")); // Baker 3.70D3D - Direct3D Quake change?
 
-		if (hInstDI == NULL) {
+		if (hInstDI == NULL) 
+		{
 //			Con_SafePrintf ("Couldn't load dinput.dll\n");
 			return false;
 		}
 	}
 
-	if (!pDirectInputCreate) {
+	if (!pDirectInputCreate) 
+	{
 		pDirectInputCreate = (void *)GetProcAddress(hInstDI,"DirectInputCreateA");
 
-		if (!pDirectInputCreate) {
+		if (!pDirectInputCreate) 
+		{
 //			Con_SafePrintf ("Couldn't get DI proc addr\n");
 			return false;
 		}
@@ -709,7 +721,8 @@ qboolean IN_InitDInput (void)
 // obtain an interface to the system mouse device.
 	hr = IDirectInput_CreateDevice(g_pdi, &GUID_SysMouse, &g_pMouse, NULL);
 
-	if (FAILED(hr)) {
+	if (FAILED(hr)) 
+	{
 //		Con_SafePrintf ("Couldn't open DI mouse device\n");
 		return false;
 	}
@@ -717,7 +730,8 @@ qboolean IN_InitDInput (void)
 // set the data format to "mouse format".
 	hr = IDirectInputDevice_SetDataFormat(g_pMouse, &df);
 
-	if (FAILED(hr)) {
+	if (FAILED(hr)) 
+	{
 //		Con_SafePrintf ("Couldn't set DI mouse format\n");
 		return false;
 	}
@@ -725,7 +739,8 @@ qboolean IN_InitDInput (void)
 // set the cooperativity level.
 	hr = IDirectInputDevice_SetCooperativeLevel(g_pMouse, mainwindow, DISCL_EXCLUSIVE | DISCL_FOREGROUND);
 
-	if (FAILED(hr)) {
+	if (FAILED(hr)) 
+	{
 //		Con_SafePrintf ("Couldn't set DI coop level\n");
 		return false;
 	}
@@ -735,7 +750,8 @@ qboolean IN_InitDInput (void)
 // the buffer size is a DWORD property associated with the device
 	hr = IDirectInputDevice_SetProperty(g_pMouse, DIPROP_BUFFERSIZE, &dipdw.diph);
 
-	if (FAILED(hr)) {
+	if (FAILED(hr)) 
+	{
 //		Con_SafePrintf ("Couldn't set DI buffersize\n");
 		return false;
 	}
@@ -745,7 +761,8 @@ qboolean IN_InitDInput (void)
 	return true;
 }
 
-void IN_StartupMouse (void) {
+void IN_StartupMouse (void) 
+{
 //Baker notes: this is not pq 3.50 equivalent
 //We want to decide if to use dinput based
 // on not just the commandline but also
@@ -829,7 +846,8 @@ void IN_StartupMouse (void) {
 	}
 
 }
-void IN_SetGlobals(void) {
+void IN_SetGlobals(void) 
+{
 //	mouse_buttons = mouse_oldbuttonstate = 0;
 //	flex_input_initialized = false;
 //	mx_accum      = my_accum = 0;
@@ -869,14 +887,16 @@ void IN_SetGlobals(void) {
 extern cvar_t in_keymap;
 void KEY_Keymap_f(void);
 
-void IN_Init (void) {
+void IN_Init (void) 
+{
 
 //	Con_SafePrintf("Mouse: IN_Init 1\n");
 	// Baker 3.85:  This occurs BEFORE running quake.rc and if manually restarting mouse, such as
 	//              changing m_directinput cvar, which occurs in quake.rc
 	//              So this normally happens twice!
 
-	if (!flex_firstinit) {
+	if (!flex_firstinit) 
+	{
 
 //		Con_SafePrintf("Very first init\n");
 		// Baker 3.85: Very first input initialization
@@ -892,7 +912,8 @@ void IN_Init (void) {
 		Cvar_RegisterVariable (&m_accel, NULL);
 		Cvar_RegisterVariable (&m_directinput, IN_DirectInput_f);
 		//Con_SafePrintf("Did we re-init dinput below this point but ..\n");
-		if (commandline_dinput) {
+		if (commandline_dinput) 
+		{
 			m_dinput_skiponce=true;
 			Cvar_SetValue("m_directinput", 1);
 		}
@@ -917,6 +938,9 @@ void IN_Init (void) {
 	IN_StartupMouse ();
 	IN_StartupJoystick ();
 
+	IN_Keyboard_Acquire ();
+
+
 
 	flex_firstinit = true;	// Baker: the placement of this is in question
 
@@ -924,13 +948,13 @@ void IN_Init (void) {
 }
 
 
-void IN_Shutdown (void) {
-// Baker: IN_RESTART calls this but is it appropriate
-//        to deactivate the mouse if that has already
-//        been done?
+void IN_Shutdown (void) 
+{
 
-//	Con_SafePrintf("Mouse: IN_Shutdown 1\n");
-//	Con_Printf("Mouse shutdown ...\n");
+#ifdef SUPPORTS_AVOIDING_WINDOWS_ANNOYANCES // Baker change
+	IN_Keyboard_Unacquire ();
+#endif // Baker change +
+
 	IN_Mouse_Unacquire ();
 
 	if (g_pMouse) 
@@ -939,7 +963,8 @@ void IN_Shutdown (void) {
 		g_pMouse = NULL;
 	}
 
-	if (g_pdi) {
+	if (g_pdi) 
+	{
 		IDirectInput_Release(g_pdi);
 		g_pdi = NULL;
 	}
@@ -1703,3 +1728,143 @@ void IN_Mouse_Unacquire (void)
 	IN_ShowMouse ();
 
 }
+
+STICKYKEYS StartupStickyKeys = {sizeof (STICKYKEYS), 0};
+TOGGLEKEYS StartupToggleKeys = {sizeof (TOGGLEKEYS), 0};
+FILTERKEYS StartupFilterKeys = {sizeof (FILTERKEYS), 0};
+
+
+void AllowAccessibilityShortcutKeys (qboolean bAllowKeys)
+{
+	static qboolean initialized = false;
+
+	if (!initialized)
+	{	// Save the current sticky/toggle/filter key settings so they can be restored them later
+		SystemParametersInfo (SPI_GETSTICKYKEYS, sizeof (STICKYKEYS), &StartupStickyKeys, 0);
+		SystemParametersInfo (SPI_GETTOGGLEKEYS, sizeof (TOGGLEKEYS), &StartupToggleKeys, 0);
+		SystemParametersInfo (SPI_GETFILTERKEYS, sizeof (FILTERKEYS), &StartupFilterKeys, 0);
+		Con_DPrintf ("Accessibility key startup settings saved\n");
+		initialized = true;
+	}
+
+	if (bAllowKeys)
+	{
+		// Restore StickyKeys/etc to original state
+		// (note that this function is called "allow", not "enable"; if they were previously
+		// disabled it will put them back that way too, it doesn't force them to be enabled.)
+		SystemParametersInfo (SPI_SETSTICKYKEYS, sizeof (STICKYKEYS), &StartupStickyKeys, 0);
+		SystemParametersInfo (SPI_SETTOGGLEKEYS, sizeof (TOGGLEKEYS), &StartupToggleKeys, 0);
+		SystemParametersInfo (SPI_SETFILTERKEYS, sizeof (FILTERKEYS), &StartupFilterKeys, 0);
+
+		Con_DPrintf ("Accessibility keys enabled\n");
+	}
+	else
+	{
+		// Disable StickyKeys/etc shortcuts but if the accessibility feature is on,
+		// then leave the settings alone as its probably being usefully used
+		STICKYKEYS skOff = StartupStickyKeys;
+		TOGGLEKEYS tkOff = StartupToggleKeys;
+		FILTERKEYS fkOff = StartupFilterKeys;
+
+		if ((skOff.dwFlags & SKF_STICKYKEYSON) == 0)
+		{
+			// Disable the hotkey and the confirmation
+			skOff.dwFlags &= ~SKF_HOTKEYACTIVE;
+			skOff.dwFlags &= ~SKF_CONFIRMHOTKEY;
+
+			SystemParametersInfo (SPI_SETSTICKYKEYS, sizeof (STICKYKEYS), &skOff, 0);
+		}
+
+		if ((tkOff.dwFlags & TKF_TOGGLEKEYSON) == 0)
+		{
+			// Disable the hotkey and the confirmation
+			tkOff.dwFlags &= ~TKF_HOTKEYACTIVE;
+			tkOff.dwFlags &= ~TKF_CONFIRMHOTKEY;
+
+			SystemParametersInfo (SPI_SETTOGGLEKEYS, sizeof (TOGGLEKEYS), &tkOff, 0);
+		}
+
+		if ((fkOff.dwFlags & FKF_FILTERKEYSON) == 0)
+		{
+			// Disable the hotkey and the confirmation
+			fkOff.dwFlags &= ~FKF_HOTKEYACTIVE;
+			fkOff.dwFlags &= ~FKF_CONFIRMHOTKEY;
+
+			SystemParametersInfo (SPI_SETFILTERKEYS, sizeof (FILTERKEYS), &fkOff, 0);
+		}
+
+		Con_DPrintf ("Accessibility keys disabled\n");
+	}
+}
+
+
+
+LRESULT CALLBACK LLWinKeyHook(int Code, WPARAM wParam, LPARAM lParam)
+{
+	PKBDLLHOOKSTRUCT p;
+	p = (PKBDLLHOOKSTRUCT) lParam;
+
+	if (ActiveApp)
+	{
+		switch(p->vkCode)
+		{
+			case VK_LWIN:	// Left Windows Key
+			case VK_RWIN:	// Right Windows key
+			case VK_APPS: 	// Context Menu key
+
+							return 1; // Ignore these keys
+		}
+	}
+
+	return CallNextHookEx(NULL, Code, wParam, lParam);
+}
+
+
+
+void AllowWindowsShortcutKeys (qboolean bAllowKeys)
+{
+	static qboolean WinKeyHook_isActive = false;
+	static HHOOK WinKeyHook;
+
+	if (!bAllowKeys)
+	{
+		// Disable if not already disabled
+		if (!WinKeyHook_isActive)
+		{
+			if (!(WinKeyHook = SetWindowsHookEx(13, LLWinKeyHook, global_hInstance, 0)))
+			{
+				Con_Printf("Failed to install winkey hook.\n");
+				Con_Printf("Microsoft Windows NT 4.0, 2000 or XP is required.\n");
+				return;
+			}
+
+			WinKeyHook_isActive = true;
+			Con_DPrintf ("Windows and context menu key disabled\n");
+		}
+	}
+
+	if (bAllowKeys)
+	{	// Keys allowed .. stop hook
+		if (WinKeyHook_isActive)
+		{
+			UnhookWindowsHookEx(WinKeyHook);
+			WinKeyHook_isActive = false;
+			Con_DPrintf ("Windows and context menu key enabled\n");
+		}
+	}
+}
+
+void IN_Keyboard_Unacquire (void)
+{
+	AllowAccessibilityShortcutKeys (true);
+	AllowWindowsShortcutKeys (true);
+}
+
+
+void IN_Keyboard_Acquire (void)
+{
+	AllowAccessibilityShortcutKeys (false);
+	AllowWindowsShortcutKeys (false);
+}
+
+
