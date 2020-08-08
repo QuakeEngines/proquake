@@ -1,4 +1,4 @@
-/*
+ /*
 Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-void Cmd_ForwardToServer (void);
+void Cmd_ForwardToServer_f (void);
 
 #define	MAX_ALIAS_NAME	32
 
@@ -50,7 +50,7 @@ next frame.  This allows commands like:
 bind g "impulse 5 ; +attack ; wait ; -attack ; impulse 2"
 ============
 */
-void Cmd_Wait_f (void)
+static void Cmd_Wait_f (void)
 {
 	cmd_wait = true;
 }
@@ -251,7 +251,7 @@ quake +prog jctest.qp +cmd amlev1
 quake -nosound +cmd amlev1
 ===============
 */
-void Cmd_StuffCmds_f (void)
+static void Cmd_StuffCmds_f (void)
 {
 	int		i, j;
 	int		s;
@@ -285,9 +285,9 @@ void Cmd_StuffCmds_f (void)
 	{
 		if (!com_argv[i])
 			continue;		// NEXTSTEP nulls out -NXHost
-		strcat (text,com_argv[i]);
+		strlcat (text, com_argv[i], sizeof(text));
 		if (i != com_argc-1)
-			strcat (text, " ");
+			strlcat (text, " ", sizeof(text));
 	}
 
 // pull out the commands
@@ -306,8 +306,8 @@ void Cmd_StuffCmds_f (void)
 			c = text[j];
 			text[j] = 0;
 
-			strcat (build, text+i);
-			strcat (build, "\n");
+			strlcat (build, text+i, sizeof(build)); // Dynamic string: no strlcat required
+			strlcat (build, "\n", sizeof(build));   // Dynamic string: no strlcat required
 			text[j] = c;
 			i = j-1;
 		}
@@ -325,7 +325,7 @@ void Cmd_StuffCmds_f (void)
 Cmd_Exec_f
 ===============
 */
-void Cmd_Exec_f (void)
+static void Cmd_Exec_f (void)
 {
 	char	*f;
 	int	mark;
@@ -337,7 +337,7 @@ void Cmd_Exec_f (void)
 		return;
 	}
 
-	Q_strncpyz (name, Cmd_Argv(1), sizeof(name));
+	strlcpy (name, Cmd_Argv(1), sizeof(name));
 	mark = Hunk_LowMark ();
 #ifdef FLASH_FILE_SYSTEM
 	as3ReadFileSharedObject(va("%s/%s", com_gamedir, Cmd_Argv(1)));//config.cfg is stored in the flash shared objects
@@ -348,7 +348,7 @@ void Cmd_Exec_f (void)
 		p = COM_SkipPath (name);
 		if (!strchr(p, '.'))
 		{	// no extension, so try the default (.cfg)
-			strcat (name, ".cfg");
+			strlcat (name, ".cfg", sizeof(name));
 			f = (char *)COM_LoadHunkFile (name);
 		}
 
@@ -383,7 +383,7 @@ Cmd_Echo_f
 Just prints the rest of the line to the console
 ===============
 */
-void Cmd_Echo_f (void)
+static void Cmd_Echo_f (void)
 {
 	int		i;
 
@@ -399,7 +399,7 @@ Cmd_Alias_f -- johnfitz -- rewritten
 Creates a new command that executes a command string (possibly ; seperated)
 ===============
 */
-void Cmd_Alias_f (void)
+static void Cmd_Alias_f (void)
 {
 	cmdalias_t	*a;
 	char		cmd[1024];
@@ -455,11 +455,11 @@ void Cmd_Alias_f (void)
 	c = Cmd_Argc();
 	for (i=2 ; i< c ; i++)
 	{
-		strcat (cmd, Cmd_Argv(i));
+		strlcat (cmd, Cmd_Argv(i), sizeof(cmd));
 		if (i != c)
-			strcat (cmd, " ");
+			strlcat (cmd, " ", sizeof(cmd));
 	}
-	strcat (cmd, "\n");
+	strlcat (cmd, "\n", sizeof(cmd));
 
 	a->value = CopyString (cmd);
 		break;
@@ -471,7 +471,7 @@ void Cmd_Alias_f (void)
 Cmd_Unalias_f -- johnfitz
 ===============
 */
-void Cmd_Unalias_f (void)
+static void Cmd_Unalias_f (void)
 {
 	cmdalias_t	*a, *prev;
 
@@ -503,7 +503,7 @@ void Cmd_Unalias_f (void)
 Cmd_Unaliasall_f -- johnfitz
 ===============
 */
-void Cmd_Unaliasall_f (void)
+static void Cmd_Unaliasall_f (void)
 {
 	cmdalias_t	*blah;
 
@@ -558,7 +558,7 @@ static	char		*cmd_args = NULL;
 
 cmd_source_t	cmd_source;
 
-void Mat_Init (void);	// JPG
+void Mat_Init_f (void);	// JPG
 
 // Baker 3.83 - CMDLINE
 
@@ -569,7 +569,7 @@ Cmd_Cmdline_f
 */
 
 extern cvar_t cmdline;
-void Cmd_Cmdline_f (void)
+static void Cmd_Cmdline_f (void)
 {
 	Con_Printf ("Your command line: %s\n", cmdline.string);
 }
@@ -602,7 +602,7 @@ char	*Cmd_Argv (int arg)
 Cmd_Args
 ============
 */
-char		*Cmd_Args (void)
+char *Cmd_Args (void)
 {
 	return cmd_args;
 }
@@ -783,7 +783,7 @@ void	Cmd_ExecuteString (char *text, cmd_source_t src)
 // check functions
 	for (cmd=cmd_functions ; cmd ; cmd=cmd->next)
 	{
-		if (!Q_strcasecmp (cmd_argv[0],cmd->name))
+		if (!strcasecmp (cmd_argv[0],cmd->name))
 		{
 			cmd->function ();
 			return;
@@ -793,7 +793,7 @@ void	Cmd_ExecuteString (char *text, cmd_source_t src)
 // check alias
 	for (a=cmd_alias ; a ; a=a->next)
 	{
-		if (!Q_strcasecmp (cmd_argv[0], a->name))
+		if (!strcasecmp (cmd_argv[0], a->name))
 		{
 			Cbuf_InsertText (a->value);
 			return;
@@ -821,12 +821,12 @@ extern cvar_t	pq_noweapons;
 
 /*
 ===================
-Cmd_ForwardToServer
+Cmd_ForwardToServer_f
 
 Sends the entire command line over to the server
 ===================
 */
-void Cmd_ForwardToServer (void)
+void Cmd_ForwardToServer_f (void)
 {
 	//from ProQuake --start
 	char *src, *dst, buff[128];			// JPG - used for say/say_team formatting
@@ -846,7 +846,7 @@ void Cmd_ForwardToServer (void)
 
 	//----------------------------------------------------------------------
 	// JPG - handle say separately for formatting--start
-	if ((!Q_strcasecmp(Cmd_Argv(0), "say") || !Q_strcasecmp(Cmd_Argv(0), "say_team")) && Cmd_Argc() > 1)
+	if ((!strcasecmp(Cmd_Argv(0), "say") || !strcasecmp(Cmd_Argv(0), "say_team")) && Cmd_Argc() > 1)
 	{
 		SZ_Print (&cls.message, Cmd_Argv(0));
 		SZ_Print (&cls.message, " ");
@@ -987,7 +987,7 @@ void Cmd_ForwardToServer (void)
 	// JPG - handle say separately for formatting--end
 	//----------------------------------------------------------------------
 
-	if (Q_strcasecmp(Cmd_Argv(0), "cmd"))
+	if (strcasecmp(Cmd_Argv(0), "cmd"))
 	{
 		SZ_Print (&cls.message, Cmd_Argv(0));
 		SZ_Print (&cls.message, " ");
@@ -1006,7 +1006,7 @@ Returns the position (1 to argc-1) in the command's argument list
 where the given parameter apears, or 0 if not present
 ================
 */
-int Cmd_CheckParm (char *parm)
+static int Cmd_CheckParm (char *parm)
 {
 	int i;
 
@@ -1014,7 +1014,7 @@ int Cmd_CheckParm (char *parm)
 		Sys_Error ("Cmd_CheckParm: NULL");
 
 	for (i = 1; i < Cmd_Argc (); i++)
-		if (! Q_strcasecmp (parm, Cmd_Argv (i)))
+		if (! strcasecmp (parm, Cmd_Argv (i)))
 			return i;
 
 	return 0;
@@ -1029,7 +1029,7 @@ Cmd_CmdList_f
 List all console commands
 ====================
 */
-void Cmd_CmdList_f (void) {
+static void Cmd_CmdList_f (void) {
 	cmd_function_t	*cmd;
 
 	char 		*partial;
@@ -1163,19 +1163,20 @@ Cmd_Init
 ============
 */
 void Cmd_Init (void) {
-void Host_Mapname_f (void);
-// register our commands
+	void Host_Mapname_f (void);
+
+	// register our commands
 	Cmd_AddCommand ("stuffcmds",Cmd_StuffCmds_f);
 	Cmd_AddCommand ("exec",Cmd_Exec_f);
 	Cmd_AddCommand ("echo",Cmd_Echo_f);
 	Cmd_AddCommand ("alias",Cmd_Alias_f);
-	Cmd_AddCommand ("cmd", Cmd_ForwardToServer);
+	Cmd_AddCommand ("cmd", Cmd_ForwardToServer_f);
 	Cmd_AddCommand ("wait", Cmd_Wait_f);
 	Cmd_AddCommand ("unalias", Cmd_Unalias_f); //johnfitz
 	Cmd_AddCommand ("commandline", Cmd_Cmdline_f);
 
 	Cmd_AddCommand ("mapname", Host_Mapname_f); // Baker 3.99 from FitzQuake
 
-	Cmd_AddCommand ("matrix", Mat_Init);	// JPG
+	Cmd_AddCommand ("matrix", Mat_Init_f);	// JPG
 	Cmd_AddCommand ("cmdlist", Cmd_CmdList_f);
 }

@@ -32,6 +32,7 @@ cvar_t		gl_max_size = {"gl_max_size", "1024"};
 #endif
 cvar_t		gl_picmip = {"gl_picmip", "0", true};
 cvar_t		gl_crosshairalpha = {"crosshairalpha", "1", true};
+cvar_t		gl_texturemode = {"gl_texturemode", "GL_LINEAR_MIPMAP_NEAREST", false}; // Let's not save to config
 
 #ifdef SUPPORTS_GL_DELETETEXTURES
 cvar_t		gl_free_world_textures = {"gl_free_world_textures","1",true};//R00k
@@ -133,7 +134,7 @@ typedef struct
 	int				texnum;
 	char			identifier[MAX_QPATH];
 	int				width, height;
-	qboolean		mipmap;
+//	qboolean		mipmap;
 	unsigned short	crc;  // Baker 3.80x - part of GL_LoadTexture: cache mismatch fix
 	int				texmode;	// Baker: 4.26 to all clearing of world textures
 } gltexture_t;
@@ -404,36 +405,43 @@ void Draw_LoadPics (void)
 	draw_disc = Draw_PicFromWad ("disc");
 	draw_backtile = Draw_PicFromWad ("backtile");
 }
+
 /*
 ===============
 Draw_TextureMode_f
 ===============
 */
-void Draw_TextureMode_f (void)
+void OnChange_gl_texturemode (void)
 {
 	int		i;
 	gltexture_t	*glt;
+	static	qboolean recursiveblock=false;
 
-	if (Cmd_Argc() == 1)
-	{
-		for (i=0 ; i< 6 ; i++)
-			if (gl_filter_min == modes[i].minimize)
-			{
-				Con_Printf ("%s\n", modes[i].name);
-				return;
-			}
-		Con_Printf ("current filter is unknown???\n");
-		return;
-	}
+	if (recursiveblock)
+		return;		// Get out
 
 	for (i=0 ; i< 6 ; i++)
 	{
-		if (!Q_strcasecmp (modes[i].name, Cmd_Argv(1) ) )
+		char *str = gl_texturemode.string;
+		if (!strcasecmp (modes[i].name, str))
 			break;
+
+		if (isdigit(*str) && atoi(str) - 1 == i) {
+			// We have a number, set the cvar as the mode name
+			recursiveblock = true; // Let's prevent this from occuring twice
+			Cvar_Set("gl_texturemode", modes[i].name);
+			recursiveblock = false;
+			break;
+		}
 	}
+
 	if (i == 6)
 	{
-		Con_Printf ("bad filter name\n");
+		Con_Printf ("bad filter name, available are:\n");
+		for (i=0 ; i< 6 ; i++)
+			Con_Printf ("%s (%d)\n", modes[i].name, i + 1);
+
+		Cvar_SetValue("gl_texturemode", 1);
 		return;
 	}
 
@@ -443,8 +451,9 @@ void Draw_TextureMode_f (void)
 	// change all the existing mipmap texture objects
 	for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
 	{
-		if (glt->mipmap)
+		if (glt->texmode & TEX_MIPMAP)
 		{
+			Con_DPrintf ("Doing texture %s\n", glt->identifier);
 			GL_Bind (glt->texnum);
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
@@ -473,12 +482,12 @@ void Draw_MaxAnisotropy_f (void)
 		return;
 	}
 
-	gl_maxAnisotropy = Q_atof(Cmd_Argv(1));
+	gl_maxAnisotropy = atof(Cmd_Argv(1));
 
 	// change all the existing mipmap texture objects
 	for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
 	{
-		if (glt->mipmap)
+		if (glt->texmode & TEX_MIPMAP)
 		{
 			GL_Bind (glt->texnum);
 			glTexParameterf(GL_TEXTURE_2D, D3D_TEXTURE_MAXANISOTROPY, gl_maxAnisotropy);
@@ -519,7 +528,7 @@ void Draw_SmoothFont_f (void)
 		return;
 	}
 
-	smoothfont = Q_atoi (Cmd_Argv(1));
+	smoothfont = atoi (Cmd_Argv(1));
 	SetSmoothFont ();
 }
 
@@ -577,7 +586,7 @@ void Draw_Init (void)
 //	byte		*ncdata;
 
 	Cvar_RegisterVariable (&gl_nobind, NULL);
-	
+
 	Cvar_RegisterVariable (&gl_picmip, NULL);
 	Cvar_RegisterVariable (&gl_crosshairalpha, NULL);
 	Cvar_RegisterVariable (&crosshaircolor, NULL);
@@ -585,7 +594,7 @@ void Draw_Init (void)
 	Cvar_RegisterVariable (&crosshairsize, NULL);
 
 #ifdef SUPPORTS_GL_DELETETEXTURES
-	Cvar_RegisterVariable (&gl_free_world_textures, NULL);//R00k 
+	Cvar_RegisterVariable (&gl_free_world_textures, NULL);//R00k
 #endif
 
 #ifdef DX8QUAKE_GET_GLMAXSIZE
@@ -593,17 +602,17 @@ void Draw_Init (void)
 #else
 	Cvar_RegisterVariable (&gl_max_size, NULL);
 	// 3dfx can only handle 256 wide textures
-	if (!Q_strncasecmp ((char *)gl_renderer, "3dfx",4) ||
+	if (!strncasecmp ((char *)gl_renderer, "3dfx",4) ||
 		strstr((char *)gl_renderer, "Glide"))
 		Cvar_Set ("gl_max_size", "256");
 #endif
 
-	Cmd_AddCommand ("gl_texturemode", &Draw_TextureMode_f);
-	Cmd_AddCommand ("gl_smoothfont", &Draw_SmoothFont_f);
+	Cvar_RegisterVariable (&gl_texturemode, &OnChange_gl_texturemode);
+	Cmd_AddCommand ("gl_smoothfont", Draw_SmoothFont_f);
 // D3D diff 3 of 14
 #ifdef D3DQ_EXTRA_FEATURES
 
-	Cmd_AddCommand ("d3d_maxanisotropy", &Draw_MaxAnisotropy_f);
+	Cmd_AddCommand ("d3d_maxanisotropy", Draw_MaxAnisotropy_f);
 #endif
 	// load the console background and the charset
 	// by hand, because we need to write the version
@@ -790,11 +799,11 @@ byte *StringToRGB (char *s) {
 
 	Cmd_TokenizeString (s);
 	if (Cmd_Argc() == 3) {
-		rgb[0] = (byte)Q_atoi(Cmd_Argv(0));
-		rgb[1] = (byte)Q_atoi(Cmd_Argv(1));
-		rgb[2] = (byte)Q_atoi(Cmd_Argv(2));
+		rgb[0] = (byte)atoi(Cmd_Argv(0));
+		rgb[1] = (byte)atoi(Cmd_Argv(1));
+		rgb[2] = (byte)atoi(Cmd_Argv(2));
 	} else {
-		col = (byte *)&d_8to24table[(byte)Q_atoi(s)];
+		col = (byte *)&d_8to24table[(byte)atoi(s)];
 		rgb[0] = col[0];
 		rgb[1] = col[1];
 		rgb[2] = col[2];
@@ -1320,9 +1329,11 @@ Draw_FadeScreen
 */
 void Draw_FadeScreen (void)
 {
+	extern cvar_t gl_fadescreen_alpha;
+	
 	glEnable (GL_BLEND);
 	glDisable (GL_TEXTURE_2D);
-	glColor4f (0, 0, 0, 0.8);
+	glColor4f (0, 0, 0, gl_fadescreen_alpha.value);
 	glBegin (GL_QUADS);
 	glVertex2f (0,0);
 	glVertex2f (vid.width, 0);
@@ -1361,6 +1372,12 @@ void Draw_BeginDisc (void)
 
 	if (!draw_disc)
 		return;
+	
+	if (mod_conhide==true && (key_dest != key_console && key_dest != key_message)) {
+		// No draw this either
+		return;
+	}
+
 	glDrawBuffer  (GL_FRONT);
 	Draw_Pic (vid.width - 24, 0, draw_disc);
 	glDrawBuffer  (GL_BACK);
@@ -1868,9 +1885,9 @@ void GL_FreeTextures (void)
 	}
 
 	numgltextures = j;
-	
+
 	Con_DPrintf("GL_FreeTextures: Completed (numgltextures = %i) \n", numgltextures);
-	
+
 }
 #endif
 
@@ -1948,7 +1965,7 @@ void Build_Gamma_Table (void) {
 
 	if ((i = COM_CheckParm("-gamma")) != 0 && i+1 < com_argc) {
 
-		in_gamma = Q_atof(com_argv[i+1]);
+		in_gamma = atof(com_argv[i+1]);
 
 		if (in_gamma < 0.3) in_gamma = 0.3;
 
@@ -2117,7 +2134,7 @@ int GL_LoadPicTexture (qpic_t *pic)
 /****************************************/
 
 #ifndef OLD_SGIS
-GLenum	gl_oldtarget; 
+GLenum	gl_oldtarget;
 GLenum	gl_Texture0;
 GLenum	gl_Texture1;
 
@@ -2158,13 +2175,6 @@ qboolean mtexenabled = false;
 void GL_DisableMultitexture(void)
 {
 	if (mtexenabled) {
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-		if (gl_combine)
-		{
-			// mh - need to explicitly set back to 1xmodulate
-			glTexEnvf(GL_TEXTURE_ENV, GL_RGB_SCALE_ARB, 1.0f);
-		}
-#endif
 		glDisable(GL_TEXTURE_2D);
 		GL_SelectTexture(TEXTURE0_SGIS);
 		mtexenabled = false;

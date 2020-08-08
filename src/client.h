@@ -385,16 +385,11 @@ void CL_InitModelnames (void);
 #endif
 
 // view.c
-void V_StartPitchDrift (void);
+void V_StartPitchDrift_f (void);
 void V_StopPitchDrift (void);
 
 void V_RenderView (void);
 
-#ifdef SUPPORTS_ENHANCED_GAMMA
-void V_UpdatePaletteNew (void);
-#endif // ^^ Only applies to vid_wgl at moment.  Linux and MACOSX should be able to support in future
-
-void V_UpdatePaletteOld (void);
 void V_Register (void);
 void V_ParseDamage (void);
 void V_SetContentsColor (int contents);

@@ -123,7 +123,7 @@ void NET_Ban_f (void)
 	{
 		if (!sv.active)
 		{
-			Cmd_ForwardToServer ();
+			Cmd_ForwardToServer_f ();
 			return;
 		}
 		print = Con_Printf;
@@ -149,7 +149,7 @@ void NET_Ban_f (void)
 			break;
 
 		case 2:
-			if (Q_strcasecmp(Cmd_Argv(1), "off") == 0)
+			if (strcasecmp(Cmd_Argv(1), "off") == 0)
 				banAddr = 0x00000000;
 			else
 				banAddr = inet_addr(Cmd_Argv(1));
@@ -513,11 +513,11 @@ void NET_Stats_f (void)
 	else
 	{
 		for (s = net_activeSockets; s; s = s->next)
-			if (Q_strcasecmp(Cmd_Argv(1), s->address) == 0)
+			if (strcasecmp(Cmd_Argv(1), s->address) == 0)
 				break;
 		if (s == NULL)
 			for (s = net_freeSockets; s; s = s->next)
-				if (Q_strcasecmp(Cmd_Argv(1), s->address) == 0)
+				if (strcasecmp(Cmd_Argv(1), s->address) == 0)
 					break;
 		if (s == NULL)
 			return;
@@ -637,7 +637,7 @@ static void Test_f (void)
 	if (host && hostCacheCount)
 	{
 		for (n = 0; n < hostCacheCount; n++)
-			if (Q_strcasecmp (host, hostcache[n].name) == 0)
+			if (strcasecmp (host, hostcache[n].name) == 0)
 			{
 				if (hostcache[n].driver != myDriverLevel)
 					continue;
@@ -787,7 +787,7 @@ static void Test2_f (void)
 	if (host && hostCacheCount)
 	{
 		for (n = 0; n < hostCacheCount; n++)
-			if (Q_strcasecmp (host, hostcache[n].name) == 0)
+			if (strcasecmp (host, hostcache[n].name) == 0)
 			{
 				if (hostcache[n].driver != myDriverLevel)
 					continue;
@@ -936,7 +936,7 @@ static void Rcon_f (void)
 	if (host && hostCacheCount)
 	{
 		for (n = 0; n < hostCacheCount; n++)
-			if (Q_strcasecmp (host, hostcache[n].name) == 0)
+			if (strcasecmp (host, hostcache[n].name) == 0)
 			{
 				if (hostcache[n].driver != myDriverLevel)
 					continue;
@@ -1116,7 +1116,7 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 		char name[256];
 		strcpy(name, hostname.string);
 		if (pq_cheatfree)
-			strcat(name, " (cheat-free)");
+			strlcat (name, " (cheat-free)", sizeof(name));
 
 		if (strcmp(MSG_ReadString(), "QUAKE") != 0)
 			return NULL;
@@ -1478,8 +1478,8 @@ static void _Datagram_SearchForHosts (qboolean xmit)
 		{
 			strcpy(hostcache[n].cname, hostcache[n].name);
 			hostcache[n].cname[14] = 0;
-			strcpy(hostcache[n].name, "*");
-			strcat(hostcache[n].name, hostcache[n].cname);
+			strcpy (hostcache[n].name, "*");
+			strlcat (hostcache[n].name, hostcache[n].cname, sizeof(hostcache[n].name));
 		}
 		memcpy(&hostcache[n].addr, &readaddr, sizeof(struct qsockaddr));
 		hostcache[n].driver = net_driverlevel;
@@ -1491,7 +1491,7 @@ static void _Datagram_SearchForHosts (qboolean xmit)
 		{
 			if (i == n)
 				continue;
-			if (Q_strcasecmp (hostcache[n].name, hostcache[i].name) == 0)
+			if (strcasecmp (hostcache[n].name, hostcache[i].name) == 0)
 			{
 				i = strlen(hostcache[n].name);
 				if (i < 15 && hostcache[n].name[i-1] > '8')

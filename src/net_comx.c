@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -706,7 +706,7 @@ int TTY_ReadByte(int handle)
 
 	if ((ret = CheckStatus (p)) != 0)
 		return ret;
-	
+
 	if (EMPTY (p->inputQueue))
 		return ERR_TTY_NODATA;
 
@@ -951,7 +951,7 @@ void Com_f (void)
 	int		portNumber, i, n;
 
 	// first, determine which port they're messing with
-	portNumber = Q_atoi(Cmd_Argv (0) + 3) - 1;
+	portNumber = atoi(Cmd_Argv (0) + 3) - 1;
 	if (portNumber > 1)
 		return;
 	p = handleToPort[portNumber];
@@ -969,7 +969,7 @@ void Com_f (void)
 			Con_Printf("16550\n");
 		Con_Printf("port:      %x\n", p->uart);
 		Con_Printf("irq:       %i\n", p->irq);
-		Con_Printf("baud:      %i\n", 115200 / p->baudBits);	
+		Con_Printf("baud:      %i\n", 115200 / p->baudBits);
 		Con_Printf("CTS:       %s\n", (p->modemStatusIgnore & MSR_CTS) ? "ignored" : "honored");
 		Con_Printf("DSR:       %s\n", (p->modemStatusIgnore & MSR_DSR) ? "ignored" : "honored");
 		Con_Printf("CD:        %s\n", (p->modemStatusIgnore & MSR_CD) ? "ignored" : "honored");
@@ -1008,7 +1008,7 @@ void Com_f (void)
 				Con_Printf("COM port must be disabled to change port\n");
 				return;
 			}
-		p->uart = Q_atoi (Cmd_Argv (i+1));
+		p->uart = atoi (Cmd_Argv (i+1));
 	}
 
 	if ((i = Cmd_CheckParm("irq")))
@@ -1018,7 +1018,7 @@ void Com_f (void)
 				Con_Printf("COM port must be disabled to change irq\n");
 				return;
 			}
-		p->irq = Q_atoi (Cmd_Argv (i+1));
+		p->irq = atoi (Cmd_Argv (i+1));
 	}
 
 	if ((i = Cmd_CheckParm("baud")))
@@ -1028,7 +1028,7 @@ void Com_f (void)
 				Con_Printf("COM port must be disabled to change baud\n");
 				return;
 			}
-		if (!(n = Q_atoi(Cmd_Argv (i+1))))
+		if (!(n = atoi(Cmd_Argv (i+1))))
 			Con_Printf("Invalid baud rate specified\n");
 		else
 			p->baudBits = 115200 / n;

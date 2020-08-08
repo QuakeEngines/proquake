@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -270,7 +270,7 @@ void TragicDeath(int signal_num)
 
 static Cursor CreateNullCursor(Display *display, Window root)
 {
-    Pixmap cursormask; 
+    Pixmap cursormask;
     XGCValues xgc;
     GC gc;
     XColor dummycolour;
@@ -446,7 +446,7 @@ void	VID_Init (unsigned char *palette)
    XVisualInfo template;
    int num_visuals;
    int template_mask;
-   
+
    ignorenext=0;
    vid.width = 320;
    vid.height = 200;
@@ -457,7 +457,7 @@ void	VID_Init (unsigned char *palette)
    //	vid.cbits = VID_CBITS;
    //	vid.grades = VID_GRADES;
    vid.fullbright = 256 - LittleLong (*((int *)vid.colormap + 2048));
-   
+
 	srandom(getpid());
 
 	verbose=COM_CheckParm("-verbose");
@@ -493,22 +493,22 @@ void	VID_Init (unsigned char *palette)
 	{
 		if (pnum >= com_argc-2)
 			Sys_Error("VID: -winsize <width> <height>\n");
-		vid.width = Q_atoi(com_argv[pnum+1]);
-		vid.height = Q_atoi(com_argv[pnum+2]);
+		vid.width = atoi(com_argv[pnum+1]);
+		vid.height = atoi(com_argv[pnum+2]);
 		if (!vid.width || !vid.height)
 			Sys_Error("VID: Bad window width/height\n");
 	}
 	if ((pnum=COM_CheckParm("-width"))) {
 		if (pnum >= com_argc-1)
 			Sys_Error("VID: -width <width>\n");
-		vid.width = Q_atoi(com_argv[pnum+1]);
+		vid.width = atoi(com_argv[pnum+1]);
 		if (!vid.width)
 			Sys_Error("VID: Bad window width\n");
 	}
 	if ((pnum=COM_CheckParm("-height"))) {
 		if (pnum >= com_argc-1)
 			Sys_Error("VID: -height <height>\n");
-		vid.height = Q_atoi(com_argv[pnum+1]);
+		vid.height = atoi(com_argv[pnum+1]);
 		if (!vid.height)
 			Sys_Error("VID: Bad window height\n");
 	}
@@ -520,7 +520,7 @@ void	VID_Init (unsigned char *palette)
 	{
 		if (pnum >= com_argc-1)
 			Sys_Error("VID: -visualid <id#>\n");
-		template.visualid = Q_atoi(com_argv[pnum+1]);
+		template.visualid = atoi(com_argv[pnum+1]);
 		template_mask = VisualIDMask;
 	}
 
@@ -568,10 +568,10 @@ void	VID_Init (unsigned char *palette)
 	   int attribmask = CWEventMask  | CWColormap | CWBorderPixel;
 	   XSetWindowAttributes attribs;
 	   Colormap tmpcmap;
-	   
+
 	   tmpcmap = XCreateColormap(x_disp, XRootWindow(x_disp,
 							 x_visinfo->screen), x_vis, AllocNone);
-	   
+
            attribs.event_mask = StructureNotifyMask | KeyPressMask
 	     | KeyReleaseMask | ExposureMask | PointerMotionMask |
 	     ButtonPressMask | ButtonReleaseMask;
@@ -793,13 +793,13 @@ int XLateKey(XKeyEvent *ev)
 		case XK_Shift_L:
 		case XK_Shift_R:	key = K_SHIFT;		break;
 
-		case XK_Execute: 
-		case XK_Control_L: 
+		case XK_Execute:
+		case XK_Control_L:
 		case XK_Control_R:	key = K_CTRL;		 break;
 
-		case XK_Alt_L:	
-		case XK_Meta_L: 
-		case XK_Alt_R:	
+		case XK_Alt_L:
+		case XK_Meta_L:
+		case XK_Alt_R:
 		case XK_Meta_R: key = K_ALT;			break;
 
 		case XK_KP_Begin: key = K_AUX30;	break;
@@ -841,7 +841,7 @@ int XLateKey(XKeyEvent *ev)
 				key = key - 'A' + 'a';
 //			fprintf(stdout, "case 0x0%x: key = ___;break;/* [%c] */\n", keysym);
 			break;
-	} 
+	}
 
 	return key;
 }
@@ -857,12 +857,12 @@ int keyq_tail=0;
 int config_notify=0;
 int config_notify_width;
 int config_notify_height;
-						      
+
 void GetEvent(void)
 {
 	XEvent x_event;
 	int b;
-   
+
 	XNextEvent(x_disp, &x_event);
 	switch(x_event.type) {
 	case KeyPress:
@@ -880,7 +880,7 @@ void GetEvent(void)
 		if (_windowed_mouse.value) {
 			mouse_x = (float) ((int)x_event.xmotion.x - (int)(vid.width/2));
 			mouse_y = (float) ((int)x_event.xmotion.y - (int)(vid.height/2));
-//printf("m: x=%d,y=%d, mx=%3.2f,my=%3.2f\n", 
+//printf("m: x=%d,y=%d, mx=%3.2f,my=%3.2f\n",
 //	x_event.xmotion.x, x_event.xmotion.y, mouse_x, mouse_y);
 
 			/* move the mouse to the window center again */
@@ -888,7 +888,7 @@ void GetEvent(void)
 				|KeyReleaseMask|ExposureMask
 				|ButtonPressMask
 				|ButtonReleaseMask);
-			XWarpPointer(x_disp,None,x_win,0,0,0,0, 
+			XWarpPointer(x_disp,None,x_win,0,0,0,0,
 				(vid.width/2),(vid.height/2));
 			XSelectInput(x_disp,x_win,StructureNotifyMask|KeyPressMask
 				|KeyReleaseMask|ExposureMask
@@ -925,7 +925,7 @@ void GetEvent(void)
 		if (b>=0)
 			mouse_buttonstate &= ~(1<<b);
 		break;
-	
+
 	case ConfigureNotify:
 //printf("config notify\n");
 		config_notify_width = x_event.xconfigure.width;
@@ -937,7 +937,7 @@ void GetEvent(void)
 		if (doShm && x_event.type == x_shmeventtype)
 			oktodraw = true;
 	}
-   
+
 	if (old_windowed_mouse != _windowed_mouse.value) {
 		old_windowed_mouse = _windowed_mouse.value;
 
@@ -996,11 +996,11 @@ void	VID_Update (vrect_t *rects)
 		while (rects)
 		{
 			if (x_visinfo->depth == 16)
-				st2_fixup( x_framebuffer[current_framebuffer], 
+				st2_fixup( x_framebuffer[current_framebuffer],
 					rects->x, rects->y, rects->width,
 					rects->height);
 			else if (x_visinfo->depth == 24)
-				st3_fixup( x_framebuffer[current_framebuffer], 
+				st3_fixup( x_framebuffer[current_framebuffer],
 					rects->x, rects->y, rects->width,
 					rects->height);
 			if (!XShmPutImage(x_disp, x_win, x_gc,
@@ -1021,11 +1021,11 @@ void	VID_Update (vrect_t *rects)
 		while (rects)
 		{
 			if (x_visinfo->depth == 16)
-				st2_fixup( x_framebuffer[current_framebuffer], 
+				st2_fixup( x_framebuffer[current_framebuffer],
 					rects->x, rects->y, rects->width,
 					rects->height);
 			else if (x_visinfo->depth == 24)
-				st3_fixup( x_framebuffer[current_framebuffer], 
+				st3_fixup( x_framebuffer[current_framebuffer],
 					rects->x, rects->y, rects->width,
 					rects->height);
 			XPutImage(x_disp, x_win, x_gc, x_framebuffer[0], rects->x,
@@ -1115,7 +1115,7 @@ char *Sys_ConsoleInput (void)
 	}
 
 	return 0;
-	
+
 }
 #endif
 
@@ -1147,9 +1147,9 @@ void IN_Shutdown (void)
 void IN_Commands (void)
 {
 	int i;
-   
+
 	if (!mouse_avail) return;
-   
+
 	for (i=0 ; i<mouse_buttons ; i++) {
 		if ( (mouse_buttonstate & (1<<i)) && !(mouse_oldbuttonstate & (1<<i)) )
 			Key_Event (K_MOUSE1 + i, true);
@@ -1164,7 +1164,7 @@ void IN_Move (usercmd_t *cmd)
 {
 	if (!mouse_avail)
 		return;
-   
+
 	if (m_filter.value) {
 		mouse_x = (mouse_x + old_mouse_x) * 0.5;
 		mouse_y = (mouse_y + old_mouse_y) * 0.5;
@@ -1172,17 +1172,17 @@ void IN_Move (usercmd_t *cmd)
 
 	old_mouse_x = mouse_x;
 	old_mouse_y = mouse_y;
-   
+
 	mouse_x *= sensitivity.value;
 	mouse_y *= sensitivity.value;
-   
+
 	if ( (in_strafe.state & 1) || (lookstrafe.value && mlook_active ))  // Baker 3.60 - Freelook cvar support
 		cmd->sidemove += m_side.value * mouse_x;
 	else
 		cl.viewangles[YAW] -= m_yaw.value * mouse_x;
 	if (mlook_active)  // Baker 3.60 - Freelook cvar support
 		V_StopPitchDrift ();
-   
+
 	if ( mlook_active && !(in_strafe.state & 1))   // Baker 3.60 - Freelook cvar support
 	{
 		cl.viewangles[PITCH] += m_pitch.value * mouse_y;

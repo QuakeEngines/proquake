@@ -400,8 +400,8 @@ void CL_Default_fov_f(void);
 void CL_Fov_f(void);
 void SCR_Init (void)
 {
-	Cvar_RegisterVariable (&default_fov, &CL_Default_fov_f);
-	Cvar_RegisterVariable (&scr_fov, &CL_Fov_f);
+	Cvar_RegisterVariable (&default_fov, CL_Default_fov_f);
+	Cvar_RegisterVariable (&scr_fov, CL_Fov_f);
 
 	Cvar_RegisterVariable (&scr_viewsize, NULL);
 	Cvar_RegisterVariable (&scr_conspeed, NULL);
@@ -1180,7 +1180,7 @@ void SCR_UpdateScreen (void)
 // added by joe - IMPORTANT: this _must_ be here so that
 //			     palette flashes take effect in windowed mode too.
 #ifdef SUPPORTS_ENHANCED_GAMMA
-	if (using_hwgamma) // Baker begin hwgamma support
+	if (using_hwgamma && vid_hwgamma_enabled && gl_hwblend.value) // Baker begin hwgamma support
 		R_PolyBlend (); // Baker end hwgamma support
 #endif
 
@@ -1247,15 +1247,35 @@ void SCR_UpdateScreen (void)
 		Mat_Update ();	// JPG
 	}
 
+#if 0
+	// Baker: maybe make a developer mode thing?
+	Draw_String(1,1, key_dest == 0 ? "key_game" : (key_dest == 1 ? "key_console" : (key_dest == 2 ? "key_message" : "key_menu")));
+	Draw_String(16,16, va("console forced: %i", con_forcedup ));
+#endif
+
 	// Baker hwgamma support
 #ifdef SUPPORTS_ENHANCED_GAMMA
 	if (using_hwgamma) {
+		static qboolean hwblend_already_off=false;
 		R_BrightenScreen ();
-		V_UpdatePaletteNew ();
+
+		if (gl_hwblend.value !=0 || hwblend_already_off==false)  // We must do hardware palette once to turn it off!
+		{
+			if(V_UpdatePalette_Hardware ())
+				V_UpdatePalette_Static (true);
+		}
+		else 
+		{
+//			Con_DPrintf("Doing static ...\n");
+			V_UpdatePalette_Static (false);
+		}
+
+		hwblend_already_off = (!gl_hwblend.value && !hwblend_already_off);
 	} else
 #endif
 	{
-		V_UpdatePaletteOld ();
+//		R_BrightenScreen2 ();
+		V_UpdatePalette_Static (false);
 	}
 	// Baker end hwgamma support
 

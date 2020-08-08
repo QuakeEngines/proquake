@@ -78,7 +78,7 @@ void AVI_LoadLibrary (void)
 
 	if (!(avi_handle = LoadLibrary("avifil32.dll")))
 	{
-		Con_Printf ("\x02" "Avi capturing module not found\n");
+		Con_Warning ("Avi capturing module not found\n");
 		goto fail;
 	}
 
@@ -98,11 +98,11 @@ void AVI_LoadLibrary (void)
 
 	if (!avi_loaded)
 	{
-		Con_Printf ("\x02" "Avi capturing module not initialized\n");
+		Con_Warning ("Avi capturing module not initialized\n");
 		goto fail;
 	}
 
-	Con_Printf ("Avi capturing module initialized\n");
+	Con_Success ("Avi capturing module initialized\n");
 	return;
 
 fail:
@@ -119,7 +119,7 @@ void ACM_LoadLibrary (void)
 
 	if (!(acm_handle = LoadLibrary("msacm32.dll")))
 	{
-		Con_Printf ("\x02" "ACM module not found\n");
+		Con_Warning ("ACM module not found\n");
 		goto fail;
 	}
 
@@ -142,11 +142,11 @@ void ACM_LoadLibrary (void)
 
 	if (!acm_loaded)
 	{
-		Con_Printf ("\x02" "ACM module not initialized\n");
+		Con_Warning ("ACM module not initialized\n");
 		goto fail;
 	}
 
-	Con_Printf ("ACM module initialized\n");
+	Con_Success ("ACM module initialized\n");
 	return;
 
 fail:

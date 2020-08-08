@@ -69,7 +69,7 @@ void R_InitParticles (void)
 
 	if ((i = COM_CheckParm ("-particles"))  && i+1 < com_argc)
 	{
-		r_numparticles = (int)(Q_atoi(com_argv[i+1]));
+		r_numparticles = (int)(atoi(com_argv[i+1]));
 		r_numparticles = bound(ABSOLUTE_MIN_PARTICLES, r_numparticles, ABSOLUTE_MAX_PARTICLES);
 	}
 	else
@@ -101,7 +101,7 @@ void R_EntityParticles (entity_t *ent)
 	dist = 64;
 	count = 50;
 
-	if (!avelocities[0][0]) 
+	if (!avelocities[0][0])
 		for (i=0 ; i<NUMVERTEXNORMALS*3 ; i++)
 			avelocities[0][i] = (rand()&255) * 0.01;
 
@@ -368,7 +368,7 @@ void R_RunParticleEffect (vec3_t org, vec3_t dir, int color, int count)
 		p->next = active_particles;
 		active_particles = p;
 
-		if (count == 1024) {	
+		if (count == 1024) {
 			// rocket explosion
 			p->die = cl.time + 5;
 			p->color = ramp1[0];

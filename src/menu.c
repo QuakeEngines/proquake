@@ -315,8 +315,8 @@ void M_Menu_Main_f (void)
 {
 	if (key_dest != key_menu)
 	{
-		m_save_demonum = cls.demonum;
-		cls.demonum = -1;
+//		m_save_demonum = cls.demonum;
+//		cls.demonum = -1;
 	}
 	key_dest = key_menu;
 	m_state = m_main;
@@ -354,9 +354,9 @@ void M_Main_Key (int key, int ascii)
 #endif
 		key_dest = key_game;
 		m_state = m_none;
-		cls.demonum = m_save_demonum;
-		if (cls.demonum != -1 && !cls.demoplayback && cls.state != ca_connected)
-			CL_NextDemo ();
+//		cls.demonum = m_save_demonum;
+//		if (cls.demonum != -1 && !cls.demoplayback && cls.state != ca_connected)
+//			CL_NextDemo ();
 		break;
 
 	case K_DOWNARROW:
@@ -732,6 +732,7 @@ void M_MultiPlayer_Key (int key, int ascii)
 int		setup_cursor = 5;
 int	setup_cursor_table[] = {40, 56, 80, 104, 128, 152};
 char	namemaker_name[16]; // Baker 3.83: Name maker
+qboolean namemaker_shortcut = false; //Support for namemaker command
 char	setup_hostname[16], setup_myname[16];
 int	setup_oldtop, setup_oldbottom, setup_top, setup_bottom;
 
@@ -743,10 +744,10 @@ void M_Menu_Setup_f (void)
 	m_state = m_setup;
 	m_entersound = true;
 
-	Q_strncpyz (setup_hostname, hostname.string, sizeof(setup_hostname));
+	strlcpy (setup_hostname, hostname.string, sizeof(setup_hostname));
 
 	if (!(strlen(setup_myname)))
-	Q_strncpyz (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
+	strlcpy (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
 
 	setup_top = setup_oldtop = ((int)cl_color.value) >> 4;
 	setup_bottom = setup_oldbottom = ((int)cl_color.value) & 15;
@@ -800,7 +801,7 @@ void M_Setup_Key (int key, int ascii)
 	switch (key)
 	{
 	case K_ESCAPE:
-		Q_strncpyz (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
+		strlcpy (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
 		M_Menu_MultiPlayer_f ();
 		break;
 
@@ -926,13 +927,24 @@ forward:
 //=============================================================================
 int	namemaker_cursor_x, namemaker_cursor_y;
 #define	NAMEMAKER_TABLE_SIZE	16
+extern int key_special_dest;
 
 void M_Menu_NameMaker_f (void)
 {
 	key_dest = key_menu;
+	key_special_dest = 1;
 	m_state = m_namemaker;
 	m_entersound = true;
-	Q_strncpyz (namemaker_name, setup_myname, sizeof(namemaker_name));
+	strlcpy (namemaker_name, setup_myname, sizeof(namemaker_name));
+}
+
+void M_Shortcut_NameMaker_f (void) {
+// Baker: our little shortcut into the name maker
+	namemaker_shortcut = true;
+	strlcpy (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
+	namemaker_cursor_x = 0;
+	namemaker_cursor_y = 0;
+	M_Menu_NameMaker_f();
 }
 
 void M_NameMaker_Draw (void)
@@ -952,8 +964,8 @@ void M_NameMaker_Draw (void)
 	else
 		M_DrawCharacter (24 + 16*namemaker_cursor_x, 40 + 8*namemaker_cursor_y, 12 + ((int)(realtime*4)&1));
 
-	M_DrawTextBox (136, 176, 2, 1);
-	M_Print (144, 184, "OK");
+//	M_DrawTextBox (136, 176, 2, 1);
+	M_Print (144, 184, "Press ESC to exit");
 }
 
 void Key_Extra (int *key);
@@ -964,20 +976,35 @@ void M_NameMaker_Key (int key, int ascii)
 	switch (key)
 	{
 	case K_ESCAPE:
+		key_special_dest = false;
+
+		if (namemaker_shortcut) {// Allow quick exit for namemaker command
+			key_dest = key_game;
+			m_state = m_none;
+			
+			//Save the name
+			Cbuf_AddText (va("name \"%s\"\n", namemaker_name));
+			//Cvar_Set(&hostname, namemaker_name);
+			// Clear the state
+			namemaker_shortcut = false;
+		} else {
+			strlcpy (setup_myname, namemaker_name, sizeof(setup_myname));//R00k			
 		M_Menu_Setup_f ();
+		}
+
 		break;
 
 	case K_UPARROW:
 		S_LocalSound ("misc/menu1.wav");
 		namemaker_cursor_y--;
 		if (namemaker_cursor_y < 0)
-			namemaker_cursor_y = NAMEMAKER_TABLE_SIZE;
+			namemaker_cursor_y = NAMEMAKER_TABLE_SIZE-1;
 		break;
 
 	case K_DOWNARROW:
 		S_LocalSound ("misc/menu1.wav");
 		namemaker_cursor_y++;
-		if (namemaker_cursor_y > NAMEMAKER_TABLE_SIZE)
+		if (namemaker_cursor_y > NAMEMAKER_TABLE_SIZE-1)
 			namemaker_cursor_y = 0;
 		break;
 
@@ -988,7 +1015,7 @@ void M_NameMaker_Key (int key, int ascii)
 
 	case K_PGDN:
 		S_LocalSound ("misc/menu1.wav");
-		namemaker_cursor_y = NAMEMAKER_TABLE_SIZE;
+		namemaker_cursor_y = NAMEMAKER_TABLE_SIZE-1;
 		break;
 
 	case K_LEFTARROW:
@@ -1001,7 +1028,7 @@ void M_NameMaker_Key (int key, int ascii)
 	case K_RIGHTARROW:
 		S_LocalSound ("misc/menu1.wav");
 		namemaker_cursor_x++;
-		if (namemaker_cursor_x >= NAMEMAKER_TABLE_SIZE)
+		if (namemaker_cursor_x >= NAMEMAKER_TABLE_SIZE-1)
 			namemaker_cursor_x = 0;
 		break;
 
@@ -1020,11 +1047,65 @@ void M_NameMaker_Key (int key, int ascii)
 			namemaker_name[l-1] = 0;
 		break;
 
+	case K_MOUSECLICK_BUTTON1:
+
+		{
+			extern int extmousex, extmousey;
+			extern int newmousex, newmousey;
+			int		x, y, rectx, recty;
+			qboolean match=false;
+
+/*			Never used in ProQuake
+			if (scr_scalemenu.value) { // This is the default
+				// we need to adjust the extmousex/y for menu effective size!
+				extmousex = (float)extmousex*((float)menuwidth/(float)vid.width);
+				extmousey = (float)extmousey*((float)menuheight/(float)vid.height);
+			}*/
+
+			for (y=0 ; y<NAMEMAKER_TABLE_SIZE ; y++) {
+				for (x=0 ; x<NAMEMAKER_TABLE_SIZE ; x++) {
+					//Draw_Character (cx + ((menuwidth - 320) >> 1), line + m_yofs, num);
+//					rectx = (32 + (16 * x)) + ((menuwidth - 320) >> 1);
+//					recty = 40 + (8 * y) + scr_centermenu.value ? (menuheight - 200) / 2 : 0;
+					rectx = (32 + (16 * x)); //+ ((menuwidth - 320) >> 1);
+					recty = 40 + (8 * y);// + (scr_centermenu.value ? (menuheight - 200) / 2 : 0);
+					rectx = rectx + ((vid.width - 320)>>1); // the adjustment
+					//recty = recty + m_yofs;
+					//M_DrawCharacter (32 + (16 * x), 40 + (8 * y), NAMEMAKER_TABLE_SIZE * y + x);
+					//Draw_Fill(rectx, recty, 8,8, NAMEMAKER_TABLE_SIZE * y + x); // Draw our hotspots
+
+					//Draw_Fill(rectx, recty, 8,8, 0); // Draw our hotspots						
+					if (extmousex >= rectx && extmousey >=recty) {
+						if (extmousex <=rectx+7 && extmousey <= recty+7) {
+							namemaker_cursor_x = x;
+							namemaker_cursor_y = y;
+							match = true;
+						}
+					}
+					if (match) break;
+				}
+				if (match) break;
+			}
+			Con_Printf("Mouse click x/y %d/%d\n", extmousex, extmousey);
+			Con_Printf("Match is %d = %d\n", match, namemaker_cursor_y * 16 + namemaker_cursor_x);
+			{
+				extern HWND mainwindow;
+				SetWindowText(mainwindow, va("Mouse click %d %d", extmousex, extmousey));
+			}
+			if (!match) {
+				// Baker: nothing was hit
+				return;
+			}
+		}
+
+
+		// If we reached this point, we are simulating ENTER
+
 	case K_SPACE:
 	case K_ENTER:
 		if (namemaker_cursor_y == NAMEMAKER_TABLE_SIZE)
 		{
-			Q_strncpyz (setup_myname, namemaker_name, sizeof(setup_myname));
+			strlcpy (setup_myname, namemaker_name, sizeof(setup_myname));
 			M_Menu_Setup_f ();
 		}
 		else
@@ -1733,6 +1814,7 @@ int		bind_grab;
 void M_Menu_Keys_f (void)
 {
 	key_dest = key_menu;
+	key_special_dest = 2;
 	m_state = m_keys;
 	m_entersound = true;
 }
@@ -1861,6 +1943,7 @@ void M_Keys_Key (int key, int ascii, qboolean down)
 	switch (key)
 	{
 	case K_ESCAPE:
+		key_special_dest = false;
 		M_Menu_Options_f ();
 		break;
 
@@ -3185,7 +3268,7 @@ void M_LanConfig_Key (int key, int ascii)
 		else
 			lanConfig_cursor = 0;
 
-	l =  Q_atoi(lanConfig_portname);
+	l =  atoi(lanConfig_portname);
 	if (l > 65535)
 		l = lanConfig_port;
 	else
@@ -3828,6 +3911,7 @@ void M_Init (void)
 	Cmd_AddCommand ("menu_multiplayer", M_Menu_MultiPlayer_f);
 	Cmd_AddCommand ("menu_setup", M_Menu_Setup_f);
 	Cmd_AddCommand ("menu_namemaker", M_Menu_NameMaker_f);
+	Cmd_AddCommand ("namemaker", M_Shortcut_NameMaker_f);
 	Cmd_AddCommand ("menu_options", M_Menu_Options_f);
 	Cmd_AddCommand ("menu_keys", M_Menu_Keys_f);
 	Cmd_AddCommand ("menu_preferences", M_Menu_Preferences_f);
@@ -3848,7 +3932,9 @@ void M_Draw (void)
 
 		if (scr_con_current)
 		{
-			Draw_ConsoleBackground (vid.height);
+//			Draw_String (1,1, "M_Draw\n");
+			if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
+				Draw_ConsoleBackground (vid.height);
 			VID_UnlockBuffer ();
 			S_ExtraUpdate ();
 			VID_LockBuffer ();
@@ -3964,6 +4050,10 @@ void M_Draw (void)
 
 void M_Keydown (int key, int ascii, qboolean down)
 {
+	if (key == K_MOUSECLICK_BUTTON1)
+		if (m_state != m_namemaker) // K_MOUSECLICK is only valid for namemaker
+			return;
+
 	switch (m_state)
 	{
 	case m_none:

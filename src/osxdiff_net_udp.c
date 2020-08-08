@@ -239,7 +239,7 @@ static int PartialIPAddress (char *in, struct qsockaddr *hostaddr)
 	}
 
 	if (*b++ == ':')
-		port = Q_atoi(b);
+		port = atoi (b);
 	else
 		port = net_hostport;
 

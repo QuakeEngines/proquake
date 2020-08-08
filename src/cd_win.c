@@ -53,12 +53,12 @@ static void MP3_f (void);
 extern	cvar_t	bgmvolume;
 cvar_t	cd_enabled = {"cd_enabled","1", true}; // Baker 3.99e: the ability to have the cdplayer shut off from menu
 
-byte	CurrentTrack;
+static byte	CurrentTrack;
 
-qboolean Looping;
-qboolean Paused;
-qboolean enabled;
-qboolean initialized;
+static qboolean Looping;
+static qboolean Paused;
+static qboolean enabled;
+static qboolean initialized;
 
 static void CDAudio_Eject (void) {}
 static void CDAudio_CloseDoor (void) {}
@@ -72,7 +72,7 @@ void CDAudio_Stop (void)
 	StopMP3DShow ();
 }
 
-void mp3_Stop (void)
+static void mp3_Stop (void)
 {
 	if (!sound_started) return;
 	// We aren't checking enabled because we aren't checking it to play?
@@ -106,16 +106,16 @@ int CDAudio_Init (void)
 		enabled = false;
 		return -1;
 	}
-		
-	Cvar_RegisterVariable (&cd_enabled, CD_Enabled_f); // Baker 3.99e: we want this available even if -nocdaudio is used (for menu)		
-		
+
+	Cvar_RegisterVariable (&cd_enabled, CD_Enabled_f); // Baker 3.99e: we want this available even if -nocdaudio is used (for menu)
+
 	if (COM_CheckParm("-nocdaudio"))
 	{
 		enabled = false;
 		return -1;
 	}
 
-	if (!InitMP3DShow ()) 
+	if (!InitMP3DShow ())
 		return -1;
 
 	initialized = true;
@@ -259,7 +259,7 @@ static void MP3_f (void)
 	}
 
 	command = Cmd_Argv (1);
-	
+
 	if (_stricmp (command, "stop") == 0)
 	{
 		CDAudio_Stop ();
@@ -641,14 +641,14 @@ static void CD_f (void)
 
 	command = Cmd_Argv (1);
 
-	if (!Q_strcasecmp(command, "on"))
+	if (!strcasecmp(command, "on"))
 
 	{
 		enabled = true;
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "off"))
+	if (!strcasecmp(command, "off"))
 
 	{
 		if (playing)
@@ -657,7 +657,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "reset"))
+	if (!strcasecmp(command, "reset"))
 
 	{
 		enabled = true;
@@ -670,7 +670,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "remap"))
+	if (!strcasecmp(command, "remap"))
 
 	{
 		ret = Cmd_Argc() - 2;
@@ -682,12 +682,12 @@ static void CD_f (void)
 			return;
 		}
 		for (n = 1; n <= ret; n++)
-			remap[n] = Q_atoi(Cmd_Argv (n+1));
+			remap[n] = atoi(Cmd_Argv (n+1));
 
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "close"))
+	if (!strcasecmp(command, "close"))
 
 	{
 		CDAudio_CloseDoor();
@@ -704,42 +704,42 @@ static void CD_f (void)
 		}
 	}
 
-	if (!Q_strcasecmp(command, "play"))
+	if (!strcasecmp(command, "play"))
 
 	{
-		CDAudio_Play((byte)Q_atoi(Cmd_Argv (2)), false);
+		CDAudio_Play((byte)atoi(Cmd_Argv (2)), false);
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "loop"))
+	if (!strcasecmp(command, "loop"))
 
 	{
-		CDAudio_Play((byte)Q_atoi(Cmd_Argv (2)), true);
+		CDAudio_Play((byte)atoi(Cmd_Argv (2)), true);
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "stop"))
+	if (!strcasecmp(command, "stop"))
 
 	{
 		CDAudio_Stop();
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "pause"))
+	if (!strcasecmp(command, "pause"))
 
 	{
 		CDAudio_Pause();
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "resume"))
+	if (!strcasecmp(command, "resume"))
 
 	{
 		CDAudio_Resume();
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "eject"))
+	if (!strcasecmp(command, "eject"))
 
 	{
 		if (playing)
@@ -750,7 +750,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "info"))
+	if (!strcasecmp(command, "info"))
 
 	{
 		Con_Printf("%u tracks\n", maxTrack);

@@ -33,11 +33,11 @@ static char     *safeargvs[NUM_SAFE_ARGVS] = {"-stdvid", "-nolan", "-nosound", "
 cvar_t  registered = {"registered","0"};
 cvar_t  cmdline = {"cmdline","0", false, true};
 
-qboolean        com_modified;   // set true if using non-id files
+qboolean	com_modified;   // set true if using non-id files
 
-qboolean		proghack;
+static qboolean	proghack;
 
-int             static_registered = 1;  // only for startup check, then set
+static int             static_registered = 1;  // only for startup check, then set
 
 qboolean		msg_suppress_1 = 0;
 
@@ -54,7 +54,7 @@ int		com_argc;
 char	**com_argv;
 
 #define CMDLINE_LENGTH	256
-char	com_cmdline[CMDLINE_LENGTH];
+static char	com_cmdline[CMDLINE_LENGTH];
 
 qboolean		standard_quake = true, rogue, hipnotic;
 
@@ -73,7 +73,7 @@ qboolean		mod_nosoundwarn = false;	// Don't warn about missing sounds
 
 
 // this graphic needs to be in the pak file to use registered features
-unsigned short pop[] =
+static unsigned short pop[] =
 {
  0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000
 ,0x0000,0x0000,0x6600,0x0000,0x0000,0x0000,0x6600,0x0000
@@ -151,34 +151,34 @@ int va_snprintf (char *function, char *buffer, size_t buffersize, const char *fo
 {
 	va_list args;
 	int		result;
-	
+
 	va_start (args, format);
 	result = va_vsnprintf (function, buffer, buffersize, format, args);
 	va_end (args);
-	
+
 	return result;
 }
 
 int va_vsnprintf (char *function, char *buffer, size_t buffersize, const char *format, va_list args)
 {
 	size_t result;
-	
+
 	result = vsnprintf (buffer, buffersize, format, args);
-	
+
 	if (result < 0 || result >= buffersize)
 	{
 		static qboolean inside;
-		
+
 		// Beware recursion here
 		if (!inside)
 		{
 			inside = true;
 			Con_SafePrintf ("%s: excessive string length, max = %d\n", function, buffersize);
-		}		
+		}
 		inside = false;
 		buffer[buffersize - 1] = '\0';
 		return -1;
-	}	
+	}
 	return result;
 }
 #endif
@@ -270,7 +270,7 @@ void Q_strncpy (char *dest, char *src, int count)
 
 ================
 
-COM_Quakebar 
+COM_Quakebar
 
 ================
 
@@ -378,8 +378,8 @@ char *COM_Quakebar (int len)
 	return -1;
 }*/
 
-
-int Q_strncasecmp (char *s1, char *s2, int n)
+/*
+int strncasecmp (char *s1, char *s2, int n)
 {
 	int             c1, c2;
 
@@ -409,12 +409,12 @@ int Q_strncasecmp (char *s1, char *s2, int n)
 	return -1;
 }
 
-int Q_strcasecmp (char *s1, char *s2)
+int strcasecmp (char *s1, char *s2)
 {
-	return Q_strncasecmp (s1, s2, 99999);
+	return strncasecmp (s1, s2, 99999);
 }
 
-int Q_atoi (char *str)
+int atoi (char *str)
 {
 	int             val;
 	int             sign;
@@ -473,7 +473,7 @@ int Q_atoi (char *str)
 }
 
 
-float Q_atof (char *str)
+float atof (char *str)
 {
 	float			val;
 
@@ -568,6 +568,7 @@ void Q_snprintfz (char *dest, size_t size, char *fmt, ...)
 
 	dest[size - 1] = 0;
 }
+*/
 
 /*
 ============================================================================
@@ -738,25 +739,25 @@ void MSG_WriteCoord (sizebuf_t *sb, float f)
 //        This means our little private protocol will not be interfering with any Quake standards
 //        of any importance because no interaction with other clients and/or demos is occurring
 
-#define PRIVATE_PROTOCOL_OK	(sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)   
-//#define SINGLE_PLAYER_ACTIVE (sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)   
+#define PRIVATE_PROTOCOL_OK	(sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)
+//#define SINGLE_PLAYER_ACTIVE (sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)
 #undef SMOOTH_SINGLEPLAYER_TEST
 
 void MSG_WriteAngle (sizebuf_t *sb, float f)
-{  
+{
 	//MSG_WriteByte (sb, (int)floor(f * 256 / 360 + 0.5) & 255); // Baker 3.76 - LordHavoc precision aiming fix
 #ifdef SMOOTH_SINGLEPLAYER_TEST
 	if (PRIVATE_PROTOCOL_OK)
 		MSG_WriteFloat (sb, f);
 	else
-#endif	
+#endif
 	MSG_WriteByte (sb, ((int)f*256/360) & 255);
 }
 
 // joe: added from FuhQuake
 void R_PreMapLoad (char *mapname)
 {
-	Cvar_Set ("cl_mapname", mapname);	
+	Cvar_Set ("cl_mapname", mapname);
 }
 
 // JPG - precise aim for ProQuake!
@@ -1037,7 +1038,7 @@ void COM_StripExtension (char *in, char *out)
 
 	if (!(dot = strrchr(in, '.')))
 	{
-		Q_strncpyz (out, in, strlen(in) + 1);
+		strlcpy (out, in, strlen(in) + 1);
 		return;
 	}
 
@@ -1142,12 +1143,12 @@ void COM_ForceExtension (char *path, char *extension)
 		if (*src-- == '.')
 		{
 			COM_StripExtension (path, path);
-			strcat (path, extension);
+			strlcat (path, extension, sizeof(path));
 			return;
 		}
 	}
 
-	strncat (path, extension, MAX_OSPATH);
+	strlcat (path, extension, MAX_OSPATH);
 }
 
 /*
@@ -1171,7 +1172,7 @@ void COM_DefaultExtension (char *path, char *extension)
 		src--;
 	}
 
-	strcat (path, extension);
+	strlcat (path, extension, MAX_OSPATH);
 }
 
 
@@ -1844,9 +1845,9 @@ Filename are reletive to the quake directory.
 Allways appends a 0 byte.
 ============
 */
-cache_user_t *loadcache;
-byte    *loadbuf;
-int             loadsize;
+static cache_user_t *loadcache;
+static byte    *loadbuf;
+static int             loadsize;
 byte *COM_LoadFile (char *path, int usehunk)
 {
 	int             h;
@@ -2318,7 +2319,7 @@ int dpvsnprintf (char *buffer, size_t buffersize, const char *format, va_list ar
 
 #ifndef HAVE_STRLCAT
 size_t
-strlcat(char *dst, const char *src, size_t siz)
+strlcat (char *dst, const char *src, size_t siz)
 {
 	register char *d = dst;
 	register const char *s = src;

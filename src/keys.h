@@ -149,7 +149,18 @@ typedef enum
 // JACK: Intellimouse(c) Mouse Wheel Support
 
 	K_MWHEELUP,
-	K_MWHEELDOWN
+	K_MWHEELDOWN,
+
+// Special capture when mouse is freed	
+	K_MOUSECLICK_BUTTON1 = 1024,
+	K_MOUSECLICK_BUTTON2,
+	K_MOUSECLICK_BUTTON3,
+	K_MOUSECLICK_BUTTON4,
+	K_MOUSECLICK_BUTTON5
+
+// 	These are unnecessary; we receive them anyway
+//	K_MOUSECLICK_MWHEELUP
+//	K_MOUSECLICK_MWHEELDOWN
 } keynum_t;
 
 #define	MAXCMDLINE		256

@@ -179,6 +179,7 @@ void R_Init (void)
 // get stack position so we can guess if we are going to overflow
 	r_stack_start = (byte *)&dummy;
 #endif
+
 	R_InitTurb ();
 
 	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);

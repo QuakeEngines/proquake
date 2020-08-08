@@ -31,7 +31,8 @@ cvar_t	sv_defaultmap = {"sv_defaultmap",""}; //Baker 3.95: R00k
 cvar_t	sv_ipmasking = {"sv_ipmasking","1",false, true}; //Baker 3.95: R00k
 cvar_t	sv_cullentities = {"sv_cullentities", "1", false, true}; // Baker 3.99c: Rook and I both think sv_cullentities is better cvar name than sv_cullplayers
 cvar_t	sv_cullentities_notify = {"sv_cullentities_notify", "0", false, true}; // in event there are multiple modes for anti-wallhack (Rook has a more comprehensive mode)
-cvar_t 	sv_gameplayfix_monster_lerp = {"sv_gameplayfix_monster_lerp", "0", false, true}; // Baker: No "Not lerping" monsters
+//cvar_t 	sv_gameplayfix_monster_lerp = {"sv_gameplayfix_monster_lerp", "0", false, true}; // Baker: No "Not lerping" monsters
+cvar_t	sv_allcolors = {"sv_allcolors", "1", false, true};
 
 char	localmodels[MAX_MODELS][5];			// inline model names for precache
 
@@ -79,7 +80,8 @@ void SV_Init (void)
 
 	Cvar_RegisterVariable (&sv_progs, NULL);
 
-	Cvar_RegisterVariable (&sv_gameplayfix_monster_lerp, NULL);
+//	Cvar_RegisterVariable (&sv_gameplayfix_monster_lerp, NULL);
+	Cvar_RegisterVariable (&sv_allcolors, NULL);
 
 	// Baker: Dedicated server "defaults" - this is ok because quake.rc is executed later, so these "defaults" won't override config.cfg settings, etc.
 	if (COM_CheckParm ("-dedicated")) {
@@ -820,7 +822,7 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 		if ( ent->v.angles[2] != ent->baseline.angles[2] )
 			bits |= U_ANGLE3;
 
-		if (!sv_gameplayfix_monster_lerp.value)
+//		if (!sv_gameplayfix_monster_lerp.value)
 			if (ent->v.movetype == MOVETYPE_STEP)
 				bits |= U_NOLERP;	// don't mess up the step animation
 

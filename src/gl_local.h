@@ -133,9 +133,9 @@ extern	cvar_t	r_novis;
 extern	cvar_t	r_farclip;
 
 // fenix@io.com: model interpolation
-extern  cvar_t  gl_interpolate_animation;
-extern  cvar_t  gl_interpolate_transform;
-extern  cvar_t  gl_interpolate_weapon;
+extern  cvar_t  r_interpolate_animation;
+extern  cvar_t  r_interpolate_transform;
+extern  cvar_t  r_interpolate_weapon;
 
 
 // gl rendering cvars and stuff
@@ -277,21 +277,3 @@ extern qboolean using_hwgamma; // Baker hw gamma support
 extern	float	gldepthmin, gldepthmax;
 extern	byte	color_white[4], color_black[4];
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-// mh - combine and overbrights
-#define GL_COMBINE_ARB			0x8570
-#define GL_COMBINE_RGB_ARB		0x8571
-#define GL_COMBINE_ALPHA_ARB	0x8572
-#define GL_RGB_SCALE_ARB		0x8573
-#define GL_CONSTANT_ARB			0x8576
-#define GL_PRIMARY_COLOR_ARB	0x8577
-#define GL_PREVIOUS_ARB			0x8578
-#define GL_SOURCE0_RGB_ARB		0x8580
-#define GL_SOURCE1_RGB_ARB		0x8581
-#define GL_SOURCE0_ALPHA_ARB	0x8588
-#define GL_SOURCE1_ALPHA_ARB	0x8589
-
-extern qboolean gl_combine;
-extern cvar_t gl_overbright;
-extern qboolean gl_usingoverbright;
-#endif

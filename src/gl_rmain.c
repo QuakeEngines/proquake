@@ -81,12 +81,13 @@ cvar_t	r_mirroralpha = {"r_mirroralpha","1"};
 cvar_t	r_wateralpha = {"r_wateralpha","1",true};
 cvar_t	r_dynamic = {"r_dynamic","1"};
 cvar_t	r_novis = {"r_novis","0",true};
-cvar_t  gl_interpolate_animation = {"gl_interpolate_animation", "0", true};
-cvar_t  gl_interpolate_transform = {"gl_interpolate_transform", "0", true};
-cvar_t  gl_interpolate_weapon = {"gl_interpolate_weapon", "0", true};
+cvar_t  r_interpolate_animation = {"r_interpolate_animation", "0", true};
+cvar_t  r_interpolate_transform = {"r_interpolate_transform", "0", true};
+cvar_t  r_interpolate_weapon = {"r_interpolate_weapon", "0", true};
+cvar_t	r_clearcolor = {"r_clearcolor", "0"};
 cvar_t	r_farclip = {"r_farclip","16384",true};
-cvar_t	gl_nearwater_fix = {"gl_nearwater_fix","0",true};
-
+cvar_t	gl_nearwater_fix = {"gl_nearwater_fix","1",true};
+cvar_t	gl_fadescreen_alpha = {"gl_fadescreen_alpha","0.7",true};
 
 #ifdef DX8QUAKE
 cvar_t	gl_clear = {"gl_clear","1"};
@@ -184,6 +185,7 @@ void R_RotateForEntity (entity_t *ent)
     glRotatef (ent->angles[2],  1, 0, 0);
 }
 
+#if 0
 /*
 =============
 R_BlendedRotateForEntity
@@ -256,6 +258,7 @@ void R_BlendedRotateForEntity (entity_t *ent)
 	glRotatef (-ent->lastangles[0] + (-blend * d[0]),  0, 1, 0);
 	glRotatef ( ent->lastangles[2] + ( blend * d[2]),  1, 0, 0);
 }
+#endif
 
 /*
 ===============================================================================
@@ -900,10 +903,8 @@ void R_DrawAliasModel (entity_t *ent)
 
      // fenix@io.com: model transform interpolation
 	 // Don't interpolate the player in chasecam during demo playback
-	if (gl_interpolate_transform.value && !torch && (client_no != cl.viewentity || !chase_active.value || !cls.demoplayback))
-		R_BlendedRotateForEntity (ent);
-	else
-		R_RotateForEntity (ent);
+
+	R_RotateForEntity (ent);
 
 	if (!strcmp (clmodel->name, "progs/eyes.mdl") && gl_doubleeyes.value) {
 		glTranslatef (paliashdr->scale_origin[0], paliashdr->scale_origin[1], paliashdr->scale_origin[2] - (22 + 8));
@@ -955,37 +956,17 @@ void R_DrawAliasModel (entity_t *ent)
 
 	if (gl_smoothmodels.value)
 		glShadeModel (GL_SMOOTH);
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	// mh - overbrights
-	if (gl_usingoverbright)
-	{
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_ARB);
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB_ARB, GL_MODULATE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB_ARB, GL_TEXTURE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB_ARB, GL_PRIMARY_COLOR_ARB);
-		glTexEnvf(GL_TEXTURE_ENV, GL_RGB_SCALE_ARB, 2.0f);
-
-		shadelight /= 2;
-	}
-	else 
-#endif
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 	if (gl_affinemodels.value)
 		glHint (GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
 
         // fenix@io.com: model animation interpolation
-    if (gl_interpolate_animation.value) {
+    if (r_interpolate_animation.value) {
 		R_SetupAliasBlendedFrame (currententity->frame, paliashdr, currententity);
     } else {
 		R_SetupAliasFrame (currententity->frame, paliashdr);
     }
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	// mh - overbrights
-	if (gl_usingoverbright) glTexEnvf(GL_TEXTURE_ENV, GL_RGB_SCALE_ARB, 1.0f);
-#endif
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 
@@ -1028,7 +1009,7 @@ void R_DrawAliasModel (entity_t *ent)
 		glColor4f (0.0f, 0.0f, 0.0f, 1.0f); // KH
 
 		// fenix@io.com: model animation interpolation
-		if (gl_interpolate_animation.value) {
+		if (r_interpolate_animation.value) {
             GL_DrawAliasBlendedShadow (paliashdr, lastposenum0, lastposenum, currententity);
 		} else {
 		}
@@ -1214,10 +1195,10 @@ void R_DrawViewModel (void)
 	glDepthRange (gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
 
         // fenix@io.com: model transform interpolation
-    old_interpolate_transform = gl_interpolate_transform.value;
-    gl_interpolate_transform.value = false;
+//    old_interpolate_transform = gl_interpolate_transform.value;
+  //  gl_interpolate_transform.value = false;
 	R_DrawAliasModel (currententity);
-    gl_interpolate_transform.value = old_interpolate_transform;
+//    gl_interpolate_transform.value = old_interpolate_transform;
 
 	glDepthRange (gldepthmin, gldepthmax);
 }
@@ -1230,16 +1211,27 @@ R_PolyBlend
 */
 void R_PolyBlend (void)
 {
+	if (!v_blend[3])	// No blends ... get outta here
+		return;
+
 #ifdef SUPPORTS_ENHANCED_GAMMA
 	// Baker hwgamma support
-	if (using_hwgamma) {
-		if ((vid_hwgamma_enabled && gl_hwblend.value) || !v_blend[3])
+	if (using_hwgamma && vid_hwgamma_enabled && gl_hwblend.value) {
+//		Con_Printf("gl_hwblend.value is %f\n",gl_hwblend.value);
+		
+		if (!vid_hwgamma_enabled) {// Hardware gamma unavailable
 			return;
+		}
+
+		if (!gl_hwblend.value) {
+			return;
+		}
 
 		glDisable (GL_ALPHA_TEST);
 		glDisable (GL_TEXTURE_2D);
 		glEnable (GL_BLEND);
 
+//		Con_Printf("our blends are %i, %i, %i, %i\n", v_blend[0], v_blend[1], v_blend[2], v_blend[3]);
 		glColor4fv (v_blend);
 
 		glBegin (GL_QUADS);
@@ -1258,8 +1250,6 @@ void R_PolyBlend (void)
 #endif // !d3dquake
 	{ // Baker end hwgamma support
 		if (!gl_polyblend.value)
-			return;
-		if (!v_blend[3])
 			return;
 
 		GL_DisableMultitexture();
@@ -1281,11 +1271,11 @@ void R_PolyBlend (void)
 	 * triangles with the viewport set to something less than full screen
 	 * causes a visible seam. Draw one triangle instead of one quad.
 	 */
-	glBegin (GL_TRIANGLES);
-	glVertex3f (10, 400, 100);
-	glVertex3f (10, -400, 100);
-	glVertex3f (10, 0, -400);
-	glEnd ();
+		glBegin (GL_TRIANGLES);
+		glVertex3f (10, 400, 100);
+		glVertex3f (10, -400, 100);
+		glVertex3f (10, 0, -400);
+		glEnd ();
 #else
 		glBegin (GL_QUADS);
 
@@ -1318,7 +1308,9 @@ void R_BrightenScreen (void)
 		return;
 
 	f = min(v_contrast.value, 3);
-	f = pow(f, vid_gamma);
+	f = pow(f, v_gamma.value);
+
+// inf = 255 * pow((i + 0.5) / 255.5 * c, g) + 0.5;
 
 	glDisable (GL_TEXTURE_2D);
 	glEnable (GL_BLEND);
@@ -1571,6 +1563,7 @@ void R_Init (void)
 	extern cvar_t gl_ringalpha;
 	extern cvar_t gl_fullbright;
 	extern void R_Envmap_f (void);
+	extern void R_SetClearColor_f (void);
 
 	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);
 	Cmd_AddCommand ("envmap", R_Envmap_f);
@@ -1599,9 +1592,10 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_farclip, NULL);
 
 	// fenix@io.com: register new cvar for model interpolation
-	Cvar_RegisterVariable (&gl_interpolate_animation, NULL);
-	Cvar_RegisterVariable (&gl_interpolate_transform, NULL);
-	Cvar_RegisterVariable (&gl_interpolate_weapon, NULL);
+	Cvar_RegisterVariable (&r_interpolate_animation, NULL);
+	Cvar_RegisterVariable (&r_interpolate_transform, NULL);
+	Cvar_RegisterVariable (&r_interpolate_weapon, NULL);
+	Cvar_RegisterVariable (&r_clearcolor, R_SetClearColor_f);
 
 	Cvar_RegisterVariable (&gl_finish, NULL);
 	Cvar_RegisterVariable (&gl_texsort, NULL);
@@ -1638,10 +1632,8 @@ void R_Init (void)
 
 #endif
 
-#ifdef SUPPORTS_GLHOMFIX_NEARWATER
 	Cvar_RegisterVariable (&gl_nearwater_fix, NULL);
-#endif
-
+	Cvar_RegisterVariable (&gl_fadescreen_alpha, NULL);
 
 	R_InitTextures ();
 	R_InitParticles ();

@@ -39,7 +39,7 @@ extern	cvar_t	crosshair;
 
 int dat[8] = {5206,412,7603,2809,1412,206,809,7000};
 
-void Mat_Init (void)
+void Mat_Init_f (void)
 {	
 	int i;
 	int j;

@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -64,10 +64,10 @@ void PrintBits (byte b)
 {
 	int	i;
 	char	str[9];
-	
+
 	for (i=0 ; i<8 ; i++)
 		str[i] = '0' + ((b & (1<<(7-i))) > 0);
-		
+
 	str[8] = 0;
 	Con_Printf ("%s (%i)", str, b);
 }
@@ -228,7 +228,7 @@ void StartSB(void)
 
 		for (i=0 ; i<0x10000 ; i++)
 			dos_inportb(dsp_port+0xe);		// ack the dsp
-		
+
 		timeconstant = 65536-(256000000/(shm->channels*shm->speed));
 		WriteDSP(0x40);
 		WriteDSP(timeconstant>>8);
@@ -312,7 +312,7 @@ void StartDMA(void)
 		+(2<<2)		// read
 		+(dma&3);	// channel #
 	dos_outportb(mode_reg, mode);
-	
+
 // set address
 	// set page
 	dos_outportb(page_reg[dma], realaddr >> 16);
@@ -356,7 +356,7 @@ qboolean BLASTER_Init(void)
 	int 	realaddr;
 	int 	rc;
 	int		p;
-	
+
 	shm = 0;
 	rc = 0;
 
@@ -369,7 +369,7 @@ qboolean BLASTER_Init(void)
 		"The BLASTER environment variable\n"
 		"is not set, sound effects are\n"
 		"disabled.  See README.TXT for help.\n"
-		);			
+		);
 		return 0;
 	}
 
@@ -397,14 +397,14 @@ qboolean BLASTER_Init(void)
 	p = COM_CheckParm ("-dsp");
 	if (p && p < com_argc - 1)
 	{
-		p = Q_atoi (com_argv[p+1]);
+		p = atoi (com_argv[p+1]);
 		if (p < 2 || p > 4)
 			Con_Printf ("-dsp parameter can only be 2, 3, or 4\n");
 		else if (p > dsp_version)
 			Con_Printf ("Can't -dsp %i on v%i hardware\n", p, dsp_version);
 		else
 			dsp_version = p;
-	}	
+	}
 
 
 // everyone does 11khz sampling rate unless told otherwise
@@ -412,7 +412,7 @@ qboolean BLASTER_Init(void)
 	shm->speed = 11025;
 	rc = COM_CheckParm("-sspeed");
 	if (rc)
-		shm->speed = Q_atoi(com_argv[rc+1]);
+		shm->speed = atoi(com_argv[rc+1]);
 
 // version 4 cards (sb 16) do 16 bit stereo
 	if (dsp_version >= 4)
@@ -424,16 +424,16 @@ qboolean BLASTER_Init(void)
 	else if (dsp_version == 3)
 	{
 		shm->channels = 2;
-		shm->samplebits = 8;	
+		shm->samplebits = 8;
 	}
 // v2 cards do 8 bit mono
 	else
 	{
 		shm->channels = 1;
-		shm->samplebits = 8;	
+		shm->samplebits = 8;
 	}
 
-	
+
 	Cmd_AddCommand("sbinfo", SB_Info_f);
 	size = 4096;
 
@@ -535,9 +535,9 @@ void BLASTER_Shutdown(void)
 	}
 	else
 	{
-	
+
 	}
-	
+
 	WriteDSP(0xd3); // turn off speaker
 	ResetDSP ();
 
@@ -584,9 +584,9 @@ qboolean SNDDMA_Init(void)
 		dmacard = dma_blaster;
 		return true;
 	}
-	
+
 	dmacard = dma_none;
-	
+
 	return false;
 }
 
@@ -611,7 +611,7 @@ int SNDDMA_GetDMAPos(void)
 	case dma_none:
 		break;
 	}
-	
+
 	return 0;
 }
 

@@ -26,17 +26,6 @@ const char *gl_version;
 const char *gl_extensions;
 qboolean gl_mtexable = false;
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-// mh - check for presence of GL_ARB_texture_env_combine
-qboolean gl_combine = false;
-
-// mh - true if using overbrights
-qboolean gl_usingoverbright = false;
-
-// mh - enable overbrights
-cvar_t gl_overbright = {"gl_overbright", "1", true};
-#endif
-
 #ifdef MACOSX
 // Baker: in windows this is in gl_vidnt.c
 int	texture_mode = GL_LINEAR;
@@ -187,57 +176,56 @@ int		texture_extension_number = 1;
 
 void CheckMultiTextureExtensions(void)
 {
-   qboolean SGIS, ARB;
+	qboolean SGIS, ARB;
 
+	if (COM_CheckParm("-nomtex"))
+	{
+		Con_Warning ("Multitexture disabled at command line\n");
+		return;
+	}
+
+	if (COM_CheckParm("-nomtexarb"))
+		ARB = false;
+	else
+		ARB = strstr (gl_extensions, "GL_ARB_multitexture ") != NULL;
+
+	SGIS = strstr (gl_extensions, "GL_SGIS_multitexture ") != NULL;
+
+	if (!ARB && !SGIS) {
+		Con_Warning ("Multitexture extension not found\n");
+		return;
+	}
+
+	qglMTexCoord2fSGIS = (void *) wglGetProcAddress (ARB ? "glMultiTexCoord2fARB" : "glMTexCoord2fSGIS");
+	qglSelectTextureSGIS = (void *) wglGetProcAddress (ARB ? "glActiveTextureARB" : "glSelectTextureSGIS");
+	TEXTURE0_SGIS = ARB ? 0x84C0 : 0x835E;
+	TEXTURE1_SGIS = ARB ? 0x84C1 : 0x835F;
+	gl_oldtarget = TEXTURE0_SGIS;
+
+	Con_Printf ("GL_%s_multitexture extensions found\n", ARB ? "ARB" : "SGIS");
+	gl_mtexable = true;
+}
+#else
+
+void CheckMultiTextureExtensions(void) {
    if (COM_CheckParm("-nomtex"))
    {
-      Con_Printf ("WARNING: Multitexture disabled at command line\n");
+      Con_Warning ("Multitexture disabled at command line\n");
       return;
    }
 
-   if (COM_CheckParm("-nomtexarb"))
-      ARB = false;
-   else
-      ARB = strstr (gl_extensions, "GL_ARB_multitexture ") != NULL;
-
-   SGIS = strstr (gl_extensions, "GL_SGIS_multitexture ") != NULL;
-
-   if (ARB || SGIS)
-   {
-      Con_Printf ("GL_%s_multitexture extensions found\n", ARB ? "ARB" : "SGIS");
-      qglMTexCoord2fSGIS = (void *) wglGetProcAddress (ARB ? "glMultiTexCoord2fARB" : "glMTexCoord2fSGIS");
-      qglSelectTextureSGIS = (void *) wglGetProcAddress (ARB ? "glActiveTextureARB" : "glSelectTextureSGIS");
-      TEXTURE0_SGIS = ARB ? 0x84C0 : 0x835E;
-      TEXTURE1_SGIS = ARB ? 0x84C1 : 0x835F;
-      gl_oldtarget = TEXTURE0_SGIS;
-      gl_mtexable = true;
-   }
-   else
-      Con_Printf ("WARNING: Multitexture not supported\n");
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS      
-	// mh - we're only going to support combine if using ARB (per spec)
-	if (ARB)
-	{
-		gl_combine = false;
-
-		if (strstr (gl_extensions, "GL_ARB_texture_env_combine"))
-		{
-			gl_combine = true;
-			Con_Printf ("GL_ARB_texture_env_combine extensions found\n");
-		}
+	if (!strstr(gl_extensions, "GL_SGIS_multitexture ")) {
+		Con_Warning ("Multitexture extension not found\n");
+		return;
 	}
-#endif
-} 
-#else
-void CheckMultiTextureExtensions(void) {
-	if (strstr(gl_extensions, "GL_SGIS_multitexture ") && !COM_CheckParm("-nomtex")) {
-		Con_Printf("Multitexture extensions found.\n");
-		qglMTexCoord2fSGIS = (void *) wglGetProcAddress("glMTexCoord2fSGIS");
-		qglSelectTextureSGIS = (void *) wglGetProcAddress("glSelectTextureSGIS");
-		gl_mtexable = true;
-	}
+
+	qglMTexCoord2fSGIS = (void *) wglGetProcAddress("glMTexCoord2fSGIS");
+	qglSelectTextureSGIS = (void *) wglGetProcAddress("glSelectTextureSGIS");
+
+	Con_Printf("Multitexture extensions found\n");
+	gl_mtexable = true;
 }
+
 #endif
 
 
@@ -282,6 +270,11 @@ void GL_Init (void) {
 
 	GL_SetupState (); //johnfitz
 }
+
+void GL_PrintExtensions_f(void) {
+	Con_Printf ("GL_EXTENSIONS: %s\n", gl_extensions);
+}
+
 
 /*
 ===============
@@ -417,7 +410,7 @@ void Check_Gamma (unsigned char *pal) {
 	float		inf;
 	unsigned char	palette[768];
 	if ((i = COM_CheckParm("-gamma")) != 0 && i+1 < com_argc)
-		vid_gamma = bound(0.3, Q_atof(com_argv[i+1]), 1);
+		vid_gamma = bound(0.3, atof(com_argv[i+1]), 1);
 	else
 		vid_gamma = 1;
 	Cvar_SetValue ("gamma", vid_gamma);
@@ -447,7 +440,7 @@ void Check_GammaOld (unsigned char *pal)
 		else
 			vid_gamma = 0.7; // default to 0.7 on non-3dfx hardware
 	} else {
-		vid_gamma = Q_atof(com_argv[i+1]);
+		vid_gamma = atof(com_argv[i+1]);
 		if (vid_gamma == 0) {
 			// Baker: Then someone used -gamma parameter incorrectly so use the default
 			vid_gamma = 0.7;

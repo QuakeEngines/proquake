@@ -76,7 +76,7 @@ cvar_t	cl_bobbing		= {"cl_bobbing", "0"};
 client_static_t	cls;
 client_state_t	cl;
 // FIXME: put these on hunk?
-efrag_t			cl_efrags[MAX_EFRAGS];
+static efrag_t			cl_efrags[MAX_EFRAGS];
 entity_t		cl_entities[MAX_EDICTS];
 entity_t		cl_static_entities[MAX_STATIC_ENTITIES];
 lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
@@ -91,8 +91,8 @@ char			*cl_modelnames[NUM_MODELINDEX];
 #endif
 
 extern cvar_t scr_fov;
-float			savedsensitivity;
-float			savedfov;
+static float		savedsensitivity;
+static float		savedfov;
 
 /*
 =====================
@@ -147,6 +147,9 @@ void CL_Disconnect (void)
 
 // bring the console down and fade the colors back to normal
 //	SCR_BringDownConsole ();
+
+	// This makes sure ambient sounds remain silent
+	cl.worldmodel = NULL;
 
 #ifdef HTTP_DOWNLOAD
 	// We have to shut down webdownloading first
@@ -298,7 +301,7 @@ void CL_SignonReply (void)
 	char 	str[8192];
 	int i;	// JPG 3.00
 
-Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
+	Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 
 	switch (cls.signon)
 	{
@@ -330,11 +333,11 @@ Con_DPrintf ("CL_SignonReply: %i\n", cls.signon);
 			char path[64];
 #ifdef SUPPORTS_CHEATFREE_MODE
 
-			strcpy(path, argv[0]);
+			strcpy (path, argv[0]);
 #endif // ^^ MACOSX can't support this code but Windows/Linux do
 #ifdef _WIN32
 			if (!strstr(path, ".exe") && !strstr(path, ".EXE"))
-				strcat (path, ".exe");
+				strlcat (path, ".exe", sizeof(path));
 #endif // ^^ This is Windows operating system specific; Linux does not need
 			f = fopen(path, "rb");
 			if (!f)
@@ -427,7 +430,7 @@ void CL_NextDemo (void)
 CL_PrintEntities_f
 ==============
 */
-void CL_PrintEntities_f (void)
+static void CL_PrintEntities_f (void)
 {
 	entity_t	*ent;
 	int			i;
@@ -523,7 +526,7 @@ Determines the fraction between the last two messages that the objects
 should be put at.
 ===============
 */
-float	CL_LerpPoint (void)
+static float CL_LerpPoint (void)
 {
 	float	f, frac;
 
@@ -566,13 +569,18 @@ extern cvar_t pq_timer; // JPG - need this for CL_RelinkEntities
 CL_RelinkEntities
 ===============
 */
-void CL_RelinkEntities (void)
+static void CL_RelinkEntities (void)
 {
 	entity_t	*ent;
 	int			i, j;
 	float		frac, f, d, bobjrotate;
 	vec3_t		delta, oldorg;
 	dlight_t	*dl;
+	void CL_ClearInterpolation (entity_t *ent);
+	void CL_EntityInterpolateOrigins (entity_t *ent);
+	void CL_EntityInterpolateAngles (entity_t *ent);
+
+
 
 // determine partial update time
 	frac = CL_LerpPoint ();
@@ -622,7 +630,7 @@ void CL_RelinkEntities (void)
 // if the object wasn't included in the last packet, remove it
 		if (ent->msgtime != cl.mtime[0])
 		{
-#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+#ifdef SUPPORTS_TRANSFORM_INTERPOLATION
 			CL_ClearInterpolation (ent);
 #endif
 			ent->model = NULL;
@@ -646,7 +654,7 @@ void CL_RelinkEntities (void)
 					f = 1;		// assume a teleportation, not a motion
 			}
 
-#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+#ifdef SUPPORTS_TRANSFORM_INTERPOLATION
 			if (f >= 1) CL_ClearInterpolation (ent);
 #endif
 
@@ -668,7 +676,7 @@ void CL_RelinkEntities (void)
 //		if (!(model = cl.model_precache[ent->modelindex]))
 //			Host_Error ("CL_RelinkEntities: bad modelindex");
 
-#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+#ifdef SUPPORTS_TRANSFORM_INTERPOLATION
 		CL_EntityInterpolateOrigins (ent);
 		CL_EntityInterpolateAngles (ent);
 #endif
@@ -881,7 +889,7 @@ CL_SaveFOV
 Saves the FOV
 ================
 */
-void CL_SaveFOV_f (void) {
+static void CL_SaveFOV_f (void) {
 	savedfov = scr_fov.value;
 }
 
@@ -892,7 +900,7 @@ CL_RestoreFOV
 Restores FOV to saved level
 ================
 */
-void CL_RestoreFOV_f (void) {
+static void CL_RestoreFOV_f (void) {
 	if (!savedfov) {
 		Con_Printf("RestoreFOV: No saved FOV to restore\n");
 		return;
@@ -908,7 +916,7 @@ CL_SaveSensivity
 Saves the Sensitivity
 ================
 */
-void CL_SaveSensitivity_f (void) {
+static void CL_SaveSensitivity_f (void) {
 	savedsensitivity = sensitivity.value;
 }
 
@@ -919,7 +927,7 @@ CL_RestoreSensitivity
 Restores Sensitivity to saved level
 ================
 */
-void CL_RestoreSensitivity_f (void) {
+static void CL_RestoreSensitivity_f (void) {
 	if (!savedsensitivity) {
 		Con_Printf("RestoreSensitivity: No saved SENSITIVITY to restore\n");
 		return;
@@ -936,7 +944,7 @@ display impact point of trace along VPN
 =============
 */
 extern void TraceLine (vec3_t start, vec3_t end, vec3_t impact);
-void CL_Tracepos_f (void)
+static void CL_Tracepos_f (void)
 {
 	vec3_t	v, w;
 
@@ -1038,7 +1046,7 @@ void CL_Init (void)
 	Cmd_AddCommand ("restorefov", CL_RestoreFOV_f);
 	Cmd_AddCommand ("restoresensitivity", CL_RestoreSensitivity_f);
 
-	
+
 
 
 // JPG - added these for %r formatting

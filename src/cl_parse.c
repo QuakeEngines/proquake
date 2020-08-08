@@ -148,7 +148,7 @@ CL_EntityNum
 This error checks and tracks the total number of entities
 ===============
 */
-entity_t	*CL_EntityNum (int num)
+static entity_t	*CL_EntityNum (int num)
 {
 	if (num >= cl.num_entities)
 	{
@@ -170,7 +170,7 @@ entity_t	*CL_EntityNum (int num)
 CL_ParseStartSoundPacket
 ==================
 */
-void CL_ParseStartSoundPacket(void)
+static void CL_ParseStartSoundPacket(void)
 {
     vec3_t  pos;
     int 	i, channel, ent, sound_num, volume, field_mask;
@@ -204,7 +204,7 @@ When the client is taking a long time to load stuff, send keepalive messages
 so the server doesn't disconnect.
 ==================
 */
-void CL_KeepaliveMessage (void)
+static void CL_KeepaliveMessage (void)
 {
 	float	time;
 	static float lastmsg;
@@ -291,7 +291,7 @@ static int CL_WebDownloadProgress( double percent )
 CL_ParseServerInfo
 ==================
 */
-void CL_ParseServerInfo (void)
+static void CL_ParseServerInfo (void)
 {
 	char	*str, tempname[MAX_QPATH];
 	int		i, nummodels, numsounds;
@@ -413,17 +413,17 @@ void CL_ParseServerInfo (void)
 				extern int net_hostport;
 
 				//Create the FULL path where the file should be written
-				Q_snprintfz (download_tempname, sizeof(download_tempname), "%s/%s.tmp", com_gamedir, model_precache[i]);
+				snprintf (download_tempname, sizeof(download_tempname), "%s/%s.tmp", com_gamedir, model_precache[i]);
 
 				//determine the proper folder and create it, the OS will ignore if already exsists
 				COM_GetFolder(model_precache[i],folder);// "progs/","maps/"
-				Q_snprintfz (name, sizeof(name), "%s/%s", com_gamedir, folder);
+				snprintf (name, sizeof(name), "%s/%s", com_gamedir, folder);
 				Sys_mkdir (name);
 
 				Con_Printf( "Web downloading: %s from %s%s\n", model_precache[i], cl_web_download_url.string, model_precache[i]);
 
 				//assign the url + path + file + extension we want
-				Q_snprintfz( url, sizeof( url ), "%s%s", cl_web_download_url.string, model_precache[i]);
+				snprintf( url, sizeof( url ), "%s%s", cl_web_download_url.string, model_precache[i]);
 
 				cls.download.web = true;
 				cls.download.disconnect = false;
@@ -444,7 +444,7 @@ void CL_ParseServerInfo (void)
 				{
 					Con_Printf("Web download successful: %s\n", download_tempname);
 					//Rename the .tmp file to the final precache filename
-					Q_snprintfz (download_finalname, MAX_OSPATH, "%s/%s", com_gamedir, model_precache[i]);
+					snprintf (download_finalname, sizeof(download_finalname), "%s/%s", com_gamedir, model_precache[i]);
 					rename (download_tempname, download_finalname);
 
 					free(download_tempname);
@@ -499,7 +499,7 @@ void CL_ParseServerInfo (void)
 	noclip_anglehack = false;		// noclip is turned off at start
 }
 
-#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+#ifdef SUPPORTS_TRANSFORM_INTERPOLATION
 extern cvar_t r_interpolate_transform;
 void CL_EntityInterpolateOrigins (entity_t *ent)
 {
@@ -608,9 +608,13 @@ void CL_EntityInterpolateAngles (entity_t *ent)
 	}
 }
 
-
 void CL_ClearInterpolation (entity_t *ent)
 {
+
+#ifdef SUPPORTS_HARDWARE_ANIM_INTERPOLATION
+	ent->frame_interval = -1;
+#endif
+
 	ent->frame_start_time = 0;
 	ent->lastpose = ent->currpose;
 
@@ -636,7 +640,7 @@ relinked.  Other attributes can change without relinking.
 */
 int	bitcounts[16];
 
-void CL_ParseUpdate (int bits)
+static void CL_ParseUpdate (int bits)
 {
 	int		i, num;
 	model_t		*model;
@@ -688,7 +692,7 @@ if (bits&(1<<i))
 		else
 			forcelink = true;	// hack to make null model players work
 
-#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
+#ifdef SUPPORTS_TRANSFORM_INTERPOLATION
 		// if the model has changed we must also reset the interpolation data
 		// lastpose and currpose are critical as they might be pointing to invalid frames in the new model!!!
 		CL_ClearInterpolation (ent);
@@ -784,7 +788,7 @@ if (bits&(1<<i))
 CL_ParseBaseline
 ==================
 */
-void CL_ParseBaseline (entity_t *ent)
+static void CL_ParseBaseline (entity_t *ent)
 {
 	int			i;
 
@@ -806,7 +810,7 @@ CL_ParseClientdata
 Server information pertaining to this client only
 ==================
 */
-void CL_ParseClientdata (int bits)
+static void CL_ParseClientdata (int bits)
 {
 	int		i, j;
 
@@ -901,7 +905,7 @@ void CL_ParseClientdata (int bits)
 CL_NewTranslation
 =====================
 */
-void CL_NewTranslation (int slot)
+static void CL_NewTranslation (int slot)
 {
 	int		i, j, top, bottom;
 	byte	*dest, *source;
@@ -939,7 +943,7 @@ void CL_NewTranslation (int slot)
 CL_ParseStatic
 =====================
 */
-void CL_ParseStatic (void)
+static void CL_ParseStatic (void)
 {
 	entity_t *ent;
 
@@ -966,7 +970,7 @@ void CL_ParseStatic (void)
 CL_ParseStaticSound
 ===================
 */
-void CL_ParseStaticSound (void)
+static void CL_ParseStaticSound (void)
 {
 	int			i, sound_num, vol, atten;
 	vec3_t		org;
@@ -981,13 +985,13 @@ void CL_ParseStaticSound (void)
 }
 
 // JPG - added this
-int MSG_ReadBytePQ (void)
+static int MSG_ReadBytePQ (void)
 {
 	return MSG_ReadByte() * 16 + MSG_ReadByte() - 272;
 }
 
 // JPG - added this
-int MSG_ReadShortPQ (void)
+static int MSG_ReadShortPQ (void)
 {
 	return MSG_ReadBytePQ() * 256 + MSG_ReadBytePQ();
 }
@@ -997,7 +1001,7 @@ int MSG_ReadShortPQ (void)
 CL_ParseProQuakeMessage
 =======================
 */
-void CL_ParseProQuakeMessage (void)
+static void CL_ParseProQuakeMessage (void)
 {
 	int cmd, i;
 	int team, frags, shirt, ping;
@@ -1081,7 +1085,7 @@ void CL_ParseProQuakeMessage (void)
 
 
 
-void Q_Version(char *s)
+static void Q_Version(char *s)
 {
 	static float q_version_reply_time = -20.0; // Baker: so it can be instantly used
 	char *t;
@@ -1114,7 +1118,7 @@ extern cvar_t pq_scoreboard_pings; // JPG - need this for CL_ParseProQuakeString
 CL_ParseProQuakeString
 ======================
 */
-void CL_ParseProQuakeString (char *string)
+static void CL_ParseProQuakeString (char *string)
 {
 	static int checkping = -1;
 	int ping, i;

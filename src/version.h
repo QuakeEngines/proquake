@@ -83,6 +83,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Smooth rotation test
 //#define SMOOTH_SINGLEPLAYER_TEST
 #define QCEXEC
+#define SUPPORTS_MULTIMAP_DEMOS
+#define CHASE_CAM_FIX
+
+
 
 // Define Support For Cheat-Free Mode
 #if defined(_WIN32) || defined(Linux)
@@ -147,18 +151,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #endif
 
-#if 0  // No overbrights
+
 #if defined(_WIN32) && defined(GLQUAKE) && !defined(DX8QUAKE)
 #define OLD_SGIS
-#endif
-
-#else
-#if defined(_WIN32) && defined(GLQUAKE) && !defined(D3DQUAKE)
-#define SUPPORTS_HARDWARE_OVERBRIGHTS
-#else
-#define OLD_SGIS
-#endif
-
 #endif
 
 #ifdef GLQUAKE
@@ -179,6 +174,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifdef GLQUAKE
 # define SUPPORTS_SKYBOX // Only GL
+# define SUPPORTS_GLHOMFIX_NEARWATER
 #endif
 
 #if defined(GLQUAKE) && !defined(D3DQUAKE)
@@ -197,6 +193,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define SUPPORTS_ENTITY_ALPHA
 #endif
 
+#define SUPPORTS_TRANSFORM_INTERPOLATION // We are switching to r_interpolate_transform
 #ifdef GLQUAKE
 # define SUPPORTS_HARDWARE_ANIM_INTERPOLATION
 #else
@@ -254,7 +251,6 @@ int build_number (void);
 void Host_Version_f (void);
 char *VersionString (void);
 
-#endif
 
-#define SUPPORTS_GLHOMFIX_NEARWATER
-#define SUPPORTS_MULTIMAP_DEMOS
+
+#endif

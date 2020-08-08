@@ -12,7 +12,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -186,7 +186,7 @@ VID_CheckVMode(Display *dpy, int *maj_ver, int *min_ver)
 {
 	int event_base, error_base;
 	int dummy;
-	
+
 	if (! XF86VidModeQueryExtension(dpy, &event_base, &error_base)) {
 		return 0;
 	}
@@ -248,7 +248,7 @@ do_grabs(int grab)
 		if (hasdga) {
 			XF86DGADirectVideo(dpy, screen, XF86DGADirectMouse);
 			dgamouse = 1;
-		} else 
+		} else
 		{
 			XWarpPointer(dpy, None, win, 0, 0, 0, 0,
 				     vid.width / 2, vid.height / 2);
@@ -428,7 +428,7 @@ void	VID_SetPaletteOld (unsigned char *palette)
 		g = pal[1];
 		b = pal[2];
 		pal += 3;
-		
+
 //		v = (255<<24) + (r<<16) + (g<<8) + (b<<0);
 //		v = (255<<0) + (r<<8) + (g<<16) + (b<<24);
 		v = (255<<24) + (r<<0) + (g<<8) + (b<<16);
@@ -552,7 +552,7 @@ qboolean VID_Is8bit(void)
 }
 
 #ifdef GL_EXT_SHARED
-void VID_Init8bitPalette() 
+void VID_Init8bitPalette()
 {
 	// Check for 8bit Extensions and initialize them.
 	int i;
@@ -578,7 +578,7 @@ void VID_Init8bitPalette()
 
 #else
 
-void VID_Init8bitPalette(void) 
+void VID_Init8bitPalette(void)
 {
 }
 
@@ -590,7 +590,7 @@ static void Check_GammaOld (unsigned char *pal)
 	float   f, inf;
 	unsigned char   palette[768];
 	int             i;
-	
+
 	if ((i = COM_CheckParm("-gamma")) == 0) {
 		if ((gl_renderer && strstr(gl_renderer, "Voodoo")) ||
 			(gl_vendor && strstr(gl_vendor, "3Dfx")))
@@ -598,8 +598,8 @@ static void Check_GammaOld (unsigned char *pal)
 		else
 			vid_gamma = 0.7; // default to 0.7 on non-3dfx hardware
 	} else
-		vid_gamma = Q_atof(com_argv[i+1]);
-	
+		vid_gamma = atof(com_argv[i+1]);
+
 	for (i=0 ; i<768 ; i++)
 	{
 		f = pow ( (pal[i]+1)/256.0 , vid_gamma );
@@ -610,9 +610,9 @@ static void Check_GammaOld (unsigned char *pal)
 			inf = 255;
 		palette[i] = inf;
 	}
-	
+
 	memcpy (pal, palette, sizeof(palette));
-	
+
 	BuildGammaTable(vid_gamma);
 }
 
@@ -659,7 +659,7 @@ void VID_Init(unsigned char *palette)
 		height = atoi(com_argv[i+1]);
 
 	if ((i = COM_CheckParm("-conwidth")) != 0)
-		vid.conwidth = Q_atoi(com_argv[i+1]);
+		vid.conwidth = atoi(com_argv[i+1]);
 	else
 		vid.conwidth = width;
 
@@ -672,7 +672,7 @@ void VID_Init(unsigned char *palette)
 	vid.conheight = vid.conwidth*3 / 4;
 
 	if ((i = COM_CheckParm("-conheight")) != 0)
-		vid.conheight = Q_atoi(com_argv[i+1]);
+		vid.conheight = atoi(com_argv[i+1]);
 	if (vid.conheight < 200)
 		vid.conheight = 200;
 
@@ -801,7 +801,7 @@ XLateKey(XKeyEvent *ev)
 	XLookupString(ev, buf, sizeof(buf), &keysym, 0);
 
 	switch(keysym) {
-		case XK_KP_Page_Up:	
+		case XK_KP_Page_Up:
 		case XK_Page_Up:	key = K_PGUP; break;
 
 		case XK_KP_Page_Down:
@@ -813,7 +813,7 @@ XLateKey(XKeyEvent *ev)
 		case XK_KP_End:
 		case XK_End:		key = K_END; break;
 
-		case XK_KP_Left:	
+		case XK_KP_Left:
 		case XK_Left:		key = K_LEFTARROW; break;
 
 		case XK_KP_Right:
@@ -827,7 +827,7 @@ XLateKey(XKeyEvent *ev)
 
 		case XK_Escape:		key = K_ESCAPE; break;
 
-		case XK_KP_Enter:	
+		case XK_KP_Enter:
 		case XK_Return:		key = K_ENTER; break;
 
 		case XK_Tab:		key = K_TAB; break;
@@ -855,19 +855,19 @@ XLateKey(XKeyEvent *ev)
 		case XK_Shift_L:
 		case XK_Shift_R:	key = K_SHIFT; break;
 
-		case XK_Execute: 
-		case XK_Control_L: 
+		case XK_Execute:
+		case XK_Control_L:
 		case XK_Control_R:	key = K_CTRL; break;
 
 		case XK_Mode_switch:
-		case XK_Alt_L:	
-		case XK_Meta_L: 
-		case XK_Alt_R:	
+		case XK_Alt_L:
+		case XK_Meta_L:
+		case XK_Alt_R:
 		case XK_Meta_R:		key = K_ALT; break;
 
 		case XK_KP_Begin:	key = '5'; break;
 
-		case XK_KP_Insert:	
+		case XK_KP_Insert:
 		case XK_Insert:		key = K_INS; break;
 
 		case XK_KP_Multiply:	key = '*'; break;
@@ -909,7 +909,7 @@ XLateKey(XKeyEvent *ev)
 				key = key + ('a' - 'A');
 			}
 			break;
-	} 
+	}
 
 	return key;
 }
@@ -966,12 +966,12 @@ GetEvent(void)
 			if (_windowed_mouse.value) {
 				mouse_x += (float) ((int)x_event.xmotion.x
 						    - (int)(vid.width/2));
-				mouse_y += (float) ((int)x_event.xmotion.y 
+				mouse_y += (float) ((int)x_event.xmotion.y
 						    - (int)(vid.height/2));
 
 				/* move the mouse to the window center again */
 				XSelectInput(dpy, win, X_MASK & ~PointerMotionMask);
-				XWarpPointer(dpy, None, win, 0, 0, 0, 0, 
+				XWarpPointer(dpy, None, win, 0, 0, 0, 0,
 					(vid.width/2), (vid.height/2));
 				XSelectInput(dpy, win, X_MASK);
 			}
@@ -1022,7 +1022,7 @@ GetEvent(void)
 void Sys_SendKeyEvents(void)
 {
 	if (dpy) {
-		while (XPending(dpy)) 
+		while (XPending(dpy))
 			GetEvent();
 	}
 }
@@ -1079,9 +1079,9 @@ IN_MouseMove(usercmd_t *cmd)
 	} else {
 		cl.viewangles[YAW] -= m_yaw.value * mouse_x;
 	}
-	
+
 	if (mlook_active)	V_StopPitchDrift();    // Baker 3.60 - Freelook cvar support
-		
+
 	if (mlook_active && !(in_strafe.state & 1))     // Baker 3.60 - Freelook cvar support
 	{
 		cl.viewangles[PITCH] += m_pitch.value * mouse_y;

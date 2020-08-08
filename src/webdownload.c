@@ -146,9 +146,9 @@ static int Web_Init( void )
 		return 0;
 	}
 
-	Q_strncpyz( useragent, ENGINE_NAME, sizeof( useragent ) );
+	strlcpy (useragent, VersionString(), sizeof(useragent));
 
-	code = curl_easy_setopt( curl, CURLOPT_USERAGENT, useragent );
+	code = curl_easy_setopt( curl, CURLOPT_USERAGENT, useragent);
 
 	if( code != CURLE_OK )
 	{

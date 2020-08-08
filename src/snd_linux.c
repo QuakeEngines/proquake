@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -76,21 +76,21 @@ qboolean SNDDMA_Init(void)
 	}
 
     if (ioctl(audio_fd, SNDCTL_DSP_GETOSPACE, &info)==-1)
-    {   
+    {
         perror("GETOSPACE");
 		Con_Printf("Um, can't do GETOSPACE?\n");
 		close(audio_fd);
 		return 0;
     }
-    
+
 	shm = &sn;
     shm->splitbuffer = 0;
 
 // set sample bits & speed
 	if ((s = getenv("QUAKE_SOUND_SAMPLEBITS")))
-		shm->samplebits = Q_atoi(s);
+		shm->samplebits = atoi(s);
 	else if ((i = COM_CheckParm("-sndbits")) && i + 1 < com_argc)
-		shm->samplebits = Q_atoi(com_argv[i+1]);
+		shm->samplebits = atoi(com_argv[i+1]);
 
 	if (shm->samplebits != 16 && shm->samplebits != 8)
     {
@@ -102,9 +102,9 @@ qboolean SNDDMA_Init(void)
     }
 
 	if ((s = getenv("QUAKE_SOUND_SPEED")))
-		shm->speed = Q_atoi(s);
+		shm->speed = atoi(s);
 	else if ((i = COM_CheckParm("-sndspeed")) && i + 1 < com_argc)
-		shm->speed = Q_atoi(com_argv[i+1]);
+		shm->speed = atoi(com_argv[i+1]);
 	else if (COM_CheckParm("-44khz"))
 		shm->speed = 44100;
 	else if (COM_CheckParm("-22khz"))
@@ -118,12 +118,12 @@ qboolean SNDDMA_Init(void)
     }
 
 	if ((s = getenv("QUAKE_SOUND_CHANNELS")))
-		shm->channels = Q_atoi(s);
+		shm->channels = atoi(s);
 	else if ((i = COM_CheckParm("-sndmono")))
 		shm->channels = 1;
 	else if ((i = COM_CheckParm("-sndstereo")))
 		shm->channels = 2;
-    else 
+    else
 		shm->channels = 2;
 
 	shm->samples = info.fragstotal * info.fragsize / (shm->samplebits/8);
@@ -228,7 +228,7 @@ int SNDDMA_GetDMAPos(void)
 {
 	struct count_info count;
 
-	if (!snd_inited) 
+	if (!snd_inited)
 		return 0;
 
 	if (ioctl(audio_fd, SNDCTL_DSP_GETOPTR, &count)==-1)

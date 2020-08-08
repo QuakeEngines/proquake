@@ -33,12 +33,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
 
-void S_Play(void);
-void S_PlayVol(void);
-void S_SoundList(void);
+void S_Play_f(void);
+void S_PlayVol_f(void);
+void S_SoundList_f(void);
 void S_Update_();
 void S_StopAllSounds(qboolean clear);
-void S_StopAllSoundsC(void);
+void S_StopAllSoundsC_f(void);
 void S_VolumeDown_f (void); // Baker 3.60 - from JoeQuake 0.15
 void S_VolumeUp_f (void);  // Baker 3.60 - from JoeQuake 0.15
 
@@ -184,10 +184,10 @@ void S_Init (void)
 
 		fakedma = true;
 
-	Cmd_AddCommand("play", S_Play);
-	Cmd_AddCommand("playvol", S_PlayVol);
-	Cmd_AddCommand("stopsound", S_StopAllSoundsC);
-	Cmd_AddCommand("soundlist", S_SoundList);
+	Cmd_AddCommand("play", S_Play_f);
+	Cmd_AddCommand("playvol", S_PlayVol_f);
+	Cmd_AddCommand("stopsound", S_StopAllSoundsC_f);
+	Cmd_AddCommand("soundlist", S_SoundList_f);
 	Cmd_AddCommand("soundinfo", S_SoundInfo_f);
 	Cmd_AddCommand ("volumedown", S_VolumeDown_f); // Baker 3.60 - from JoeQuake 0.15
 	Cmd_AddCommand ("volumeup", S_VolumeUp_f); // Baker 3.60 - from JoeQuake 0.15
@@ -196,7 +196,7 @@ void S_Init (void)
 	Cvar_RegisterVariable (&volume, NULL);
 	Cvar_RegisterVariable (&precache, NULL);
 	Cvar_RegisterVariable (&loadas8bit, NULL);
-#ifdef BUILD_MP3_VERSION	
+#ifdef BUILD_MP3_VERSION
 	Cvar_RegisterVariable (&bgmvolume, CDAudioSetVolume);
 #else
 	Cvar_RegisterVariable (&bgmvolume, NULL);
@@ -567,7 +567,7 @@ void S_StopAllSounds(qboolean clear)
 		S_ClearBuffer ();
 }
 
-void S_StopAllSoundsC (void)
+void S_StopAllSoundsC_f (void)
 {
 	S_StopAllSounds (true);
 }
@@ -956,7 +956,7 @@ console functions
 ===============================================================================
 */
 
-void S_Play(void)
+void S_Play_f(void)
 {
 	static int hash=345;
 	int 	i;
@@ -968,18 +968,18 @@ void S_Play(void)
 	{
 		if (!strrchr(Cmd_Argv(i), '.'))
 		{
-			strcpy(name, Cmd_Argv(i));
-			strcat(name, ".wav");
+			strcpy (name, Cmd_Argv(i));
+			strlcat (name, ".wav", sizeof(name));
 		}
 		else
-			strcpy(name, Cmd_Argv(i));
+			strcpy (name, Cmd_Argv(i));
 		sfx = S_PrecacheSound(name);
 		S_StartSound(hash++, 0, sfx, listener_origin, 1.0, 1.0);
 		i++;
 	}
 }
 
-void S_PlayVol(void)
+void S_PlayVol_f(void)
 {
 	static int hash=543;
 	int i;
@@ -1000,19 +1000,19 @@ void S_PlayVol(void)
 	{
 		if (!strrchr(Cmd_Argv(i), '.'))
 		{
-			strcpy(name, Cmd_Argv(i));
-			strcat(name, ".wav");
+			strcpy (name, Cmd_Argv(i));
+			strlcat (name, ".wav", sizeof(name));
 		}
 		else
 			strcpy(name, Cmd_Argv(i));
 		sfx = S_PrecacheSound(name);
-		vol = Q_atof(Cmd_Argv(i+1));
+		vol = atof(Cmd_Argv(i+1));
 		S_StartSound(hash++, 0, sfx, listener_origin, vol, 1.0);
 		i+=2;
 	}
 }
 
-void S_SoundList(void)
+void S_SoundList_f(void)
 {
 	int		i;
 	sfx_t	*sfx;

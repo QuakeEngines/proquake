@@ -209,7 +209,7 @@ void Host_Game_f (void)
 		}
 
 		//clear out and reload appropriate data
-		Cache_Flush ();
+		Cache_Flush_f ();
 		/*if (!isDedicated)
 		{
 			W_LoadWadFile ("gfx.wad");  // Baker 3.78 - I'm not so sure about this
@@ -381,7 +381,7 @@ void Host_Status_f (void)
 		if (!sv.active)
 		{
 			cl.console_status = true;	// JPG 1.05 - added this;
-			Cmd_ForwardToServer ();
+			Cmd_ForwardToServer_f ();
 			return;
 		}
 		print = Con_Printf;
@@ -436,7 +436,7 @@ void Host_QC_Exec (void)
 
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 	if (!developer.value)
@@ -478,7 +478,7 @@ void Host_God_f (void)
 {
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -496,7 +496,7 @@ void Host_God_f (void)
 		SV_ClientPrintf ("godmode ON\n");
 		break;
 	case 2:
-		if (Q_atof(Cmd_Argv(1)))
+		if (atof(Cmd_Argv(1)))
 		{
 			sv_player->v.flags = (int)sv_player->v.flags | FL_GODMODE;
 			SV_ClientPrintf ("godmode ON\n");
@@ -523,7 +523,7 @@ void Host_Notarget_f (void)
 {
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -541,7 +541,7 @@ void Host_Notarget_f (void)
 		SV_ClientPrintf ("notarget ON\n");
 		break;
 	case 2:
-		if (Q_atof(Cmd_Argv(1)))
+		if (atof(Cmd_Argv(1)))
 		{
 			sv_player->v.flags = (int)sv_player->v.flags | FL_NOTARGET;
 			SV_ClientPrintf ("notarget ON\n");
@@ -570,7 +570,7 @@ void Host_Noclip_f (void)
 {
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -595,7 +595,7 @@ void Host_Noclip_f (void)
 	}
 		break;
 	case 2:
-		if (Q_atof(Cmd_Argv(1)))
+		if (atof(Cmd_Argv(1)))
 		{
 			noclip_anglehack = true;
 			sv_player->v.movetype = MOVETYPE_NOCLIP;
@@ -626,7 +626,7 @@ void Host_Fly_f (void)
 {
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -649,7 +649,7 @@ void Host_Fly_f (void)
 	}
 		break;
 	case 2:
-		if (Q_atof(Cmd_Argv(1)))
+		if (atof(Cmd_Argv(1)))
 		{
 			sv_player->v.movetype = MOVETYPE_FLY;
 			SV_ClientPrintf ("flymode ON\n");
@@ -697,7 +697,7 @@ void Host_Ping_f (void)
 		}
 		cl.console_ping = true;		// JPG 1.05 - added this
 
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -760,10 +760,10 @@ void Host_Map_f (void)
 	cls.mapstring[0] = 0;
 	for (i=0 ; i<Cmd_Argc() ; i++)
 	{
-		strcat (cls.mapstring, Cmd_Argv(i));
-		strcat (cls.mapstring, " ");
+		strlcat (cls.mapstring, Cmd_Argv(i), sizeof(cls.mapstring));
+		strlcat (cls.mapstring, " ", sizeof(cls.mapstring));
 	}
-	strcat (cls.mapstring, "\n");
+	strlcat (cls.mapstring, "\n", sizeof(cls.mapstring));
 
 	svs.serverflags = 0;			// haven't completed an episode yet
 	strcpy (name, Cmd_Argv(1));
@@ -782,8 +782,8 @@ void Host_Map_f (void)
 
 		for (i=2 ; i<Cmd_Argc() ; i++)
 		{
-			strcat (cls.spawnparms, Cmd_Argv(i));
-			strcat (cls.spawnparms, " ");
+			strlcat (cls.spawnparms, Cmd_Argv(i), sizeof(cls.spawnparms));
+			strlcat (cls.spawnparms, " ", sizeof(cls.spawnparms));
 		}
 
 		Cmd_ExecuteString ("connect local", src_command);
@@ -867,7 +867,7 @@ void Host_Reconnect_f (void)
 		Con_DPrintf("Demo playing; ignoring reconnect\n");
 		return;
 	}
-#endif	
+#endif
 	SCR_BeginLoadingPlaque ();
 	cls.signon = 0;		// need new connection messages
 }
@@ -1223,7 +1223,7 @@ void Host_Name_f (void)
 			return;
 		Cvar_Set ("_cl_name", newName);
 		if (cls.state == ca_connected)
-			Cmd_ForwardToServer ();
+			Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -1266,7 +1266,7 @@ void Host_Say(qboolean teamonly)
 		}
 		else
 		{
-			Cmd_ForwardToServer ();
+			Cmd_ForwardToServer_f ();
 			return;
 		}
 	}
@@ -1330,8 +1330,8 @@ void Host_Say(qboolean teamonly)
 	if (strlen(p) > j)
 		p[j] = 0;
 
-	strcat (text, p);
-	strcat (text, "\n");
+	strlcat (text, p, sizeof(text));
+	strlcat (text, "\n", sizeof(text));
 
 	for (j = 0, client = svs.clients; j < svs.maxclients; j++, client++)
 	{
@@ -1374,7 +1374,7 @@ void Host_Tell_f(void)
 
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -1388,8 +1388,8 @@ void Host_Tell_f(void)
 	if (Cmd_Argc () < 3)
 		return;
 
-	strcpy(text, host_client->name);
-	strcat(text, ": ");
+	strcpy (text, host_client->name);
+	strlcat (text, ": ", sizeof(text));
 
 	p = Cmd_Args();
 
@@ -1405,15 +1405,15 @@ void Host_Tell_f(void)
 	if (strlen(p) > j)
 		p[j] = 0;
 
-	strcat (text, p);
-	strcat (text, "\n");
+	strlcat (text, p, sizeof(text));
+	strlcat (text, "\n", sizeof(text));
 
 	save = host_client;
 	for (j = 0, client = svs.clients; j < svs.maxclients; j++, client++)
 	{
 		if (!client->active || !client->spawned)
 			continue;
-		if (Q_strcasecmp(client->name, Cmd_Argv(1)))
+		if (strcasecmp(client->name, Cmd_Argv(1)))
 			continue;
 		host_client = client;
 		SV_ClientPrintf("%s", text);
@@ -1432,6 +1432,7 @@ void Host_Color_f(void)
 {
 	int		top, bottom;
 	int		playercolor;
+	extern cvar_t sv_allcolors;
 
 	if (Cmd_Argc() == 1)
 	{
@@ -1449,11 +1450,14 @@ void Host_Color_f(void)
 	}
 
 	top &= 15;
-	if (top > 13)
-		top = 13;
 	bottom &= 15;
-	if (bottom > 13)
-		bottom = 13;
+	if (!sv_allcolors.value) {
+		if (top > 13)
+			top = 13;
+
+		if (bottom > 13)
+			bottom = 13;
+	}
 
 	playercolor = top*16 + bottom;
 
@@ -1461,7 +1465,7 @@ void Host_Color_f(void)
 	{
 		Cvar_SetValue ("_cl_color", playercolor);
 		if (cls.state == ca_connected)
-			Cmd_ForwardToServer ();
+			Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -1491,7 +1495,7 @@ void Host_Kill_f (void)
 {
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -1518,7 +1522,7 @@ void Host_Pause_f (void)
 
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 	if (!pausable.value)
@@ -1780,7 +1784,7 @@ void Host_Kick_f (void)
 	{
 		if (!sv.active)
 		{
-			Cmd_ForwardToServer ();
+			Cmd_ForwardToServer_f ();
 			return;
 		}
 	}
@@ -1791,7 +1795,7 @@ void Host_Kick_f (void)
 
 	if (Cmd_Argc() > 2 && strcmp(Cmd_Argv(1), "#") == 0)
 	{
-		i = Q_atof(Cmd_Argv(2)) - 1;
+		i = atof(Cmd_Argv(2)) - 1;
 		if (i < 0 || i >= svs.maxclients)
 			return;
 		if (!svs.clients[i].active)
@@ -1805,7 +1809,7 @@ void Host_Kick_f (void)
 		{
 			if (!host_client->active)
 				continue;
-			if (Q_strcasecmp(host_client->name, Cmd_Argv(1)) == 0)
+			if (strcasecmp(host_client->name, Cmd_Argv(1)) == 0)
 				break;
 		}
 	}
@@ -1868,7 +1872,7 @@ void Host_Give_f (void)
 
 	if (cmd_source == src_command)
 	{
-		Cmd_ForwardToServer ();
+		Cmd_ForwardToServer_f ();
 		return;
 	}
 
@@ -2194,12 +2198,31 @@ void Host_Startdemos_f (void)
 		return;
 	}
 
+	// If no params ... clear the queue and set next demo to nothing
+	if (Cmd_Argc() == 1) {
+		Con_Printf("Demo queue cleared\n");
+
+		for (i=1;i <= MAX_DEMOS;i++)	// Clear demo loop queue
+			cls.demos[i-1][0] = 0;
+		cls.demonum = -1;				// Set next demo to none
+
+		return;
+	}
+
+	if (sv.active || cls.demoplayback)
+	{
+		Con_Printf("Disconnect before playing demo loop\n");
+		return;
+	}
+
+
 	c = Cmd_Argc() - 1;
 	if (c > MAX_DEMOS)
 	{
 		Con_Printf ("Max %i demos in demoloop\n", MAX_DEMOS);
 		c = MAX_DEMOS;
 	}
+
 	Con_DPrintf ("%i demo(s) in loop\n", c);
 
 	for (i=1 ; i<c+1 ; i++)
@@ -2209,13 +2232,10 @@ void Host_Startdemos_f (void)
 	for (;i <= MAX_DEMOS;i++)
 		cls.demos[i-1][0] = 0;
 
-	if (!sv.active && cls.demonum != -1 && !cls.demoplayback)
-	{
-		cls.demonum = 0;
-		CL_NextDemo ();
-	}
-	else
-		cls.demonum = -1;
+	// Set next demo to play to 0 and begin demo playback
+	cls.demonum = 0;
+	CL_NextDemo ();
+
 }
 
 
@@ -2319,7 +2339,7 @@ void Host_Identify_f (void)
 		return;
 	}
 
-	i = Q_atoi(Cmd_Argv(1)) - 1;
+	i = atoi(Cmd_Argv(1)) - 1;
 	if (i == -1)
 	{
 		if (sv.active)
@@ -2504,8 +2524,8 @@ void Host_InitCommands (void)
 #endif
 
 	Cmd_AddCommand ("identify", Host_Identify_f);	// JPG 1.05 - player IP logging
-	Cmd_AddCommand ("ipdump", IPLog_Dump);			// JPG 1.05 - player IP logging
-	Cmd_AddCommand ("ipmerge", IPLog_Import);		// JPG 3.00 - import an IP data file
+	Cmd_AddCommand ("ipdump", IPLog_Dump_f);			// JPG 1.05 - player IP logging
+	Cmd_AddCommand ("ipmerge", IPLog_Import_f);		// JPG 3.00 - import an IP data file
 
 	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
 }

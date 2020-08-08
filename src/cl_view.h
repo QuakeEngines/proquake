@@ -24,7 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern	cvar_t	v_gamma;
 extern	cvar_t	v_contrast;
 extern	cvar_t	gl_hwblend;
-
 #endif
 extern	cvar_t		vold_gamma;
 // Baker end hwgamma support
@@ -43,10 +42,23 @@ void V_CalcBlend (void);
 void SCR_DrawVolume (void);
 
 float V_CalcRoll (vec3_t angles, vec3_t velocity);
-void V_UpdatePaletteOld (void);
+
+#ifdef SUPPORTS_ENHANCED_GAMMA
+qboolean V_UpdatePalette_Hardware (void);
+#endif
+
+#ifdef GLQUAKE
+void V_UpdatePalette_Static (qboolean forced);
+#else
+void V_UpdatePalette_Software (void);
+#endif
 
 #ifndef D3DQUAKE
+#ifdef GLQUAKE
 void BuildGammaTable (float g);			// JPG 3.02
+#else
+void BuildGammaTable2 (float g, float c);
+#endif
 #endif
 
 #ifdef SUPPORTS_AUTOID

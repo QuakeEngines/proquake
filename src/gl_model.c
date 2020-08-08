@@ -392,17 +392,17 @@ void Mod_LoadTextures (lump_t *l)
 			if (cls.state != ca_dedicated)
 				R_InitSky (tx);
 			continue;
-		} 
+		}
 
 		if ((loadmodel->isworldmodel) && (!ISSKYTEX(tx->name)))//R00k
-			texture_flag |= TEX_WORLD;	
-		
+			texture_flag |= TEX_WORLD;
+
 #ifdef SUPPORTS_HLBSP
 		if (loadmodel->bspversion == HL_BSPVERSION) {
 			byte		*data;
-			
+
 			if ((data = WAD3_LoadTexture(mt))) {
-				//com_netpath[0] = 0;		
+				//com_netpath[0] = 0;
 				//alpha_flag = ISALPHATEX(tx->name) ? TEX_ALPHA : 0;
 #if !defined(DX8QUAKE_ALT_MODEL_TEXTURE)
 				texture_mode = GL_LINEAR_MIPMAP_NEAREST; //_LINEAR;
@@ -414,7 +414,7 @@ void Mod_LoadTextures (lump_t *l)
 				free(data);
 				continue;
 			}
-		
+
 		} else
 #endif
 		{
@@ -443,7 +443,7 @@ void Mod_LoadTextures (lump_t *l)
 		}
 
 		}
-	
+
 
 	// sequence the animations
 		for (i=0 ; i<m->nummiptex ; i++)
@@ -571,7 +571,7 @@ void Mod_LoadLighting (lump_t *l)
 
 //		memset(loadmodel->lightdata, 128, l->filelen);
 #if 0
-		for (i=0, j=l->fileofs; i<litlen; i++,j+=3) 
+		for (i=0, j=l->fileofs; i<litlen; i++,j+=3)
 		{
 			int x=0;
 			x = (mod_base[j] + mod_base[j+1] + mod_base[j+2])/3;
@@ -610,8 +610,8 @@ void Mod_LoadVisibility (lump_t *l)
 }
 
 #ifdef SUPPORTS_HLBSP
-static void Mod_ParseWadsFromEntityLump(char *data) {	
-	char *s, key[1024], value[1024];	
+static void Mod_ParseWadsFromEntityLump(char *data) {
+	char *s, key[1024], value[1024];
 	int i, j, k;
 
 	if (!data || !(data = COM_Parse(data)))
@@ -627,7 +627,7 @@ static void Mod_ParseWadsFromEntityLump(char *data) {
 		if (com_token[0] == '}')
 			break; // end of worldspawn
 
-		Q_strncpyz(key, (com_token[0] == '_') ? com_token + 1 : com_token, sizeof(key));
+		strlcpy (key, (com_token[0] == '_') ? com_token + 1 : com_token, sizeof(key));
 
 		for (s = key + strlen(key) - 1; s >= key && *s == ' '; s--)		// remove trailing spaces
 			*s = 0;
@@ -635,7 +635,7 @@ static void Mod_ParseWadsFromEntityLump(char *data) {
 		if (!(data = COM_Parse(data)))
 			return; // error
 
-		Q_strncpyz(value, com_token, sizeof(value));
+		strlcpy (value, com_token, sizeof(value));
 
 // Baker:
 //		if (!strcmp("sky", key) || !strcmp("skyname", key))
@@ -684,16 +684,28 @@ void Mod_LoadEntities (lump_t *l)
 	memcpy (loadmodel->entities, mod_base + l->fileofs, l->filelen);
 }
 
+vec3_t worldmins; // Baker: get world bounds
+vec3_t worldmaxs;
+
 /*
 =================
 Mod_LoadVertexes
 =================
 */
-void Mod_LoadVertexes (lump_t *l)
+void Mod_LoadVertexes (lump_t *l, qboolean storebounds)
 {
 	dvertex_t	*in;
 	mvertex_t	*out;
 	int			i, count;
+
+	if (storebounds) {
+		worldmins[0]=99999999;
+		worldmins[1]=99999999;
+		worldmins[2]=99999999;
+		worldmaxs[0]=-99999999;
+		worldmaxs[1]=-99999999;
+		worldmaxs[2]=-99999999;
+	}
 
 	in = (void *)(mod_base + l->fileofs);
 	if (l->filelen % sizeof(*in))
@@ -710,6 +722,14 @@ void Mod_LoadVertexes (lump_t *l)
 		out->position[0] = LittleFloat (in->point[0]);
 		out->position[1] = LittleFloat (in->point[1]);
 		out->position[2] = LittleFloat (in->point[2]);
+
+		if (out->position[0] < worldmins[0]) worldmins[0] = out->position[0];
+		if (out->position[1] < worldmins[1]) worldmins[1] = out->position[1];
+		if (out->position[2] < worldmins[2]) worldmins[2] = out->position[2];
+		if (out->position[0] > worldmaxs[0]) worldmaxs[0] = out->position[0];
+		if (out->position[1] > worldmaxs[1]) worldmaxs[1] = out->position[1];
+		if (out->position[2] > worldmaxs[2]) worldmaxs[2] = out->position[2];
+
 	}
 }
 
@@ -931,11 +951,6 @@ void Mod_LoadFaces (lump_t *l)
 			out->styles[i] = in->styles[i];
 		i = LittleLong(in->lightofs);
 		out->samples = (i == -1) ? NULL : loadmodel->lightdata + i;
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-		// mh - overbrights
-		out->overbright = gl_usingoverbright;
-#endif
 
 	// set the drawing flags flag
 		if (ISSKYTEX(out->texinfo->texture->name))	// sky
@@ -1326,7 +1341,10 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 		((int *)header)[i] = LittleLong ( ((int *)header)[i]);
 
 // load into heap
-	Mod_LoadVertexes (&header->lumps[LUMP_VERTEXES]);
+	Mod_LoadVertexes (&header->lumps[LUMP_VERTEXES], loadmodel->isworldmodel ? 1 : 0);
+	if (loadmodel->isworldmodel)
+		Con_DPrintf ("World bounds: %4.1f %4.1f %4.1f to %4.1f %4.1f %4.1f\n", worldmins[0], worldmins[1], worldmins[2], worldmaxs[0], worldmaxs[1], worldmaxs[2]);
+
 	Mod_LoadEdges (&header->lumps[LUMP_EDGES]);
 	Mod_LoadSurfedges (&header->lumps[LUMP_SURFEDGES]);
 	Mod_LoadTextures (&header->lumps[LUMP_TEXTURES]);

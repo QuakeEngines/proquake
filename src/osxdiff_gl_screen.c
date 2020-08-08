@@ -398,8 +398,8 @@ void CL_Default_fov_f(void);
 void CL_Fov_f(void);
 void SCR_Init (void)
 {
-	Cvar_RegisterVariable (&default_fov, &CL_Default_fov_f);
-	Cvar_RegisterVariable (&scr_fov, &CL_Fov_f);
+	Cvar_RegisterVariable (&default_fov, CL_Default_fov_f);
+	Cvar_RegisterVariable (&scr_fov, CL_Fov_f);
 
 	Cvar_RegisterVariable (&scr_viewsize, NULL);
 	Cvar_RegisterVariable (&scr_conspeed, NULL);

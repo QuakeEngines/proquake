@@ -30,11 +30,11 @@ cvar_t	chase_yaw	= {"chase_yaw"	, "0"};//R00k
 cvar_t  chase_roll = {"chase_roll", "0"};
 cvar_t  chase_pitch = {"chase_pitch", "45"}; 
 
-vec3_t	chase_pos;
-vec3_t	chase_angles;
+static	vec3_t	chase_pos;
+static	vec3_t	chase_angles;
 
-vec3_t	chase_dest;
-vec3_t	chase_dest_angles;
+static	vec3_t	chase_dest;
+static	vec3_t	chase_dest_angles;
 
 
 void Chase_Init (void)
@@ -49,12 +49,13 @@ void Chase_Init (void)
 	Cvar_RegisterVariable (&chase_active, NULL);
 }
 
-void Chase_Reset (void)
+static void Chase_Reset (void)
 {
 	// for respawning and teleporting
 //	start position 12 units behind head
 }
 
+// Baker: Used by autoid
 void TraceLine (vec3_t start, vec3_t end, vec3_t impact)
 {
 	trace_t	trace;
@@ -70,6 +71,7 @@ void Chase_Update (void)
 	int		i;
 	float	dist;
 	vec3_t	forward, up, right, dest, stop;
+//   float alpha, alphadist;
 
     if ((int)chase_active.value != 2)
     {
@@ -108,11 +110,23 @@ void Chase_Update (void)
 
 	TraceLine (r_refdef.vieworg, chase_dest, stop);
 	if (stop[0] != 0 || stop[1] != 0 || stop[2] != 0)
-		VectorCopy (stop, chase_dest);
+	{
+ 		VectorCopy (stop, chase_dest);//update the camera destination to where we hit the wall
+#ifdef CHASE_CAM_FIX
+#if 0 // don't do alpha
+		alphadist = VecLength2(r_refdef.vieworg, chase_dest);      
+      	alpha = bound(0.1,(alphadist / chase_back.value), 1);
 
-	// move towards destination
-	VectorCopy (chase_dest, r_refdef.vieworg);
-}
+		cl_entities[cl.viewentity].transparency = alpha;
+#endif
+		
+		//R00k, this prevents the camera from poking into the wall by rounding off the traceline...
+		LerpVector (r_refdef.vieworg, chase_dest, 0.8f, chase_dest);
+#endif
+	}
+		// move towards destination
+		VectorCopy (chase_dest, r_refdef.vieworg);
+	}
     else
     {
         chase_dest[0] = r_refdef.vieworg[0] + chase_back.value;
@@ -136,8 +150,8 @@ void Chase_Update (void)
 
 
 #ifdef SUPPORTS_AUTOID
-
-qboolean Still_Visible (vec3_t checkpoint, int viewcontents)
+// Baker: Used by autoid
+static qboolean Still_Visible (vec3_t checkpoint, int viewcontents)
 {
    int i;
    vec3_t mins;

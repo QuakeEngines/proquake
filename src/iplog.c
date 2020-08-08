@@ -55,7 +55,7 @@ void IPLog_Init (void)
 	if (!p)
 		return;
 	if (p < com_argc - 1)
-		iplog_size = Q_atoi(com_argv[p+1]) * 1024 / sizeof(iplog_t);
+		iplog_size = atoi(com_argv[p+1]) * 1024 / sizeof(iplog_t);
 	if (!iplog_size)
 #endif // This should be fine in Linux as well as Win
 		iplog_size = DEFAULT_IPLOGSIZE;
@@ -87,7 +87,7 @@ void IPLog_Init (void)
 IPLog_Import
 ====================
 */
-void IPLog_Import (void)
+void IPLog_Import_f (void)
 {
 	FILE *f;
 	iplog_t temp;
@@ -329,7 +329,7 @@ void IPLog_DumpTree (iplog_t *root, FILE *f)
 IPLog_Dump
 ====================
 */
-void IPLog_Dump (void)
+void IPLog_Dump_f (void)
 {
 	FILE *f;
 

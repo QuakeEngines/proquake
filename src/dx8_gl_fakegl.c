@@ -1,5 +1,6 @@
 /*
-Copyright (C) 1996-1997 Id Software, Inc.
+Quake source code is Copyright (C) 1996-1997 Id Software, Inc.
+D3D8 FakeGL Wrapper is Copyright (C) 2009 MH
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -21,6 +22,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // TODO Fix this warning instead of disabling it
 #pragma warning (disable: 4273)
 
+// we get a few signed/unsigned mismatches here
+#pragma warning (disable: 4018)
 
 /*
 ====================================================================================================================================
@@ -92,6 +95,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #pragma comment (lib, "d3d8.lib")
 #pragma comment (lib, "d3dx8.lib")
 
+// used everywhere!!!
+void GL_SubmitVertexes (void);
+
 // d3d basic stuff
 LPDIRECT3D8 d3d_Object = NULL;
 LPDIRECT3DDEVICE8 d3d_Device = NULL;
@@ -103,6 +109,8 @@ void Con_Printf (char *fmt, ...);
 // mode definition
 int d3d_BPP = -1;
 HWND d3d_Window;
+
+BOOL d3d_RequestStencil = FALSE;
 
 // the desktop and current display modes
 D3DDISPLAYMODE d3d_DesktopMode;
@@ -168,8 +176,8 @@ d3d_texture_t *d3d_Textures = NULL;
 
 int d3d_TextureExtensionNumber = 1;
 
-// opengl specified up to 32 TMUs, D3D only allows up to 8 stages
-#define D3D_MAX_TMUS	8
+// opengl specified up to 32 TMUs, D3D only allows up to 8 stages, in the case of Quake we only use 2
+#define D3D_MAX_TMUS	2
 
 typedef struct gl_combine_s
 {
@@ -219,12 +227,6 @@ int D3D_TMUForTexture (GLenum texture)
 	{
 	case GLD3D_TEXTURE0: return 0;
 	case GLD3D_TEXTURE1: return 1;
-	case GLD3D_TEXTURE2: return 2;
-	case GLD3D_TEXTURE3: return 3;
-	case GLD3D_TEXTURE4: return 4;
-	case GLD3D_TEXTURE5: return 5;
-	case GLD3D_TEXTURE6: return 6;
-	case GLD3D_TEXTURE7: return 7;
 
 	default:
 		// ? how best to fail gracefully (if we should fail gracefully at all?)
@@ -237,6 +239,7 @@ int D3D_TMUForTexture (GLenum texture)
 GLboolean gl_CullEnable = GL_TRUE;
 GLenum gl_CullMode = GL_BACK;
 GLenum gl_FrontFace = GL_CCW;
+
 
 /*
 ===================================================================================================================
@@ -254,6 +257,8 @@ GLenum d3d_Fog_Hint = GL_NICEST;
 
 void glHint (GLenum target, GLenum mode)
 {
+	GL_SubmitVertexes ();
+
 	switch (target)
 	{
 	case GL_FOG_HINT:
@@ -330,6 +335,8 @@ void D3D_CheckDirtyMatrix (d3d_matrix_t *m)
 
 void glMatrixMode (GLenum mode)
 {
+	GL_SubmitVertexes ();
+
 	switch (mode)
 	{
 	case GL_MODELVIEW:
@@ -349,6 +356,8 @@ void glMatrixMode (GLenum mode)
 
 void glLoadIdentity (void)
 {
+	GL_SubmitVertexes ();
+
 	D3DXMatrixIdentity (&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth]);
 	d3d_CurrentMatrix->dirty = TRUE;
 }
@@ -356,6 +365,8 @@ void glLoadIdentity (void)
 
 void glLoadMatrixf (const GLfloat *m)
 {
+	GL_SubmitVertexes ();
+
 	memcpy (d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth].m, m, sizeof (float) * 16);
 	d3d_CurrentMatrix->dirty = TRUE;
 }
@@ -364,6 +375,8 @@ void glLoadMatrixf (const GLfloat *m)
 void glFrustum (GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdouble zNear, GLdouble zFar)
 {
 	D3DMATRIX tmp;
+
+	GL_SubmitVertexes ();
 
 	// per spec, glFrustum multiplies the current matrix by the specified orthographic projection rather than replacing it
 	D3DXMatrixPerspectiveOffCenterRH (&tmp, left, right, bottom, top, zNear, zFar);
@@ -377,6 +390,8 @@ void glOrtho (GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdo
 {
 	D3DMATRIX tmp;
 
+	GL_SubmitVertexes ();
+
 	// per spec, glOrtho multiplies the current matrix by the specified orthographic projection rather than replacing it
 	D3DXMatrixOrthoOffCenterRH (&tmp, left, right, bottom, top, zNear, zFar);
 
@@ -387,9 +402,13 @@ void glOrtho (GLdouble left, GLdouble right, GLdouble bottom, GLdouble top, GLdo
 
 void glPopMatrix (void)
 {
+	GL_SubmitVertexes ();
+
 	if (!d3d_CurrentMatrix->stackdepth)
 	{
-		Sys_Error ("glPopMatrix: underflow");
+		// opengl silently allows this and so should we (witness TQ's R_DrawAliasModel, which pushes the
+		// matrix once but pops it twice - on line 423 and line 468
+		d3d_CurrentMatrix->dirty = TRUE;
 		return;
 	}
 
@@ -403,22 +422,21 @@ void glPopMatrix (void)
 
 void glPushMatrix (void)
 {
-	if (d3d_CurrentMatrix->stackdepth == (MAX_MATRIX_STACK + 1))
+	GL_SubmitVertexes ();
+
+	if (d3d_CurrentMatrix->stackdepth <= (MAX_MATRIX_STACK - 1))
 	{
-		Sys_Error ("glPushMatrix: overflow");
-		return;
+		// go to a new matrix (only push if there's room to push)
+		d3d_CurrentMatrix->stackdepth++;
+
+		// copy up the previous matrix (per spec)
+		memcpy
+		(
+			&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth],
+			&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth - 1],
+			sizeof (D3DMATRIX)
+		);
 	}
-
-	// go to a new matrix
-	d3d_CurrentMatrix->stackdepth++;
-
-	// copy up the previous matrix (per spec)
-	memcpy
-	(
-		&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth],
-		&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth - 1],
-		sizeof (D3DMATRIX)
-	);
 
 	// flag as dirty
 	d3d_CurrentMatrix->dirty = TRUE;
@@ -430,6 +448,8 @@ void glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 	// replicates the OpenGL glRotatef with 3 components and angle in degrees
 	D3DXVECTOR3 vec;
 	D3DMATRIX tmp;
+
+	GL_SubmitVertexes ();
 
 	vec.x = x;
 	vec.y = y;
@@ -446,6 +466,9 @@ void glRotatef (GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 void glScalef (GLfloat x, GLfloat y, GLfloat z)
 {
 	D3DMATRIX tmp;
+
+	GL_SubmitVertexes ();
+
 	D3DXMatrixScaling (&tmp, x, y, z);
 	D3DXMatrixMultiply (&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth], &tmp, &d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth]);
 
@@ -457,8 +480,45 @@ void glScalef (GLfloat x, GLfloat y, GLfloat z)
 void glTranslatef (GLfloat x, GLfloat y, GLfloat z)
 {
 	D3DMATRIX tmp;
+
+	GL_SubmitVertexes ();
+
 	D3DXMatrixTranslation (&tmp, x, y, z);
 	D3DXMatrixMultiply (&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth], &tmp, &d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth]);
+
+	// dirty the matrix
+	d3d_CurrentMatrix->dirty = TRUE;
+}
+
+
+void glMultMatrixf (const GLfloat *m)
+{
+	D3DMATRIX mat;
+
+	GL_SubmitVertexes ();
+
+	// copy out
+	mat._11 = m[0];
+	mat._12 = m[1];
+	mat._13 = m[2];
+	mat._14 = m[3];
+
+	mat._21 = m[4];
+	mat._22 = m[5];
+	mat._23 = m[6];
+	mat._24 = m[7];
+
+	mat._31 = m[8];
+	mat._32 = m[9];
+	mat._33 = m[10];
+	mat._34 = m[11];
+
+	mat._41 = m[12];
+	mat._42 = m[13];
+	mat._43 = m[14];
+	mat._44 = m[15];
+
+	D3DXMatrixMultiply (&d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth], &mat, &d3d_CurrentMatrix->stack[d3d_CurrentMatrix->stackdepth]);
 
 	// dirty the matrix
 	d3d_CurrentMatrix->dirty = TRUE;
@@ -862,8 +922,9 @@ void D3D_CheckDirtyTextureStates (int tmu)
 			D3D_SetTextureState (tmu, D3DTSS_ADDRESSV, d3d_TMUs[tmu].boundtexture->addressv);
 			D3D_SetTextureState (tmu, D3DTSS_MAXANISOTROPY, d3d_TMUs[tmu].boundtexture->anisotropy);
 
-			// minfilter and magfilter need to switch to anisotropic
-			if (d3d_TMUs[tmu].boundtexture->anisotropy > 1)
+			// minfilter and magfilter need to switch to anisotropic (only for mipmaps)
+			if (d3d_TMUs[tmu].boundtexture->anisotropy > 1 && 
+				d3d_TMUs[tmu].boundtexture->mipfilter != D3DTEXF_NONE)
 			{
 				D3D_SetTextureState (tmu, D3DTSS_MAGFILTER, D3DTEXF_ANISOTROPIC);
 				D3D_SetTextureState (tmu, D3DTSS_MINFILTER, D3DTEXF_ANISOTROPIC);
@@ -916,6 +977,42 @@ void D3D_CheckDirtyTextureStates (int tmu)
 /*
 ===================================================================================================================
 
+			POLYGON OFFSET
+
+	Who said D3D didn't have polygon offset?
+
+	It's implementation is quite a bit simpler than OpenGL's however; just a pretty basic static bias
+	(it's better in D3D9)
+
+===================================================================================================================
+*/
+
+BOOL d3d_PolyOffsetEnabled = FALSE;
+BOOL d3d_PolyOffsetSwitched = FALSE;
+float d3d_PolyOffsetFactor = 8;
+
+void glPolygonOffset (GLfloat factor, GLfloat units)
+{
+	GL_SubmitVertexes ();
+
+	// need to switch polygon offset
+	d3d_PolyOffsetSwitched = FALSE;
+
+	// just use the units here as we're going to fudge it using D3DRS_ZBIAS
+	// 0 is furthest; 16 is nearest; d3d default is 0 so our default is an intermediate value (8)
+	// so that we can do both push back and pull forward
+	// negative values come nearer; positive values go further, so invert the sense
+	d3d_PolyOffsetFactor = 8 - units;
+
+	// clamp to d3d scale
+	if (d3d_PolyOffsetFactor < 0) d3d_PolyOffsetFactor = 0;
+	if (d3d_PolyOffsetFactor > 16) d3d_PolyOffsetFactor = 16;
+}
+
+
+/*
+===================================================================================================================
+
 			VERTEX SUBMISSION
 
 	Per the spec for glVertex (http://www.opengl.org/sdk/docs/man/xhtml/glVertex.xml) glColor, glNormal and
@@ -929,11 +1026,12 @@ void D3D_CheckDirtyTextureStates (int tmu)
 
 int d3d_PrimitiveMode = 0;
 int d3d_NumVerts = 0;
+int d3d_NumIndexes = 0;
 
 // this should be a multiple of 12 to support both GL_QUADS and GL_TRIANGLES
 // it should also be large enough to hold the biggest tristrip or fan in use in the engine
 // individual quads or tris can be submitted in batches
-#define D3D_MAX_VERTEXES	600
+#define D3D_MAX_VERTEXES	65536
 
 typedef struct gl_texcoord_s
 {
@@ -950,7 +1048,7 @@ typedef struct gl_xyz_s
 
 // defaults that are picked up by each glVertex call
 D3DCOLOR d3d_CurrentColor = 0xffffffff;
-gl_texcoord_t d3d_CurrentTexCoord[D3D_MAX_TMUS] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+gl_texcoord_t d3d_CurrentTexCoord[D3D_MAX_TMUS] = {{0, 0}, {0, 0}};
 gl_xyz_t d3d_CurrentNormal = {0, 1, 0};
 
 // this may be a little wasteful as it's a full sized vertex for 8 TMUs
@@ -958,12 +1056,12 @@ gl_xyz_t d3d_CurrentNormal = {0, 1, 0};
 typedef struct gl_vertex_s
 {
 	gl_xyz_t position;
-	gl_xyz_t normal;
 	D3DCOLOR c;
 	gl_texcoord_t st[D3D_MAX_TMUS];
 } gl_vertex_t;
 
 gl_vertex_t d3d_Vertexes[D3D_MAX_VERTEXES];
+unsigned short d3d_Indexes[D3D_MAX_VERTEXES];
 
 BOOL d3d_SceneBegun = FALSE;
 
@@ -985,7 +1083,11 @@ void GL_SubmitVertexes (void)
 		D3DFVF_TEX8
 	};
 
+	// no device to draw with!!!
 	if (!d3d_Device) return;
+
+	// not every type has indexes
+	if (!d3d_NumVerts) return;
 
 	// check for a beginscene
 	if (!d3d_SceneBegun)
@@ -1012,12 +1114,31 @@ void GL_SubmitVertexes (void)
 		IDirect3DDevice8_SetTransform (d3d_Device, D3DTS_VIEW, &d3d_ViewMatrix);
 	}
 
+	// check polygon offset
+	if (!d3d_PolyOffsetSwitched)
+	{
+		if (d3d_PolyOffsetEnabled)
+		{
+			// setup polygon offset
+			D3D_SetRenderState (D3DRS_ZBIAS, d3d_PolyOffsetFactor);
+		}
+		else
+		{
+			// no polygon offset - back to normal z bias
+			// (see comment in 
+			D3D_SetRenderState (D3DRS_ZBIAS, 8);
+		}
+
+		// we've switched polygon offset now
+		d3d_PolyOffsetSwitched = TRUE;
+	}
+
 	// check for dirty matrixes
 	D3D_CheckDirtyMatrix (&d3d_ModelViewMatrix);
 	D3D_CheckDirtyMatrix (&d3d_ProjectionMatrix);
 
 	// initial vertex shader (will be added to as TMUs accumulate)
-	d3d_VertexShader = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE;
+	d3d_VertexShader = D3DFVF_XYZ | D3DFVF_DIFFUSE;
 	d3d_TexCoordSizes = 0;
 
 	// set up textures
@@ -1047,43 +1168,48 @@ void GL_SubmitVertexes (void)
 	// set the correct vertex shader for the number of enabled TMUs
 	D3D_SetVertexShader (d3d_VertexShader | d3d_TMUShader[i] | d3d_TexCoordSizes);
 
-	if (gl_CullMode != GL_FRONT_AND_BACK)
+	switch (d3d_PrimitiveMode)
 	{
-		// draw the verts - these are the only modes we support for Quake
-		switch (d3d_PrimitiveMode)
-		{
-		case GL_TRIANGLES:
-			// D3DPT_TRIANGLELIST models GL_TRIANGLES when used for either a single triangle or multiple triangles
-			IDirect3DDevice8_DrawPrimitiveUP (d3d_Device, D3DPT_TRIANGLELIST, d3d_NumVerts / 3, d3d_Vertexes, sizeof (gl_vertex_t));
-			break;
+	case GL_TRIANGLES:
+		// no benefit from indexing these so just draw them direct
+		IDirect3DDevice8_DrawPrimitiveUP (d3d_Device, D3DPT_TRIANGLELIST, d3d_NumVerts / 3, d3d_Vertexes, sizeof (gl_vertex_t));
+		break;
 
-		case GL_TRIANGLE_STRIP:
-			// regular tristrip
-			IDirect3DDevice8_DrawPrimitiveUP (d3d_Device, D3DPT_TRIANGLESTRIP, d3d_NumVerts - 2, d3d_Vertexes, sizeof (gl_vertex_t));
-			break;
+	case GL_LINES:
+		// couldn't be arsed indexing them
+		IDirect3DDevice8_DrawPrimitiveUP (d3d_Device, D3DPT_LINELIST, d3d_NumVerts, d3d_Vertexes, sizeof (gl_vertex_t));
+		break;
 
-		case GL_POLYGON:
-			// a GL_POLYGON has the same vertex layout and order as a trifan, and can be used interchangably in OpenGL
-		case GL_TRIANGLE_FAN:
-			// regular trifan
-			IDirect3DDevice8_DrawPrimitiveUP (d3d_Device, D3DPT_TRIANGLEFAN, d3d_NumVerts - 2, d3d_Vertexes, sizeof (gl_vertex_t));
-			break;
+	case GL_QUADS:
+	case GL_POLYGON:
+	case GL_TRIANGLE_FAN:
+	case GL_TRIANGLE_STRIP:
+	case GL_QUAD_STRIP:
+		IDirect3DDevice8_DrawIndexedPrimitiveUP
+		(
+			d3d_Device,
+			D3DPT_TRIANGLELIST,
+			0,
+			d3d_NumVerts,
+			d3d_NumIndexes / 3,
+			d3d_Indexes,
+			D3DFMT_INDEX16,
+			d3d_Vertexes,
+			sizeof (gl_vertex_t)
+		);
+		break;
 
-		case GL_QUADS:
-			// quads are a special case of trifans where each quad (numverts / 4) represents a trifan with 2 prims in it
-			for (i = 0; i < d3d_NumVerts; i += 4)
-				IDirect3DDevice8_DrawPrimitiveUP (d3d_Device, D3DPT_TRIANGLEFAN, 2, &d3d_Vertexes[i], sizeof (gl_vertex_t));
-
-			break;
-
-		default:
-			// unsupported mode
-			break;
-		}
+	default:
+		// ??? unsupported mode
+		break;
 	}
 
 	// begin a new primitive
 	d3d_NumVerts = 0;
+	d3d_NumIndexes = 0;
+
+	// force an invalid primitive mode
+	d3d_PrimitiveMode = -1;
 }
 
 
@@ -1105,6 +1231,8 @@ void glVertex3fv (const GLfloat *v)
 }
 
 
+int d3d_BeginVerts = 0;
+
 void glVertex3f (GLfloat x, GLfloat y, GLfloat z)
 {
 	int i;
@@ -1114,10 +1242,6 @@ void glVertex3f (GLfloat x, GLfloat y, GLfloat z)
 	d3d_Vertexes[d3d_NumVerts].position.x = x;
 	d3d_Vertexes[d3d_NumVerts].position.y = y;
 	d3d_Vertexes[d3d_NumVerts].position.z = z;
-
-	d3d_Vertexes[d3d_NumVerts].normal.x = d3d_CurrentNormal.x;
-	d3d_Vertexes[d3d_NumVerts].normal.y = d3d_CurrentNormal.y;
-	d3d_Vertexes[d3d_NumVerts].normal.z = d3d_CurrentNormal.z;
 
 	d3d_Vertexes[d3d_NumVerts].c = d3d_CurrentColor;
 
@@ -1129,22 +1253,7 @@ void glVertex3f (GLfloat x, GLfloat y, GLfloat z)
 
 	// go to a new vertex
 	d3d_NumVerts++;
-
-	// check for end of vertexes
-	if (d3d_NumVerts == D3D_MAX_VERTEXES)
-	{
-		if (d3d_PrimitiveMode == GL_TRIANGLES || d3d_PrimitiveMode == GL_QUADS)
-		{
-			// triangles and quads are discrete primitives and as such can begin a new batch
-			GL_SubmitVertexes ();
-		}
-		else
-		{
-			// other primitives need to extend the vertex storage
-		}
-
-		d3d_NumVerts = 0;
-	}
+	d3d_BeginVerts++;
 }
 
 
@@ -1225,179 +1334,133 @@ void glNormal3f (GLfloat nx, GLfloat ny, GLfloat nz)
 }
 
 
+int d3d_BaseVert = 0;
+int d3d_BaseIndex = 0;
+
 void glBegin (GLenum mode)
 {
+	// we never know how many we're going to need so here we allow reasonable space for overflow
+	if (d3d_NumVerts > 16384 || d3d_NumIndexes > 16384)
+	{
+		// submit anything we got
+		GL_SubmitVertexes ();
+
+		// begin a new primitive
+		d3d_NumVerts = 0;
+		d3d_NumIndexes = 0;
+	}
+	else
+	{
+		switch (mode)
+		{
+		case GL_LINES:
+		case GL_TRIANGLES:
+			// these types aren't indexed so we need to draw anything we have waiting
+			GL_SubmitVertexes ();
+			break;
+
+		default:
+			break;
+		}
+	}
+
 	// just store out the mode, all heavy lifting is done in glEnd
 	d3d_PrimitiveMode = mode;
 
-	// begin a new primitive
-	d3d_NumVerts = 0;
+	// store out the initial values
+	d3d_BaseVert = d3d_NumVerts;
+	d3d_BaseIndex = d3d_NumIndexes;
+
+	// for counting the verts between a begin/end pair
+	d3d_BeginVerts = 0;
 }
 
 
 void glEnd (void)
 {
-	// submit, bitch
-	GL_SubmitVertexes ();
-}
+	int i;
 
+	// culling everything!!!
+	if (gl_CullMode == GL_FRONT_AND_BACK) d3d_PrimitiveMode = -1;
 
-/*
-===================================================================================================================
+	// nothing to draw!!!
+	if (!d3d_BeginVerts) return;
 
-			VERTEX ARRAYS
-
-===================================================================================================================
-*/
-
-typedef struct gl_varray_pointer_s
-{
-	GLint size;
-	GLenum type;
-	GLsizei stride;
-	GLvoid *pointer;
-} gl_varray_pointer_t;
-
-gl_varray_pointer_t d3d_VertexPointer;
-gl_varray_pointer_t d3d_ColorPointer;
-gl_varray_pointer_t d3d_TexCoordPointer[D3D_MAX_TMUS];
-int d3d_VArray_TMU = 0;
-
-void WINAPI GL_ClientActiveTexture (GLenum texture)
-{
-	d3d_VArray_TMU = D3D_TMUForTexture (texture);
-}
-
-
-void glEnableClientState (GLenum array)
-{
-	switch (array)
+	// unwind from base verts into indexes array
+	switch (d3d_PrimitiveMode)
 	{
-	case GL_VERTEX_ARRAY:
-	case GL_COLOR_ARRAY:
-	case GL_TEXTURE_COORD_ARRAY:
-		// doesn't need to do anything
+	case GL_QUADS:
+		for (i = 0; i < d3d_BeginVerts; i += 4)
+		{
+			// each quad is 6 indexes 0/1/2/0/2/3
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert;
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + 1;
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + 2;
+
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert;
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + 2;
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + 3;
+
+			d3d_BaseVert += 4;
+		}
 		break;
 
-	default:
-		Sys_Error ("Invalid Vertex Array Spec...!");
-	}
-}
-
-
-void glDrawArrays (GLenum mode, GLint first, GLsizei count)
-{
-	int i;
-	int v;
-	int tmu;
-	byte *vp;
-	byte *stp[D3D_MAX_TMUS];
-
-	// required by the spec
-	if (!d3d_VertexPointer.pointer) return;
-
-	vp = ((byte *) d3d_VertexPointer.pointer + first);
-
-	for (tmu = 0; tmu < D3D_MAX_TMUS; tmu++)
-	{
-		if (d3d_TexCoordPointer[tmu].pointer)
-			stp[tmu] = ((byte *) d3d_TexCoordPointer[tmu].pointer + first);
-		else stp[tmu] = NULL;
-	}
-
-	// send through standard begin/end processing
-	glBegin (mode);
-
-	for (i = 0, v = first; i < count; i++, v++)
-	{
-		for (tmu = 0; tmu < D3D_MAX_TMUS; tmu++)
+	case GL_POLYGON:
+		// a GL_POLYGON has the same vertex layout and order as a trifan, and can be used interchangably in OpenGL
+	case GL_TRIANGLE_FAN:
+		for (i = 2; i < d3d_BeginVerts; i++)
 		{
-			if (stp[tmu])
-			{
-				d3d_CurrentTexCoord[tmu].s = ((float *) stp[tmu])[0];
-				d3d_CurrentTexCoord[tmu].t = ((float *) stp[tmu])[1];
+			// trifans and polys unwind thus:
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert;
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + i - 1;
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + i;
+		}
+		break;
 
-				stp[tmu] += d3d_TexCoordPointer[tmu].stride;
+	case GL_TRIANGLE_STRIP:
+		for (i = 2; i < d3d_BeginVerts; i++)
+		{
+			d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + i - 2;
+
+			if (i & 1)
+			{
+				d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + i;
+				d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + i - 1;
+			}
+			else
+			{
+				d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + i - 1;
+				d3d_Indexes[d3d_NumIndexes++] = d3d_BaseVert + i;
 			}
 		}
-
-		if (d3d_VertexPointer.size == 2)
-			glVertex2fv ((float *) vp);
-		else if (d3d_VertexPointer.size == 3)
-			glVertex3fv ((float *) vp);
-
-		vp += d3d_VertexPointer.stride;
-	}
-
-	glEnd ();
-}
-
-
-void glVertexPointer (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
-{
-	if (type != GL_FLOAT) Sys_Error ("Unimplemented vertex pointer type");
-
-	d3d_VertexPointer.size = size;
-	d3d_VertexPointer.type = type;
-	d3d_VertexPointer.stride = stride;
-	d3d_VertexPointer.pointer = (GLvoid *) pointer;
-}
-
-
-void glColorPointer (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
-{
-	if (type != GL_FLOAT) Sys_Error ("Unimplemented color pointer type");
-
-	d3d_ColorPointer.size = size;
-	d3d_ColorPointer.type = type;
-	d3d_ColorPointer.stride = stride;
-	d3d_ColorPointer.pointer = (GLvoid *) pointer;
-}
-
-
-void glTexCoordPointer (GLint size, GLenum type, GLsizei stride, const GLvoid *pointer)
-{
-	if (type != GL_FLOAT) Sys_Error ("Unimplemented texcoord pointer type");
-
-	d3d_TexCoordPointer[d3d_VArray_TMU].size = size;
-	d3d_TexCoordPointer[d3d_VArray_TMU].type = type;
-	d3d_TexCoordPointer[d3d_VArray_TMU].stride = stride;
-	d3d_TexCoordPointer[d3d_VArray_TMU].pointer = (GLvoid *) pointer;
-}
-
-
-void glDisableClientState (GLenum array)
-{
-	// switch the pointer to NULL
-	switch (array)
-	{
-	case GL_VERTEX_ARRAY:
-		d3d_VertexPointer.pointer = NULL;
 		break;
 
-	case GL_COLOR_ARRAY:
-		d3d_ColorPointer.pointer = NULL;
+	case GL_QUAD_STRIP:
+		// ugly
+		for (i = 0; ; i += 2)
+		{
+			if (i > (d3d_NumVerts - 3)) break;
+
+			d3d_Indexes[d3d_NumIndexes++] = i;
+			d3d_Indexes[d3d_NumIndexes++] = i + 1;
+			d3d_Indexes[d3d_NumIndexes++] = i + 3;
+			d3d_Indexes[d3d_NumIndexes++] = i + 2;
+		}
 		break;
 
-	case GL_TEXTURE_COORD_ARRAY:
-		d3d_TexCoordPointer[d3d_VArray_TMU].pointer = NULL;
+	case GL_LINES:
+	case GL_TRIANGLES:
+		// done separately
 		break;
 
+	case -1:
 	default:
-		Sys_Error ("Invalid Vertex Array Spec...!");
+		// ??? what the fuck was that?  ignore it
+		d3d_NumVerts = d3d_BaseVert;
+		d3d_NumIndexes = d3d_BaseIndex;
+		return;
 	}
 }
-
-
-void glCopyTexImage2D (GLenum target, GLint level, GLenum internalFormat, GLint x, GLint y, GLsizei width, GLsizei height, GLint border) {}
-void glTexGeni (GLenum coord, GLenum pname, GLint param) {}
-void glDeleteLists (GLuint list, GLsizei range) {}
-GLuint glGenLists (GLsizei range) {return 1;}
-void glNewList (GLuint list, GLenum mode) {}
-void glEndList (void) {}
-void glCallList (GLuint list) {}
-void glTexImage1D (GLenum target, GLint level, GLint internalformat, GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid *pixels) {}
-void glLineWidth (GLfloat width) {}
 
 
 /*
@@ -1410,16 +1473,19 @@ void glLineWidth (GLfloat width) {}
 
 void glStencilFunc (GLenum func, GLint ref, GLuint mask)
 {
+	GL_SubmitVertexes ();
 }
 
 
 void glStencilOp (GLenum fail, GLenum zfail, GLenum zpass)
 {
+	GL_SubmitVertexes ();
 }
 
 
 void glClearStencil (GLint s)
 {
+	GL_SubmitVertexes ();
 }
 
 
@@ -1506,6 +1572,8 @@ BOOL D3D_CheckTextureFormat (D3DFORMAT TextureFormat, D3DFORMAT AdapterFormat)
 
 void glTexEnvf (GLenum target, GLenum pname, GLfloat param)
 {
+	GL_SubmitVertexes ();
+
 	if (target != GL_TEXTURE_ENV) Sys_Error ("glTexEnvf: unimplemented target");
 
 	d3d_TMUs[d3d_CurrentTMU].texenvdirty = TRUE;
@@ -1534,7 +1602,8 @@ void glTexEnvf (GLenum target, GLenum pname, GLfloat param)
 			break;
 
 		case GL_REPLACE:
-			// hmmm - there was a reason why i made this modulate back in the day; can't quite remember though...
+			// there was a reason why i changed this to modulate but i can't remember it :(
+			// anyway, it needs to be D3DTOP_SELECTARG1 for Quake, so D3DTOP_SELECTARG1 it is...
 			d3d_TMUs[d3d_CurrentTMU].colorop = D3DTOP_SELECTARG1;
 			d3d_TMUs[d3d_CurrentTMU].colorarg1 = D3DTA_TEXTURE;
 			d3d_TMUs[d3d_CurrentTMU].colorarg2 = D3DTA_DIFFUSE;
@@ -1630,6 +1699,8 @@ void glTexEnvf (GLenum target, GLenum pname, GLfloat param)
 
 void glTexEnvi (GLenum target, GLenum pname, GLint param)
 {
+	GL_SubmitVertexes ();
+
 	if (target != GL_TEXTURE_ENV) return;
 
 	glTexEnvf (target, pname, param);
@@ -1742,6 +1813,8 @@ void glGetTexImage (GLenum target, GLint level, GLenum format, GLenum type, GLvo
 	D3DLOCKED_RECT lockrect;
 	D3DSURFACE_DESC desc;
 
+	GL_SubmitVertexes ();
+
 	if (target != GL_TEXTURE_2D) return;
 	if (type != GL_UNSIGNED_BYTE) return;
 
@@ -1792,6 +1865,8 @@ void glGetTexImage (GLenum target, GLint level, GLenum format, GLenum type, GLvo
 void glTexImage2D (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels)
 {
 	D3DFORMAT texformat = D3DFMT_X8R8G8B8;
+
+	GL_SubmitVertexes ();
 
 	// validate format
 	switch (internalformat)
@@ -1887,6 +1962,8 @@ void glTexImage2D (GLenum target, GLint level, GLint internalformat, GLsizei wid
 
 void glGetTexParameterfv (GLenum target, GLenum pname, GLfloat *params)
 {
+	GL_SubmitVertexes ();
+
 	if (!d3d_TMUs[d3d_CurrentTMU].boundtexture) return;
 	if (target != GL_TEXTURE_2D) return;
 
@@ -1903,6 +1980,8 @@ void glGetTexParameterfv (GLenum target, GLenum pname, GLfloat *params)
 
 void glTexParameterf (GLenum target, GLenum pname, GLfloat param)
 {
+	GL_SubmitVertexes ();
+
 	if (!d3d_TMUs[d3d_CurrentTMU].boundtexture) return;
 	if (target != GL_TEXTURE_2D) return;
 
@@ -1977,6 +2056,8 @@ void glTexParameterf (GLenum target, GLenum pname, GLfloat param)
 
 void glTexParameteri (GLenum target, GLenum pname, GLint param)
 {
+	GL_SubmitVertexes ();
+
 	if (target != GL_TEXTURE_2D) return;
 	if (!d3d_TMUs[d3d_CurrentTMU].boundtexture) return;
 
@@ -1992,6 +2073,8 @@ void glTexSubImage2D (GLenum target, GLint level, GLint xoffset, GLint yoffset, 
 	byte *srcdata;
 	byte *dstdata;
 	D3DLOCKED_RECT lockrect;
+
+	GL_SubmitVertexes ();
 
 	if (format == 1 || format == GL_LUMINANCE)
 		srcbytes = 1;
@@ -2072,6 +2155,8 @@ void glBindTexture (GLenum target, GLuint texture)
 {
 	d3d_texture_t *tex;
 
+	GL_SubmitVertexes ();
+
 	if (target != GL_TEXTURE_2D) return;
 
 	// use no texture
@@ -2121,6 +2206,8 @@ void glGenTextures (GLsizei n, GLuint *textures)
 {
 	int i;
 
+	GL_SubmitVertexes ();
+
 	for (i = 0; i < n; i++)
 	{
 		// either take a free slot or alloc a new one
@@ -2136,6 +2223,8 @@ void glDeleteTextures (GLsizei n, const GLuint *textures)
 {
 	int i;
 	d3d_texture_t *tex;
+
+	GL_SubmitVertexes ();
 
 	for (tex = d3d_Textures; tex; tex = tex->next)
 	{
@@ -2171,6 +2260,17 @@ D3DFORMAT D3D_GetDepthFormat (D3DFORMAT AdapterFormat)
 	// valid depth formats
 	int i;
 	D3DFORMAT d3d_DepthFormats[] = {D3DFMT_D32, D3DFMT_D24X8, D3DFMT_D24S8, D3DFMT_D24X4S4, D3DFMT_D16, D3DFMT_UNKNOWN};
+
+	if (d3d_RequestStencil)
+	{
+		// switch to formats with a stencil buffer available at the head of the list
+		d3d_DepthFormats[0] = D3DFMT_D24S8;
+		d3d_DepthFormats[1] = D3DFMT_D24X4S4;
+		d3d_DepthFormats[2] = D3DFMT_D32;
+		d3d_DepthFormats[3] = D3DFMT_D24X8;
+		d3d_DepthFormats[4] = D3DFMT_D16;
+		d3d_DepthFormats[5] = D3DFMT_UNKNOWN;
+	}
 
 	for (i = 0; ; i++)
 	{
@@ -2282,6 +2382,11 @@ D3DFORMAT D3D_GetAdapterModeFormat (int width, int height, int bpp)
 
 BOOL WINAPI SetPixelFormat (HDC hdc, int format, CONST PIXELFORMATDESCRIPTOR *ppfd)
 {
+	if (ppfd->cStencilBits)
+		d3d_RequestStencil = TRUE;
+	else
+		d3d_RequestStencil = FALSE;
+
 	// just silently pass the PFD through unmodified
 	return TRUE;
 }
@@ -2369,7 +2474,11 @@ BOOL WINAPI wglMakeCurrent (HDC hdc, HGLRC hglrc)
 		Sys_Error ("Failed to get desktop mode");
 
 	// setup our present parameters (popup windows are fullscreen always)
-	D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, !(winstyle & WS_POPUP));
+
+	if (COM_CheckParm("-fullwindow"))
+		D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, 1);
+	else
+		D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, !(winstyle & WS_POPUP));
 
 	// here we use D3DCREATE_FPU_PRESERVE to maintain the resolution of Quake's timers (this is a serious problem)
 	// and D3DCREATE_DISABLE_DRIVER_MANAGEMENT to protect us from rogue drivers (call it honest paranoia).  first
@@ -2427,6 +2536,11 @@ BOOL WINAPI wglMakeCurrent (HDC hdc, HGLRC hglrc)
 
 	// disable lighting
 	D3D_SetRenderState (D3DRS_LIGHTING, FALSE);
+
+	// default zbias
+	// D3D uses values of 0 to 16, with 0 being the default and higher values coming nearer
+	// because we want to push out further too, we pick an intermediate value as our new default
+	D3D_SetRenderState (D3DRS_ZBIAS, 8);
 
 	// set projection and world to dirty, beginning of stack and identity
 	D3D_InitializeMatrix (&d3d_ModelViewMatrix);
@@ -2527,12 +2641,14 @@ void GL_SetCompFunc (DWORD mode, GLenum func)
 
 void glDepthFunc (GLenum func)
 {
+	GL_SubmitVertexes ();
 	GL_SetCompFunc (D3DRS_ZFUNC, func);
 }
 
 
 void glAlphaFunc (GLenum func, GLclampf ref)
 {
+	GL_SubmitVertexes ();
 	GL_SetCompFunc (D3DRS_ALPHAFUNC, func);
 	D3D_SetRenderState (D3DRS_ALPHAREF, BYTE_CLAMP ((int) (ref * 255)));
 }
@@ -2551,6 +2667,8 @@ void glColorMask (GLboolean red, GLboolean green, GLboolean blue, GLboolean alph
 {
 	DWORD mask = 0;
 
+	GL_SubmitVertexes ();
+
 	if (red) mask |= D3DCOLORWRITEENABLE_RED;
 	if (green) mask |= D3DCOLORWRITEENABLE_GREEN;
 	if (blue) mask |= D3DCOLORWRITEENABLE_BLUE;
@@ -2562,6 +2680,8 @@ void glColorMask (GLboolean red, GLboolean green, GLboolean blue, GLboolean alph
 
 void glDepthRange (GLclampd zNear, GLclampd zFar)
 {
+	GL_SubmitVertexes ();
+
 	// update the viewport
 	d3d_Viewport.MinZ = zNear;
 	d3d_Viewport.MaxZ = zFar;
@@ -2573,6 +2693,8 @@ void glDepthRange (GLclampd zNear, GLclampd zFar)
 
 void glDepthMask (GLboolean flag)
 {
+	GL_SubmitVertexes ();
+
 	// if only they were all so easy...
 	D3D_SetRenderState (D3DRS_ZWRITEENABLE, flag == GL_TRUE ? TRUE : FALSE);
 }
@@ -2638,6 +2760,7 @@ void GL_Blend (D3DRENDERSTATETYPE rs, GLenum factor)
 
 void glBlendFunc (GLenum sfactor, GLenum dfactor)
 {
+	GL_SubmitVertexes ();
 	GL_Blend (D3DRS_SRCBLEND, sfactor);
 	GL_Blend (D3DRS_DESTBLEND, dfactor);
 }
@@ -2646,6 +2769,8 @@ void glBlendFunc (GLenum sfactor, GLenum dfactor)
 void glClear (GLbitfield mask)
 {
 	DWORD clearflags = 0;
+
+	GL_SubmitVertexes ();
 
 	// no accumulation buffer in d3d
 	if (mask & GL_COLOR_BUFFER_BIT) clearflags |= D3DCLEAR_TARGET;
@@ -2659,12 +2784,16 @@ void glClear (GLbitfield mask)
 
 void glClearColor (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
+	GL_SubmitVertexes ();
+
 	d3d_ClearColor = GL_ColorToD3D (red, green, blue, alpha);
 }
 
 
 void glDrawBuffer (GLenum mode)
 {
+	GL_SubmitVertexes ();
+
 	// d3d doesn't like us messing with the front buffer, which is all glquake uses this for, so here
 	// we just silently ignore requests to change the draw buffer
 }
@@ -2672,12 +2801,14 @@ void glDrawBuffer (GLenum mode)
 
 void glFinish (void)
 {
+	GL_SubmitVertexes ();
 	// we force a Present in our SwapBuffers function so this is unneeded
 }
 
 
 void glReadBuffer (GLenum mode)
 {
+	GL_SubmitVertexes ();
 	// d3d doesn't like us messing with the front buffer, which is all glquake uses this for, so here
 	// we just silently ignore requests to change the draw buffer
 }
@@ -2693,6 +2824,8 @@ void glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum forma
 	LPDIRECT3DSURFACE8 locksurf;
 	D3DLOCKED_RECT lockrect;
 	D3DSURFACE_DESC desc;
+
+	GL_SubmitVertexes ();
 
 	if (format != GL_RGB || type != GL_UNSIGNED_BYTE)
 	{
@@ -2742,6 +2875,8 @@ void glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum forma
 
 void glViewport (GLint x, GLint y, GLsizei width, GLsizei height)
 {
+	GL_SubmitVertexes ();
+
 	// translate from OpenGL bottom-left to D3D top-left
 	y = d3d_CurrentMode.Height - (height + y);
 
@@ -2814,7 +2949,7 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed)
 	winrect.bottom = height;
 
 	winexstyle = 0;
-	winstyle = windowed ? WS_OVERLAPPED | WS_BORDER | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX : WS_POPUP;
+	winstyle = COM_CheckParm("-fullwindow") ? WS_POPUP : (windowed ? WS_OVERLAPPED | WS_BORDER | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX : WS_POPUP);
 
 	// reset stuff
 	SetWindowLong (d3d_PresentParams.hDeviceWindow, GWL_EXSTYLE, winexstyle);
@@ -2853,6 +2988,8 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed)
 
 void FakeSwapBuffers (void)
 {
+	GL_SubmitVertexes ();
+
 	// if we lost the device (e.g. on a mode switch, alt-tab, etc) we must try to recover it
 	if (d3d_DeviceLost)
 	{
@@ -2974,6 +3111,7 @@ void GL_UpdateCull (void)
 
 void glFrontFace (GLenum mode)
 {
+	GL_SubmitVertexes ();
 	gl_FrontFace = mode;
 	GL_UpdateCull ();
 }
@@ -2981,6 +3119,7 @@ void glFrontFace (GLenum mode)
 
 void glCullFace (GLenum mode)
 {
+	GL_SubmitVertexes ();
 	gl_CullMode = mode;
 	GL_UpdateCull ();
 }
@@ -2988,6 +3127,7 @@ void glCullFace (GLenum mode)
 
 void glScissor (GLint x, GLint y, GLsizei width, GLsizei height)
 {
+	GL_SubmitVertexes ();
 	// d3d8 doesnt have scissor test so we'll just live without it for now.
 }
 
@@ -2995,6 +3135,8 @@ void glScissor (GLint x, GLint y, GLsizei width, GLsizei height)
 void GL_EnableDisable (GLenum cap, BOOL enabled)
 {
 	DWORD d3d_RS;
+
+	GL_SubmitVertexes ();
 
 	switch (cap)
 	{
@@ -3018,11 +3160,15 @@ void GL_EnableDisable (GLenum cap, BOOL enabled)
 
 		d3d_TMUs[d3d_CurrentTMU].texenvdirty = TRUE;
 		d3d_TMUs[d3d_CurrentTMU].texparamdirty = TRUE;
+
+		// we're not setting state yet here...
 		return;
 
 	case GL_CULL_FACE:
 		gl_CullEnable = enabled ? GL_TRUE : GL_FALSE;
 		GL_UpdateCull ();
+
+		// we're not setting state yet here...
 		return;
 
 	case GL_FOG:
@@ -3034,6 +3180,14 @@ void GL_EnableDisable (GLenum cap, BOOL enabled)
 		if (enabled) enabled = D3DZB_TRUE; else enabled = D3DZB_FALSE;
 		break;
 
+	case GL_POLYGON_OFFSET_FILL:
+	case GL_POLYGON_OFFSET_LINE:
+		d3d_PolyOffsetEnabled = enabled;
+		d3d_PolyOffsetSwitched = FALSE;
+
+		// we're not setting state yet here...
+		return;
+
 	default:
 		return;
 	}
@@ -3044,18 +3198,22 @@ void GL_EnableDisable (GLenum cap, BOOL enabled)
 
 void glDisable (GLenum cap)
 {
+	GL_SubmitVertexes ();
 	GL_EnableDisable (cap, FALSE);
 }
 
 
 void glEnable (GLenum cap)
 {
+	GL_SubmitVertexes ();
 	GL_EnableDisable (cap, TRUE);
 }
 
 
 void glGetFloatv (GLenum pname, GLfloat *params)
 {
+	GL_SubmitVertexes ();
+
 	switch (pname)
 	{
 	case GL_MODELVIEW_MATRIX:
@@ -3074,11 +3232,22 @@ void glGetFloatv (GLenum pname, GLfloat *params)
 
 void glPolygonMode (GLenum face, GLenum mode)
 {
+	GL_SubmitVertexes ();
+
+	// we don't have the ability to specify which side of the poly is filled, so just do it
+	// the way that it's specified and hope for the best!
+	if (mode == GL_LINE)
+		D3D_SetRenderState (D3DRS_FILLMODE, D3DFILL_WIREFRAME);
+	else if (mode == GL_POINT)
+		D3D_SetRenderState (D3DRS_FILLMODE, D3DFILL_POINT);
+	else D3D_SetRenderState (D3DRS_FILLMODE, D3DFILL_SOLID);
 }
 
 
 void glShadeModel (GLenum mode)
 {
+	GL_SubmitVertexes ();
+
 	// easy peasy
 	D3D_SetRenderState (D3DRS_SHADEMODE, mode == GL_FLAT ? D3DSHADE_FLAT : D3DSHADE_GOURAUD);
 }
@@ -3086,6 +3255,8 @@ void glShadeModel (GLenum mode)
 
 void glGetIntegerv (GLenum pname, GLint *params)
 {
+	GL_SubmitVertexes ();
+
 	// here we only bother getting the values that glquake uses
 	switch (pname)
 	{
@@ -3101,8 +3272,17 @@ void glGetIntegerv (GLenum pname, GLint *params)
 		params[3] = d3d_Viewport.Height;
 		break;
 
+	case GL_STENCIL_BITS:
+		if (d3d_PresentParams.AutoDepthStencilFormat == D3DFMT_D24S8)
+			params[0] = 8;
+		else if (d3d_PresentParams.AutoDepthStencilFormat == D3DFMT_D24X4S4)
+			params[0] = 4;
+		else params[0] = 0;
+
+		break;
+
 	default:
-		params[0] = 666;
+		params[0] = 0;
 		return;
 	}
 }
@@ -3143,6 +3323,8 @@ LONG ChangeDisplaySettings_FakeGL (LPDEVMODE lpDevMode, DWORD dwflags)
 
 void glFogf (GLenum pname, GLfloat param)
 {
+	GL_SubmitVertexes ();
+
 	switch (pname)
 	{
 	case GL_FOG_MODE:
@@ -3172,6 +3354,8 @@ void glFogf (GLenum pname, GLfloat param)
 
 void glFogfv (GLenum pname, const GLfloat *params)
 {
+	GL_SubmitVertexes ();
+
 	switch (pname)
 	{
 	case GL_FOG_COLOR:
@@ -3187,6 +3371,8 @@ void glFogfv (GLenum pname, const GLfloat *params)
 
 void glFogi (GLenum pname, GLint param)
 {
+	GL_SubmitVertexes ();
+
 	switch (pname)
 	{
 	case GL_FOG_MODE:
@@ -3241,6 +3427,8 @@ void glFogi (GLenum pname, GLint param)
 
 void glFogiv (GLenum pname, const GLint *params)
 {
+	GL_SubmitVertexes ();
+
 	switch (pname)
 	{
 	case GL_FOG_COLOR:
@@ -3258,21 +3446,6 @@ void glFogiv (GLenum pname, const GLint *params)
 /*
 ===================================================================================================================
 
-			FITZQUAKE
-
-	These function stubs exist merely so that fitzquake can compile clean
-
-===================================================================================================================
-*/
-
-void glPolygonOffset (GLfloat factor, GLfloat units) {}
-void glCopyTexSubImage2D (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height) {}
-void glMultMatrixf (const GLfloat *m) {}
-
-
-/*
-===================================================================================================================
-
 			MULTITEXTURE
 
 ===================================================================================================================
@@ -3280,6 +3453,7 @@ void glMultMatrixf (const GLfloat *m) {}
 
 void WINAPI GL_ActiveTexture (GLenum texture)
 {
+	GL_SubmitVertexes ();
 	d3d_CurrentTMU = D3D_TMUForTexture (texture);
 }
 
@@ -3325,6 +3499,7 @@ D3DADAPTER_IDENTIFIER8 d3d_AdapterID;
 
 const GLubyte *glGetString (GLenum name)
 {
+	GL_SubmitVertexes ();
 	IDirect3D8_GetAdapterIdentifier (d3d_Object, 0, D3DENUM_NO_WHQL_LEVEL, &d3d_AdapterID);
 
 	switch (name)
@@ -3361,8 +3536,6 @@ gld3d_entrypoint_t d3d_EntryPoints[] =
 	{"glMultiTexCoord1fARB", (PROC) GL_MultiTexCoord1f},
 	{"glMultiTexCoord2f", (PROC) GL_MultiTexCoord2f},
 	{"glMultiTexCoord2fARB", (PROC) GL_MultiTexCoord2f},
-	{"glClientActiveTexture", (PROC) GL_ClientActiveTexture},
-	{"glClientActiveTextureARB", (PROC) GL_ClientActiveTexture},
 	{NULL, NULL}
 };
 

@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -82,6 +82,20 @@ void PerpendicularVector( vec3_t dst, const vec3_t src )
 	*/
 	VectorNormalize( dst );
 }
+
+void LerpVector (const vec3_t from, const vec3_t to, float frac, vec3_t out)
+{
+	out[0] = from[0] + frac * (to[0] - from[0]);
+	out[1] = from[1] + frac * (to[1] - from[1]);
+	out[2] = from[2] + frac * (to[2] - from[2]);
+}
+
+float VecLength2(vec3_t v1, vec3_t v2)
+{
+	vec3_t k;
+	VectorSubtract(v1, v2, k);
+	return sqrt(k[0]*k[0] + k[1]*k[1] + k[2]*k[2]);
+} 
 
 #ifdef _WIN32
 #pragma optimize( "", off )
@@ -174,7 +188,7 @@ void BOPS_Error (void)
 	Sys_Error ("BoxOnPlaneSide:  Bad signbits");
 }
 
-#if	!id386 
+#if	!id386
 
 /*
 ==================
@@ -200,7 +214,7 @@ int BoxOnPlaneSide (vec3_t emins, vec3_t emaxs, mplane_t *p)
 		return 3;
 	}
 #endif
-	
+
 // general case
 	switch (p->signbits)
 	{
@@ -290,7 +304,7 @@ void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 {
 	float		angle;
 	float		sr, sp, sy, cr, cp, cy;
-	
+
 	angle = angles[YAW] * (M_PI*2 / 360);
 	sy = sinf(angle);
 	cy = cosf(angle);
@@ -315,11 +329,11 @@ void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 int VectorCompare (vec3_t v1, vec3_t v2)
 {
 	int		i;
-	
+
 	for (i=0 ; i<3 ; i++)
 		if (v1[i] != v2[i])
 			return 0;
-			
+
 	return 1;
 }
 
@@ -381,7 +395,7 @@ float VectorNormalize (vec3_t v)
 		v[1] *= ilength;
 		v[2] *= ilength;
 	}
-		
+
 	return length;
 
 }
@@ -580,15 +594,15 @@ int ParseFloats(char *s, float *f, int *f_size) {
 
    Cmd_TokenizeString(s);
    argc = min(Cmd_Argc(), f_size[0]);
-   
+
    for(i = 0; i < argc; i++)
-      f[i] = Q_atof(Cmd_Argv(i));
+      f[i] = atof (Cmd_Argv(i));
 
    for( ; i < f_size[0]; i++)
       f[i] = 0; // zeroing unused elements
 
    return (f_size[0] = argc);
-} 
+}
 
 #ifdef SUPPORTS_AUTOID_SOFTWARE
 //This function is GL stylie (use as 2nd arg to ML_MultMatrix4).
@@ -705,7 +719,7 @@ void ML_ProjectionMatrix(float *proj, float wdivh, float fovy)
 	proj[6] = 0;
 	proj[10] = -1  * nudge;
 	proj[14] = -2*4 * nudge;
-	
+
 	proj[3] = 0;
 	proj[7] = 0;
 	proj[11] = -1;
@@ -762,7 +776,7 @@ void ML_Project (vec3_t in, vec3_t out, vec3_t viewangles, vec3_t vieworg, float
 		v[2] = in[2];
 		v[3] = 1;
 
-		Matrix4_Transform4(modelview, v, tempv); 
+		Matrix4_Transform4(modelview, v, tempv);
 		Matrix4_Transform4(proj, tempv, v);
 
 		v[0] /= v[3];

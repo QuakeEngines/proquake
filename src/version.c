@@ -36,7 +36,7 @@ int build_number (void)
 
 	for (m=0 ; m<11 ; m++)
 	{
-		if (!Q_strncasecmp(&date[0], mon[m], 3))
+		if (!strncasecmp(&date[0], mon[m], 3))
 			break;
 		d += mond[m];
 	}
@@ -64,7 +64,7 @@ void Host_Version_f (void)
 	Con_Printf ("Exe: "__TIME__" "__DATE__"\n");
 }
 
-#if 0 
+#if 0
 /*
 =======================
 VersionString
@@ -74,7 +74,7 @@ char *VersionString (void)
 {
 	static	char	str[32];
 
-	Q_snprintfz (str, sizeof(str), "%s (build %i)", ENGINE_VERSION, build_number());
+	snprintf (str, sizeof(str), "%s (build %i)", ENGINE_VERSION, build_number());
 
 	return str;
 }

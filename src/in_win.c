@@ -798,11 +798,11 @@ void IN_StartupMouse (void) {
 		flex_dinput = IN_InitDInput ();
 
 		if (flex_dinput) {
-			Con_SafePrintf ("DirectInput initialized\n");
+				Con_Success ("DirectInput initialized\n");
 			if (use_m_smooth)
-				Con_SafePrintf ("Mouse smoothing initialized\n");
+				Con_Success ("Mouse smoothing initialized\n");
 		} else {
-			Con_SafePrintf ("DirectInput not initialized\n");
+				Con_Warning ("DirectInput not initialized\n");
 		}
 	}
 
@@ -919,7 +919,7 @@ void IN_Init (void) {
 		Cvar_RegisterVariable (&m_filter, NULL);
 		Cvar_RegisterVariable (&m_forcewheel, NULL);
 		Cvar_RegisterVariable (&m_accel, NULL);
-		Cvar_RegisterVariable (&m_directinput, &IN_DirectInput_f);
+		Cvar_RegisterVariable (&m_directinput, IN_DirectInput_f);
 		//Con_SafePrintf("Did we re-init dinput below this point but ..\n");
 		if (commandline_dinput) {
 			m_dinput_skiponce=true;
@@ -929,7 +929,7 @@ void IN_Init (void) {
 
 		// keyboard variables
 		Cvar_RegisterVariable (&cl_keypad, NULL);
-		Cvar_RegisterVariable (&in_keymap, &KEY_Keymap_f);
+		Cvar_RegisterVariable (&in_keymap, KEY_Keymap_f);
 
 		// joystick variables 
 		Cvar_RegisterVariable (&in_joystick, NULL); // Baker 3.83: Leaving here ONLY because this saves to config.
@@ -1160,6 +1160,58 @@ void IN_Move (usercmd_t *cmd) {
 		IN_JoyMove (cmd);
 	}
 }
+
+// Baker: this is ONLY used to capture mouse input for console scrolling
+//        and ONLY if directinput is enabled
+void IN_MouseWheel (void) {
+	DIDEVICEOBJECTDATA	od;
+	DWORD				dwElements;
+	HRESULT				hr;
+
+	if (!flex_mouseactive)	// No mouse ... pointless
+		return;
+
+	if (!flex_dinput)		// DirectInput needs this, otherwise we get input from vid_wgl in windows messages
+		return;
+		
+	if (use_m_smooth)
+		return;				// Smooth read
+
+	
+	while (1) 
+	{
+		dwElements = 1;
+		hr = IDirectInputDevice_GetDeviceData (g_pMouse, sizeof(DIDEVICEOBJECTDATA), &od, &dwElements, 0);
+
+		if ((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED)) 
+		{
+			flex_dinput_acquired = true;
+			IDirectInputDevice_Acquire(g_pMouse);
+			break;
+		}
+
+		/* Unable to read data or no data available */
+		if (FAILED(hr) || !dwElements)
+			break;
+
+		if (od.dwOfs == DIMOFS_Z)
+		{
+			if (od.dwData & 0x80) 
+			{
+				Key_Event(K_MWHEELDOWN, 0, true);
+				Key_Event(K_MWHEELDOWN, 0, false);
+			} 
+			else
+			{
+				Key_Event(K_MWHEELUP, 0, true);
+				Key_Event(K_MWHEELUP, 0, false);
+			}
+			break;
+		}
+	}
+
+}
+
 
 void IN_Accumulate (void) {
 	if (flex_mouseactive) {

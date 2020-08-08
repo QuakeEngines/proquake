@@ -26,7 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef _WIN32
 #include <io.h>
 #endif
- 
+
 #include <fcntl.h>
 #include <errno.h>
 #include "quakedef.h"
@@ -302,7 +302,7 @@ void Con_Copy_f (void)
 		for (x=0; buffer[x]; x++)
 			buffer[x] &= 0x7f;
 
-		strcat(outstring, va("%s\r\n", buffer));
+		strlcat (outstring, va("%s\r\n", buffer), sizeof(outstring));
 
 	}
 
@@ -370,7 +370,11 @@ void Con_CheckResize (void)
 
 	if (width < 1)			// video hasn't been initialized yet
 	{
+#ifdef GLQUAKE // Baker: GLQuake runs in 640x480 by default
+		width = 78;
+#else
 		width = 38;
+#endif
 		con_linewidth = width;
 		con_totallines = CON_TEXTSIZE / con_linewidth;
 		memset (con_text, ' ', CON_TEXTSIZE);
@@ -438,7 +442,7 @@ void Con_Init (void)
 				{
 					n = n + 1;
 					snprintf (logfilename, sizeof(logfilename), com_argv[con_debuglog+1], n);
-					strcat(logfilename, ".log");
+					strlcat (logfilename, ".log", sizeof(logfilename));
 					snprintf (temp, sizeof(temp), "%s/%s", com_gamedir, logfilename);
 					fd = open(temp, O_CREAT | O_EXCL | O_WRONLY, 0666);
 				}
@@ -704,6 +708,42 @@ void Con_DebugLog( /* char *file, */ char *fmt, ...)
     close(fd);
 }
 
+/*
+================
+Con_Success
+================
+*/
+void Con_Success (char *fmt, ...)
+{
+	va_list		argptr;
+	char		msg[MAXPRINTMSG];
+
+	va_start (argptr,fmt);
+	vsprintf (msg,fmt,argptr);
+	va_end (argptr);
+
+	//Con_SafePrintf ("\x02Success: ");
+	Con_Printf ("%s", msg);
+}
+
+
+/*
+================
+Con_Warning -- johnfitz -- prints a warning to the console
+================
+*/
+void Con_Warning (char *fmt, ...)
+{
+	va_list		argptr;
+	char		msg[MAXPRINTMSG];
+
+	va_start (argptr,fmt);
+	vsprintf (msg,fmt,argptr);
+	va_end (argptr);
+
+	Con_SafePrintf ("\x02Warning: ");
+	Con_Printf ("%s", msg);
+}
 
 /*
 ================

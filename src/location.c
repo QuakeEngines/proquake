@@ -33,13 +33,13 @@ void LOC_LoadLocations (void)
 
 	numlocations = 0;
 	mapname = cl.worldmodel->name;
-	if (Q_strncasecmp(mapname, "maps/", 5))
+	if (strncasecmp(mapname, "maps/", 5))
 		return;
 	strcpy(filename + 5, mapname + 5);
 	ch = strrchr(filename, '.');
 	if (ch)
 		*ch = 0;
-	strcat(filename, ".loc");
+	strlcat (filename, ".loc", sizeof(filename));
 
 	COM_FOpenFile(filename, &f);
 	if (!f)

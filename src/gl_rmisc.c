@@ -105,6 +105,22 @@ void R_InitParticleTexture (void)
 }
 
 /*
+====================
+R_SetClearColor_f -- johnfitz
+====================
+*/
+void R_SetClearColor_f (void)
+{
+	byte	*rgb;
+	int		s;
+	extern cvar_t r_clearcolor;
+
+	s = (int)r_clearcolor.value & 0xFF;
+	rgb = (byte*)(d_8to24table + s);
+	glClearColor (rgb[0]/255.0,rgb[1]/255.0,rgb[2]/255.0,0);
+}
+
+/*
 ===============
 R_Envmap_f
 

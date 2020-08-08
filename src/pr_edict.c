@@ -423,8 +423,8 @@ char *PR_GlobalString (int ofs)
 
 	i = strlen(line);
 	for ( ; i<20 ; i++)
-		strcat (line," ");
-	strcat (line," ");
+		strlcat (line, " ", sizeof(line));
+	strlcat (line, " ", sizeof(line));
 
 	return line;
 }
@@ -442,8 +442,8 @@ char *PR_GlobalStringNoContents (int ofs)
 
 	i = strlen(line);
 	for ( ; i<20 ; i++)
-		strcat (line," ");
-	strcat (line," ");
+		strlcat (line, " ", sizeof(line));
+	strlcat (line, " ", sizeof(line));
 
 	return line;
 }
@@ -548,12 +548,12 @@ void ED_PrintNum (int ent)
 
 /*
 =============
-ED_PrintEdicts
+ED_PrintEdicts_f
 
 For debugging, prints all the entities in the current server
 =============
 */
-void ED_PrintEdicts (void)
+void ED_PrintEdicts_f (void)
 {
 	int		i;
 
@@ -573,7 +573,7 @@ void ED_PrintEdict_f (void)
 {
 	int		i;
 
-	i = Q_atoi (Cmd_Argv(1));
+	i = atoi (Cmd_Argv(1));
 	if (i >= sv.num_edicts)
 	{
 		Con_Printf("Bad edict number\n");
@@ -584,12 +584,12 @@ void ED_PrintEdict_f (void)
 
 /*
 =============
-ED_Count
+ED_Count_f
 
 For debugging
 =============
 */
-void ED_Count (void)
+void ED_Count_f (void)
 {
 	int		i, active, models, solid, step;
 	edict_t	*ent;
@@ -880,7 +880,7 @@ if (!strcmp(com_token, "light"))
 		if (anglehack)
 		{
 			char	temp[32];
-		
+
 			strncpy (temp, com_token, sizeof(temp));
 			snprintf (com_token, sizeof(com_token), "0 %s 0", temp);
 		}
@@ -995,7 +995,7 @@ void PR_LoadProgs (char *progsname)
 		gefvCache[i].field[0] = 0;
 
 	if (!progsname || !*progsname)
-		Host_Error("PR_LoadProgs: passed empty progsname"); 
+		Host_Error("PR_LoadProgs: passed empty progsname");
 
 	CRC_Init (&pr_crc);
 
@@ -1078,8 +1078,8 @@ PR_Init
 void PR_Init (void)
 {
 	Cmd_AddCommand ("edict", ED_PrintEdict_f);
-	Cmd_AddCommand ("edicts", ED_PrintEdicts);
-	Cmd_AddCommand ("edictcount", ED_Count);
+	Cmd_AddCommand ("edicts", ED_PrintEdicts_f);
+	Cmd_AddCommand ("edictcount", ED_Count_f);
 	Cmd_AddCommand ("profile", PR_Profile_f);
 	Cvar_RegisterVariable (&nomonsters, NULL);
 	Cvar_RegisterVariable (&gamecfg, NULL);

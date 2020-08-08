@@ -230,7 +230,7 @@ loaded:
 		if (j == TEXWAD_MAXIMAGES)
 			break; // we are full, don't load any more
 		if (!texwadlump[j].name[0])
-			Q_strncpyz (texwadlump[j].name, lump_p->name, sizeof(texwadlump[j].name));
+			strlcpy (texwadlump[j].name, lump_p->name, sizeof(texwadlump[j].name));
 		texwadlump[j].file = file;
 		texwadlump[j].position = LittleLong(lump_p->filepos);
 		texwadlump[j].size = LittleLong(lump_p->disksize);

@@ -221,8 +221,10 @@ void PR_Profile_f (void)
 	int		i, max, num = 0;
 	
 	// Baker: the fix for the profile command
-	if (!sv.active) 
+	if (!sv.active) {
+		Con_Printf ("%s : Can't profile .. no active server.\n", Cmd_Argv(0));
 		return;
+	}
 	
 	do
 	{

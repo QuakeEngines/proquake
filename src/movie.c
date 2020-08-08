@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -71,12 +71,12 @@ void Movie_Start_f (void)
 		return;
 	}
 
-	Q_strncpyz (name, Cmd_Argv(1), sizeof(name));
+	strlcpy (name, Cmd_Argv(1), sizeof(name));
 	COM_ForceExtension (name, ".avi");
 
 	hack_ctr = capture_hack.value;
 
-	Q_snprintfz (path, sizeof(path), "%s/%s", capture_dir.string, name);
+	snprintf (path, sizeof(path), "%s/%s", capture_dir.string, name);
 	if (!(moviefile = fopen(path, "wb")))
 	{
 		COM_CreatePath (path);

@@ -152,7 +152,7 @@ LRESULT CALLBACK LLWinKeyHook(int Code, WPARAM wParam, LPARAM lParam);
 cvar_t	sys_disableWinKeys = {"sys_disableWinKeys", "0", true};
 
 void OnChange_sys_disableWinKeys (void) /*(cvar_t *var, char *string)*/ {
-	if (sys_disableWinKeys.value) { //(Q_atof(string)) {
+	if (sys_disableWinKeys.value) { //(atof(string)) {
 		if (!WinKeyHook_isActive) {
 			if ((WinKeyHook = SetWindowsHookEx(13, LLWinKeyHook, global_hInstance, 0))) {
 				WinKeyHook_isActive = true;
@@ -210,7 +210,7 @@ void OnChange_sys_highpriority (void) /*(cvar_t *var, char *s)*/ {
 	char *desc;
 	float priority;
 
-	priority = (int)sys_highpriority.value; //Q_atof(s);
+	priority = (int)sys_highpriority.value; //atof(s);
 	if (priority == 1) {
 		q_priority = 2;
 		desc = "high";
@@ -887,7 +887,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 	// Baker 3.76 - playing demos via file association
 
-	Q_snprintfz (fpaktest, sizeof(fpaktest), "%s/id1/pak0.pak", cwd); // Baker 3.76 - Sure this isn't gfx.wad, but let's be realistic here
+	snprintf (fpaktest, sizeof(fpaktest), "%s/id1/pak0.pak", cwd); // Baker 3.76 - Sure this isn't gfx.wad, but let's be realistic here
 
 	if(!(i = GetModuleFileName(NULL, com_basedir, sizeof(com_basedir)-1)))
 		Sys_Error("FS_InitFilesystemEx: GetModuleFileName failed");
@@ -919,15 +919,15 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 				break;
 			}
 
-	Q_snprintfz (cwd, sizeof(cwd), "%s", com_basedir);
+	snprintf (cwd, sizeof(cwd), "%s", com_basedir);
 
 
 
 	if (fpak0 = fopen(fpaktest, "rb"))  {
-		fclose( fpak0 ); // Pak0 found so close it; we have a valid directory
+		fclose (fpak0); // Pak0 found so close it; we have a valid directory
 	} else {
 		// Failed to find pak0.pak, use the dir the exe is in
-		Q_snprintfz (cwd, sizeof(cwd), "%s", com_basedir);
+		snprintf (cwd, sizeof(cwd), "%s", com_basedir);
 	}
 	// End Baker 3.76
 
@@ -1023,10 +1023,10 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		parms.memsize = MAXIMUM_WIN_MEMORY;
 
 	if ((t = COM_CheckParm("-heapsize")) != 0 && t + 1 < com_argc)
-		parms.memsize = Q_atoi (com_argv[t+1]) * 1024;
+		parms.memsize = atoi (com_argv[t+1]) * 1024;
 
 	if ((t = COM_CheckParm("-mem")) != 0 && t + 1 < com_argc)
-		parms.memsize = Q_atoi (com_argv[t+1]) * 1024 * 1024;
+		parms.memsize = atoi (com_argv[t+1]) * 1024 * 1024;
 
 	parms.membase = Q_malloc (parms.memsize);
 
@@ -1050,19 +1050,19 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		if ((t = COM_CheckParm ("-HFILE")) > 0)
 		{
 			if (t < com_argc)
-				hFile = (HANDLE)Q_atoi (com_argv[t+1]);
+				hFile = (HANDLE)atoi (com_argv[t+1]);
 		}
 
 		if ((t = COM_CheckParm ("-HPARENT")) > 0)
 		{
 			if (t < com_argc)
-				heventParent = (HANDLE)Q_atoi (com_argv[t+1]);
+				heventParent = (HANDLE)atoi (com_argv[t+1]);
 		}
 
 		if ((t = COM_CheckParm ("-HCHILD")) > 0)
 		{
 			if (t < com_argc)
-				heventChild = (HANDLE)Q_atoi (com_argv[t+1]);
+				heventChild = (HANDLE)atoi (com_argv[t+1]);
 		}
 
 		InitConProc (hFile, heventParent, heventChild);
@@ -1265,15 +1265,15 @@ void Sys_InfoInit(void)
 	if (SYSINFO_processor_description) {
 		char	myprocessor[256];
 		dpsnprintf(myprocessor, 256, (const char*)strltrim(SYSINFO_processor_description));
-		strlcat(q_system_string, ", ", sizeof(q_system_string));
-		strlcat(q_system_string, myprocessor, sizeof(q_system_string));
+		strlcat (q_system_string, ", ", sizeof(q_system_string));
+		strlcat (q_system_string, myprocessor, sizeof(q_system_string));
 	}
 	if (SYSINFO_MHz) {
-		strlcat(q_system_string, va(" %dMHz", SYSINFO_MHz), sizeof(q_system_string));
+		strlcat (q_system_string, va(" %dMHz", SYSINFO_MHz), sizeof(q_system_string));
 	}
 	if (SYSINFO_3D_description) {
-		strlcat(q_system_string, ", ", sizeof(q_system_string));
-		strlcat(q_system_string, SYSINFO_3D_description, sizeof(q_system_string));
+		strlcat (q_system_string, ", ", sizeof(q_system_string));
+		strlcat (q_system_string, SYSINFO_3D_description, sizeof(q_system_string));
 	}
 
 	//Con_Printf("sys: %s\n", q_system_string);

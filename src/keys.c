@@ -35,44 +35,44 @@ key up events are sent even if in console mode
 #define		HISTORY_FILE_NAME	"id1/proquake_history.txt"
 
 #define		MAXCMDLINE	256
-#define		CMDLINES	32
+#define		CMDLINES	64
 
-char	key_lines[CMDLINES][MAXCMDLINE];
-int		key_linepos;
-int		shift_down=false;
-int		ctrl_down=false;
-int		alt_down=false;
-int		key_lastpress;
+char		key_lines[CMDLINES][MAXCMDLINE];
+int			key_linepos;
+int			shift_down=false;
+int			ctrl_down=false;
+int			alt_down=false;
+int			key_lastpress;
 
-int		edit_line=0;
-int		history_line=0;
+int			edit_line=0;
+int			history_line=0;
 
-keydest_t		key_dest;
+keydest_t	key_dest;
+int			key_special_dest = false;
 
-int		key_count;			// incremented every key event
+int			key_count;			// incremented every key event
 
-char	*keybindings[256];
+char		*keybindings[256];
 qboolean	consolekeys[256];	// if true, can't be rebound while in console
 qboolean	menubound[256];	// if true, can't be rebound while in menu
-int		keyshift[256];		// key to map to if shift held down in console
-int		key_repeats[256];	// if > 1, it is autorepeating
+int			keyshift[256];		// key to map to if shift held down in console
+int			key_repeats[256];	// if > 1, it is autorepeating
 qboolean	keydown[256];
 qboolean	keygamedown[256];  // Baker: to prevent -aliases from triggering
 
+#ifdef SUPPORTS_GLVIDEO_MODESWITCH
+cvar_t		cl_key_altenter = {"cl_key_altenter", "1", true}; // Baker 3.99q: allows user to disable new ALT-ENTER behavior
+#endif
+
 #ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
 static qboolean key_international = true;
+cvar_t		in_keymap = {"in_keymap", "1", true};
 #else
 static qboolean key_international = false;
 #endif
 
 cvar_t	    cl_bindprotect = {"cl_bindprotect","2", true};
-#ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
-cvar_t		in_keymap = {"in_keymap", "1", true};
-#endif
 
-#ifdef SUPPORTS_GLVIDEO_MODESWITCH
-cvar_t		cl_key_altenter = {"cl_key_altenter", "1", true}; // Baker 3.99q: allows user to disable new ALT-ENTER behavior
-#endif
 
 void Key_ClearAllStates (void);
 
@@ -661,7 +661,7 @@ int Key_StringToKeynum (char *str)
 #endif
 
 	for (kn = keynames; kn->name; kn++) {
-		if (!Q_strcasecmp(str,kn->name))
+		if (!strcasecmp(str, kn->name))
 			return kn->keynum;
 	}
 	return -1;
@@ -836,8 +836,8 @@ void Key_Bind_f (void)
 	for (i=2 ; i< c ; i++)
 	{
 		if (i > 2)
-			strcat (cmd, " ");
-		strcat (cmd, Cmd_Argv(i));
+			strlcat (cmd, " ", sizeof(cmd));
+		strlcat (cmd, Cmd_Argv(i), sizeof(cmd));
 	}
 
 	Key_SetBinding (b, cmd);
@@ -1048,7 +1048,9 @@ Should NOT be called during an interrupt!
 ===================
 */
 extern qboolean	cl_inconsole; // Baker 3.76 - from Qrack
-
+//extern int extmousex, extmousey; // Windowed mode mousex,y of mouse event for namemaker only
+//extern key_special;
+extern int key_special_dest;
 void Key_Event (int key, int ascii, qboolean down)
 {
 	char	*kb;
@@ -1056,6 +1058,29 @@ void Key_Event (int key, int ascii, qboolean down)
 	qboolean wasgamekey = false;
 	int	flex_ascii;
 
+	// Baker: special ... K_MOUSECLICK
+	if (key >= K_MOUSECLICK_BUTTON1 && key <= K_MOUSECLICK_BUTTON5) {
+		if (key_special_dest == 1) // Name maker
+		{
+			M_Keydown (K_MOUSECLICK_BUTTON1, 0, down);  // down will = true
+		}
+		else if (key_special_dest == 2) // Customize Controls
+		{
+			if (key == K_MOUSECLICK_BUTTON1) {
+				M_Keydown (K_MOUSE1, 0, down);
+			}
+			else if (key == K_MOUSECLICK_BUTTON2)
+				M_Keydown (K_MOUSE2, 0, down);
+			else if (key == K_MOUSECLICK_BUTTON3)
+				M_Keydown (K_MOUSE3, 0, down);
+			else if  (key == K_MOUSECLICK_BUTTON4)
+				M_Keydown (K_MOUSE4, 0, down);
+			else if  (key == K_MOUSECLICK_BUTTON5)
+				M_Keydown (K_MOUSE5, 0, down);	
+		}		
+		return; // Get outta here
+	}
+	
 
 #ifdef SUPPORTS_GLVIDEO_MODESWITCH
 	if (alt_down && key == K_ENTER && !down && cl_key_altenter.value) {
@@ -1091,7 +1116,7 @@ void Key_Event (int key, int ascii, qboolean down)
 
 	// Baker: the problem with this is some maybe a keydown is getting
 	// ignored sometimes?
-	wasgamekey = keygamedown[key]; // Baker: to prevent -aliases being triggered in-console needlessly		
+	wasgamekey = keygamedown[key]; // Baker: to prevent -aliases being triggered in-console needlessly
 	if (!down) {
 		keygamedown[key] = false; // We can always set keygamedown to false if key is released
 	}
@@ -1183,21 +1208,21 @@ void Key_Event (int key, int ascii, qboolean down)
 		// Baker: we only want to trigger -alias if appropriate
 		//        but we ALWAYS want to exit is key is up
 		if (wasgamekey) {
-		kb = keybindings[key];  // Baker 3.703 is this right
-		if (kb && kb[0] == '+')
-		{
-			snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
-			Cbuf_AddText (cmd);
-		}
-		if (keyshift[key] != key)
-		{
-			kb = keybindings[keyshift[key]];
+			kb = keybindings[key];  // Baker 3.703 is this right
 			if (kb && kb[0] == '+')
 			{
 				snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
 				Cbuf_AddText (cmd);
 			}
-		}
+			if (keyshift[key] != key)
+			{
+				kb = keybindings[keyshift[key]];
+				if (kb && kb[0] == '+')
+				{
+					snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
+					Cbuf_AddText (cmd);
+				}
+			}
 		}
 		return;
 	}
@@ -1262,7 +1287,7 @@ void Key_Event (int key, int ascii, qboolean down)
 			// Baker: if we are here, the key is down
 			//        and if it is retrigger a bind
 			//        it must be allowed to trigger the -bind
-			// 
+			//
 			keygamedown[key]=true; // Let it be untriggered anytime
 
 			if (kb[0] == '+')

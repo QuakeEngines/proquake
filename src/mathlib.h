@@ -79,6 +79,9 @@ void _VectorCopy (vec3_t in, vec3_t out);
 
 int VectorCompare (vec3_t v1, vec3_t v2);
 vec_t VectorLength (vec3_t v);
+float VecLength2(vec3_t v1, vec3_t v2);
+void LerpVector (const vec3_t from, const vec3_t to, float frac, vec3_t out);
+
 void CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross);
 
 void VectorInverse (vec3_t v);

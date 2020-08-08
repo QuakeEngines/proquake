@@ -276,7 +276,7 @@ void Key_Console (int key)
 			if (i > 0)
 			{
                             cbd[i]=0;
-                            strcat (key_lines[edit_line], cbd);
+                            strlcat (key_lines[edit_line], cbd, sizeof(key_lines[edit_line]));
                             key_linepos += i;
 			}
 			free (cbd);
@@ -514,11 +514,11 @@ int Key_StringToKeynum (char *str)
 
 #ifdef MACOSX
 
-        if(!Q_strcasecmp(str, "ALT"))
+        if(!strcasecmp(str, "ALT"))
         {
             for(kn=keynames ; kn->name ; kn++)
             {
-                if(!Q_strcasecmp("OPTION", kn->name))
+                if(!strcasecmp("OPTION", kn->name))
                     return(kn->keynum);
             }
         }
@@ -526,7 +526,7 @@ int Key_StringToKeynum (char *str)
 #endif /* MACOSX */
 
 	for (kn=keynames ; kn->name ; kn++) {
-		if (!Q_strcasecmp(str,kn->name))
+		if (!strcasecmp(str, kn->name))
 			return kn->keynum;
 	}
 	return -1;
@@ -690,8 +690,8 @@ void Key_Bind_f (void)
 	for (i=2 ; i< c ; i++)
 	{
 		if (i > 2)
-			strcat (cmd, " ");
-		strcat (cmd, Cmd_Argv(i));
+			strlcat (cmd, " ", sizeof(cmd));
+		strlcat (cmd, Cmd_Argv(i), sizeof(cmd));
 	}
 
 	Key_SetBinding (b, cmd);

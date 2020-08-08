@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -54,7 +54,7 @@ static void CDAudio_Eject(void)
 	if (cdfile == -1 || !enabled)
 		return; // no cd init'd
 
-	if ( ioctl(cdfile, CDROMEJECT) == -1 ) 
+	if ( ioctl(cdfile, CDROMEJECT) == -1 )
 		Con_DPrintf("ioctl cdromeject failed\n");
 }
 
@@ -64,7 +64,7 @@ static void CDAudio_CloseDoor(void)
 	if (cdfile == -1 || !enabled)
 		return; // no cd init'd
 
-	if ( ioctl(cdfile, CDROMCLOSETRAY) == -1 ) 
+	if ( ioctl(cdfile, CDROMCLOSETRAY) == -1 )
 		Con_DPrintf("ioctl cdromclosetray failed\n");
 }
 
@@ -74,7 +74,7 @@ static int CDAudio_GetAudioDiskInfo(void)
 
 	cdValid = false;
 
-	if ( ioctl(cdfile, CDROMREADTOCHDR, &tochdr) == -1 ) 
+	if ( ioctl(cdfile, CDROMREADTOCHDR, &tochdr) == -1 )
     {
       Con_DPrintf("ioctl cdromreadtochdr failed\n");
 	  return -1;
@@ -100,7 +100,7 @@ void CDAudio_Play(byte track, qboolean looping)
 
 	if (cdfile == -1 || !enabled)
 		return;
-	
+
 	if (!cdValid)
 	{
 		CDAudio_GetAudioDiskInfo();
@@ -142,13 +142,13 @@ void CDAudio_Play(byte track, qboolean looping)
 	ti.cdti_ind0 = 1;
 	ti.cdti_ind1 = 99;
 
-	if ( ioctl(cdfile, CDROMPLAYTRKIND, &ti) == -1 ) 
+	if ( ioctl(cdfile, CDROMPLAYTRKIND, &ti) == -1 )
     {
 		Con_DPrintf("ioctl cdromplaytrkind failed\n");
 		return;
     }
 
-	if ( ioctl(cdfile, CDROMRESUME) == -1 ) 
+	if ( ioctl(cdfile, CDROMRESUME) == -1 )
 		Con_DPrintf("ioctl cdromresume failed\n");
 
 	playLooping = looping;
@@ -164,7 +164,7 @@ void CDAudio_Stop(void)
 {
 	if (cdfile == -1 || !enabled)
 		return;
-	
+
 	if (!playing)
 		return;
 
@@ -183,7 +183,7 @@ void CDAudio_Pause(void)
 	if (!playing)
 		return;
 
-	if ( ioctl(cdfile, CDROMPAUSE) == -1 ) 
+	if ( ioctl(cdfile, CDROMPAUSE) == -1 )
 		Con_DPrintf("ioctl cdrompause failed\n");
 
 	wasPlaying = playing;
@@ -195,14 +195,14 @@ void CDAudio_Resume(void)
 {
 	if (cdfile == -1 || !enabled)
 		return;
-	
+
 	if (!cdValid)
 		return;
 
 	if (!wasPlaying)
 		return;
-	
-	if ( ioctl(cdfile, CDROMRESUME) == -1 ) 
+
+	if ( ioctl(cdfile, CDROMRESUME) == -1 )
 		Con_DPrintf("ioctl cdromresume failed\n");
 	playing = true;
 }
@@ -217,13 +217,13 @@ static void CD_f (void)
 
 	command = Cmd_Argv (1);
 
-	if (!Q_strcasecmp(command, "on"))
+	if (!strcasecmp(command, "on"))
 	{
 		enabled = true;
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "off"))
+	if (!strcasecmp(command, "off"))
 	{
 		if (playing)
 			CDAudio_Stop();
@@ -231,7 +231,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "reset"))
+	if (!strcasecmp(command, "reset"))
 	{
 		enabled = true;
 		if (playing)
@@ -242,7 +242,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "remap"))
+	if (!strcasecmp(command, "remap"))
 	{
 		ret = Cmd_Argc() - 2;
 		if (ret <= 0)
@@ -253,11 +253,11 @@ static void CD_f (void)
 			return;
 		}
 		for (n = 1; n <= ret; n++)
-			remap[n] = Q_atoi(Cmd_Argv (n+1));
+			remap[n] = atoi(Cmd_Argv (n+1));
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "close"))
+	if (!strcasecmp(command, "close"))
 	{
 		CDAudio_CloseDoor();
 		return;
@@ -273,37 +273,37 @@ static void CD_f (void)
 		}
 	}
 
-	if (!Q_strcasecmp(command, "play"))
+	if (!strcasecmp(command, "play"))
 	{
-		CDAudio_Play((byte)Q_atoi(Cmd_Argv (2)), false);
+		CDAudio_Play((byte)atoi(Cmd_Argv (2)), false);
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "loop"))
+	if (!strcasecmp(command, "loop"))
 	{
-		CDAudio_Play((byte)Q_atoi(Cmd_Argv (2)), true);
+		CDAudio_Play((byte)atoi(Cmd_Argv (2)), true);
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "stop"))
+	if (!strcasecmp(command, "stop"))
 	{
 		CDAudio_Stop();
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "pause"))
+	if (!strcasecmp(command, "pause"))
 	{
 		CDAudio_Pause();
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "resume"))
+	if (!strcasecmp(command, "resume"))
 	{
 		CDAudio_Resume();
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "eject"))
+	if (!strcasecmp(command, "eject"))
 	{
 		if (playing)
 			CDAudio_Stop();
@@ -312,7 +312,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (!Q_strcasecmp(command, "info"))
+	if (!strcasecmp(command, "info"))
 	{
 		Con_Printf("%u tracks\n", maxTrack);
 		if (playing)
@@ -371,7 +371,7 @@ int CDAudio_Init(void)
 	if (cls.state == ca_dedicated)
 		return -1;
 
-	if (COM_CheckParm("-nocdaudio")) 
+	if (COM_CheckParm("-nocdaudio"))
 		return -1;
 
 	if ((i = COM_CheckParm("-cddev")) != 0 && i < com_argc - 1) {

@@ -1108,7 +1108,7 @@ qboolean VID_SetWindowedMode (int modenum){
 		MGL_registerFullScreenWindow (mainwindow);
 
 		vid_mode_set = true;
-	} 
+	}
 	else {
 		SetWindowLong(mainwindow, GWL_STYLE, WindowStyle | WS_VISIBLE);
 		SetWindowLong(mainwindow, GWL_EXSTYLE, ExWindowStyle);
@@ -1223,7 +1223,7 @@ qboolean VID_SetFullDIBMode (int modenum) {
 	int				lastmodestate;
 	HDC				hdc;
 	pixel_format_t	pf;
-	
+
 	DDActive = 0;
 
 	DestroyFullscreenWindow ();
@@ -1406,7 +1406,7 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 		stat = VID_SetFullDIBMode(modenum);
 		IN_ActivateMouse ();
 		IN_HideMouse ();
-	} 
+	}
 	else {
 		stat = VID_SetFullscreenMode(modenum);
 		IN_ActivateMouse ();
@@ -1503,7 +1503,7 @@ void VID_LockBuffer (void) {
 		// Update surface pointer for linear access modes
 		vid.buffer = vid.conbuffer = vid.direct = memdc->surface;
 		vid.rowbytes = vid.conrowbytes = memdc->mi.bytesPerLine;
-	} 
+	}
 	else if (mgldc) {
 		// Update surface pointer for linear access modes
 		vid.buffer = vid.conbuffer = vid.direct = mgldc->surface;
@@ -1666,7 +1666,7 @@ VID_DescribeMode_f
 void VID_DescribeMode_f (void) {
 	int		modenum;
 
-	modenum = Q_atoi (Cmd_Argv(1));
+	modenum = atoi (Cmd_Argv(1));
 
 	Con_Printf ("%s\n", VID_GetExtModeDescription (modenum));
 }
@@ -1713,11 +1713,11 @@ void VID_TestMode_f (void) {
 	double	testduration;
 
 	if (!vid_testingmode) {
-		modenum = Q_atoi (Cmd_Argv(1));
+		modenum = atoi (Cmd_Argv(1));
 
 		if (VID_SetMode (modenum, vid_curpal)) {
 			vid_testingmode = 1;
-			testduration = Q_atof (Cmd_Argv(2));
+			testduration = atof (Cmd_Argv(2));
 			if (testduration == 0)
 				testduration = 5.0;
 			vid_testendtime = realtime + testduration;
@@ -1766,7 +1766,7 @@ void VID_ForceMode_f (void) {
 	int		modenum;
 
 	if (!vid_testingmode) {
-		modenum = Q_atoi (Cmd_Argv(1));
+		modenum = atoi (Cmd_Argv(1));
 
 		force_mode_set = 1;
 		VID_SetMode (modenum, vid_curpal);
@@ -2350,7 +2350,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 			Cbuf_InsertText ("cd pause\n");
 			Cbuf_Execute ();
 		}
-#endif		
+#endif
 		sound_active = false;
 	}
 	else if (ActiveApp && !sound_active) {
@@ -2362,7 +2362,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 			Cbuf_InsertText ("cd resume\n");
 			Cbuf_Execute ();
 		}
-#endif		
+#endif
 		sound_active = true;
 	}
 
@@ -2462,6 +2462,8 @@ LONG CDAudio_MessageHandler(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 #endif
 #endif
 int IN_MapKey (int key);
+extern int 	key_special_dest;
+int 		extmousex, extmousey; // Baker: for tracking Windowed mouse coordinates
 
 /* main window procedure */
 LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
@@ -2529,36 +2531,66 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 
 	// this is complicated because Win32 seems to pack multiple mouse events into
 	// one update sometimes, so we always check all states and look for events
-		case WM_LBUTTONDOWN:
 		case WM_LBUTTONUP:
-		case WM_RBUTTONDOWN:
+			// Mouse isn't active + special destination
+			// means Quake doesn't control mouse
+			if (key_special_dest && !flex_mouseactive) {
+				extmousex = Q_rint((float)LOWORD(lParam));//*((float)vid.width/(float)glwidth)); //Con_Printf("Mouse click x/y %d/%d\n", extmousex, extmousey);
+				extmousey = Q_rint((float)HIWORD(lParam));//*((float)vid.height/(float)glheight));
+				Key_Event (K_MOUSECLICK_BUTTON1, 0, false);
+				break;
+			}	
 		case WM_RBUTTONUP:
+			// Mouse isn't active + special destination
+			// means Quake doesn't control mouse
+			if (key_special_dest && !flex_mouseactive) {
+				Key_Event (K_MOUSECLICK_BUTTON2, 0, false);
+				break;
+			}	
+
+// Since we are not trapping button downs for special destination
+// like namemaker or customize controls, we need the down event
+// captures to be below the above code so it doesn't filter into it
+// The code below is safe due to the "& MK_xBUTTON" checks
+		case WM_LBUTTONDOWN:
+		case WM_RBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_MBUTTONUP:
 		case WM_MOUSEMOVE:
 			if (!in_mode_set)
 			{
 				temp = 0;
-
+	
 				if (wParam & MK_LBUTTON)
 					temp |= 1;
-
+	
 				if (wParam & MK_RBUTTON)
 					temp |= 2;
-
-				if (wParam & MK_MBUTTON)
+	
+				if (wParam & MK_MBUTTON) {
+					if (key_special_dest && !flex_mouseactive) {
+						Key_Event (K_MOUSECLICK_BUTTON3, 0, false);
+						break; // Get out
+					}	
 					temp |= 4;
-
-
-				// Baker 3.85: wqpro was missing this causing buttons 5,6,7,8 to not fire
-
-				if (wParam & MK_XBUTTON1)
+				}
+	
+				if (wParam & MK_XBUTTON1) {
+					if (key_special_dest && !flex_mouseactive) {
+						Key_Event (K_MOUSECLICK_BUTTON4, 0, false);
+						break; // Get out
+					}	
 					temp |= 8;
-
-				if (wParam & MK_XBUTTON2)
+				}
+	
+				if (wParam & MK_XBUTTON2) {
+					if (key_special_dest && !flex_mouseactive) {
+						Key_Event (K_MOUSECLICK_BUTTON5, 0, false);
+						break; // Get out
+					}	
 					temp |= 16;
-
-
+				}
+				
 				IN_MouseEvent (temp);
 			}
 			break;

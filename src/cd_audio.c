@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -498,7 +498,7 @@ void CDAudio_Play(byte track, qboolean looping)
 
 	if (!initialized || !enabled)
 		return;
-	
+
 	if (!cd.valid)
 		return;
 
@@ -571,7 +571,7 @@ void CDAudio_Stop(void)
 {
 	if (!initialized || !enabled)
 		return;
-	
+
 	cdRequest->headerLength = 13;
 	cdRequest->unit = 0;
 	cdRequest->command = COMMAND_STOP_AUDIO;
@@ -598,13 +598,13 @@ void CDAudio_Resume(void)
 {
 	if (!initialized || !enabled)
 		return;
-	
+
 	if (!cd.valid)
 		return;
 
 	if (!wasPlaying)
 		return;
-	
+
 	cdRequest->headerLength = 13;
 	cdRequest->unit = 0;
 	cdRequest->command = COMMAND_RESUME_AUDIO;
@@ -632,13 +632,13 @@ static void CD_f (void)
 
 	command = Cmd_Argv (1);
 
-	if (Q_strcasecmp(command, "on") == 0)
+	if (strcasecmp(command, "on") == 0)
 	{
 		enabled = true;
 		return;
 	}
 
-	if (Q_strcasecmp(command, "off") == 0)
+	if (strcasecmp(command, "off") == 0)
 	{
 		if (playing)
 			CDAudio_Stop();
@@ -646,7 +646,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "reset") == 0)
+	if (strcasecmp(command, "reset") == 0)
 	{
 		enabled = true;
 		if (playing)
@@ -658,7 +658,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "remap") == 0)
+	if (strcasecmp(command, "remap") == 0)
 	{
 		ret = Cmd_Argc() - 2;
 		if (ret <= 0)
@@ -669,7 +669,7 @@ static void CD_f (void)
 			return;
 		}
 		for (n = 1; n <= ret; n++)
-			remap[n] = Q_atoi(Cmd_Argv (n+1));
+			remap[n] = atoi(Cmd_Argv (n+1));
 		return;
 	}
 
@@ -679,37 +679,37 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "play") == 0)
+	if (strcasecmp(command, "play") == 0)
 	{
-		CDAudio_Play(Q_atoi(Cmd_Argv (2)), false);
+		CDAudio_Play(atoi(Cmd_Argv (2)), false);
 		return;
 	}
 
-	if (Q_strcasecmp(command, "loop") == 0)
+	if (strcasecmp(command, "loop") == 0)
 	{
-		CDAudio_Play(Q_atoi(Cmd_Argv (2)), true);
+		CDAudio_Play(atoi(Cmd_Argv (2)), true);
 		return;
 	}
 
-	if (Q_strcasecmp(command, "stop") == 0)
+	if (strcasecmp(command, "stop") == 0)
 	{
 		CDAudio_Stop();
 		return;
 	}
 
-	if (Q_strcasecmp(command, "pause") == 0)
+	if (strcasecmp(command, "pause") == 0)
 	{
 		CDAudio_Pause();
 		return;
 	}
 
-	if (Q_strcasecmp(command, "resume") == 0)
+	if (strcasecmp(command, "resume") == 0)
 	{
 		CDAudio_Resume();
 		return;
 	}
 
-	if (Q_strcasecmp(command, "eject") == 0)
+	if (strcasecmp(command, "eject") == 0)
 	{
 		if (playing)
 			CDAudio_Stop();
@@ -718,7 +718,7 @@ static void CD_f (void)
 		return;
 	}
 
-	if (Q_strcasecmp(command, "info") == 0)
+	if (strcasecmp(command, "info") == 0)
 	{
 		Con_Printf("%u tracks\n", cd.highTrack - cd.lowTrack + 1);
 		for (n = cd.lowTrack; n <= cd.highTrack; n++)
@@ -806,7 +806,7 @@ int CDAudio_Init(void)
 	if (cls.state == ca_dedicated)
 		return -1;
 
-	if (COM_CheckParm("-nocdaudio")) 
+	if (COM_CheckParm("-nocdaudio"))
 		return -1;
 
 	if (COM_CheckParm("-cdmediacheck"))
@@ -822,7 +822,7 @@ int CDAudio_Init(void)
 			"disabled.  Use \"-nocdaudio\" if you\n"
 			"wish to avoid this message in the\n"
 			"future.  See README.TXT for help.\n"
-			);			
+			);
 		return -1;
 	}
 	if (regs.x.bx > 1)
@@ -838,7 +838,7 @@ int CDAudio_Init(void)
 			"MSCDEX version 2.00 or later\n"
 			"required for music. See README.TXT\n"
 			"for help.\n"
-			);			
+			);
 		Con_DPrintf("CDAudio_Init: MSCDEX version 2.00 or later required.\n");
 		return -1;
 	}

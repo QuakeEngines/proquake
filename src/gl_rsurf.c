@@ -185,11 +185,6 @@ void R_BuildLightMap (msurface_t *surf, byte *dest, int stride)
 	int			smax, tmax, t, i, j, size, maps;
 	byte		*lightmap;
 	unsigned	scale, *bl;
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	// mh - for overbrights
-	int lightshift = gl_usingoverbright ? 8 : 7;
-#endif
-
 
 	surf->cached_dlight = (surf->dlightframe == r_framecount);
 
@@ -227,23 +222,6 @@ void R_BuildLightMap (msurface_t *surf, byte *dest, int stride)
 		R_AddDynamicLights (surf);
 
 // bound, invert, and shift
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-store:
-	// mh - force to always use luminance
-	bl = blocklights;
-	for (i=0 ; i<tmax ; i++, dest += stride)
-	{
-		for (j=0 ; j<smax ; j++)
-		{
-			// mh - removed inverted range and added optional overbright shift
-			t = *bl++;
-			t >>= lightshift;
-			if (t > 255)
-				t = 255;
-			dest[j] = t;
-		}
-	}
-#else
 store:
 	switch (gl_lightmap_format)
 	{
@@ -294,29 +272,8 @@ store:
 	default:
 		Sys_Error ("Bad lightmap format");
 	}
-#endif
 }
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-// mh - set/unset combine modes
-void GL_BeginLightBlend (void)
-{
-	if (gl_usingoverbright)
-	{
-		// mh - combine mode
-		glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE_ARB);
-		glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB_ARB, GL_MODULATE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB_ARB, GL_TEXTURE);
-		glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB_ARB, GL_PREVIOUS_ARB);
-		glTexEnvf(GL_TEXTURE_ENV, GL_RGB_SCALE_ARB, 2.0f);
-	}
-	else
-	{
-		// mh - uninverted range
-		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-	}
-}
-#endif
 
 /*
 ===============
@@ -385,13 +342,6 @@ void R_BlendLightmaps (void) {
 
 	glDepthMask (GL_FALSE);		// GL_FALSE = 0  don't bother writing Z
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	// mh - always uses GL_LUMINANCE; optionally overbright; uninverted range
-	if (gl_usingoverbright)
-		glBlendFunc (GL_DST_COLOR, GL_SRC_COLOR);
-	else glBlendFunc (GL_ZERO, GL_SRC_COLOR);
-#else
-
 	if (gl_lightmap_format == GL_LUMINANCE)
 #ifdef DX8QUAKE
 		glBlendFunc(GL_DST_COLOR, GL_SRC_COLOR);
@@ -404,7 +354,6 @@ void R_BlendLightmaps (void) {
 		glColor4f (0,0,0,1);
 		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
-#endif
 
 	if (!r_lightmap.value)
 		glEnable (GL_BLEND);
@@ -448,18 +397,13 @@ void R_BlendLightmaps (void) {
 	}
 
 	glDisable (GL_BLEND);
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	// mh - always using GL_LUMINANCE
-	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-#else
 	if (gl_lightmap_format == GL_LUMINANCE) {
 		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	} else if (gl_lightmap_format == GL_INTENSITY) {
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 		glColor4f (1,1,1,1);
 	}
-#endif
+
 	glDepthMask (GL_TRUE);	// GLTRUE = 1 back to normal Z buffering
 }
 
@@ -482,17 +426,6 @@ void R_RenderDynamicLightmaps (msurface_t *fa)
 
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
 	lightmap_polys[fa->lightmaptexturenum] = fa->polys;
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	// mh - overbrights - need to rebuild the lightmap if this changes
-	if (fa->overbright != gl_usingoverbright)
-	{
-		fa->overbright = gl_usingoverbright;
-		goto dynamic;
-	}
-#endif
-
-
 
 	// check for lightmap modification
 	for (maps = 0 ; maps < MAXLIGHTMAPS && fa->styles[maps] != 255 ; maps++)
@@ -776,9 +709,6 @@ int gNoSurfaces=0;
 				theRect->w = 0;
 			}
 			glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-			GL_BeginLightBlend ();
-#endif		
 			glBegin(GL_POLYGON);
 			v = p->verts[0];
 			for (i=0 ; i<p->numverts ; i++, v+= VERTEXSIZE)
@@ -890,9 +820,6 @@ int gNoSurfaces=0;
 			theRect->w = 0;
 		}
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND);
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-		GL_BeginLightBlend ();
-#endif
 		glBegin (GL_TRIANGLE_FAN);
 		v = p->verts[0];
 		for (i=0 ; i<p->numverts ; i++, v+= VERTEXSIZE)
@@ -1040,15 +967,6 @@ void R_RenderBrushPoly (msurface_t *fa)
 
 	fa->polys->chain = lightmap_polys[fa->lightmaptexturenum];
 	lightmap_polys[fa->lightmaptexturenum] = fa->polys;
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	// mh - overbrights - need to rebuild the lightmap if this changes
-	if (fa->overbright != gl_usingoverbright)
-	{
-		fa->overbright = gl_usingoverbright;
-		goto dynamic;
-	}
-#endif
 
 	// check for lightmap modification
 	for (maps = 0 ; maps < MAXLIGHTMAPS && fa->styles[maps] != 255 ;
@@ -1684,12 +1602,6 @@ void GL_BuildLightmaps (void)
 		texture_extension_number += MAX_LIGHTMAPS;
 	}
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-		gl_lightmap_format = GL_LUMINANCE;
-		lightmap_bytes = 1;
-
-#else
-
 #ifdef MACOSX_EXTRA_FEATURES
 
         // <AWE> MacOS X v10.1, GLQuake v1.0.2:
@@ -1699,9 +1611,9 @@ void GL_BuildLightmaps (void)
         if (gl_luminace_lightmaps == false)
             gl_lightmap_format = GL_RGBA;
         else
-#endif /* MACOSX */
-			gl_lightmap_format = GL_LUMINANCE;
 
+#endif /* MACOSX */
+	gl_lightmap_format = GL_LUMINANCE;
 	// default differently on the Permedia
 	if (isPermedia)
 		gl_lightmap_format = GL_RGBA;
@@ -1731,7 +1643,6 @@ void GL_BuildLightmaps (void)
 		lightmap_bytes = 1;
 		break;
 	}
-#endif
 
 	for (j=1 ; j<MAX_MODELS ; j++) {
 		if (!(m = cl.model_precache[j]))

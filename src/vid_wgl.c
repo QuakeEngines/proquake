@@ -207,19 +207,28 @@ SWAPINTERVALFUNCPTR wglSwapIntervalEXT = NULL;
 void VID_Vsync_f (void);
 
 void CheckVsyncControlExtensions (void) {
-#ifdef D3DQ_WORKAROUND
+	extern cvar_t vid_vsync;
 	// Baker: Keep the cvar even though it won't work in D3DQuake
 	Cvar_RegisterVariable (&vid_vsync, VID_Vsync_f);
-#else
-	extern cvar_t vid_vsync;
 
-	if (!COM_CheckParm("-noswapctrl") && CheckExtension("WGL_EXT_swap_control")) {
-		if ((wglSwapIntervalEXT = (void *)wglGetProcAddress("wglSwapIntervalEXT"))) {
-			Con_Printf("Vsync control extensions found\n");
-			Cvar_RegisterVariable (&vid_vsync, VID_Vsync_f);
-		}
+	if (COM_CheckParm("-noswapctrl"))
+	{
+		Con_Warning ("Vertical sync disabled at command line\n");
+		return;
 	}
-#endif
+
+	if (!CheckExtension("WGL_EXT_swap_control")) {
+		Con_Warning ("Vertical sync not supported (extension not found)\n");
+		return;
+	}
+
+	if (!(wglSwapIntervalEXT = (void *)wglGetProcAddress("wglSwapIntervalEXT"))) {
+		Con_Warning ("Vertical sync not supported (wglSwapIntervalEXT failed)\n");
+		return;
+	}
+
+	Con_Printf("Vsync control extensions found\n");
+
 }
 
 
@@ -562,20 +571,20 @@ void d3dSetMode(int fullscreen, int width, int height, int bpp, int zbpp);
 
 qboolean vid_force_restart = false;
 
-void VID_Restart (void);
+void VID_Restart_f (void);
 
-void VID_ForceRestart (void)
+void VID_ForceRestart_f (void)
 {
 	vid_force_restart = true;
 	Con_Printf("Forced video restart ...\n");
-	VID_Restart ();
+	VID_Restart_f ();
 	vid_force_restart = false;
 }
 
 #if !defined(D3DQ_CANNOT_DO_THIS)
 BOOL bSetupPixelFormat(HDC hDC);
 #endif
-void VID_Restart (void)
+void VID_Restart_f (void)
 {
 	HDC			hdc;
 	HGLRC		hrc;
@@ -684,7 +693,7 @@ void VID_Restart (void)
 #endif
 
 #ifdef DX8QUAKE
-			
+
 		// instead of destroying the window, context, etc we just need to resize the window and reset the device for D3D
 		// we need this too
 		vid_canalttab = false;
@@ -700,7 +709,7 @@ void VID_Restart (void)
 		// these also needed
 		VID_UpdateWindowStatus ();
 		vid.recalc_refdef = 1;
-		
+
 #else
 		hrc = wglGetCurrentContext();
 		hdc = wglGetCurrentDC();
@@ -728,7 +737,7 @@ void VID_Restart (void)
 		int zbpp = vid_bpp > 16 ? 24 : 16;
 //		if (COM_CheckParm("-zbpp"))
 //		{
-//			zbpp = Q_atoi(com_argv[COM_CheckParm("-zbpp")+1]);
+//			zbpp = atoi(com_argv[COM_CheckParm("-zbpp")+1]);
 //		}
 		d3dSetMode(!windowed, modelist[0].width, modelist[0].height, vid_bpp, zbpp);
 	}
@@ -812,7 +821,7 @@ void VID_Fullscreen(void) {
 	}
 
 	Cvar_SetValue("vid_fullscreen", 1);
-	VID_Restart();
+	VID_Restart_f();
 }
 
 void VID_Windowed(void) {
@@ -880,7 +889,7 @@ qboolean VID_isFullscreen(void) {
 VID_Test -- johnfitz -- like vid_restart, but asks for confirmation after switching modes
 ================
 */
-void VID_Test (void)
+void VID_Test_f (void)
 {
 	vmode_t oldmode;
 	qboolean	mode_changed = false;
@@ -914,7 +923,7 @@ void VID_Test (void)
 //
 	oldmode = modelist[vid_default];
 
-	VID_Restart ();
+	VID_Restart_f ();
 
 	//pop up confirmation dialoge
 	if (!SCR_ModalMessage("Would you like to keep this\nvideo mode? (y/n)\n", 5.0f))
@@ -925,7 +934,7 @@ void VID_Test (void)
 //		Cvar_Set ("vid_bpp", va("%i", oldmode.bpp));
 		Cvar_Set ("vid_refreshrate", va("%i", oldmode.refreshrate));
 		Cvar_Set ("vid_fullscreen", ((vid_fullscreen_only) ? "1" : (oldmode.type == MS_WINDOWED) ? "0" : "1"));
-		VID_Restart ();
+		VID_Restart_f ();
 	}
 }
 
@@ -935,7 +944,7 @@ void VID_Test (void)
 VID_Unlock -- johnfitz
 ================
 */
-void VID_Unlock (void)
+void VID_Unlock_f (void)
 {
 	vid_locked = false;
 
@@ -978,12 +987,6 @@ void GL_BeginRendering (int *x, int *y, int *width, int *height) {
 	*x = *y = 0;
 	*width = WindowRect.right - WindowRect.left;
 	*height = WindowRect.bottom - WindowRect.top;
-
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS 	
-	// mh - determine at start of frame if we're using overbrights
-	gl_usingoverbright = gl_combine && gl_overbright.value;
-#endif
-	
 }
 
 // D3D diff 5 of 14
@@ -999,7 +1002,7 @@ GL_EndRendering
 */
 
 #ifdef DX8QUAKE_BAKER_ALTTAB_HACK
-static int vid_force_restart_countdown=0; 
+static int vid_force_restart_countdown=0;
 #endif
 
 
@@ -1032,7 +1035,7 @@ void GL_EndRendering (void) {
 #ifdef DX8QUAKE_BAKER_ALTTAB_HACK
 	// Baker: cheesy workaround
 	if (vid_force_restart_countdown) {
-		vid_force_restart_countdown --; 
+		vid_force_restart_countdown --;
 		if (!vid_force_restart_countdown)
 			Cbuf_AddText ("vid_force_restart\n");
 	}
@@ -1063,7 +1066,7 @@ void GL_EndRendering (void) {
 		}
 	}
 #ifdef RELEASE_MOUSE_FULLSCREEN // Baker release mouse even when fullscreen
-	else 
+	else
 	{
 			windowed_mouse = true;
 			if (key_dest == key_game && !flex_mouseactive && ActiveApp) {
@@ -1078,7 +1081,7 @@ void GL_EndRendering (void) {
 			}
 	}
 #endif
-	
+
 
 	if (fullsbardraw)
 		Sbar_Changed();
@@ -1144,10 +1147,30 @@ void VID_SetDeviceGammaRamp (unsigned short *ramps) {
 }
 
 void InitHWGamma (void) {
-	if (COM_CheckParm("-nohwgamma"))
-		return;
+#if !defined(SUPPORTS_ENHANCED_GAMMA)
+//	Con_Warning ("Hardware gamma not supported in this engine build\n"); // No warning, it is just normal
+	return;
+#endif
 
-	vid_gammaworks = GetDeviceGammaRamp (maindc, systemgammaramp);
+#ifdef SUPPORTS_ENHANCED_GAMMA
+	if (!using_hwgamma) {
+//		Con_Printf ("Note: Hardware gamma unavailable due to -gamma parameter\n"); // No warning, unnecessary
+		return;
+	}
+
+	if (COM_CheckParm("-nohwgamma")) {
+		Con_Warning ("Hardware gamma disabled at command line\n");
+		return;
+	}
+
+	if (!GetDeviceGammaRamp (maindc, systemgammaramp)) {
+		Con_Warning ("Hardware gamma not available (GetDeviceGammaRamp failed)\n");
+		return;
+	}
+
+	Con_Success ("Hardware gamma enabled\n");
+	vid_gammaworks = true;
+#endif
 }
 
 void RestoreHWGamma (void) {
@@ -1262,7 +1285,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 			Cbuf_InsertText ("cd pause\n");
 			Cbuf_Execute ();
 		}
-#endif			
+#endif
 		sound_active = false;
 	} else if (ActiveApp && !sound_active) {
 		S_UnblockSound ();
@@ -1272,7 +1295,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 			Cbuf_InsertText ("cd resume\n");
 			Cbuf_Execute ();
 		}
-#endif	
+#endif
 		sound_active = true;
 	}
 
@@ -1307,7 +1330,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 			if (host_initialized && !vid_force_restart_countdown) {
 				vid_force_restart_countdown = 5;  // Force vid_restart in 5 frames
 			}
-			
+
 #endif
 
 		} else if (modestate == MS_WINDOWED && Minimized) {
@@ -1367,6 +1390,8 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 #endif
 LONG CDAudio_MessageHandler (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 int IN_MapKey (int key);
+extern int 	key_special_dest;
+int 		extmousex, extmousey; // Baker: for tracking Windowed mouse coordinates
 /* main window procedure */
 LONG WINAPI MainWndProc (HWND    hWnd, UINT    uMsg, WPARAM  wParam, LPARAM  lParam) {
     LONG    lRet = 1;
@@ -1439,11 +1464,28 @@ LONG WINAPI MainWndProc (HWND    hWnd, UINT    uMsg, WPARAM  wParam, LPARAM  lPa
 	// this is complicated because Win32 seems to pack multiple mouse events into
 	// one update sometimes, so we always check all states and look for events
 		case WM_LBUTTONUP:
-		case WM_LBUTTONDOWN:
-
-
-		case WM_RBUTTONDOWN:
+			// Mouse isn't active + special destination
+			// means Quake doesn't control mouse
+			if (key_special_dest && !flex_mouseactive) {
+				extmousex = Q_rint((float)LOWORD(lParam)*((float)vid.width/(float)glwidth)); //Con_Printf("Mouse click x/y %d/%d\n", extmousex, extmousey);
+				extmousey = Q_rint((float)HIWORD(lParam)*((float)vid.height/(float)glheight));
+				Key_Event (K_MOUSECLICK_BUTTON1, 0, false);
+				break;
+			}	
 		case WM_RBUTTONUP:
+			// Mouse isn't active + special destination
+			// means Quake doesn't control mouse
+			if (key_special_dest && !flex_mouseactive) {
+				Key_Event (K_MOUSECLICK_BUTTON2, 0, false);
+				break;
+			}	
+
+// Since we are not trapping button downs for special destination
+// like namemaker or customize controls, we need the down event
+// captures to be below the above code so it doesn't filter into it
+// The code below is safe due to the "& MK_xBUTTON" checks
+		case WM_LBUTTONDOWN:
+		case WM_RBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_MBUTTONUP:
 		case WM_MOUSEMOVE:
@@ -1455,14 +1497,30 @@ LONG WINAPI MainWndProc (HWND    hWnd, UINT    uMsg, WPARAM  wParam, LPARAM  lPa
 			if (wParam & MK_RBUTTON)
 				temp |= 2;
 
-			if (wParam & MK_MBUTTON)
+			if (wParam & MK_MBUTTON) {
+				if (key_special_dest && !flex_mouseactive) {
+					Key_Event (K_MOUSECLICK_BUTTON3, 0, false);
+					break; // Get out
+				}	
 				temp |= 4;
+			}
 
-				if (wParam & MK_XBUTTON1)
-					temp |= 8;
+			if (wParam & MK_XBUTTON1) {
+				if (key_special_dest && !flex_mouseactive) {
+					Key_Event (K_MOUSECLICK_BUTTON4, 0, false);
+					break; // Get out
+				}	
+				temp |= 8;
+			}
 
-				if (wParam & MK_XBUTTON2)
-					temp |= 16;
+			if (wParam & MK_XBUTTON2) {
+				if (key_special_dest && !flex_mouseactive) {
+					Key_Event (K_MOUSECLICK_BUTTON5, 0, false);
+					break; // Get out
+				}	
+				temp |= 16;
+			}
+			
 			IN_MouseEvent (temp);
 
 			break;
@@ -1690,7 +1748,7 @@ void VID_InitDIB (HINSTANCE hInstance) {
 	modelist[0].type = MS_WINDOWED;
 
 	if (COM_CheckParm("-width"))
-		modelist[0].width = Q_atoi(com_argv[COM_CheckParm("-width")+1]);
+		modelist[0].width = atoi(com_argv[COM_CheckParm("-width")+1]);
 	else if (COM_CheckParm("-fullwindow"))
 		modelist[0].width = GetSystemMetrics(SM_CXSCREEN); // Baker 3.60 - fullwindow mode
 	else
@@ -1700,7 +1758,7 @@ void VID_InitDIB (HINSTANCE hInstance) {
 		modelist[0].width = 320;
 
 	if (COM_CheckParm("-height"))
-		modelist[0].height= Q_atoi(com_argv[COM_CheckParm("-height")+1]);
+		modelist[0].height= atoi(com_argv[COM_CheckParm("-height")+1]);
 	else if (COM_CheckParm("-fullwindow"))
 		modelist[0].height = GetSystemMetrics(SM_CYSCREEN); // Baker 3.60 - fullwindow mode
 	else
@@ -1946,17 +2004,14 @@ void	VID_Init (unsigned char *palette) {
 	HDC		hdc;
 	DEVMODE	devmode;
 	extern	cvar_t gl_clear;
-
+	extern	void GL_PrintExtensions_f (void);
 
 	memset(&devmode, 0, sizeof(devmode));
 
-#ifdef SUPPORTS_HARDWARE_OVERBRIGHTS
-	Cvar_RegisterVariable (&gl_overbright, NULL);
-#endif
 	Cvar_RegisterVariable (&vid_fullscreen, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_width, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_height, NULL); //johnfitz
-	Cvar_RegisterVariable (&vid_consize, &VID_Consize_f); //Baker 3.97: this supercedes vid_conwidth/vid_conheight cvars
+	Cvar_RegisterVariable (&vid_consize, VID_Consize_f); //Baker 3.97: this supercedes vid_conwidth/vid_conheight cvars
 	Cvar_RegisterVariable (&vid_refreshrate, NULL); //johnfitz
 	Cvar_RegisterVariable (&_windowed_mouse, NULL);
 
@@ -1968,11 +2023,13 @@ void	VID_Init (unsigned char *palette) {
 	// Baker end hwgamma support
 
 #ifdef SUPPORTS_GLVIDEO_MODESWITCH // D3D DOES NOT SUPPORT THIS
-	Cmd_AddCommand ("vid_unlock", VID_Unlock); //johnfitz
-	Cmd_AddCommand ("vid_restart", VID_Restart); //johnfitz
-	Cmd_AddCommand ("vid_force_restart", VID_ForceRestart); //Baker: restart regardless of whether mode is same
-	Cmd_AddCommand ("vid_test", VID_Test); //johnfitz
+	Cmd_AddCommand ("vid_unlock", VID_Unlock_f); //johnfitz
+	Cmd_AddCommand ("vid_restart", VID_Restart_f); //johnfitz
+	Cmd_AddCommand ("vid_force_restart", VID_ForceRestart_f); //Baker: restart regardless of whether mode is same
+	Cmd_AddCommand ("vid_test", VID_Test_f); //johnfitz
 #endif // D3D dies on video mode change
+
+	Cmd_AddCommand ("gl_print_extensions", GL_PrintExtensions_f);
 	Cmd_AddCommand ("vid_describecurrentmode", VID_DescribeCurrentMode_f);
 	Cmd_AddCommand ("vid_describemodes", VID_DescribeModes_f);
 
@@ -2001,7 +2058,7 @@ void	VID_Init (unsigned char *palette) {
 	bpp = 16;
 	if (COM_CheckParm("-bpp"))
 	{
-		bpp = Q_atoi(com_argv[COM_CheckParm("-bpp")+1]);
+		bpp = atoi(com_argv[COM_CheckParm("-bpp")+1]);
 	}
 #endif
 
@@ -2024,7 +2081,7 @@ void	VID_Init (unsigned char *palette) {
 
 		if (COM_CheckParm("-mode"))
 		{
-			vid_default = Q_atoi(com_argv[COM_CheckParm("-mode")+1]);
+			vid_default = atoi(com_argv[COM_CheckParm("-mode")+1]);
 		}
 		else
 		{
@@ -2035,13 +2092,13 @@ void	VID_Init (unsigned char *palette) {
 				leavecurrentmode = 1;
 			} else {
 				if (COM_CheckParm("-width"))
-					width = Q_atoi(com_argv[COM_CheckParm("-width")+1]);
+					width = atoi(com_argv[COM_CheckParm("-width")+1]);
 				else
 					width = 640;
 
 
 				if (COM_CheckParm("-bpp")) {
-					bpp = Q_atoi(com_argv[COM_CheckParm("-bpp")+1]);
+					bpp = atoi(com_argv[COM_CheckParm("-bpp")+1]);
 					findbpp = 0;
 				} else {
 					bpp = desktop_bpp;
@@ -2049,7 +2106,7 @@ void	VID_Init (unsigned char *palette) {
 				}
 
 				if (COM_CheckParm("-height"))
-					height = Q_atoi(com_argv[COM_CheckParm("-height")+1]);
+					height = atoi(com_argv[COM_CheckParm("-height")+1]);
 
 			// if they want to force it, add the specified mode to the list
 				if (COM_CheckParm("-force") && nummodes < MAX_MODE_LIST) {
@@ -2087,7 +2144,7 @@ void	VID_Init (unsigned char *palette) {
 
 				do {
 					if (COM_CheckParm("-height")) {
-						height = Q_atoi(com_argv[COM_CheckParm("-height")+1]);
+						height = atoi(com_argv[COM_CheckParm("-height")+1]);
 
 						for (i=1, vid_default=0 ; i<nummodes ; i++) {
 							if ((modelist[i].width == width) && (modelist[i].height == height) && (modelist[i].bpp == bpp)) {
@@ -2151,10 +2208,10 @@ void	VID_Init (unsigned char *palette) {
 
 	if ((i = COM_CheckParm("-conwidth")) != 0) {
 		// Conwidth specified, we check conheight too then
-		vid.conwidth = Q_atoi(com_argv[i+1]);
+		vid.conwidth = atoi(com_argv[i+1]);
 
 		if ((i = COM_CheckParm("-conheight")) != 0)
-			vid.conheight = Q_atoi(com_argv[i+1]);
+			vid.conheight = atoi(com_argv[i+1]);
 	} else {
 		// Conwidth not specified, default one
 		if (modelist[i].width >= 1024) {
@@ -2191,6 +2248,7 @@ void	VID_Init (unsigned char *palette) {
 	} else
 #endif
 	{
+		// I guess the Mac uses this ... except the Mac doesn't use this file at all ... duh
 		Check_GammaOld(palette);
 		VID_SetPaletteOld (palette);
 	}
@@ -2204,7 +2262,7 @@ void	VID_Init (unsigned char *palette) {
 		int zbpp = bpp > 16 ? 24 : 16;
 		if (COM_CheckParm("-zbpp"))
 		{
-			zbpp = Q_atoi(com_argv[COM_CheckParm("-zbpp")+1]);
+			zbpp = atoi(com_argv[COM_CheckParm("-zbpp")+1]);
 		}
 		d3dSetMode(!windowed, modelist[0].width, modelist[0].height, bpp, zbpp);
 	}
@@ -2213,10 +2271,7 @@ void	VID_Init (unsigned char *palette) {
 	// D3D diff 14 of 14
 #endif
 
-#ifdef SUPPORTS_ENHANCED_GAMMA
-	if (using_hwgamma)
-		InitHWGamma ();
-#endif
+	InitHWGamma ();
 
 	// baker end hwgamma support
     baseRC = wglCreateContext( maindc );

@@ -589,7 +589,7 @@ static void Check_GammaOld (unsigned char *pal)
 		else
 			vid_gamma = 0.7; // default to 0.7 on non-3dfx hardware
 	} else {
-		vid_gamma = Q_atof(com_argv[i+1];
+		vid_gamma = atof(com_argv[i+1];
 		if (vid_gamma == 0) {
 			// Baker: Then someone used -gamma parameter incorrectly so use the default
 			vid_gamma = 0.7;
@@ -649,7 +649,7 @@ void VID_Init(unsigned char *palette)
 		height = atoi(com_argv[i+1]);
 
 	if ((i = COM_CheckParm("-conwidth")) != 0)
-		vid.conwidth = Q_atoi(com_argv[i+1]);
+		vid.conwidth = atoi(com_argv[i+1]);
 	else
 		vid.conwidth = 640;
 
@@ -662,7 +662,7 @@ void VID_Init(unsigned char *palette)
 	vid.conheight = vid.conwidth*3 / 4;
 
 	if ((i = COM_CheckParm("-conheight")) != 0)
-		vid.conheight = Q_atoi(com_argv[i+1]);
+		vid.conheight = atoi(com_argv[i+1]);
 	if (vid.conheight < 200)
 		vid.conheight = 200;
 

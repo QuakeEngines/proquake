@@ -118,7 +118,7 @@ typedef struct cache_user_s
 	void	*data;
 } cache_user_t;
 
-void Cache_Flush (void);
+void Cache_Flush_f (void);
 
 void *Cache_Check (cache_user_t *c);
 // returns the cached data, and moves to the head of the LRU list

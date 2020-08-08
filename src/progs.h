@@ -136,6 +136,6 @@ extern	unsigned short		pr_crc;
 
 void PR_RunError (char *error, ...);
 
-void ED_PrintEdicts (void);
+void ED_PrintEdicts_f (void);
 void ED_PrintNum (int ent);
 

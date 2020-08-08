@@ -177,15 +177,37 @@ int dpvsnprintf (char *buffer, size_t buffersize, const char *format, va_list ar
 
 
 
-#if !defined(FLASH) 
+#if !defined(FLASH)
 
 char *strltrim(char *s);
 
-#if !defined(HAVE_STRLCAT)
-
-size_t strlcat(char *dst, const char *src, size_t siz);
-
+// strlcat and strlcpy, from OpenBSD
+// Most (all?) BSDs already have them
+#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(MACOSX)
+# define HAVE_STRLCAT 1
+# define HAVE_STRLCPY 1
 #endif
+
+#ifndef HAVE_STRLCAT
+/*
+ * Appends src to string dst of size siz (unlike strncat, siz is the
+ * full size of dst, not space left).  At most siz-1 characters
+ * will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
+ * Returns strlen(src) + MIN(siz, strlen(initial dst)).
+ * If retval >= siz, truncation occurred.
+ */
+size_t strlcat(char *dst, const char *src, size_t siz);
+#endif  // #ifndef HAVE_STRLCAT
+
+#ifndef HAVE_STRLCPY
+/*
+ * Copy src to string dst of size siz.  At most siz-1 characters
+ * will be copied.  Always NUL terminates (unless siz == 0).
+ * Returns strlen(src); if retval >= siz, truncation occurred.
+ */
+size_t strlcpy(char *dst, const char *src, size_t siz);
+
+#endif  // #ifndef HAVE_STRLCPY
 
 #endif
 
@@ -195,13 +217,13 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 //void Q_strncpy (char *dest, char *src, int count);
 
 
-int Q_strcasecmp (char *s1, char *s2);
-int Q_strncasecmp (char *s1, char *s2, int n);
-int	Q_atoi (char *str);
-float Q_atof (char *str);
+//int strcasecmp (char *s1, char *s2);
+//int strncasecmp (char *s1, char *s2, int n);
+//int	atoi (char *str);
+//float atof (char *str);
 
-void Q_strncpyz (char *dest, char *src, size_t size);
-void Q_snprintfz (char *dest, size_t size, char *fmt, ...);
+//void Q_strncpyz (char *dest, char *src, size_t size);
+//void Q_snprintfz (char *dest, size_t size, char *fmt, ...);
 
 //============================================================================
 

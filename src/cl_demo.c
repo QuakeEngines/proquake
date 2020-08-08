@@ -27,9 +27,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #endif
 
 // added by joe
-framepos_t	*dem_framepos = NULL;
+static	framepos_t	*dem_framepos = NULL;
 
-qboolean	start_of_demo = false;
+static	qboolean	start_of_demo = false;
 cvar_t	cl_demorewind = {"cl_demorewind", "0"};
 
 void CL_FinishTimeDemo (void);
@@ -68,9 +68,11 @@ void CL_StopPlayback (void)
 	cls.demofile = NULL;
 	cls.state = ca_disconnected;
 
+	Con_DPrintf("Demo playback has ended\n");
+
 	if (cls.timedemo)
 		CL_FinishTimeDemo ();
-		
+	
 #ifdef SUPPORTS_AVI_CAPTURE
 	Movie_StopPlayback ();
 #endif
@@ -83,7 +85,7 @@ void CL_StopPlayback (void)
 CL_FixMsg
 ==============
 */
-void CL_FixMsg (int fix)
+static void CL_FixMsg (int fix)
 {
 	char s1[7] = "coop 0";
 	char s2[7] = "cmd xs";
@@ -129,7 +131,7 @@ CL_WriteDemoMessage
 Dumps the current net message, prefixed by the length and view angles
 ====================
 */
-void CL_WriteDemoMessage (void)
+static void CL_WriteDemoMessage (void)
 {
 	int	i, len;
 	float	f;
@@ -147,7 +149,7 @@ void CL_WriteDemoMessage (void)
 	fflush (cls.demofile);
 }
 
-void PushFrameposEntry (long fbaz)
+static void PushFrameposEntry (long fbaz)
 {
 	framepos_t	*newf;
 
@@ -166,7 +168,7 @@ void PushFrameposEntry (long fbaz)
 	dem_framepos = newf;
 }
 
-void EraseTopEntry (void)
+static void EraseTopEntry (void)
 {
 	framepos_t	*top;
 
@@ -377,14 +379,6 @@ void CL_Record_f (void)
 	if (cls.demorecording)
 		CL_Stop_f();
 
-	/* JPG 1.05 - got rid of this because recording after connecting is now supported
-	if (c == 2 && cls.state == ca_connected)
-	{
-		Con_Printf("Can not record - already connected to server\nClient demo recording must be started before connecting\n");
-		return;
-	}
-	*/
-
 	// JPG 1.05 - replaced it with this
 	if (c == 2 && cls.state == ca_connected && cls.signon < 2)
 	{
@@ -494,7 +488,7 @@ void CL_Record_f (void)
 	}
 }
 
-void StartPlayingOpenedDemo (void)
+static void StartPlayingOpenedDemo (void)
 {
 	int		c;
 	qboolean	neg = false;
@@ -585,7 +579,7 @@ void CL_PlayDemo_f (void)
 CL_FinishTimeDemo
 ====================
 */
-void CL_FinishTimeDemo (void)
+static void CL_FinishTimeDemo (void)
 {
 	int		frames;
 	float	time;

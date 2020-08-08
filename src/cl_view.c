@@ -118,7 +118,7 @@ float V_CalcRoll (vec3_t angles, vec3_t velocity)
 V_CalcBob
 ===============
 */
-float V_CalcBob (void)
+static float V_CalcBob (void)
 {
 	float	bob;
 	float	cycle;
@@ -146,7 +146,7 @@ float V_CalcBob (void)
 cvar_t	v_centermove = {"v_centermove", "0.15", false};
 cvar_t	v_centerspeed = {"v_centerspeed","500"};
 
-void V_StartPitchDrift (void)
+void V_StartPitchDrift_f (void)
 {
 	if (cl.laststop == cl.time)
 		return;		// something else is keeping it from drifting
@@ -179,7 +179,7 @@ Drifting is enabled when the center view key is hit, mlook is released and
 lookspring is non 0, or when
 ===============
 */
-void V_DriftPitch (void)
+static void V_DriftPitch (void)
 {
 	float		delta, move;
 
@@ -199,7 +199,7 @@ void V_DriftPitch (void)
 			cl.driftmove += host_frametime;
 
 		if ( cl.driftmove > v_centermove.value)
-			V_StartPitchDrift ();
+			V_StartPitchDrift_f ();
 
 		return;
 	}
@@ -251,12 +251,14 @@ cshift_t	cshift_slime = { {0,25,5}, 150 };
 cshift_t	cshift_lava = { {255,80,0}, 150 };
 
 cvar_t		vold_gamma = {"gamma", "1", true};
+#ifndef GLQUAKE
+cvar_t		vnew_contrast = {"contrast", "1", true};
+#endif
 
 // Baker hwgamma support
 #ifdef SUPPORTS_ENHANCED_GAMMA
 
-cvar_t		gl_hwblend			= {"gl_hwblend", "1"};
-float		v_blend[4];		// rgba 0.0 - 1.0
+cvar_t		gl_hwblend			= {"gl_hwblend", "0"};
 cvar_t		v_gamma				= {"gamma", "0.7", true};
 cvar_t		v_contrast			= {"contrast", "1", true};
 unsigned short	ramps[3][256];
@@ -270,6 +272,7 @@ byte		rampsold[3][256];
 float		v_blend[4];		// rgba 0.0 - 1.0
 #endif	// GLQUAKE
 
+#ifdef GLQUAKE
 void BuildGammaTable (float g)
 {
 	int		i, inf;
@@ -283,25 +286,47 @@ void BuildGammaTable (float g)
 
 	for (i=0 ; i<256 ; i++)
 	{
-		inf = 255 * powf ( (i+0.5f)/255.5f , g ) + 0.5;
-		if (inf < 0)
-			inf = 0;
-		if (inf > 255)
-			inf = 255;
-		gammatable[i] = inf;
+		inf = 255 * pow((i + 0.5) / 255.5 * 2, g) + 0.5;
+		gammatable[i] =bound(0, inf, 255);
 	}
 }
+#endif
+
+#ifndef GLQUAKE
+static void BuildGammaTable2 (float g, float c)
+{
+	int	i, inf;
+
+	g = bound(0.3, g, 3);
+	c = bound(1, c, 3);
+
+	if (g == 1 && c == 1)
+	{
+		for (i=0 ; i<256 ; i++)
+			gammatable[i] = i;
+		return;
+	}
+
+	for (i=0 ; i<256 ; i++)
+	{
+		inf = 255 * pow((i + 0.5) / 255.5 * c, g) + 0.5;
+		gammatable[i] = bound(0, inf, 255);
+	}
+}
+#endif
 
 /*
 =================
 V_CheckGamma
 =================
 */
+
+#ifdef GLQUAKE
 #ifdef D3DQ_EXTRA_FEATURES
 void d3dSetGammaRamp(const unsigned char* gammaTable);
 #endif // d3dfeature
 
-qboolean V_CheckGamma (void)
+static qboolean V_CheckGamma (void)
 {
 	static float oldgammavalue;
 	float gamma;
@@ -327,6 +352,40 @@ qboolean V_CheckGamma (void)
 #endif
 	return true;
 }
+#endif
+
+#ifndef GLQUAKE
+static qboolean V_CheckGamma2 (void)
+{
+	static	float	old_gamma, old_contrast;
+	float			test_gamma, test_contrast;
+
+	if (vold_gamma.value == old_gamma && vnew_contrast.value == old_contrast)
+		return false;
+
+	test_gamma = bound(0.3, vold_gamma.value, 3);
+
+	if (vold_gamma.value != test_gamma) {
+		// If cvar isn't within bounds, make it so
+		Cvar_SetValue("gamma", test_gamma);
+	}
+
+	test_contrast = bound(1, vnew_contrast.value, 3);
+
+	if (vnew_contrast.value != test_contrast) {
+		// If cvar isn't within bounds, make it so
+		Cvar_SetValue("contrast", test_contrast);
+	}
+
+	old_gamma = vold_gamma.value;
+	old_contrast = vnew_contrast.value;
+
+	BuildGammaTable2 (vold_gamma.value, vnew_contrast.value);
+	vid.recalc_refdef = 1;			// force a surface cache flush
+
+	return true;
+}
+#endif
 
 /*
 ===============
@@ -398,7 +457,7 @@ void V_ParseDamage (void)
 V_cshift_f
 ==================
 */
-void V_cshift_f (void)
+static void V_cshift_f (void)
 {
 	cshift_empty.destcolor[0] = atoi(Cmd_Argv(1));
 	cshift_empty.destcolor[1] = atoi(Cmd_Argv(2));
@@ -413,7 +472,7 @@ V_BonusFlash_f
 When you run over an item, the server sends this command
 ==================
 */
-void V_BonusFlash_f (void)
+static void V_BonusFlash_f (void)
 {
 	cl.cshifts[CSHIFT_BONUS].destcolor[0] = 215;
 	cl.cshifts[CSHIFT_BONUS].destcolor[1] = 186;
@@ -430,15 +489,25 @@ Underwater, lava, etc each has a color shift
 */
 void V_SetContentsColor (int contents)
 {
+#ifdef SUPPORTS_ENHANCED_GAMMA
+if (vid_hwgamma_enabled && gl_hwblend.value) {
+	if (!pq_waterblend.value)
+	{
+		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
+		cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
+		return;
+	}
+}
+#endif
 	switch (contents)
 	{
 	case CONTENTS_EMPTY:
-	case CONTENTS_SOLID:
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
 		break;
 	case CONTENTS_LAVA:
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_lava;
 		break;
+	case CONTENTS_SOLID:
 	case CONTENTS_SLIME:
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_slime;
 		break;
@@ -446,6 +515,26 @@ void V_SetContentsColor (int contents)
 		cl.cshifts[CSHIFT_CONTENTS] = cshift_water;
 	}
 
+#ifdef SUPPORTS_ENHANCED_GAMMA
+if (vid_hwgamma_enabled && gl_hwblend.value) {
+
+	if (pq_waterblend.value > 0 && pq_waterblend.value < 1
+		&& contents != CONTENTS_EMPTY)
+		cl.cshifts[CSHIFT_CONTENTS].percent *= pq_waterblend.value;
+
+	if (contents != CONTENTS_EMPTY)
+	{
+		if (!gl_polyblend.value)
+			cl.cshifts[CSHIFT_CONTENTS].percent = 0;
+		else
+			cl.cshifts[CSHIFT_CONTENTS].percent *= gl_cshiftpercent.value;
+	}
+	else
+	{
+		cl.cshifts[CSHIFT_CONTENTS].percent *= 100;
+	}
+} else
+#endif
 	// JPG 1.05 - control amount of shift
 	cl.cshifts[CSHIFT_CONTENTS].percent *= pq_waterblend.value;
 }
@@ -455,7 +544,7 @@ void V_SetContentsColor (int contents)
 V_CalcPowerupCshift
 =============
 */
-void V_CalcPowerupCshift (void)
+static void V_CalcPowerupCshift (void)
 {
 	if (cl.items & IT_QUAD)
 	{
@@ -596,16 +685,18 @@ V_UpdatePaletteNew
 // This v_updatepalette should not get called
 // except if hwgamma is being used
 // classic gamma should use v_updatepaletteold
-void V_UpdatePaletteNew (void)
+qboolean V_UpdatePalette_Hardware (void)
 {
 	int		i, j, c;
 	qboolean	new;
 	float		a, rgb[3], gamma, contrast;
 	static float	prev_blend[4], old_gamma, old_contrast, old_hwblend;
 	extern float	vid_gamma;
+	qboolean	hardware_blend_set_off=false;
 
 	new = false;
 
+	// Determine 
 	for (i=0 ; i<4 ; i++)
 	{
 		if (v_blend[i] != prev_blend[i])
@@ -626,7 +717,7 @@ void V_UpdatePaletteNew (void)
 	contrast = bound(1, v_contrast.value, 3);
 	if (v_contrast.value != old_contrast || !old_contrast)
 	{
-		contrast = bound(1, v_contrast.value, 3);
+
 		if (v_contrast.value != contrast) {
 			Cvar_SetValue("contrast", contrast); // Baker 3.99: Set the cvar to what it should be if out of range
 		}
@@ -637,11 +728,15 @@ void V_UpdatePaletteNew (void)
 	if (gl_hwblend.value != old_hwblend)
 	{
 		new = true;
+		
+		if (!gl_hwblend.value)
+			hardware_blend_set_off = true;
+		
 		old_hwblend = gl_hwblend.value;
 	}
 
 	if (!new)
-		return;
+		return false;
 
 	a = v_blend[3];
 
@@ -676,11 +771,13 @@ void V_UpdatePaletteNew (void)
 	}
 
 	VID_SetDeviceGammaRamp ((unsigned short *)ramps);
+
+	return hardware_blend_set_off;
 }
 #endif  // GLQUAKE only
 
 #ifdef	GLQUAKE
-void V_UpdatePaletteOld (void)
+void V_UpdatePalette_Static (qboolean forced)
 {
 	int		i, j;
 	qboolean	blend_changed;
@@ -692,7 +789,16 @@ void V_UpdatePaletteOld (void)
 	qboolean force;
 #endif
 
-	V_CalcPowerupCshift ();
+//	Baker: eliminate shifts when disconnected
+	if (cls.state != ca_connected)
+	{
+		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
+		cl.cshifts[CSHIFT_POWERUP].percent = 0;
+	}
+	else
+	{
+		V_CalcPowerupCshift ();
+	}
 
 	blend_changed = false;
 
@@ -726,13 +832,15 @@ void V_UpdatePaletteOld (void)
 	if (!blend_changed && !force)
 		return;
 #else
-	if (!blend_changed)
+	if (!blend_changed && !forced)
 		return;
 #endif
 
-#ifdef SUPPORTS_ENHANCED_GAMMA
+#if 0 // SUPPORTS_ENHANCED_GAMMA
 	V_CalcBlend ();
+	Con_Printf("Above line ... This is suspicious ...\n");
 #endif
+	
 
 	a = v_blend[3];
 	r = 255*v_blend[0]*a;
@@ -778,7 +886,7 @@ void V_UpdatePaletteOld (void)
 #endif	// ^^ GLQuake specific
 
 #ifndef GLQUAKE // !GLQUAKE = this is WinQuake method
-void V_UpdatePaletteOld (void)
+void V_UpdatePalette_Software (void)
 {
 	int		i, j;
 	qboolean	blend_changed;
@@ -787,7 +895,16 @@ void V_UpdatePaletteOld (void)
 	int		r,g,b;
 	qboolean force;
 
-	V_CalcPowerupCshift ();
+	if (cls.state != ca_connected) //	Baker: eliminate shifts when disconnected
+	{
+		cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
+		cl.cshifts[CSHIFT_POWERUP].percent = 0;
+	}
+	else
+	{
+		V_CalcPowerupCshift ();
+	}
+
 
 	blend_changed = false;
 
@@ -816,7 +933,7 @@ void V_UpdatePaletteOld (void)
 	if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
 		cl.cshifts[CSHIFT_BONUS].percent = 0;
 
-	force = V_CheckGamma ();
+	force = V_CheckGamma2 ();
 	if (!blend_changed && !force)
 		return;
 
@@ -1274,6 +1391,16 @@ int	Sbar_ColorForMap (int m);
 #endif
 void V_RenderView (void)
 {
+#ifdef SUPPORTS_ENHANCED_GAMMA
+	// Baker hwgamma support
+	if (using_hwgamma) {
+		if (cls.state != ca_connected) {
+			V_CalcBlend ();
+			return;
+		}
+	}
+#endif
+
 	if (con_forcedup)
 		return;
 
@@ -1284,16 +1411,6 @@ void V_RenderView (void)
 		Cvar_Set ("scr_ofsy", "0");
 		Cvar_Set ("scr_ofsz", "0");
 	}
-
-#ifdef SUPPORTS_ENHANCED_GAMMA
-	// Baker hwgamma support
-	if (using_hwgamma) {
-		if (cls.state != ca_connected) {
-			V_CalcBlend ();
-			return;
-		}
-	}
-#endif
 
 	if (cl.intermission) // intermission / finale rendering
 	{
@@ -1364,7 +1481,7 @@ void V_Init (void)
 {
 	Cmd_AddCommand ("v_cshift", V_cshift_f);
 	Cmd_AddCommand ("bf", V_BonusFlash_f);
-	Cmd_AddCommand ("centerview", V_StartPitchDrift);
+	Cmd_AddCommand ("centerview", V_StartPitchDrift_f);
 
 	Cvar_RegisterVariable (&lcd_x, NULL);
 	Cvar_RegisterVariable (&lcd_yaw, NULL);
@@ -1390,6 +1507,7 @@ void V_Init (void)
 	Cvar_RegisterVariable (&v_idlescale, NULL);
 	Cvar_RegisterVariable (&crosshair, NULL);
 	Cvar_RegisterVariable (&r_viewmodeloffset, NULL);
+
 	Cvar_RegisterVariable (&cl_crossx, NULL);
 	Cvar_RegisterVariable (&cl_crossy, NULL);
 	Cvar_RegisterVariable (&cl_crosshaircentered, NULL); // Baker 3.60 - centered crosshair
@@ -1411,8 +1529,14 @@ void V_Init (void)
 	Cvar_RegisterVariable (&v_kickpitch, NULL);
 	Cvar_RegisterVariable (&v_gunkick, NULL);
 
-	BuildGammaTable (1.0);	// no gamma yet
 	Cvar_RegisterVariable (&vold_gamma, NULL);
+
+#ifdef GLQUAKE
+	BuildGammaTable (1.0);	// no gamma yet
+#else
+	Cvar_RegisterVariable (&vnew_contrast, NULL);
+	BuildGammaTable2 (vold_gamma.value, vnew_contrast.value);
+#endif
 
 	// JPG 1.05 - colour shifts
 	Cvar_RegisterVariable (&pq_waterblend, NULL);

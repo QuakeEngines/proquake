@@ -40,8 +40,8 @@ void IPLog_Add (int addr, char *name);
 void IPLog_Delete (iplog_t *node);
 iplog_t *IPLog_Merge (iplog_t *left, iplog_t *right);
 void IPLog_Identify (int addr);
-void IPLog_Dump (void);
-void IPLog_Import (void);
+void IPLog_Dump_f (void);
+void IPLog_Import_f (void);
 
 
 

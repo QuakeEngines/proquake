@@ -101,7 +101,7 @@ void Cvar_Inc_f (void)
 		Cvar_SetValue (Cmd_Argv(1), Cvar_VariableValue(Cmd_Argv(1)) + 1);
 		break;
 	case 3:
-		Cvar_SetValue (Cmd_Argv(1), Cvar_VariableValue(Cmd_Argv(1)) + Q_atof(Cmd_Argv(2)));
+		Cvar_SetValue (Cmd_Argv(1), Cvar_VariableValue(Cmd_Argv(1)) + atof(Cmd_Argv(2)));
 		break;
 	}
 }
@@ -262,7 +262,7 @@ float	Cvar_VariableValue (char *var_name)
 	var = Cvar_FindVar (var_name);
 	if (!var)
 		return 0;
-	return Q_atof (var->string);
+	return atof (var->string);
 }
 
 
@@ -344,7 +344,7 @@ void Cvar_Set (char *var_name, char *value)
 
 	var->string = Z_Malloc (strlen(value)+1);
 	strcpy (var->string, value);
-	var->value = Q_atof (var->string);
+	var->value = atof (var->string);
 
 	//johnfitz -- during initialization, update default too
 	if (!host_initialized)
@@ -377,7 +377,7 @@ void Cvar_Set (char *var_name, char *value)
 	// JPG - there's probably a better place for this, but it works.
 	if (!strcmp(var_name, "pq_lag"))
 	{
-		
+
 		if (var->value < 0)
 		{
 			Cvar_Set("pq_lag", "0");
@@ -390,9 +390,9 @@ void Cvar_Set (char *var_name, char *value)
 		}
 
 		if (var->value == 0 && key_dest == key_menu) // Baker 3.99k: reset to defaults shouldn't trigger the pq_lag msg
-			return; 
+			return;
 
-		
+
 		Cbuf_AddText(va("say \"%cping +%d%c\"\n", 157, (int) var->value, 159));
 	}
 }
@@ -443,7 +443,7 @@ void Cvar_RegisterVariable (cvar_t *variable, void *function)
 	oldstr = variable->string;
 	variable->string = Z_Malloc (strlen(variable->string)+1);
 	strcpy (variable->string, oldstr);
-	variable->value = Q_atof (variable->string);
+	variable->value = atof (variable->string);
 
 	//johnfitz -- save initial value for "reset" command
 	variable->default_string = Z_Malloc (strlen(variable->string)+1);

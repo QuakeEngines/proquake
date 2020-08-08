@@ -88,7 +88,7 @@ Sbar_ShowScores
 Tab key down
 ===============
 */
-void Sbar_ShowScores (void)
+void Sbar_ShowScores_f (void)
 {
 	if (sb_showscores)
 		return;
@@ -103,7 +103,7 @@ Sbar_DontShowScores
 Tab key up
 ===============
 */
-void Sbar_DontShowScores (void)
+void Sbar_DontShowScores_f (void)
 {
 	sb_showscores = false;
 	sb_updates = 0;
@@ -270,8 +270,8 @@ Sbar_Init -- johnfitz -- rewritten
 extern cvar_t cl_scoreboard_clean;
 void Sbar_Init (void)
 {
-	Cmd_AddCommand ("+showscores", Sbar_ShowScores);
-	Cmd_AddCommand ("-showscores", Sbar_DontShowScores);
+	Cmd_AddCommand ("+showscores", Sbar_ShowScores_f);
+	Cmd_AddCommand ("-showscores", Sbar_DontShowScores_f);
 
 	Cvar_RegisterVariable (&pq_teamscores, NULL); // JPG - status bar teamscores
 	Cvar_RegisterVariable (&pq_timer, NULL); // JPG - status bar timer

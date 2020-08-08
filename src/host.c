@@ -69,7 +69,7 @@ cvar_t	host_framerate = {"host_framerate","0"};	// set for slow motion
 cvar_t	host_speeds = {"host_speeds","0"};			// set for running times
 cvar_t	host_timescale = {"host_timescale", "0"}; //johnfitz
 #ifdef SUPPORTS_SYSSLEEP
-cvar_t	host_sleep = {"host_sleep", "0"};
+cvar_t	host_sleep = {"host_sleep", "1"};
 #endif
 
 cvar_t	sys_ticrate = {"sys_ticrate","0.05", false, true};
@@ -207,7 +207,7 @@ void	Host_FindMaxClients (void)
 		cls.state = ca_dedicated;
 		if (i != (com_argc - 1))
 		{
-			svs.maxclients = Q_atoi (com_argv[i+1]);
+			svs.maxclients = atoi (com_argv[i+1]);
 		}
 		else
 			svs.maxclients = 8;
@@ -221,7 +221,7 @@ void	Host_FindMaxClients (void)
 		if (cls.state == ca_dedicated)
 			Sys_Error ("Only one of -dedicated or -listen can be specified");
 		if (i != (com_argc - 1))
-			svs.maxclients = Q_atoi (com_argv[i+1]);
+			svs.maxclients = atoi (com_argv[i+1]);
 		else
 			svs.maxclients = 8;
 	}
@@ -429,7 +429,7 @@ void Host_WriteConfig_f (void)
 			return;
 		}
 
-	Q_strncpyz (name, Cmd_Argv(1), sizeof(name));
+	strlcpy (name, Cmd_Argv(1), sizeof(name));
 	COM_ForceExtension (name, ".cfg");
 
 	Con_Printf ("Writing %s\n", name);
@@ -812,7 +812,7 @@ void _Host_Frame (double time)
 #endif // This is done in Windows and Linux.  Confirmed from pq350src
 
 // allow mice or other external controllers to add commands
-	IN_Commands ();
+	IN_Commands ();	// Baker: This is ONLY joystick
 
 // process console commands
 	Cbuf_Execute ();
@@ -821,7 +821,9 @@ void _Host_Frame (double time)
 
 // if running the server locally, make intentions now
 	if (sv.active)
-		CL_SendCmd ();
+		CL_SendCmd ();		// This is where mouse input is read
+	else if (con_forcedup && key_dest == key_game) // Allows console scrolling when con_forcedup
+		IN_MouseWheel ();	// Grab mouse wheel input
 
 //-------------------
 //
@@ -1131,8 +1133,8 @@ void Host_Init (quakeparms_t *parms)
 			if (infile[0] && infile[0] != '-' && infile[0] != '+') {
 				char tmp[1024] = {0}, *ext = COM_FileExtension(infile);
 
-				if (!Q_strncasecmp(ext, "dem", sizeof("dem")))
-					Q_snprintfz(tmp, sizeof(tmp), "playdemo \"%s\"\n", infile);
+				if (!strncasecmp(ext, "dem", sizeof("dem")))
+					snprintf(tmp, sizeof(tmp), "playdemo \"%s\"\n", infile);
 
 				if (tmp[0])
 				{

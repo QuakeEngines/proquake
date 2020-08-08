@@ -805,12 +805,12 @@ cache_system_t *Cache_TryAlloc (int size, qboolean nobottom)
 
 /*
 ============
-Cache_Flush
+Cache_Flush_f
 
 Throw everything out, so new data will be demand cached
 ============
 */
-void Cache_Flush (void)
+void Cache_Flush_f (void)
 {
 	while (cache_head.next != &cache_head)
 		Cache_Free ( cache_head.next->user );	// reclaim the space
@@ -858,7 +858,7 @@ void Cache_Init (void)
 	cache_head.next = cache_head.prev = &cache_head;
 	cache_head.lru_next = cache_head.lru_prev = &cache_head;
 
-	Cmd_AddCommand ("flush", Cache_Flush);
+	Cmd_AddCommand ("flush", Cache_Flush_f);
 }
 
 /*
@@ -963,7 +963,7 @@ void Memory_Init (void *buf, int size)
 
 	Cache_Init ();
 	if ((p = COM_CheckParm("-zone")) && p + 1 < com_argc)
-			zonesize = Q_atoi (com_argv[p+1]) * 1024;
+			zonesize = atoi (com_argv[p+1]) * 1024;
 
 	mainzone = Hunk_AllocName (zonesize, "zone" );
 	Z_ClearZone (mainzone, zonesize);
