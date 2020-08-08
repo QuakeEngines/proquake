@@ -40,6 +40,7 @@ void V_RenderView (void);
 void V_CalcBlend (void);
 
 void SCR_DrawVolume (void);
+void SCR_DrawCoords (void);
 
 float V_CalcRoll (vec3_t angles, vec3_t velocity);
 

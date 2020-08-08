@@ -912,14 +912,14 @@ forward:
 		}
 	}
 
-	if (setup_top > 13)
+	if (setup_top > 15)
 		setup_top = 0;
 	if (setup_top < 0)
-		setup_top = 13;
-	if (setup_bottom > 13)
+		setup_top = 15;
+	if (setup_bottom > 15)
 		setup_bottom = 0;
 	if (setup_bottom < 0)
-		setup_bottom = 13;
+		setup_bottom = 15;
 }
 
 //=============================================================================

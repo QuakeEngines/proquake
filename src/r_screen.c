@@ -1289,6 +1289,7 @@ void SCR_UpdateScreen (void)
 			SCR_DrawFPS (); // JPG - draw FPS
 			SCR_DrawSpeed (); // Baker 3.67 - Drawspeed
 			SCR_CheckDrawCenterString ();
+			SCR_DrawCoords ();				// Baker: draw coords if developer 2 or higher
 			SCR_DrawVolume (); // Baker 3.60 - JoeQuake 0.15
 			Sbar_Draw ();
 		}

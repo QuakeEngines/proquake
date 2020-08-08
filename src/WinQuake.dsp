@@ -25,6 +25,7 @@ CFG=winquake - Win32 D3D Debug
 !MESSAGE "winquake - Win32 D3D Debug" (based on "Win32 (x86) Application")
 !MESSAGE "winquake - Win32 D3D Release" (based on "Win32 (x86) Application")
 !MESSAGE "winquake - Win32 DX8 Release" (based on "Win32 (x86) Application")
+!MESSAGE "winquake - Win32 Pure WinQuake Release" (based on "Win32 (x86) Application")
 !MESSAGE 
 
 # Begin Project
@@ -59,7 +60,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /machine:I386
-# ADD LINK32 .\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\wqpro450.exe"
+# ADD LINK32 .\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\wqpro452.exe"
 # SUBTRACT LINK32 /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 Debug"
@@ -143,7 +144,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib .\scitech\lib\win32\vc\mgllt.lib /nologo /subsystem:windows /profile /machine:I386
 # SUBTRACT BASE LINK32 /map /debug
-# ADD LINK32 advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\glpro450.exe"
+# ADD LINK32 advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\glpro452.exe"
 # SUBTRACT LINK32 /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 Debug Unicode"
@@ -230,7 +231,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 comctl32.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:".\release_gl\glquake.exe"
 # SUBTRACT BASE LINK32 /map /debug
-# ADD LINK32 d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\d3dpro450.exe"
+# ADD LINK32 d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\d3dpro452.exe"
 # SUBTRACT LINK32 /debug
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
@@ -259,7 +260,36 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 d3dxd.lib ddraw.lib dxguid.lib advapi32.lib comctl32.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /incremental:yes /machine:I386 /out:"e:\quakedm3\d3dpro421.exe"
 # SUBTRACT BASE LINK32 /profile /map /debug
-# ADD LINK32 advapi32.lib comctl32.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\dx8pro450.exe"
+# ADD LINK32 advapi32.lib comctl32.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\dx8pro452.exe"
+# SUBTRACT LINK32 /debug
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "winquake___Win32_Pure_WinQuake_Release"
+# PROP BASE Intermediate_Dir "winquake___Win32_Pure_WinQuake_Release"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "winquake___Win32_Pure_WinQuake_Release"
+# PROP Intermediate_Dir "winquake___Win32_Pure_WinQuake_Release"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /G5 /GX /O2 /I ".\scitech\include" /I ".\dxsdk\sdk7\include" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /FR /YX /FD /c
+# ADD CPP /nologo /G5 /GX /O2 /I ".\scitech\include" /I ".\dxsdk\sdk7\include" /D "NDEBUG" /D "WIN32" /D "_WINDOWS" /FR /YX /FD /c
+# ADD BASE MTL /nologo /D "NDEBUG" /mktyplib203 /win32
+# ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
+# ADD BASE RSC /l 0x409 /d "NDEBUG"
+# ADD RSC /l 0x409 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 .\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\wqpro451.exe"
+# SUBTRACT BASE LINK32 /debug
+# ADD LINK32 .\scitech\lib\win32\vc\mgllt.lib advapi32.lib comdlg32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib libcurl.lib ole32.lib oleaut32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"e:\quakedm3\wqpro_api_452.exe"
 # SUBTRACT LINK32 /debug
 
 !ENDIF 
@@ -274,6 +304,7 @@ LINK32=link.exe
 # Name "winquake - Win32 D3D Debug"
 # Name "winquake - Win32 D3D Release"
 # Name "winquake - Win32 DX8 Release"
+# Name "winquake - Win32 Pure WinQuake Release"
 # Begin Group "Source Files"
 
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;hpj;bat;for;f90"
@@ -388,6 +419,21 @@ InputName=d_draw
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\d_draw.s
+InputName=d_draw
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\release\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -442,6 +488,21 @@ InputName=d_draw16
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\d_draw16.s
+InputName=d_draw16
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -477,6 +538,8 @@ SOURCE=.\d_edge.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -514,6 +577,8 @@ SOURCE=.\d_fill.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -549,6 +614,8 @@ SOURCE=.\d_init.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -586,6 +653,8 @@ SOURCE=.\d_modech.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -621,6 +690,8 @@ SOURCE=.\d_part.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -676,6 +747,21 @@ InputName=d_parta
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\d_parta.s
+InputName=d_parta
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -730,6 +816,21 @@ InputName=d_polysa
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\d_polysa.s
+InputName=d_polysa
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -766,6 +867,8 @@ SOURCE=.\d_polyse.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -801,6 +904,8 @@ SOURCE=.\d_scan.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -856,6 +961,21 @@ InputName=d_scana
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\d_scana.s
+InputName=d_scana
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -891,6 +1011,8 @@ SOURCE=.\d_sky.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -946,6 +1068,21 @@ InputName=d_spr8
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\d_spr8.s
+InputName=d_spr8
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -981,6 +1118,8 @@ SOURCE=.\d_sprite.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -1018,6 +1157,8 @@ SOURCE=.\d_surf.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -1053,6 +1194,8 @@ SOURCE=.\d_vars.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -1108,6 +1251,21 @@ InputName=d_varsa
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\d_varsa.s
+InputName=d_varsa
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -1143,6 +1301,8 @@ SOURCE=.\d_zpoint.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -1181,6 +1341,11 @@ SOURCE=.\dx8_gl_fakegl.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1218,6 +1383,11 @@ SOURCE=.\dx8_libci.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1247,6 +1417,11 @@ SOURCE=.\gl_draw.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -1285,6 +1460,11 @@ SOURCE=.\gl_fakegl.cpp
 
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1309,6 +1489,11 @@ SOURCE=.\gl_fullbright.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -1340,6 +1525,11 @@ SOURCE=.\gl_mesh.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1369,6 +1559,11 @@ SOURCE=.\gl_model.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -1400,6 +1595,11 @@ SOURCE=.\gl_refrag.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1429,6 +1629,11 @@ SOURCE=.\gl_rlight.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -1460,6 +1665,11 @@ SOURCE=.\gl_rmain.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1489,6 +1699,11 @@ SOURCE=.\gl_rmisc.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -1520,6 +1735,11 @@ SOURCE=.\gl_rsurf.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1549,6 +1769,11 @@ SOURCE=.\gl_screen.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -1580,6 +1805,11 @@ SOURCE=.\gl_test.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -1609,6 +1839,11 @@ SOURCE=.\gl_warp.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -1687,6 +1922,21 @@ InputName=math
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\math.s
+InputName=math
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
 
 !ENDIF 
 
@@ -1772,6 +2022,8 @@ SOURCE=.\nonintel.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -1823,6 +2075,8 @@ SOURCE=.\r_aclip.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -1878,6 +2132,21 @@ InputName=r_aclipa
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\r_aclipa.s
+InputName=r_aclipa
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -1913,6 +2182,8 @@ SOURCE=.\r_alias.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -1968,6 +2239,21 @@ InputName=r_aliasa
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\r_aliasa.s
+InputName=r_aliasa
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -2004,6 +2290,8 @@ SOURCE=.\r_bsp.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -2039,6 +2327,8 @@ SOURCE=.\r_draw.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2094,6 +2384,21 @@ InputName=r_drawa
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\r_drawa.s
+InputName=r_drawa
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -2129,6 +2434,8 @@ SOURCE=.\r_edge.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2184,6 +2491,21 @@ InputName=r_edgea
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\r_edgea.s
+InputName=r_edgea
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -2219,6 +2541,8 @@ SOURCE=.\r_efrag.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2256,6 +2580,8 @@ SOURCE=.\r_light.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -2291,6 +2617,8 @@ SOURCE=.\r_main.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2328,6 +2656,8 @@ SOURCE=.\r_misc.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -2357,6 +2687,8 @@ SOURCE=.\r_model.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2392,6 +2724,8 @@ SOURCE=.\r_rast.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -2421,6 +2755,8 @@ SOURCE=.\r_screen.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2458,6 +2794,8 @@ SOURCE=.\r_sky.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -2493,6 +2831,8 @@ SOURCE=.\r_sprite.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2530,6 +2870,8 @@ SOURCE=.\r_surf.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -2565,6 +2907,8 @@ SOURCE=.\r_vars.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -2617,6 +2961,21 @@ InputName=r_varsa
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\r_varsa.s
+InputName=r_varsa
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
 
 !ENDIF 
 
@@ -2692,6 +3051,21 @@ InputName=snd_mixa
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\snd_mixa.s
+InputName=snd_mixa
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -2750,6 +3124,21 @@ InputName=surf16
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\surf16.s
+InputName=surf16
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -2803,6 +3192,21 @@ InputName=surf8
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\surf8.s
+InputName=surf8
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
 
 !ENDIF 
 
@@ -2882,6 +3286,21 @@ InputName=sys_wina
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\sys_wina.s
+InputName=sys_wina
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -2911,6 +3330,11 @@ SOURCE=.\vid_common_gl.c
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -2935,6 +3359,11 @@ SOURCE=.\vid_wgl.c
 !ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
 
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
 
 !ENDIF 
 
@@ -2974,6 +3403,43 @@ SOURCE=.\vid_win.c
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP Exclude_From_Build 1
+
+!ENDIF 
+
+# End Source File
+# Begin Source File
+
+SOURCE=.\vid_win_pure.c
+
+!IF  "$(CFG)" == "winquake - Win32 Release"
+
+# PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Debug"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 GL Debug"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 GL Release"
+
+# PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Debug Unicode"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 D3D Debug"
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 D3D Release"
+
+# PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
+
+# PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -3012,6 +3478,13 @@ SOURCE=.\vid_wince.c
 
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+# SUBTRACT BASE CPP /WX
+# SUBTRACT CPP /WX
 
 !ENDIF 
 
@@ -3079,6 +3552,21 @@ InputName=worlda
 # PROP BASE Exclude_From_Build 1
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# Begin Custom Build - mycoolbuild
+OutDir=.\winquake___Win32_Pure_WinQuake_Release
+InputPath=.\worlda.s
+InputName=worlda
+
+"$(OUTDIR)\$(InputName).obj" : $(SOURCE) "$(INTDIR)" "$(OUTDIR)"
+	cl /EP > $(OUTDIR)\$(InputName).spp $(InputPath) 
+	gas2masm\debug\gas2masm < $(OUTDIR)\$(InputName).spp >                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	ml /c /Cp /coff /Fo$(OUTDIR)\$(InputName).obj /Zm /Zi                                                                                                                                                                                                    $(OUTDIR)\$(InputName).asm 
+	del $(OUTDIR)\$(InputName).spp 
+	
+# End Custom Build
+
 !ENDIF 
 
 # End Source File
@@ -3138,6 +3626,11 @@ SOURCE=.\D3DFrame\d3denum.cpp
 
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -3162,6 +3655,8 @@ SOURCE=.\D3DFrame\d3denum.h
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -3198,6 +3693,11 @@ SOURCE=.\D3DFrame\d3dframe.cpp
 
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -3223,6 +3723,8 @@ SOURCE=.\D3DFrame\d3dframe.h
 
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
 !ENDIF 
 
 # End Source File
@@ -3247,6 +3749,8 @@ SOURCE=.\D3DFrame\d3dres.h
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 
@@ -3283,6 +3787,11 @@ SOURCE=.\D3DFrame\d3dutil.cpp
 
 # PROP Exclude_From_Build 1
 
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
+
+# PROP BASE Exclude_From_Build 1
+# PROP Exclude_From_Build 1
+
 !ENDIF 
 
 # End Source File
@@ -3307,6 +3816,8 @@ SOURCE=.\D3DFrame\d3dutil.h
 !ELSEIF  "$(CFG)" == "winquake - Win32 DX8 Release"
 
 # PROP Exclude_From_Build 1
+
+!ELSEIF  "$(CFG)" == "winquake - Win32 Pure WinQuake Release"
 
 !ENDIF 
 

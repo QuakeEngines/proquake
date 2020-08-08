@@ -39,8 +39,6 @@ cvar_t	lookspring = {"lookspring","0", true};
 cvar_t	lookstrafe = {"lookstrafe","0", true};
 cvar_t	sensitivity = {"sensitivity","3", true};
 
-cvar_t	cl_mapname	= {"cl_mapname", ""};
-
 cvar_t	m_pitch = {"m_pitch","0.022", true};
 cvar_t	m_yaw = {"m_yaw","0.022", true};
 cvar_t	m_forward = {"m_forward","1", true};
@@ -1097,8 +1095,6 @@ void CL_Init (void)
 
 	// JPG 3.02 - added this by request
 	Cvar_RegisterVariable (&pq_smoothcam, NULL);
-
-	Cvar_RegisterVariable (&cl_mapname, NULL);
 
 #ifdef HTTP_DOWNLOAD
 	Cvar_RegisterVariable (&cl_web_download, NULL);

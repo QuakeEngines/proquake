@@ -107,7 +107,7 @@ typedef struct msurface_s
 #ifdef SUPPORTS_SOFTWARE_FTESTAIN
 	int			lightmaptexturenum;  //qbism ftestain
 	int			light_s, light_t;	//qbism ftestain lightmap coordinates
-	qboolean stained; //qbism ftestain
+	qboolean	stained; //qbism ftestain
 #endif
 
 	mplane_t	*plane;

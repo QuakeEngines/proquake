@@ -197,40 +197,51 @@ Host_FindMaxClients
 */
 void	Host_FindMaxClients (void)
 {
-	int		i;
+	int	cmdline_dedicated;
+	int cmdline_listen;
 
 	svs.maxclients = 1;
 
-	i = COM_CheckParm ("-dedicated");
-	if (i)
+	cmdline_dedicated = COM_CheckParm ("-dedicated");
+	if (cmdline_dedicated)
 	{
 		cls.state = ca_dedicated;
-		if (i != (com_argc - 1))
-		{
-			svs.maxclients = atoi (com_argv[i+1]);
-		}
+		if (cmdline_dedicated != (com_argc - 1))
+			svs.maxclients = atoi (com_argv[cmdline_dedicated+1]);
 		else
-			svs.maxclients = 8;
+			svs.maxclients = 8;		// Default for -dedicated with no command line
 	}
 	else
 		cls.state = ca_disconnected;
 
-	i = COM_CheckParm ("-listen");
-	if (i)
+	cmdline_listen = COM_CheckParm ("-listen");
+	if (cmdline_listen)
 	{
 		if (cls.state == ca_dedicated)
 			Sys_Error ("Only one of -dedicated or -listen can be specified");
-		if (i != (com_argc - 1))
-			svs.maxclients = atoi (com_argv[i+1]);
+		if (cmdline_listen != (com_argc - 1))
+			svs.maxclients = atoi (com_argv[cmdline_listen+1]);
 		else
 			svs.maxclients = 8;
 	}
+
 	if (svs.maxclients < 1)
 		svs.maxclients = 8;
 	else if (svs.maxclients > MAX_SCOREBOARD)
 		svs.maxclients = MAX_SCOREBOARD;
 
-	svs.maxclientslimit = svs.maxclients;
+	if (cmdline_dedicated || cmdline_listen) {
+		// Baker: only do this if -dedicated or listen
+		// So, why does this need done at all since all we are doing is an allocation below.
+		// Well, here is why ....
+		// we really want the -dedicated and -listen parameters to operate as expected and
+		// not be ignored.  This limit shouldn't be able to be changed in game if specified.
+		// But we don't want to hurt our ability to play against the bots either.
+		svs.maxclientslimit = svs.maxclients;
+	} else {
+		svs.maxclientslimit = 16; // Baker: the new default for using neither -listen or -dedicated
+	}
+
 	if (svs.maxclientslimit < 4)
 		svs.maxclientslimit = 4;
 	svs.clients = Hunk_AllocName (svs.maxclientslimit*sizeof(client_t), "clients");

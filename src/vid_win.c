@@ -2594,6 +2594,113 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 //			if ((modestate == MS_WINDOWED) && !in_mode_set && !Minimized) // Baker 3.71 - GL does not have
 //				VID_RememberWindowPos ();                                 // Baker 3.71 - GL does not have
 //
+
+			break;
+		case WM_SYSCHAR:
+		// keep Alt-Space from happening
+			break;
+		case WM_SYSCOMMAND:
+
+		// Check for maximize being hit
+			switch (wParam & ~0x0F)
+			{
+				case SC_MAXIMIZE:
+
+				// if minimized, bring up as a window before going fullscreen,
+				// so MGL will have the right state to restore
+					if (Minimized)
+					{
+						force_mode_set = true;
+						VID_SetMode (vid_modenum, vid_curpal);
+						force_mode_set = false;
+					}
+
+					VID_SetMode ((int)vid_fullscreen_mode.value, vid_curpal);
+					break;
+
+                case SC_SCREENSAVE:
+                case SC_MONITORPOWER:
+
+					if (modestate != MS_WINDOWED)
+					{
+					// don't call DefWindowProc() because we don't want to start
+					// the screen saver fullscreen
+						break;
+					}
+
+				// fall through windowed and allow the screen saver to start
+
+				default:
+
+					if (!in_mode_set)
+					{
+						S_BlockSound ();
+						S_ClearBuffer ();
+					}
+
+					lRet = DefWindowProc (hWnd, uMsg, wParam, lParam);
+
+					if (!in_mode_set)
+					{
+						S_UnblockSound ();
+					}
+			}
+
+			break;
+
+		case WM_SIZE:
+			Minimized = false; // Baker 3.71 - Difference from GL
+
+			if (!(wParam & SIZE_RESTORED))
+			{
+				if (wParam & SIZE_MINIMIZED)
+					Minimized = true;
+			}
+
+			break;
+
+   	    case WM_CLOSE:
+			// this causes Close in the right-click task bar menu not to work, but right
+			// now bad things happen if Close is handled in that case (garbage and a
+			// crash on Win95)
+
+			if (!in_mode_set) 
+			{
+				// Baker 3.60 - cl_confirmquit support
+				if (!cl_confirmquit.value || MessageBox(mainwindow, TEXT("Are you sure you want to quit?"), TEXT("Confirm Exit"), MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
+					Sys_Quit ();
+			}
+			break;
+
+		case WM_ACTIVATE:
+
+			fActive = LOWORD(wParam);
+			fMinimized = (BOOL) HIWORD(wParam);
+			AppActivate(!(fActive == WA_INACTIVE), fMinimized);
+
+		// fix the leftover Alt from any Alt-Tab or the like that switched us away
+			Key_ClearAllStates ();
+
+			if (!in_mode_set)
+			{
+				if (windc)
+					MGL_activatePalette(windc,true);
+
+				VID_SetPaletteOld(vid_curpal);
+			}
+
+			break;
+		case WM_PAINT:
+			hdc = BeginPaint(hWnd, &ps);
+
+			if (!in_mode_set && host_initialized) {
+				// Baker: formerly was SCR_UpdateWholeScreen
+				// but it was used here and here only and I have removed it in 4.47
+				scr_fullupdate = 0;
+				SCR_UpdateScreen ();
+			}
+
+			EndPaint(hWnd, &ps);
 			break;
 
 		case WM_KEYDOWN:
@@ -2618,9 +2725,7 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 			Key_Event (vkey, asciichar[0], down);
 			break;
 
-		case WM_SYSCHAR:
-		// keep Alt-Space from happening
-			break;
+
 
 	// this is complicated because Win32 seems to pack multiple mouse events into
 	// one update sometimes, so we always check all states and look for events
@@ -2650,6 +2755,7 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 		case WM_MBUTTONDOWN:
 		case WM_MBUTTONUP:
 		case WM_MOUSEMOVE:
+
 			if (!in_mode_set)
 			{
 				temp = 0;
@@ -2700,47 +2806,17 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 				Key_Event(K_MWHEELDOWN, 0, false);
 			}
 			break;
+		case WM_DISPLAYCHANGE:
 
-		case WM_SIZE:
-			Minimized = false; // Baker 3.71 - Difference from GL
-
-			if (!(wParam & SIZE_RESTORED))
+			if (!in_mode_set && (modestate == MS_WINDOWED) && !vid_fulldib_on_focus_mode)
 			{
-				if (wParam & SIZE_MINIMIZED)
-					Minimized = true;
+				force_mode_set = true;
+				VID_SetMode (vid_modenum, vid_curpal);
+				force_mode_set = false;
 			}
 			break;
 
-   	    case WM_CLOSE:
-		// this causes Close in the right-click task bar menu not to work, but right
-		// now bad things happen if Close is handled in that case (garbage and a
-		// crash on Win95)
 
-			if (!in_mode_set) {
-				// Baker 3.60 - cl_confirmquit support
-				if (!cl_confirmquit.value || MessageBox(mainwindow, TEXT("Are you sure you want to quit?"), TEXT("Confirm Exit"), MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
-					Sys_Quit ();
-			}
-			break;
-
-		case WM_ACTIVATE:
-
-			fActive = LOWORD(wParam);
-			fMinimized = (BOOL) HIWORD(wParam);
-			AppActivate(!(fActive == WA_INACTIVE), fMinimized);
-
-		// fix the leftover Alt from any Alt-Tab or the like that switched us away
-			Key_ClearAllStates ();
-
-			if (!in_mode_set)
-			{
-				if (windc)
-					MGL_activatePalette(windc,true);
-
-				VID_SetPaletteOld(vid_curpal);
-			}
-
-			break;
 
 		// Case WM_DESTROY // Baker 3.71 - WQPRO does not have?
 #ifdef BUILD_MP3_VERSION
@@ -2750,67 +2826,14 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 #endif
             lRet = CDAudio_MessageHandler (hWnd, uMsg, wParam, lParam);
 			break;
-		case WM_SYSCOMMAND:
 
-		// Check for maximize being hit
-			switch (wParam & ~0x0F)
-			{
-				case SC_MAXIMIZE:
-				// if minimized, bring up as a window before going fullscreen,
-				// so MGL will have the right state to restore
-					if (Minimized)
-					{
-						force_mode_set = true;
-						VID_SetMode (vid_modenum, vid_curpal);
-						force_mode_set = false;
-					}
-
-					VID_SetMode ((int)vid_fullscreen_mode.value, vid_curpal);
-					break;
-
-                case SC_SCREENSAVE:
-                case SC_MONITORPOWER:
-					if (modestate != MS_WINDOWED)
-					{
-					// don't call DefWindowProc() because we don't want to start
-					// the screen saver fullscreen
-						break;
-					}
-
-				// fall through windowed and allow the screen saver to start
-
-				default:
-					if (!in_mode_set)
-					{
-						S_BlockSound ();
-						S_ClearBuffer ();
-					}
-
-					lRet = DefWindowProc (hWnd, uMsg, wParam, lParam);
-
-					if (!in_mode_set)
-						S_UnblockSound ();
-			}
-
-			break;
 
 
 	//	case WM_MWHOOK:
 	//		MW_Hook_Message (lParam);
 	//		break;
 
-		case WM_PAINT:
-			hdc = BeginPaint(hWnd, &ps);
 
-			if (!in_mode_set && host_initialized) {
-				// Baker: formerly was SCR_UpdateWholeScreen
-				// but it was used here and here only and I have removed it in 4.47
-				scr_fullupdate = 0;
-				SCR_UpdateScreen ();
-			}
-
-			EndPaint(hWnd, &ps);
-			break;
 
 		// KJB: Added these new palette functions
 		case WM_PALETTECHANGED:
@@ -2840,14 +2863,7 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 			}
 			break;
 
-		case WM_DISPLAYCHANGE:
-			if (!in_mode_set && (modestate == MS_WINDOWED) && !vid_fulldib_on_focus_mode)
-			{
-				force_mode_set = true;
-				VID_SetMode (vid_modenum, vid_curpal);
-				force_mode_set = false;
-			}
-			break;
+
 
 		default:
             // pass all unhandled messages to DefWindowProc
@@ -2857,6 +2873,7 @@ LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM  wParam, LPARAM  lParam) {
 
     // return 0 if handled message, 1 if not
     return lRet;
+
 }
 
 extern void M_Menu_Options_f (void);

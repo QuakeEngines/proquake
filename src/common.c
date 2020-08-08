@@ -757,7 +757,7 @@ void MSG_WriteAngle (sizebuf_t *sb, float f)
 // joe: added from FuhQuake
 void R_PreMapLoad (char *mapname)
 {
-	Cvar_Set ("cl_mapname", mapname);
+	Cvar_Set ("host_mapname", mapname);
 }
 
 // JPG - precise aim for ProQuake!

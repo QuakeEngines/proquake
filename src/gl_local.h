@@ -151,6 +151,7 @@ extern	cvar_t	gl_reporttjunctions;
 extern	cvar_t	gl_flashblend;
 extern	cvar_t	gl_nocolors;
 extern	cvar_t	gl_doubleeyes;
+extern	cvar_t	gl_xflip;
 extern	cvar_t	gl_playermip;
 extern	cvar_t	gl_fullbright;
 extern	cvar_t	r_ringalpha;

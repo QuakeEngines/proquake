@@ -100,7 +100,7 @@ typedef struct framepos_s
 
 extern	framepos_t	*dem_framepos;		// by joe
 
-#define	MAX_EFRAGS		640
+#define	MAX_EFRAGS		2048
 
 #define	MAX_MAPSTRING	2048
 #define	MAX_DEMOS	32

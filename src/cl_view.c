@@ -1319,6 +1319,25 @@ void V_CalcRefdef (void)
 			Chase_Update ();
 }
 
+
+/*
+===============
+SCR_DrawVolume - Baker 3.80x -- from JoeQuake
+===============
+*/
+void SCR_DrawCoords (void)
+{
+	if (developer.value < 2)
+		return;
+	
+	Draw_String (16, 16, va("Position xyz = %i %i %i",
+	(int)cl_entities[cl.viewentity].origin[0],
+	(int)cl_entities[cl.viewentity].origin[1],
+	(int)cl_entities[cl.viewentity].origin[2]));
+
+}
+
+
 /*
 ===============
 SCR_DrawVolume - Baker 3.80x -- from JoeQuake

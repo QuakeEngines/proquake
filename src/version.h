@@ -186,6 +186,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define SUPPORTS_2DPICS_ALPHA					// Transparency of 2D pics
 # define SUPPORTS_HLBSP							// Requires 24 bit color for now
 # define SUPPORTS_GL_OVERBRIGHTS				// Overbright method GLQuake is using, WinQuake always had them
+# define SUPPORTS_XFLIP
 
 	#if !defined(D3DQUAKE)	// Any platform except D3DQUAKE
 	# define SUPPORTS_GL_DELETETEXTURES			// D3DQuake isn't emulating them at this time

@@ -1095,6 +1095,11 @@ void IN_MouseMove (usercmd_t *cmd) {
 //if (mx ||  my)
 //	Con_DPrintf("mx=%d, my=%d\n", mx, my);
 
+
+#ifdef SUPPORTS_XFLIP
+	if(gl_xflip.value) mx *= -1;   //Atomizer - GL_XFLIP
+#endif
+
 	if (m_filter.value) {
         filterfrac = bound(0, m_filter.value, 1) / 2.0;
         mouse_x = (mx * (1 - filterfrac) + old_mouse_x * filterfrac);

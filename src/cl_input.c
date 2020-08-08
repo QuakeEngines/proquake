@@ -288,12 +288,21 @@ Moves the local angle positions
 
 	speed = (in_speed.state & 1) ? host_frametime * cl_anglespeedkey.value : host_frametime;
 
+#ifdef SUPPORTS_XFLIP
+	if (gl_xflip.value) cl.viewangles[YAW] *= -1;   //Atomizer - GL_XFLIP
+#endif
+
 	if (!(in_strafe.state & 1))
 	{
 		cl.viewangles[YAW] -= speed*cl_yawspeed.value*CL_KeyState (&in_right);
 		cl.viewangles[YAW] += speed*cl_yawspeed.value*CL_KeyState (&in_left);
 		cl.viewangles[YAW] = anglemod(cl.viewangles[YAW]);
 	}
+
+#ifdef SUPPORTS_XFLIP
+	if (gl_xflip.value) cl.viewangles[YAW] *= -1;  //Atomizer - GL_XFLIP
+#endif
+
 	if (in_klook.state & 1)
 	{
 		V_StopPitchDrift ();
@@ -349,6 +358,12 @@ void CL_BaseMove (usercmd_t *cmd) {
 
 	cmd->sidemove += cl_sidespeed.value * CL_KeyState (&in_moveright);
 	cmd->sidemove -= cl_sidespeed.value * CL_KeyState (&in_moveleft);
+
+
+#ifdef SUPPORTS_XFLIP
+	if(gl_xflip.value) cmd->sidemove *= -1;   //Atomizer - GL_XFLIP
+#endif
+
 
 	cmd->upmove += cl_upspeed.value * CL_KeyState (&in_up);
 	cmd->upmove -= cl_upspeed.value * CL_KeyState (&in_down);

@@ -54,7 +54,7 @@ void D_Sky_uv_To_st (int u, int v, fixed16_t *s, fixed16_t *t)
 	temp = skytime*skyspeed;	// TODO: add D_SetupFrame & set this there
 	*s = (int)((temp + 6*(SKYSIZE/2-1)*end[0]) * 0x10000);
 	*t = (int)((temp + 6*(SKYSIZE/2-1)*end[1]) * 0x10000);
-}
+	}
 
 
 /*

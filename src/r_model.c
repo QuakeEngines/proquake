@@ -1193,8 +1193,8 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 		Host_Error ("Mod_LoadBrushModel: %s has wrong version number (%i should be %i)", mod->name, i, Q1_BSPVERSION);
 
 	{
-		extern cvar_t cl_mapname;
-		loadmodel->isworldmodel = !strcmp (loadmodel->name, va("maps/%s.bsp", cl_mapname.string));
+		extern cvar_t host_mapname;
+		loadmodel->isworldmodel = !strcmp (loadmodel->name, va("maps/%s.bsp", host_mapname.string));
 	}
 
 

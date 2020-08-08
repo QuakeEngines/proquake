@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern cvar_t	pausable;
 
 cvar_t	cl_confirmquit = {"cl_confirmquit", "1", true}; // Baker 3.60
+cvar_t	host_mapname	= {"host_mapname", ""};
+
 
 // JPG - added these for spam protection
 extern cvar_t	pq_spam_rate;
@@ -789,6 +791,8 @@ void Host_Map_f (void)
 		Cmd_ExecuteString ("connect local", src_command);
 	}
 }
+
+
 
 /*
 ==================
@@ -2534,4 +2538,6 @@ void Host_InitCommands (void)
 	Cmd_AddCommand ("ipmerge", IPLog_Import_f);		// JPG 3.00 - import an IP data file
 
 	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
+
+	Cvar_RegisterVariable (&host_mapname, NULL);	// Baker: 5.51 -- really this needs to be registered elsewhere ... sv cannot see this cvar.   Maybe make it "host_mapname?"
 }

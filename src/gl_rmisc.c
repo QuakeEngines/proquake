@@ -379,6 +379,7 @@ void d3dEvictTextures();
 R_NewMap
 ===============
 */
+extern msurface_t  *skychain, *waterchain;
 void R_NewMap (void)
 {
 	int		i;
@@ -406,6 +407,8 @@ void R_NewMap (void)
 	// identify sky texture
 	skytexturenum = -1;
 	mirrortexturenum = -1;
+	skychain = waterchain = NULL;
+
 	for (i=0 ; i<cl.worldmodel->numtextures ; i++)
 	{
 		if (!cl.worldmodel->textures[i])
@@ -416,9 +419,7 @@ void R_NewMap (void)
 			mirrortexturenum = i;
  		cl.worldmodel->textures[i]->texturechain = NULL;
 	}
-#ifdef SUPPORTS_SKYBOX
-	R_LoadSkys (NULL);
-#endif
+
 	R_Sky_NewMap ();
 }
 

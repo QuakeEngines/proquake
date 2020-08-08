@@ -1372,8 +1372,9 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 #ifdef BUILD_MP3_VERSION
 		// Need to pause CD music here if is playing
 		if (sound_started) {
-			Cbuf_InsertText ("cd pause\n");
-			Cbuf_Execute ();
+//			Cbuf_InsertText ("cd pause\n");
+//			Cbuf_Execute ();
+			CDAudio_Pause ();
 		}
 #endif
 		sound_active = false;
@@ -1382,8 +1383,9 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 #ifdef BUILD_MP3_VERSION
 		// Need to unpause CD music here if was playing
 		if (sound_started) {
-			Cbuf_InsertText ("cd resume\n");
-			Cbuf_Execute ();
+//			Cbuf_InsertText ("cd resume\n");
+//			Cbuf_Execute ();
+			CDAudio_Resume ();
 		}
 #endif
 		sound_active = true;

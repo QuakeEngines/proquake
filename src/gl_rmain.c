@@ -43,6 +43,7 @@ int			currenttexture = -1;		// to avoid unnecessary texture sets
 
 int			cnttextures[2] = {-1, -1};     // cached
 
+int		skyboxtextures;
 
 int			mirrortexturenum;	// quake texturenum, not gltexturenum
 qboolean	mirror;
@@ -113,6 +114,11 @@ cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","0"};
 
 cvar_t	gl_reporttjunctions = {"gl_reporttjunctions","0"};
 cvar_t	gl_doubleeyes = {"gl_doubleeyes", "1"};				// JPG 3.02 - fixed spelling
+
+#ifdef SUPPORTS_XFLIP
+cvar_t gl_xflip = {"gl_xflip", "0"}; //Atomizer - GL_XFLIP
+#endif
+
 #ifdef SUPPORTS_SKYBOX
 cvar_t r_oldsky = {"r_oldsky", "1"}; // set the skybox to on, and save the value in the config file (true)
 #endif
@@ -405,11 +411,8 @@ float	r_avertexnormal_dots[SHADEDOT_QUANT][256] =
 
 float	*shadedots = r_avertexnormal_dots[0];
 
-// fenix@io.com: model animation interpolation
-int lastposenum0;
-
 int	lastposenum;
-
+int lastposenum0;  // Interpolation
 
 /*
 =============
@@ -461,23 +464,28 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do {
+		do 
+		{
 			// texture coordinates come from the draw list
 			glTexCoord2f (((float *)order)[0], ((float *)order)[1]);
 			order += 2;
 
-			// normals and vertexes come from the frame list
-			l = shadedots[verts->lightnormalindex] * shadelight;
+			if (r_fullbright.value || !cl.worldmodel->lightdata)
+				l = 1;
+			else
+				// normals and vertexes come from the frame list
+				l = shadedots[verts->lightnormalindex] * shadelight;
 #ifdef D3DQ_WORKAROUND
-			if ( l > 1 ) l = 1; // Manually clamp
+				if ( l > 1 ) l = 1; // Manually clamp
 #endif
-			// Baker 3.80x - This is no longer used
-			// glColor3f (l, l, l);
-			glColor4f (l, l, l, alpha); // Baker 3.80x - transparent weapon
-			glVertex3f (verts->v[0], verts->v[1], verts->v[2]);
-
-			verts++;
-		} while (--count);
+				// Baker 3.80x - This is no longer used
+				// glColor3f (l, l, l);
+				glColor4f (l, l, l, alpha); // Baker 3.80x - transparent weapon
+				glVertex3f (verts->v[0], verts->v[1], verts->v[2]);
+	
+				verts++;
+		}
+		while (--count);
 
 		glEnd ();
 	}
@@ -546,8 +554,7 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
 
 			// normals and vertexes come from the frame list
 			// blend the light intensity from the two frames together
-			d[0] = shadedots[verts2->lightnormalindex] -
-				shadedots[verts1->lightnormalindex];
+			d[0] = shadedots[verts2->lightnormalindex] - shadedots[verts1->lightnormalindex];
 
 			l = shadelight * (shadedots[verts1->lightnormalindex] + (blend * d[0]));
 			glColor3f (l, l, l);
@@ -610,7 +617,8 @@ void GL_DrawAliasShadow (aliashdr_t *paliashdr, int posenum)
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do {
+		do 
+		{
 			// texture coordinates come from the draw list
 			// (skipped for shadows) glTexCoord2fv ((float *)order);
 			order += 2;
@@ -685,7 +693,8 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do {
+		do 
+		{
 			order += 2;
 
 			point1[0] = verts1->v[0] * paliashdr->scale[0] + paliashdr->scale_origin[0];
@@ -892,14 +901,11 @@ void R_DrawAliasModel (entity_t *ent)
 
     glPushMatrix ();
 
-     // fenix@io.com: model transform interpolation
-	 // Don't interpolate the player in chasecam during demo playback
-
 	R_RotateForEntity (ent);
 
 	if (!strcmp (clmodel->name, "progs/eyes.mdl") && gl_doubleeyes.value) {
+		// double size of eyes, since they are really hard to see in gl
 		glTranslatef (paliashdr->scale_origin[0], paliashdr->scale_origin[1], paliashdr->scale_origin[2] - (22 + 8));
-// double size of eyes, since they are really hard to see in gl
 		glScalef (paliashdr->scale[0]*2, paliashdr->scale[1]*2, paliashdr->scale[2]*2);
 	} else {
 		glTranslatef (paliashdr->scale_origin[0], paliashdr->scale_origin[1], paliashdr->scale_origin[2]);
@@ -955,6 +961,10 @@ void R_DrawAliasModel (entity_t *ent)
        // fenix@io.com: model animation interpolation
 	// Baker: r_interpolate_weapon here!
     if (r_interpolate_animation.value) {
+//		if (client_no == 1)
+//			Con_Debugf("Player entity 1 current num is %i %s\n", currententity, currententity->model->name);
+//		if (client_no == 0)
+//			Con_Debugf("Player entity 0 current num is %i %s\n", currententity, currententity->model->name);
 		R_SetupAliasBlendedFrame (currententity->frame, paliashdr, currententity);
     } else {
 		R_SetupAliasFrame (currententity->frame, paliashdr);
@@ -993,7 +1003,7 @@ void R_DrawAliasModel (entity_t *ent)
 		// Quick-fix issue with self-overlapping alias triangles.
 		//glColor4f (0,0,0,0.5); // Original.
 		// glColor4f (0.0f, 0.0f, 0.0f, 1.0f); // KH
-		glColor4f (0.0f, 0.0f, 0.0f, r_shadows.value); // KH
+		glColor4f (0.0f, 0.0f, 0.0f, 0.5f /* r_shadows.value */); // KH
 
 		// fenix@io.com: model animation interpolation
 		if (r_interpolate_animation.value) {
@@ -1053,7 +1063,7 @@ void R_DrawEntitiesOnList (void)
 					glEnable(GL_POLYGON_OFFSET_FILL);
 				}
 
-			R_DrawBrushModel (currententity);
+				R_DrawBrushModel (currententity);
 
 				if(!gl_ztrick.value)
 				{
@@ -1097,9 +1107,6 @@ void R_DrawViewModel (void)
 	float		add;
 	dlight_t	*dl;
 	int			ambientlight, shadelight;
-
-	// fenix@io.com: model transform interpolation
-//    float		old_interpolate_transform;
 
 	if (!r_drawviewmodel.value)
 		return;
@@ -1162,11 +1169,7 @@ void R_DrawViewModel (void)
 	// hack the depth range to prevent view model from poking into walls
 	glDepthRange (gldepthmin, gldepthmin + 0.3*(gldepthmax-gldepthmin));
 
-        // fenix@io.com: model transform interpolation
-	//    old_interpolate_transform = gl_interpolate_transform.value;
-  //  gl_interpolate_transform.value = false;
 	R_DrawAliasModel (currententity);
-//    gl_interpolate_transform.value = old_interpolate_transform;
 
 	glDepthRange (gldepthmin, gldepthmax);
 }
@@ -1346,28 +1349,6 @@ void TurnVector (vec3_t out, vec3_t forward, vec3_t side, float angle)
 	out[2] = scale_forward*forward[2] + scale_side*side[2];
 }
 
-#if 0
-void GL_OverBright_f(void) {
-	if (cls.state == ca_connected)
-		Con_Printf("Restart map for changes to take full effect ...\n");
-}
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
 ===============
 R_SetFrustum
@@ -1501,6 +1482,16 @@ void R_SetupGL (void)
 
     glRotatef (-90,  1, 0, 0);	    // put Z going up
     glRotatef (90,  0, 0, 1);	    // put Z going up
+
+
+#ifdef SUPPORTS_XCLIP
+    if (gl_xflip.value)  //Atomizer - GL_XFLIP
+	{
+		glScalef (1, -1, 1);
+		glCullFace(GL_BACK);
+	}
+#endif
+
     glRotatef (-r_refdef.viewangles[2],  1, 0, 0);
     glRotatef (-r_refdef.viewangles[0],  0, 1, 0);
     glRotatef (-r_refdef.viewangles[1],  0, 0, 1);
@@ -1590,6 +1581,11 @@ void R_Init (void)
 	Cvar_RegisterVariable (&gl_overbright, NULL);
 
 	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
+
+#ifdef SUPPORTS_XFLIP
+	Cvar_RegisterVariable (&gl_xflip, NULL);  //Atomizer - GL_XFLIP
+#endif
+
 #ifdef SUPPORTS_SKYBOX
 	Cvar_RegisterVariable (&r_oldsky, NULL);
 #endif
@@ -1618,7 +1614,10 @@ void R_Init (void)
 #endif
 
 	playertextures = texture_extension_number;
-	texture_extension_number += 16;
+	texture_extension_number += MAX_SCOREBOARD;
+	
+	skyboxtextures = texture_extension_number;
+	texture_extension_number += 6;	
 }
 
 
@@ -1665,13 +1664,13 @@ void R_RenderScene (void)
 R_Clear
 =============
 */
-int	gl_ztrickframe = 0;
-// Baker: fix this foobared clustermess please!
 void R_Clear (void)
 {
 	int	clearbits = 0;
 
 #ifdef SUPPORTS_ENHANCED_GAMMA
+	// If gl_clear is 1, we always clear the color buffer
+	// Or if hardware gamma isn't enabled and contrast is greater than 1
 	if (using_hwgamma) // Baker hwgamma
 		if (gl_clear.value || (!vid_hwgamma_enabled && v_contrast.value > 1))
 			clearbits |= GL_COLOR_BUFFER_BIT;
@@ -1688,16 +1687,22 @@ void R_Clear (void)
 		glDepthFunc (GL_LEQUAL);
 	}
 #ifndef DX8QUAKE_NO_GL_ZTRICK // MH says "ztrick doesn't play nice with D3D (it shouldn't be used in GL either)"
-	else if (gl_ztrick.value) {
+	else if (gl_ztrick.value) 
+	{
+		static int trickframe;
+
 		if (gl_clear.value)
 			glClear (GL_COLOR_BUFFER_BIT);
 
-		gl_ztrickframe = !gl_ztrickframe;
-		if (gl_ztrickframe) {
+		trickframe++;
+		if (trickframe & 1) 
+		{
 			gldepthmin = 0;
 			gldepthmax = 0.49999;
 			glDepthFunc (GL_LEQUAL);
-		} else {
+		} 
+		else
+		{
 			gldepthmin = 1;
 			gldepthmax = 0.5;
 			glDepthFunc (GL_GEQUAL);

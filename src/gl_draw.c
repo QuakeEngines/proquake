@@ -1868,8 +1868,10 @@ void GL_FreeTextures (void)
 			glDeleteTextures(1, &gltextures[i].texnum);
 			--j;
 		}
-		else if (j < i)
+		else if (j < i) {
+//			Con_DPrintf("GL_FreeTextures: NOT Clearing texture %s\n", gltextures[i].identifier);
 			gltextures[j] = gltextures[i];
+		}
 	}
 
 	numgltextures = j;
