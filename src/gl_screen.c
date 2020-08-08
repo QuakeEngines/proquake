@@ -75,8 +75,8 @@ console is:
 int			glx, gly, glwidth, glheight;
 
 // only the refresh window will be updated unless these variables are flagged
-int			scr_copytop;
-int			scr_copyeverything;
+//int			scr_copytop;
+//int			scr_copyeverything;
 
 float		scr_con_current;
 float		scr_conlines;		// lines of console to display
@@ -93,9 +93,9 @@ cvar_t		scr_showturtle = {"showturtle","0"};
 cvar_t		scr_showpause = {"showpause","1"};
 cvar_t		scr_printspeed = {"scr_printspeed","8"};
 
-#ifdef SUPPORTS_CONSOLE_SIZING
+
 cvar_t		vid_consize = {"vid_consize", "-1", true}; //Baker 3.97
-#endif
+
 cvar_t		gl_triplebuffer = {"gl_triplebuffer", "1", true };
 
 cvar_t      pq_drawfps = {"pq_drawfps", "0", true}; // JPG - draw frames per second
@@ -106,8 +106,6 @@ qboolean	scr_initialized;		// ready to draw
 qpic_t		*scr_ram;
 qpic_t		*scr_net;
 qpic_t		*scr_turtle;
-
-int			scr_fullupdate;
 
 int			clearconsole;
 int			clearnotify;
@@ -168,7 +166,10 @@ void SCR_CenterPrint (char *str)
 void SCR_DrawCenterString (void)
 {
 	char	*start;
-	int	l, j, x, y, remaining;
+	int		l;
+	int		j;
+	int		x, y;
+	int		remaining;
 
 // the finale prints the characters one at a time
 	if (cl.intermission)
@@ -184,7 +185,8 @@ void SCR_DrawCenterString (void)
 	else
 		y = 48;
 
-	do {
+	do 
+	{
 	// scan the width of the line
 		for (l=0 ; l<40 ; l++)
 			if (start[l] == '\n' || !start[l])
@@ -212,7 +214,7 @@ extern cvar_t cl_scoreboard_clean;
 extern qboolean sb_showscores;
 void SCR_CheckDrawCenterString (void)
 {
-	scr_copytop = 1;
+//	scr_copytop = 1;
 	if (scr_center_lines > scr_erase_lines)
 		scr_erase_lines = scr_center_lines;
 
@@ -220,13 +222,11 @@ void SCR_CheckDrawCenterString (void)
 
 	if (scr_centertime_off <= 0 && !cl.intermission)
 		return;
-
 	if (key_dest != key_game)
 		return;
 
 	if (sb_showscores && cl_scoreboard_clean.value)
 		return;
-
 
 	SCR_DrawCenterString ();
 }
@@ -265,13 +265,12 @@ static void SCR_CalcRefdef (void)
 	float			size;
 	qboolean		full = false;
 
-	scr_fullupdate = 0;		// force a background redraw
+//	scr_fullupdate = 0;		// force a background redraw
 	vid.recalc_refdef = 0;
 
 // force the status bar to redraw
 	Sbar_Changed ();
 
-//========================================
 
 // bound viewsize
 	if (scr_viewsize.value < 30)
@@ -314,9 +313,12 @@ static void SCR_CalcRefdef (void)
 	}
 	size /= 100.0;
 
-	if (cl_sbar.value >= 1.0) {
+	if (cl_sbar.value >= 1.0) 
+	{
 		h = vid.height - sb_lines;
-	} else {
+	} 
+	else 
+	{
 		// LordHavoc: always fullscreen rendering
 		h = vid.height;
 	}
@@ -356,6 +358,7 @@ static void SCR_CalcRefdef (void)
 	scr_vrect = r_refdef.vrect;
 }
 
+
 /*
 =================
 SCR_SizeUp_f
@@ -368,6 +371,7 @@ void SCR_SizeUp_f (void)
 	Cvar_SetValue ("viewsize",scr_viewsize.value+10);
 	vid.recalc_refdef = 1;
 }
+
 
 /*
 =================
@@ -616,11 +620,12 @@ void SCR_DrawPause (void)
 {
 	qpic_t	*pic;
 
+	if (!cl.paused)
+		return;
+
 	if (!scr_showpause.value)		// turn off for screenshots
 		return;
 
-	if (!cl.paused)
-		return;
 
 	pic = Draw_CachePic ("gfx/pause.lmp");
 	Draw_Pic ( (vid.width - pic->width)/2, (vid.height - 48 - pic->height)/2, pic);
@@ -714,7 +719,7 @@ void SCR_DrawConsole (void)
 {
 	if (scr_con_current)
 	{
-		scr_copyeverything = 1;
+//		scr_copyeverything = 1;
 		Con_DrawConsole (scr_con_current, true);
 		clearconsole = 0;
 	}
@@ -724,7 +729,6 @@ void SCR_DrawConsole (void)
 			Con_DrawNotify ();	// only draw notify in game
 	}
 }
-
 
 
 /*
@@ -806,6 +810,7 @@ void SCR_ScreenShot_f (void)
 /*
 ===============
 SCR_BeginLoadingPlaque
+
 ================
 */
 void SCR_BeginLoadingPlaque (void)
@@ -823,25 +828,26 @@ void SCR_BeginLoadingPlaque (void)
 	scr_con_current = 0;
 
 	scr_drawloading = true;
-	scr_fullupdate = 0;
+//	scr_fullupdate = 0;
 	Sbar_Changed ();
 	SCR_UpdateScreen ();
 	scr_drawloading = false;
 
 	scr_disabled_for_loading = true;
 	scr_disabled_time = realtime;
-	scr_fullupdate = 0;
+//	scr_fullupdate = 0;
 }
 
 /*
 ===============
 SCR_EndLoadingPlaque
+
 ================
 */
 void SCR_EndLoadingPlaque (void)
 {
 	scr_disabled_for_loading = false;
-	scr_fullupdate = 0;
+//	scr_fullupdate = 0;
 	Con_ClearNotify ();
 }
 
@@ -853,7 +859,9 @@ qboolean	scr_drawdialog;
 void SCR_DrawNotifyString (void)
 {
 	char	*start;
-	int	l, j, x, y;
+	int		l;
+	int		j;
+	int		x, y;
 
 	start = scr_notifystring;
 
@@ -892,14 +900,12 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 {
 	double time1, time2; //johnfitz -- timeout
 
-
 	if (cls.state == ca_dedicated)
 		return true;
 
 	scr_notifystring = text;
 
 // draw a fresh screen
-
 	scr_drawdialog = true;
 	SCR_UpdateScreen ();
 
@@ -908,7 +914,8 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 	time1 = Sys_FloatTime () + timeout; //johnfitz -- timeout
 	time2 = 0.0f; //johnfitz -- timeout
 
-	do {
+	do 
+	{
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
 		if (timeout) time2 = Sys_FloatTime (); //johnfitz -- zero timeout means wait forever.
@@ -917,7 +924,7 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 	scr_drawdialog = false;
 
 	// Baker: gl doesn't use scr_fullupdate, but has it defined
-	scr_fullupdate = 0;
+//	scr_fullupdate = 0;
 
 	//johnfitz -- timeout
 	if (time2 > time1)
@@ -926,6 +933,7 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 
 	return key_lastpress == 'y';
 }
+
 
 //=============================================================================
 
@@ -989,7 +997,10 @@ void SCR_UpdateScreen (void)
 	if (scr_disabled_for_loading)
 	{
 		if (realtime - scr_disabled_time > 60)
-			scr_disabled_for_loading = false; // Con_Printf ("load failed.\n");
+		{
+			scr_disabled_for_loading = false;
+			Con_Printf ("load failed.\n");
+		}
 		else
 			return;
 	}
@@ -1013,18 +1024,20 @@ void SCR_UpdateScreen (void)
 
 
 	vid.numpages = 2 + (gl_triplebuffer.value ? 1 : 0); //johnfitz -- in case gl_triplebuffer is not 0 or 1
-	scr_copytop = 0;
-	scr_copyeverything = 0;
+//	scr_copytop = 0;
+//	scr_copyeverything = 0;
 
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 
+//
 // determine size of refresh window
+//
+
 	if (oldfov != scr_fov.value)
 	{
 		oldfov = scr_fov.value;
 		vid.recalc_refdef = true;
 	}
-
 
 	if (oldscreensize != scr_viewsize.value)
 	{
@@ -1038,13 +1051,12 @@ void SCR_UpdateScreen (void)
 		SCR_CalcRefdef ();
 	}
 
+//
 // do 3D refresh drawing, and then update the screen
-
+//
 	SCR_SetUpToDrawConsole ();
 
 	V_RenderView ();
-
-
 
 	GL_Set2D ();
 
@@ -1067,12 +1079,12 @@ void SCR_UpdateScreen (void)
 		Sbar_Draw ();
 		Draw_FadeScreen ();
 		SCR_DrawNotifyString ();
-		scr_copyeverything = true;
 	}
 	else if (scr_drawloading) //loading
 	{
 		SCR_DrawLoading ();
 		Sbar_Draw ();
+		M_Draw (); // drawloading and draw menu can happen now
 	}
 	else if (cl.intermission == 1 && key_dest == key_game) //end of level
 	{
@@ -1094,7 +1106,8 @@ void SCR_UpdateScreen (void)
 		SCR_DrawTurtle ();
 		SCR_DrawPause ();
 
-		if (cls.state == ca_connected) {
+		if (cls.state == ca_connected) 
+		{
 #ifdef SUPPORTS_AUTOID_SOFTWARE
 			R_DrawNameTags();
 #endif
@@ -1107,7 +1120,8 @@ void SCR_UpdateScreen (void)
 			Sbar_Draw ();
 		}
 
-		if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
+//
+//		if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
 			SCR_DrawConsole ();
 
 #ifdef HTTP_DOWNLOAD

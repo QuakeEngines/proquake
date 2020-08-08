@@ -50,7 +50,7 @@ next frame.  This allows commands like:
 bind g "impulse 5 ; +attack ; wait ; -attack ; impulse 2"
 ============
 */
-static void Cmd_Wait_f (void)
+void Cmd_Wait_f (void)
 {
 	cmd_wait = true;
 }
@@ -110,10 +110,10 @@ FIXME: actually change the command buffer to do less copying
 void Cbuf_InsertText (char *text)
 {
 	char	*temp = NULL;
-	int		templen;
+	int		templen = cmd_text.cursize;
 
 // copy off any commands still remaining in the exec buffer
-	if ((templen = cmd_text.cursize))
+	if (templen)
 	{
 		temp = Z_Malloc (templen);
 		memcpy (temp, cmd_text.data, templen);
@@ -169,9 +169,7 @@ void Cbuf_Execute (void)
 // beginning of the text buffer
 
 		if (i == cmd_text.cursize)
-		{
 			cmd_text.cursize = 0;
-		}
 		else
 		{
 			i++;
@@ -182,7 +180,8 @@ void Cbuf_Execute (void)
 // execute the command line
 		Cmd_ExecuteString (line, src_command);
 
-		if (cmd_wait)  {
+		if (cmd_wait)  
+		{
 			// skip out while text still remains in buffer, leaving it for next frame
 			cmd_wait = false;
 			break;
@@ -211,9 +210,11 @@ so the options are limited.
 ===============
 */
 
-void Cmd_Baker_Inject_Aliases () {
+void Cmd_Baker_Inject_Aliases () 
+{
 
-	if (COM_CheckParm ("-noinjectaliases") == 0) {
+	if (COM_CheckParm ("-noinjectaliases") == 0) 
+	{
 		// Baker 3.70 - Alias injection point
 		Cbuf_AddText ("alias +quickgrenade \"-attack;wait;impulse 6;wait;+attack\"\n");
 		Cbuf_AddText ("alias -quickgrenade \"-attack;wait;bestweapon 7 8 5 3 4 2 1\"\n");
@@ -225,19 +226,27 @@ void Cmd_Baker_Inject_Aliases () {
 		Cbuf_AddText ("alias -quickshot \"-attack;wait;bestweapon 7 8 5 3 4 2 1\"\n");
 		Cbuf_AddText ("alias bestsafe \"bestweapon 8 5 3 4 2 1\"\n");
 		Cbuf_AddText ("alias teamloc \"say_team I am at %l with %h health/%a armor\"\n");
-		if (COM_CheckParm ("-nosoundkeys") == 0) {
+		if (COM_CheckParm ("-nosoundkeys") == 0) 
+		{
 			Cbuf_AddText ("bind \"-\" \"volumedown\"\n");
 			Cbuf_AddText ("bind \"=\" \"volumeup\"\n");
-		} else {
+		}
+		else 
+		{
 			Con_Printf ("Automatic sound keys disabled\n");
 		}
 		Cbuf_AddText ("alias +zoom \"savefov; savesensitivity; fov 70; sensitivity 4; wait; fov 58; sensitivity 3.25; wait; fov 45; sensitivity 2.50; wait; fov 32; sensitivity 1.74; wait; fov 20; sensitivity 14.0\"\n");
 		Cbuf_AddText ("alias -zoom \"fov 32; sensitivity 1.75; wait; fov 45; sensitivity 2.50; wait; fov 58; sensitivity 3.25; wait; sensitivity 4; wait; restoresensitivity; restorefov\"\n");
 		Con_Printf ("Extended aliases initialized\n");
 		// Baker 3.70 - End Alias injection point
-	} else {
+	} 
+	else 
+	{
 		Con_Printf ("Automatic aliases disabled\n");
 	}
+#ifdef SUPPORTS_PLAYER_ID // Baker change +
+	Cbuf_AddText ("exec stats_id.cfg\n");
+#endif // Baker change + SUPPORTS_PLAYER_ID
 }
 
 
@@ -251,7 +260,7 @@ quake +prog jctest.qp +cmd amlev1
 quake -nosound +cmd amlev1
 ===============
 */
-static void Cmd_StuffCmds_f (void)
+void Cmd_StuffCmds_f (void)
 {
 	int		i, j;
 	int		s;
@@ -325,7 +334,7 @@ static void Cmd_StuffCmds_f (void)
 Cmd_Exec_f
 ===============
 */
-static void Cmd_Exec_f (void)
+void Cmd_Exec_f (void)
 {
 	char	*f;
 	int	mark;
@@ -339,7 +348,9 @@ static void Cmd_Exec_f (void)
 
 	strlcpy (name, Cmd_Argv(1), sizeof(name));
 	mark = Hunk_LowMark ();
-	if (!(f = (char *)COM_LoadHunkFile (name))) {
+	f = (char *)COM_LoadHunkFile (name);
+	if (!f) 
+	{
 		char	*p;
 
 		p = COM_SkipPath (name);
@@ -349,10 +360,11 @@ static void Cmd_Exec_f (void)
 			f = (char *)COM_LoadHunkFile (name);
 		}
 
-		if (!f) {
+		if (!f) 
+		{
 			Con_Printf ("couldn't exec %s\n", name);
-		return;
-	}
+			return;
+		}
 	}
 
 #ifdef MACOSX
@@ -380,7 +392,7 @@ Cmd_Echo_f
 Just prints the rest of the line to the console
 ===============
 */
-static void Cmd_Echo_f (void)
+void Cmd_Echo_f (void)
 {
 	int		i;
 
@@ -396,7 +408,7 @@ Cmd_Alias_f -- johnfitz -- rewritten
 Creates a new command that executes a command string (possibly ; seperated)
 ===============
 */
-static void Cmd_Alias_f (void)
+void Cmd_Alias_f (void)
 {
 	cmdalias_t	*a;
 	char		cmd[1024];
@@ -468,7 +480,7 @@ static void Cmd_Alias_f (void)
 Cmd_Unalias_f -- johnfitz
 ===============
 */
-static void Cmd_Unalias_f (void)
+void Cmd_Unalias_f (void)
 {
 	cmdalias_t	*a, *prev;
 
@@ -497,10 +509,10 @@ static void Cmd_Unalias_f (void)
 
 /*
 ===============
-Cmd_Unaliasall_f -- johnfitz
+Cmd_Unaliasall_f
 ===============
 */
-static void Cmd_Unaliasall_f (void)
+void Cmd_Unaliasall_f (void)
 {
 	cmdalias_t	*blah;
 
@@ -513,27 +525,11 @@ static void Cmd_Unaliasall_f (void)
 	}
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
 =============================================================================
+
 					COMMAND EXECUTION
+
 =============================================================================
 */
 
@@ -556,20 +552,6 @@ static	char		*cmd_args = NULL;
 cmd_source_t	cmd_source;
 
 void Mat_Init_f (void);	// JPG
-
-// Baker 3.83 - CMDLINE
-
-/*
-=============
-Cmd_Cmdline_f
-=============
-*/
-
-extern cvar_t cmdline;
-static void Cmd_Cmdline_f (void)
-{
-	Con_Printf ("Your command line: %s\n", cmdline.string);
-}
 
 
 /*
@@ -626,7 +608,9 @@ void Cmd_TokenizeString (char *text)
 	{
 // skip whitespace up to a /n
 		while (*text && *text <= ' ' && *text != '\n')
+		{
 			text++;
+		}
 
 		if (*text == '\n')
 		{	// a newline seperates commands in the buffer
@@ -640,7 +624,8 @@ void Cmd_TokenizeString (char *text)
 		if (cmd_argc == 1)
 			 cmd_args = text;
 
-		if (!(text = COM_Parse (text)))
+		text = COM_Parse (text);
+		if (!text)
 			return;
 
 		if (cmd_argc < MAX_ARGS)
@@ -660,7 +645,7 @@ Cmd_AddCommand
 void	Cmd_AddCommand (char *cmd_name, xcommand_t function)
 {
 	cmd_function_t	*cmd;
-	cmd_function_t	*cursor,*prev; //Baker 3.75 - from Fitz johnfitz -- sorted list insert
+	cmd_function_t	*cursor,*prev;
 
 	if (host_initialized)	// because hunk allocation would get stomped
 		Sys_Error ("Cmd_AddCommand after host_initialized");
@@ -1027,16 +1012,20 @@ Cmd_CmdList_f
 List all console commands
 ====================
 */
- void Cmd_CmdList_f (void) {
+ void Cmd_CmdList_f (void) 
+{
 	cmd_function_t	*cmd;
 
 	char 		*partial;
 	int				len, count;
 
-	if (Cmd_Argc() > 1) {
+	if (Cmd_Argc() > 1) 
+	{
 		partial = Cmd_Argv (1);
 		len = strlen(partial);
-	} else {
+	}
+	else 
+	{
 		partial = NULL;
 		len = 0;
 	}
@@ -1044,7 +1033,8 @@ List all console commands
 	Con_Printf ("\n");
 
 	count=0;
-	for (cmd=cmd_functions ; cmd ; cmd=cmd->next) {
+	for (cmd = cmd_functions ; cmd ; cmd = cmd->next) 
+	{
 
 		if (partial && strncmp (partial,cmd->name, len))
 			continue;
@@ -1063,96 +1053,6 @@ List all console commands
 	Con_Printf ("\n\n");
 }
 
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-// ********************** bsync *********************
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
-// ********************** b2sync *********************
 
 
 /*
@@ -1160,9 +1060,8 @@ List all console commands
 Cmd_Init
 ============
 */
-void Cmd_Init (void) {
-	void Host_Mapname_f (void);
-
+void Cmd_Init (void) 
+{
 	// register our commands
 	Cmd_AddCommand ("stuffcmds",Cmd_StuffCmds_f);
 	Cmd_AddCommand ("exec",Cmd_Exec_f);
@@ -1171,9 +1070,6 @@ void Cmd_Init (void) {
 	Cmd_AddCommand ("cmd", Cmd_ForwardToServer_f);
 	Cmd_AddCommand ("wait", Cmd_Wait_f);
 	Cmd_AddCommand ("unalias", Cmd_Unalias_f); //johnfitz
-	Cmd_AddCommand ("commandline", Cmd_Cmdline_f);
-
-	Cmd_AddCommand ("mapname", Host_Mapname_f); // Baker 3.99 from FitzQuake
 
 	Cmd_AddCommand ("matrix", Mat_Init_f);	// JPG
 	Cmd_AddCommand ("cmdlist", Cmd_CmdList_f);

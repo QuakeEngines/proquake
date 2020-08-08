@@ -24,8 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern cvar_t	pausable;
 
 cvar_t	cl_confirmquit = {"cl_confirmquit", "1", true}; // Baker 3.60
-cvar_t	host_mapname	= {"host_mapname", ""};
-
 
 // JPG - added these for spam protection
 extern cvar_t	pq_spam_rate;
@@ -56,20 +54,27 @@ Host_Quit_f
 
 extern void M_Menu_Quit_f (void);
 
-void Host_Quit_f (void)
+// The "just get out" version
+void Host_Quit (void)
 {
-	if (cl_confirmquit.value)
-	{
-	if (key_dest != key_console && cls.state != ca_dedicated)
-	{
-		M_Menu_Quit_f ();
-		return;
-		}
-	}
 	CL_Disconnect ();
 	Host_ShutdownServer(false);
 
 	Sys_Quit ();
+}
+
+void Host_Quit_f (void)
+{
+	if (cl_confirmquit.value)
+	{
+		if ((key_dest != key_console && !con_forcedup) && cls.state != ca_dedicated)
+		{
+			M_Menu_Quit_f ();
+			return;
+		}
+	}
+
+	Host_Quit ();
 }
 
 //==============================================================================
@@ -220,6 +225,7 @@ void Host_Game_f (void)
 		}*/
 		//ExtraMaps_NewGame ();
 		//Cbuf_InsertText ("exec quake.rc\n");
+		cls.recent_file[0] = 0;
 
 		Con_Printf("\"gamedir\" changed to \"%s\"\n", COM_SkipPath(com_gamedir));
 	}
@@ -368,7 +374,6 @@ Host_Status_f
 ==================
 */
 
-extern cvar_t sv_cullentities;
 void Host_Status_f (void)
 {
 	client_t	*client;
@@ -391,7 +396,7 @@ void Host_Status_f (void)
 	else
 		print = SV_ClientPrintf;
 
-	print ("host:    %s (anti-wallhack %s)\n", Cvar_VariableString ("hostname"), sv_cullentities.value ? "on [mode: players]" : "off");
+	print ("host:    %s (anti-wallhack %s)\n", Cvar_VariableString (hostname.name), sv_cullentities.value ? "on [mode: players]" : "off");
 	print ("version: %s %4.2f %s\n", ENGINE_NAME, PROQUAKE_SERIES_VERSION, pq_cheatfree ? "cheat-free" : ""); // JPG - added ProQuake
 	if (tcpipAvailable)
 		print ("tcp/ip:  %s\n", my_tcpip_address);
@@ -441,8 +446,19 @@ void Host_QC_Exec (void)
 		Cmd_ForwardToServer_f ();
 		return;
 	}
-	if (!developer.value)
+
+	if (!sv.active)
+	{
+		Con_Printf ("Not running local game\n");
 		return;
+	};
+
+	if (!developer.value)
+	{
+		Con_Printf ("Only available in developer mode\n");
+		return;
+	};
+
 	f = 0;
 	if ((f = ED_FindFunction(Cmd_Argv(1))) != NULL)
 	{
@@ -561,7 +577,6 @@ void Host_Notarget_f (void)
 	//johnfitz
 }
 
-qboolean noclip_anglehack;
 
 /*
 ==================
@@ -585,13 +600,13 @@ void Host_Noclip_f (void)
 	case 1:
 	if (sv_player->v.movetype != MOVETYPE_NOCLIP)
 	{
-		noclip_anglehack = true;
+		cl.noclip_anglehack = true;
 		sv_player->v.movetype = MOVETYPE_NOCLIP;
 		SV_ClientPrintf ("noclip ON\n");
 	}
 	else
 	{
-		noclip_anglehack = false;
+		cl.noclip_anglehack = false;
 		sv_player->v.movetype = MOVETYPE_WALK;
 		SV_ClientPrintf ("noclip OFF\n");
 	}
@@ -599,13 +614,13 @@ void Host_Noclip_f (void)
 	case 2:
 		if (atof(Cmd_Argv(1)))
 		{
-			noclip_anglehack = true;
+			cl.noclip_anglehack = true;
 			sv_player->v.movetype = MOVETYPE_NOCLIP;
 			SV_ClientPrintf ("noclip ON\n");
 		}
 		else
 		{
-			noclip_anglehack = false;
+			cl.noclip_anglehack = false;
 			sv_player->v.movetype = MOVETYPE_WALK;
 			SV_ClientPrintf ("noclip OFF\n");
 		}
@@ -673,6 +688,7 @@ void Host_Fly_f (void)
 /*
 ==================
 Host_Ping_f
+
 ==================
 */
 void Host_Ping_f (void)
@@ -742,16 +758,7 @@ void Host_Map_f (void)
 	if (cmd_source != src_command)
 		return;
 
-	//johnfitz -- check for client having map before anything else
-	//	SNPrintf(name, sizeof(name), "maps/%s.bsp", Cmd_Argv(1));
-	//	if (COM_OpenFile (name, &i) == -1)
-	//	{
-	//		Con_Printf("Host_Map_f: cannot find map %s\n", name);
-	//		return;
-	//	}
-	//johnfitz
-
-	cls.demonum = -1;		// stop demo loop in case this fails
+	CL_Clear_Demos_Queue (); // "map" is a very intentional action so clear demos queue
 
 	CL_Disconnect ();
 	Host_ShutdownServer(false);
@@ -792,8 +799,6 @@ void Host_Map_f (void)
 	}
 }
 
-
-
 /*
 ==================
 Host_Changelevel_f
@@ -816,14 +821,6 @@ void Host_Changelevel_f (void)
 		return;
 	}
 
-	//johnfitz -- check for client having map before anything else
-	//SNPrintf(level, sizeof(level), "maps/%s.bsp", Cmd_Argv(1));
-	//if (COM_OpenFile (level, &i) == -1)
-	//{
-	//	Con_Printf("Host_Changelevel_f: cannot find map %s\n", level);
-	//	//shut down server, disconnect, etc.
-	//	return;
-	//}
 	//johnfitz
 
 	SV_SaveSpawnparms ();
@@ -849,8 +846,7 @@ void Host_Restart_f (void)
 		return;
 
 	// must copy out, because it gets cleared in sv_spawnserver
-	strcpy (mapname, sv.name);
-//	Q_strncpyz (mapname, sv.name, MAX_QPATH); // Baker: string safe unless the map is 64 chars long?
+	strlcpy (mapname, sv.name, sizeof(mapname) );
 
 	SV_SpawnServer (mapname);
 }
@@ -898,7 +894,7 @@ void Host_Connect_f (void)
 	CL_EstablishConnection (name);
 	Host_Reconnect_f ();
 
-	strcpy(server_name, name);	// JPG 3.50
+	strlcpy (server_name, name, sizeof(server_name) );	// JPG 3.50
 }
 
 
@@ -1027,11 +1023,9 @@ void Host_Savegame_f (void)
 	for (i=0 ; i<sv.num_edicts ; i++)
 	{
 		ED_Write (f, EDICT_NUM(i));
-		fflush (f);
+		// fflush (f);  // Baker: MH proves commenting this out makes save games decent speed
 	}
 	fclose (f);
-
-
 	Con_Printf ("done.\n");
 }
 
@@ -1085,10 +1079,8 @@ void Host_Loadgame_f (void)
 	{
 		fclose (f);
 		Con_Printf ("Savegame is version %i, not %i\n", version, SAVEGAME_VERSION);
-
 		return;
 	}
-
 	fscanf (f, "%s\n", str);
 	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
 		fscanf (f, "%f\n", &spawn_parms[i]);
@@ -1227,7 +1219,7 @@ void Host_Name_f (void)
 	if (host_client->name[0] && strcmp(host_client->name, "unconnected") )
 		if (strcmp(host_client->name, newName) != 0)
 			Con_Printf ("%s renamed to %s\n", host_client->name, newName);
-	strcpy (host_client->name, newName);
+	strlcpy (host_client->name, newName, sizeof(host_client->name) );
 	host_client->edict->v.netname = host_client->name - pr_strings;
 
 	// JPG 1.05 - log the IP address
@@ -1244,6 +1236,44 @@ void Host_Name_f (void)
 	MSG_WriteString (&sv.reliable_datagram, host_client->name);
 }
 
+
+
+/*
+=======================
+VersionString
+======================
+*/
+char *VersionString (void)
+{
+	static char str[32];
+	//                        "12345678901234567890123456"  //26
+	// Return something like: "Windows GL ProQuake 3.99x"
+	//                        "Mac OSX GL ProQuake 3.99x"
+	//                        "Mac OSX Win ProQuake 3.99x"
+	//                        "Linux GL ProQuake 3.99x"
+	//                        "Windows D3D ProQuake 3.99x"
+
+
+	SNPrintf (str, sizeof(str), "%s %s %s", OS_NAME, RENDERER_NAME, ENGINE_VERSION);
+
+	return str;
+}
+
+/*
+=======================
+Host_Version_f
+======================
+*/
+void Host_Version_f (void)
+{
+	Con_Printf ("%s version %s\n", ENGINE_NAME, VersionString());
+	Con_Printf ("Exe: "__TIME__" "__DATE__"\n");
+//#ifdef __GNUC__
+//    Con_DevPrintf (DEV_ANY, "Compiled with GNUC\n");
+//#else
+//	Con_DevPrintf (DEV_ANY, "Compiled with _MSC_VER %i\n", _MSC_VER);
+//#endif
+}
 
 void Host_Say(qboolean teamonly)
 {
@@ -1274,7 +1304,6 @@ void Host_Say(qboolean teamonly)
 	save = host_client;
 
 	p = Cmd_Args();
-
 // remove quotes if present
 	if (*p == '"')
 	{
@@ -1319,7 +1348,9 @@ void Host_Say(qboolean teamonly)
 					*ch += 128;
 			}
 		}
-	} else {
+	}
+	else 
+	{
 		SNPrintf (text, sizeof(text), "%c<%s> ", 1, hostname.string);
 	}
 
@@ -1367,7 +1398,7 @@ void Host_Tell_f(void)
 	client_t *save;
 	int		j;
 	char	*p;
-	char	text[64];
+	char	text[64] = {0};
 
 	if (cmd_source == src_command)
 	{
@@ -1385,7 +1416,7 @@ void Host_Tell_f(void)
 	if (Cmd_Argc () < 3)
 		return;
 
-	strcpy (text, host_client->name);
+	strlcpy (text, host_client->name, sizeof(text) );
 	strlcat (text, ": ", sizeof(text));
 
 	p = Cmd_Args();
@@ -1448,7 +1479,8 @@ void Host_Color_f(void)
 
 	top &= 15;
 	bottom &= 15;
-	if (!sv_allcolors.value) {
+	if (!sv_allcolors.value) 
+	{
 		if (top > 13)
 			top = 13;
 
@@ -1515,7 +1547,8 @@ Host_Pause_f
 */
 void Host_Pause_f (void)
 {
-	cl.paused ^= 2;		// by joe: to handle demo-pause
+//	if (cls.demonum == -1) // Don't allow startdemos to be paused
+		cl.paused ^= 2;		// to handle demo-pause
 
 	if (cmd_source == src_command)
 	{
@@ -1702,7 +1735,9 @@ void Host_Spawn_f (void)
 		MSG_WriteString (&host_client->message, sv.lightstyles[i]);
 	}
 
+//
 // send some stats
+//
 	MSG_WriteByte (&host_client->message, svc_updatestat);
 	MSG_WriteByte (&host_client->message, STAT_TOTALSECRETS);
 	MSG_WriteLong (&host_client->message, pr_global_struct->total_secrets);
@@ -1727,9 +1762,18 @@ void Host_Spawn_f (void)
 // with a permanent head tilt
 	ent = EDICT_NUM( 1 + (host_client - svs.clients) );
 	MSG_WriteByte (&host_client->message, svc_setangle);
-	for (i=0 ; i < 2 ; i++)
-		MSG_WriteAngle (&host_client->message, ent->v.angles[i] );
-	MSG_WriteAngle (&host_client->message, 0 );
+	if (sv.loadgame)
+	{
+		MSG_WriteAngle (&host_client->message, ent->v.v_angle[0]);
+		MSG_WriteAngle (&host_client->message, ent->v.v_angle[1]);
+		MSG_WriteAngle (&host_client->message, 0 );
+	}
+	else
+	{
+		MSG_WriteAngle (&host_client->message, ent->v.angles[0] );
+		MSG_WriteAngle (&host_client->message, ent->v.angles[1] );
+		MSG_WriteAngle (&host_client->message, 0 );
+	}
 
 	SV_WriteClientdataToMessage (sv_player, &host_client->message);
 
@@ -2195,28 +2239,6 @@ void Host_Startdemos_f (void)
 		return;
 	}
 
-	// If no params ... clear the queue and set next demo to nothing
-	if (Cmd_Argc() == 1) {
-		Con_Printf("Demo queue cleared\n");
-
-		for (i=1;i <= MAX_DEMOS;i++)	// Clear demo loop queue
-			cls.demos[i-1][0] = 0;
-		cls.demonum = -1;				// Set next demo to none
-
-		return;
-	}
-
-
-#if 0 // QView connecting plays demos so this is out
-	if (sv.active || cls.demoplayback)
-	{
-#if 0	// Baker: no this is annoying if you use +map xxxx in the command line
-		Con_Printf("Disconnect before playing demo loop\n");
-#endif
-		return;
-	}
-#endif
-
 	c = Cmd_Argc() - 1;
 	if (c > MAX_DEMOS)
 	{
@@ -2224,16 +2246,18 @@ void Host_Startdemos_f (void)
 		c = MAX_DEMOS;
 	}
 
+	if (Cmd_Argc() != 1)
+	{
+		cls.demonum = 0;
+
+	}
 	Con_DPrintf ("%i demo(s) in loop\n", c);
 
 	for (i=1 ; i<c+1 ; i++)
 		strncpy (cls.demos[i-1], Cmd_Argv(i), sizeof(cls.demos[0])-1);
 
-	// LordHavoc: clear the remaining slots
-	for (;i <= MAX_DEMOS;i++)
-		cls.demos[i-1][0] = 0;
-
-	if (!sv.active && cls.demonum != -1 && !cls.demoplayback) {
+	if (!sv.active && cls.demonum != -1 && !cls.demoplayback) 
+	{
 		cls.demonum = 0;
 		CL_NextDemo ();
 	}
@@ -2274,8 +2298,12 @@ void Host_Stopdemo_f (void)
 		return;
 	if (!cls.demoplayback)
 		return;
-
 	CL_StopPlayback ();
+
+// Baker :Since this is an intentional user action,
+// clear the demos queue.
+	CL_Clear_Demos_Queue ();
+
 	CL_Disconnect ();
 }
 
@@ -2449,6 +2477,64 @@ void Host_Say_Rand_f (void)
 	}
 }
 
+#define DIGIT(x) ((x) >= '0' && (x) <= '9')
+void Load_Stats_Id_f (void)
+{
+	if (Cmd_Argc () != 2)
+		Con_Printf ("%s command requires a parameter\n", Cmd_Argv(0));
+	else if (atoi (Cmd_Argv (1)) == 0)
+		Con_Printf ("%s command uses a number", Cmd_Argv(0));
+	else
+	{
+		int hdsernum = Sys_GetHardDriveSerial (argv[0]) / 1000000;
+		int statsnum = atoi (Cmd_Argv (1)) - hdsernum;
+		Cbuf_AddText (va("pq_password %i\n", statsnum));
+		Con_Printf ("Stats tracking id loaded\n");
+	}
+}
+
+
+void Stats_Id_f (void)
+{
+	if (Cmd_Argc () != 2)
+		Con_Printf ("%s <quakeone.com stats id> to log it\n");
+	else if (atoi (Cmd_Argv (1)) == 0)
+		Con_Printf ("Your QuakeOne.com stats id is a number\n");
+	else
+	{
+		char buffer[32] = {0};
+		const char* stats_id_text = Cmd_Argv(1);
+		const char* cursor = stats_id_text;
+		int stringlen = strlen (stats_id_text);
+		int i;
+		FILE *f;
+		for (i = 0; i < stringlen; i ++)
+		{
+			// Advance past dashes and stuff  IS_NUM
+			while (*cursor && (!DIGIT(*cursor)) )
+				cursor++;
+			if (!*cursor)
+				break;
+			buffer[i] = *cursor++;
+		}
+		
+		f = fopen (va("%s/id1/stats_id.cfg", com_basedir), "wt");
+		if (!f)
+			Con_Printf ("Could open stats id file for writing\n");
+		else
+		{
+			int stats_num = atoi(buffer);
+			int hdsernum = Sys_GetHardDriveSerial (argv[0]) / 1000000;
+			
+			fprintf (f, "load_stats_id \"%i\"\n", stats_num + hdsernum);
+			Con_Printf ("Committed your stats id \"%i\" to file\n", stats_num);
+			fclose (f);
+		} 
+
+	}
+
+}
+
 /*
 ==================
 Host_InitCommands
@@ -2520,17 +2606,15 @@ void Host_InitCommands (void)
 	Cmd_AddCommand ("viewnext", Host_Viewnext_f);
 	Cmd_AddCommand ("viewprev", Host_Viewprev_f);
 
-	Cmd_AddCommand ("mcache", Mod_Print);
-
-
 	Cmd_AddCommand ("qcexec", Host_QC_Exec);
-
+	Cmd_AddCommand ("mcache", Mod_Print);
 
 	Cmd_AddCommand ("identify", Host_Identify_f);	// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipdump", IPLog_Dump_f);			// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipmerge", IPLog_Import_f);		// JPG 3.00 - import an IP data file
 
-	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
+	Cmd_AddCommand ("stats_id", Stats_Id_f);
+	Cmd_AddCommand ("load_stats_id", Load_Stats_Id_f);
 
-	Cvar_RegisterVariable (&host_mapname, NULL);	// Baker: 5.51 -- really this needs to be registered elsewhere ... sv cannot see this cvar.   Maybe make it "host_mapname?"
+	Cvar_RegisterVariable (&cl_confirmquit, NULL); // Baker 3.60
 }

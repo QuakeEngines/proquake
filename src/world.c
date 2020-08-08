@@ -652,21 +652,21 @@ trace_t SV_ClipMoveToEntity (edict_t *ent, vec3_t start, vec3_t mins, vec3_t max
    if (ent->v.solid == SOLID_BSP &&
    (ent->v.angles[0] || ent->v.angles[1] || ent->v.angles[2]) && ent != sv.edicts)
    {
-      vec3_t   a;
-      vec3_t   forward, right, up;
-      vec3_t   temp;
+//		vec3_t   a;
+		vec3_t   forward, right, up;
+		vec3_t   temp;
 
-      AngleVectors (ent->v.angles, forward, right, up);
+		AngleVectors (ent->v.angles, forward, right, up);
 
-      VectorCopy (start_l, temp);
-      start_l[0] = DotProduct (temp, forward);
-      start_l[1] = -DotProduct (temp, right);
-      start_l[2] = DotProduct (temp, up);
+		VectorCopy (start_l, temp);
+		start_l[0] = DotProduct (temp, forward);
+		start_l[1] = -DotProduct (temp, right);
+		start_l[2] = DotProduct (temp, up);
 
-      VectorCopy (end_l, temp);
-      end_l[0] = DotProduct (temp, forward);
-      end_l[1] = -DotProduct (temp, right);
-      end_l[2] = DotProduct (temp, up);
+		VectorCopy (end_l, temp);
+		end_l[0] = DotProduct (temp, forward);
+		end_l[1] = -DotProduct (temp, right);
+		end_l[2] = DotProduct (temp, up);
    }
 // ROTATE END
 
@@ -679,28 +679,28 @@ trace_t SV_ClipMoveToEntity (edict_t *ent, vec3_t start, vec3_t mins, vec3_t max
    if (ent->v.solid == SOLID_BSP &&
    (ent->v.angles[0] || ent->v.angles[1] || ent->v.angles[2]) && ent != sv.edicts)
    {
-      vec3_t   a;
-      vec3_t   forward, right, up;
-      vec3_t   temp;
+		vec3_t   a;
+		vec3_t   forward, right, up;
+		vec3_t   temp;
 
-      if (trace.fraction != 1)
-      {
-         VectorSubtract (vec3_origin, ent->v.angles, a);
-         AngleVectors (a, forward, right, up);
+		if (trace.fraction != 1)
+		{
+			VectorSubtract (vec3_origin, ent->v.angles, a);
+			AngleVectors (a, forward, right, up);
 
-         VectorCopy (trace.endpos, temp);
-         trace.endpos[0] = DotProduct (temp, forward);
-         trace.endpos[1] = -DotProduct (temp, right);
-         trace.endpos[2] = DotProduct (temp, up);
+			VectorCopy (trace.endpos, temp);
+			trace.endpos[0] = DotProduct (temp, forward);
+			trace.endpos[1] = -DotProduct (temp, right);
+			trace.endpos[2] = DotProduct (temp, up);
 
-         VectorCopy (trace.plane.normal, temp);
-         trace.plane.normal[0] = DotProduct (temp, forward);
-         trace.plane.normal[1] = -DotProduct (temp, right);
-         trace.plane.normal[2] = DotProduct (temp, up);
-      }
+			VectorCopy (trace.plane.normal, temp);
+			trace.plane.normal[0] = DotProduct (temp, forward);
+			trace.plane.normal[1] = -DotProduct (temp, right);
+			trace.plane.normal[2] = DotProduct (temp, up);
+		}
 
-// fix trace up by the offset
-	   VectorAdd (trace.endpos, offset, trace.endpos);
+		// fix trace up by the offset
+		VectorAdd (trace.endpos, offset, trace.endpos);
 
    }
 // other cases where not

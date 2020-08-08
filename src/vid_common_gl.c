@@ -35,10 +35,10 @@ int	texture_mode = GL_LINEAR;
 float		gldepthmin, gldepthmax;
 
 
-PROC glArrayElementEXT;
-PROC glColorPointerEXT;
-PROC glTexCoordPointerEXT;
-PROC glVertexPointerEXT;
+//PROC glArrayElementEXT;
+//PROC glColorPointerEXT;
+//PROC glTexCoordPointerEXT;
+//PROC glVertexPointerEXT;
 
 float vid_gamma = 1.0;
 byte		vid_gamma_table[256];
@@ -47,18 +47,10 @@ unsigned	d_8to24table[256];
 unsigned	d_8to24table2[256];
 //unsigned short	d_8to16table[256]; //johnfitz -- never used
 
-
-
-
-
-
-
-
-
 #define TEXTURE_EXT_STRING "GL_EXT_texture_object"
 
 
-qboolean isPermedia = false;
+//qboolean isPermedia = false;
 
 byte		color_white[4] = {255, 255, 255, 0};
 byte		color_black[4] = {0, 0, 0, 0};
@@ -84,97 +76,16 @@ qboolean CheckExtension (const char *extension)
 	return false;
 }
 
-void CheckTextureExtensions (void)
-{
-
-#if !defined(DX8QUAKE)
-	char		*tmp;
-	qboolean	texture_ext;
-	HINSTANCE	hInstGL;
-
-	texture_ext = FALSE;
-	/* check for texture extension */
-	tmp = (unsigned char *)glGetString(GL_EXTENSIONS);
-	while (*tmp)
-	{
-		if (strncmp((const char*)tmp, TEXTURE_EXT_STRING, strlen(TEXTURE_EXT_STRING)) == 0)
-			texture_ext = TRUE;
-		tmp++;
-	}
-
-	if (!texture_ext || COM_CheckParm ("-gl11") )
-	{
-		hInstGL = LoadLibrary("opengl32.dll");
-
-		if (hInstGL == NULL)
-			Sys_Error ("Couldn't load opengl32.dll\n");
-
-		bindTexFunc = (void *)GetProcAddress(hInstGL,"glBindTexture");
-
-		if (!bindTexFunc)
-			Sys_Error ("No texture objects!");
-		return;
-	}
-
-/* load library and get procedure adresses for texture extension API */
-	if ((bindTexFunc = (BINDTEXFUNCPTR)
-		wglGetProcAddress((LPCSTR) "glBindTextureEXT")) == NULL)
-	{
-		Sys_Error ("GetProcAddress for BindTextureEXT failed");
-		return;
-	}
-
-#endif
-}
-
-/*
-===============
-CheckArrayExtensions
-===============
-*/
-void CheckArrayExtensions (void)
-{
-#if !defined(DX8QUAKE)
-
-	char		*tmp;
-
-	// check for texture extension
-	tmp = (unsigned char *)glGetString(GL_EXTENSIONS);
-	while (*tmp) {
-		if (strncmp((const char*)tmp, "GL_EXT_vertex_array", strlen("GL_EXT_vertex_array")) == 0) {
-			if (
-((glArrayElementEXT = wglGetProcAddress("glArrayElementEXT")) == NULL) ||
-((glColorPointerEXT = wglGetProcAddress("glColorPointerEXT")) == NULL) ||
-((glTexCoordPointerEXT = wglGetProcAddress("glTexCoordPointerEXT")) == NULL) ||
-((glVertexPointerEXT = wglGetProcAddress("glVertexPointerEXT")) == NULL) )
-			{
-				Sys_Error ("GetProcAddress for vertex extension failed");
-				return;
-			}
-			return;
-		}
-		tmp++;
-	}
-
-	Sys_Error ("Vertex array extension not present");
-
-#endif
-}
-
-//int		texture_mode = GL_NEAREST;
-//int		texture_mode = GL_NEAREST_MIPMAP_NEAREST;
-//int		texture_mode = GL_NEAREST_MIPMAP_LINEAR;
 int		texture_mode = GL_LINEAR;
-//int		texture_mode = GL_LINEAR_MIPMAP_NEAREST;
-//int		texture_mode = GL_LINEAR_MIPMAP_LINEAR;
-
 int		texture_extension_number = 1;
 
-#ifndef OLD_SGIS
+lpMTexFUNC		qglMultiTexCoord2f = NULL;
+lpSelTexFUNC	qglActiveTexture = NULL;
+
 
 void CheckMultiTextureExtensions(void)
 {
-	qboolean SGIS, ARB;
+	qboolean arb_mtex;
 
 	if (COM_CheckParm("-nomtex"))
 	{
@@ -182,49 +93,22 @@ void CheckMultiTextureExtensions(void)
 		return;
 	}
 
-	if (COM_CheckParm("-nomtexarb"))
-		ARB = false;
-	else
-		ARB = strstr (gl_extensions, "GL_ARB_multitexture ") != NULL;
+	arb_mtex = strstr (gl_extensions, "GL_ARB_multitexture ") != NULL;
 
-	SGIS = strstr (gl_extensions, "GL_SGIS_multitexture ") != NULL;
-
-	if (!ARB && !SGIS) {
+	if (!arb_mtex) 
+	{
 		Con_Warning ("Multitexture extension not found\n");
 		return;
 	}
 
-	qglMTexCoord2fSGIS = (void *) wglGetProcAddress (ARB ? "glMultiTexCoord2fARB" : "glMTexCoord2fSGIS");
-	qglSelectTextureSGIS = (void *) wglGetProcAddress (ARB ? "glActiveTextureARB" : "glSelectTextureSGIS");
-	TEXTURE0_SGIS = ARB ? 0x84C0 : 0x835E;
-	TEXTURE1_SGIS = ARB ? 0x84C1 : 0x835F;
-	gl_oldtarget = TEXTURE0_SGIS;
+	qglMultiTexCoord2f	= (void *) wglGetProcAddress ("glMultiTexCoord2fARB");
+	qglActiveTexture	= (void *) wglGetProcAddress ("glActiveTextureARB");
 
-	Con_Printf ("GL_%s_multitexture extensions found\n", ARB ? "ARB" : "SGIS");
+//	currenttarget = TEXTURE0_ARB;
+
+	Con_Printf ("GL_%s_multitexture extensions found: ARB\n");
 	gl_mtexable = true;
 }
-#else
-
-void CheckMultiTextureExtensions(void) {
-   if (COM_CheckParm("-nomtex"))
-   {
-      Con_Warning ("Multitexture disabled at command line\n");
-      return;
-   }
-
-	if (!strstr(gl_extensions, "GL_SGIS_multitexture ")) {
-		Con_Warning ("Multitexture extension not found\n");
-		return;
-	}
-
-	qglMTexCoord2fSGIS = (void *) wglGetProcAddress("glMTexCoord2fSGIS");
-	qglSelectTextureSGIS = (void *) wglGetProcAddress("glSelectTextureSGIS");
-
-	Con_Printf("Multitexture extensions found\n");
-	gl_mtexable = true;
-}
-
-#endif
 
 
 
@@ -282,7 +166,8 @@ void GL_Init (void)
 	Con_Printf ("GL_VERSION: %s\n", gl_version);
 	gl_extensions = glGetString (GL_EXTENSIONS);
 
-	if (strncasecmp(gl_renderer, "Intel", 5) == 0) {
+	if (strncasecmp(gl_renderer, "Intel", 5) == 0) 
+	{
 		Con_Printf ("Intel Display Adapter detected\n");
 		IntelDisplayAdapter = true;
 		Cvar_Set ("gl_ztrick", "0");
@@ -292,13 +177,14 @@ void GL_Init (void)
 
 
 
-	CheckTextureExtensions ();
+//	CheckTextureExtensions ();
 	CheckMultiTextureExtensions ();
 
 	GL_SetupState (); //johnfitz
 }
 
-void GL_PrintExtensions_f(void) {
+void GL_PrintExtensions_f(void) 
+{
 	Con_Printf ("GL_EXTENSIONS: %s\n", gl_extensions);
 }
 
@@ -335,7 +221,8 @@ void	VID_ShiftPaletteOld (unsigned char *palette)
 //	VID_SetPaletteOld (palette);
 //	gammaworks = SetDeviceGammaRamp (maindc, ramps);
 }
-BINDTEXFUNCPTR bindTexFunc;
+
+//BINDTEXFUNCPTR bindTexFunc;
 void VID_SetPalette (unsigned char *palette)
 {
 	byte		*pal;
@@ -344,7 +231,8 @@ void VID_SetPalette (unsigned char *palette)
 // 8 8 8 encoding
 	pal = palette;
 	table = d_8to24table;
-	for (i=0 ; i<256 ; i++) {
+	for (i=0 ; i<256 ; i++) 
+	{
 		r = pal[0];
 		g = pal[1];
 		b = pal[2];
@@ -355,7 +243,8 @@ void VID_SetPalette (unsigned char *palette)
 // Tonik: create a brighter palette for bmodel textures
 	pal = palette;
 	table = d_8to24table2;
-	for (i=0 ; i<256 ; i++) {
+	for (i=0 ; i<256 ; i++) 
+	{
 		r = min(pal[0] * (2.0 / 1.5), 255);
 		g = min(pal[1] * (2.0 / 1.5), 255);
 		b = min(pal[2] * (2.0 / 1.5), 255);

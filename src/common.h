@@ -33,9 +33,7 @@ typedef unsigned char 		byte;
 
 typedef enum {false, true}	qboolean;
 
-#ifndef NULL
-#define NULL ((void *)0)
-#endif
+
 
 // Baker: these aren't used on MSVC6 (part of stdlib.h)
 #ifndef min
@@ -65,6 +63,8 @@ void *SZ_GetSpace (sizebuf_t *buf, int length);
 void SZ_Write (sizebuf_t *buf, void *data, int length);
 void SZ_Print (sizebuf_t *buf, char *data);	// strcats onto the sizebuf
 
+//============================================================================
+
 typedef struct link_s
 {
 	struct link_s	*prev, *next;
@@ -82,6 +82,10 @@ void InsertLinkAfter (link_t *l, link_t *after);
 #define	STRUCT_FROM_LINK(l,t,m) ((t *)((byte *)l - (int)&(((t *)0)->m)))
 
 //============================================================================
+
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
 
 #define Q_MAXCHAR ((char)0x7f)
 #define Q_MAXSHORT ((short)0x7fff)
@@ -139,6 +143,7 @@ float MSG_ReadPreciseAngle (void); // JPG - precise aim!!
 
 
 
+//============================================================================
 
 extern	char		com_token[1024];
 extern	qboolean	com_eof;
@@ -160,17 +165,22 @@ void COM_FileBase (char *in, char *out);
 void COM_DefaultExtension (char *path, char *extension);
 
 char *va (const char *format, ...);
+// does a varargs printf into a temp buffer
 
 char *CopyString (char *s);
+void COM_SlashesForward_Like_Unix (char *WindowsStylePath);
+void COM_Reduce_To_Parent_Path (char* myPath);
+char *COM_NiceFloatString (float floatvalue);
 
 //============================================================================
 
 extern int com_filesize;
+extern char	com_basedir[MAX_OSPATH];
+
+
 struct cache_user_s;
 
 extern	char	com_gamedir[MAX_OSPATH];
-extern char	com_basedir[MAX_OSPATH];
-
 
 void COM_ForceExtension (char *path, char *extension);	// by joe
 
@@ -195,21 +205,24 @@ void COM_GetFolder (char *in, char *out);//R00k
 #endif
 
 
-
+// Misc
 char *COM_Quakebar (int len);
+int COM_Minutes (int seconds);
+int COM_Seconds (int seconds);
+char *VersionString (void);
+void Host_Version_f (void);
 
+extern struct cvar_s	registered;
+extern struct cvar_s	cmdline;
 
-
-extern	struct cvar_s	registered;
 
 extern qboolean		standard_quake, rogue, hipnotic;
-extern qboolean		mod_deeplair, mod_conhide,  mod_nosoundwarn;
+//extern qboolean		mod_deeplair, mod_conhide,  mod_nosoundwarn;
 
 
 
-extern void COM_ToLowerString(char *in, char *out);
 
-void R_PreMapLoad (char *mapname);
+
 
 #if defined(_WIN32) && defined(_MSC_VER)
 

@@ -163,10 +163,10 @@ void Mod_ClearAll (void)
 {
 	int		i;
 	model_t	*mod;
-#ifdef SUPPORTS_GL_DELETETEXTURES
+//#ifdef SUPPORTS_GL_DELETETEXTURES
 	static qboolean NoFree, Done;
 	extern	void GL_FreeTextures (void);
-#endif
+//#endif
 
 
 	for (i=0 , mod=mod_known ; i<mod_numknown ; i++, mod++) 
@@ -175,7 +175,7 @@ void Mod_ClearAll (void)
 			mod->needload = true;
 	}
 
-#ifdef SUPPORTS_GL_DELETETEXTURES
+//#ifdef SUPPORTS_GL_DELETETEXTURES
 
 	if (!Done)
 	{
@@ -186,7 +186,7 @@ void Mod_ClearAll (void)
 
 	if (!NoFree)
 		GL_FreeTextures ();
-#endif
+//#endif
 
 }
 
@@ -1226,10 +1226,8 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 	if (mod->bspversion != BSPVERSION)
 		Host_Error ("Mod_LoadBrushModel: %s has wrong version number (%i should be %i)", mod->name, mod->bspversion, BSPVERSION);
 
-	{
-		extern cvar_t host_mapname;
-		loadmodel->isworldmodel = !strcmp (loadmodel->name, va("maps/%s.bsp", host_mapname.string));
-	}
+	loadmodel->isworldmodel = !strcmp (loadmodel->name, va("maps/%s.bsp", host_worldname) );
+	
 
 // swap all the lumps
 	mod_base = (byte *)header;

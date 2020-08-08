@@ -32,8 +32,6 @@ char	*cvar_null_string = "";
 
 void Cvar_Reset (char *name); //johnfitz
 
-// Baker 3.60 -- 2000-01-09 CvarList command by Maddes  start
-
 /*
 ============
 Cvar_List_f -- johnfitz
@@ -221,7 +219,6 @@ void Cvar_Init (void)
 	Cmd_AddCommand ("cvarlist", Cvar_List_f);
 	Cmd_AddCommand ("toggle", Cvar_Toggle_f);
 	Cmd_AddCommand ("cycle", Cvar_Cycle_f);
-	//Cmd_AddCommand ("inc", Cvar_Inc_f);
 	Cmd_AddCommand ("resetcvar", Cvar_Reset_f);
 	Cmd_AddCommand ("resetall", Cvar_ResetAll_f);
 }
@@ -231,8 +228,6 @@ void Cvar_Init (void)
 //  CVAR FUNCTIONS
 //
 //==============================================================================
-
-// 2000-01-09 CvarList command by Maddes  end
 
 /*
 ============
@@ -404,13 +399,7 @@ Cvar_SetValue
 */
 void Cvar_SetValue (char *var_name, float value)
 {
-	char	val[32];
-
-	if (value == (int)value)
-		SNPrintf(val, sizeof(val),  "%d", (int)value);
-	else
-	SNPrintf (val, sizeof(val), "%f",value);
-	Cvar_Set (var_name, val);
+	Cvar_Set (var_name, COM_NiceFloatString(value));
 }
 
 /*

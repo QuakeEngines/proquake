@@ -38,15 +38,13 @@ static	FILE	*moviefile;
 
 static	float	hack_ctr;
 
-static qboolean OnChange_capture_dir (cvar_t *var, char *string);
-cvar_t	capture_dir	= {"capture_dir", "capture"};
 
-cvar_t	capture_codec	= {"capture_codec", "0", true};
-cvar_t	capture_fps	= {"capture_fps", "30.0"};
-cvar_t	capture_console	= {"capture_console", "1"};
-cvar_t	capture_hack	= {"capture_hack", "0"};
-cvar_t	capture_mp3	= {"capture_mp3", "0"};
-cvar_t	capture_mp3_kbps = {"capture_mp3_kbps", "128"};
+cvar_t	capture_codec	= {"cl_capturevideo_codec", "auto"};
+cvar_t	capture_fps	= {"cl_capturevideo_fps", "30.0"};
+cvar_t	capture_console	= {"cl_capturevideo_console", "1"};
+cvar_t	capture_hack	= {"cl_capturevideo_hack", "0"};
+cvar_t	capture_mp3	= {"cl_capturevideo_mp3", "0"};
+cvar_t	capture_mp3_kbps = {"cl_capturevideo_mp3_kbps", "128"};
 
 static qboolean movie_is_capturing = false;
 qboolean	avi_loaded, acm_loaded;
@@ -57,49 +55,87 @@ qboolean Movie_IsActive (void)
 	if ((!capture_console.value && scr_con_current > 0) || scr_drawloading)
 		return false;
 
+	// Never capture the console if capturedemo is running
+	if (cls.capturedemo && scr_con_current > 0)
+		return false;
+
 	// otherwise output if a file is open to write to
 	return movie_is_capturing;
 }
 
-void Movie_Start_f (void)
+
+char	movie_capturing_name[MAX_QPATH];
+char	movie_capturing_fullpath[MAX_OSPATH]; // fullpath
+char	movie_codec[12];
+void Movie_Start_Capturing (char *moviename)
 {
-	char	name[MAX_OSPATH], path[256];
-
-	if (Cmd_Argc() != 2)
-	{
-		Con_Printf ("capture_start <filename> : Start capturing to named file\n");
-		return;
-	}
-
-	strlcpy (name, Cmd_Argv(1), sizeof(name));
-	COM_ForceExtension (name, ".avi");
 
 	hack_ctr = capture_hack.value;
 
-	SNPrintf (path, sizeof(path), "%s/%s", capture_dir.string, name);
-	if (!(moviefile = fopen(path, "wb")))
+	strlcpy (movie_capturing_name, moviename, sizeof(movie_capturing_name) );
+	COM_ForceExtension (movie_capturing_name, ".avi");
+	sprintf (movie_capturing_fullpath, "%s/%s", com_gamedir, movie_capturing_name);
+
+	if (!(moviefile = fopen(movie_capturing_fullpath, "wb")))
 	{
-		COM_CreatePath (path);
-		if (!(moviefile = fopen(path, "wb")))
+		COM_CreatePath (movie_capturing_fullpath);
+		if (!(moviefile = fopen(movie_capturing_fullpath, "wb")))
 		{
-			Con_Printf ("ERROR: Couldn't open %s\n", name);
+			Con_Printf ("ERROR: Couldn't open %s\n", movie_capturing_name);
 			return;
 		}
 	}
 
-	movie_is_capturing = Capture_Open (path);
+	if (strcasecmp("auto", capture_codec.string) == 0)
+	{
+		// Automatic
+		char *codec_order[] = {"vp80", "xvid", "divx", "none"};
+		int	count = sizeof(codec_order) / sizeof(codec_order[0]);
+		int result, i;
+
+		for (i = 0; i < count ; i ++)
+		{
+			result = Capture_Open (movie_capturing_fullpath, codec_order[i], true);
+			if (result == true)
+			{
+				strcpy (movie_codec, codec_order[i]);
+				break;
+			}
+		}
+		if (result != true)
+		{
+			movie_is_capturing = false;
+			Con_Printf ("ERROR: Couldn't create video stream\n");
+		}
+		else
+			movie_is_capturing = true;
+	}
+	else
+	{
+		movie_is_capturing = (Capture_Open (movie_capturing_fullpath, capture_codec.string, false) > 0);	
+		if (movie_is_capturing)
+			strcpy (movie_codec, capture_codec.string);
+	}
 }
+
+
 
 void Movie_Stop (void)
 {
 	movie_is_capturing = false;
 	Capture_Close ();
 	fclose (moviefile);
+	strlcpy (cls.recent_file, movie_capturing_name, sizeof(cls.recent_file) );
+
+	if (cls.demo_hosttime_elapsed /*cls.capturedemo*/) // Because cls.capturedemo already was cleared :(
+		Con_Printf ("Video completed: %s in %d:%02d (codec: %s)\n", movie_capturing_name, COM_Minutes((int)cls.demo_hosttime_elapsed), COM_Seconds((int)cls.demo_hosttime_elapsed), movie_codec);
+	else
+		Con_Printf ("Video completed: %s (codec: %s)\n", movie_capturing_name, movie_codec);
 }
 
-void Movie_Stop_f (void)
+void Movie_Stop_Capturing (void)
 {
-	if (!Movie_IsActive())
+	if (movie_is_capturing == 0)
 	{
 		Con_Printf ("Not capturing\n");
 		return;
@@ -110,28 +146,115 @@ void Movie_Stop_f (void)
 
 	Movie_Stop ();
 
-	Con_Printf ("Stopped capturing\n");
 }
+
+void Movie_StopPlayback (void);
 
 void Movie_CaptureDemo_f (void)
 {
 	if (Cmd_Argc() != 2)
 	{
-		Con_Printf ("Usage: capturedemo <demoname>\n");
+		Con_Printf ("Usage: capturedemo <demoname>\n\nNote: stopdemo will stop video capture\nUse cl_capturevideo_* cvars for codec, fps, etc.\n");
 		return;
 	}
 
-	Con_Printf ("Capturing %s.dem\n", Cmd_Argv(1));
+	if (movie_is_capturing)
+	{
+		Con_Printf ("Can't capture demo, video is capturing\n");
+		return;
+	}
+
+	// Baker: This is a performance benchmark.  No reason to have console up.
+	if (key_dest != key_game)
+		key_dest = key_game;
+
+	CL_Clear_Demos_Queue (); // timedemo is a very intentional action
 
 	CL_PlayDemo_f ();
 	if (!cls.demoplayback)
 		return;
 
-	Movie_Start_f ();
+	Movie_Start_Capturing (Cmd_Argv(1));
 	cls.capturedemo = true;
 
 	if (!movie_is_capturing)
+	{
 		Movie_StopPlayback ();
+
+		// Baker: If capturedemo fails, just stop the demo playback.
+		// Don't confuse the user
+		Host_Stopdemo_f ();
+
+ 		// If +capturedemo in command line, we exit after demo capture 
+		// completed (even if failed .. and this is failure location here)
+		if (cls.capturedemo_and_exit)
+			Host_Quit ();
+	}
+
+}
+
+void Movie_Capture_Toggle_f (void)
+{
+	if (Cmd_Argc() != 2 || strcasecmp(Cmd_Argv(1), "toggle") != 0)
+	{
+		Con_Printf ("usage: %s <toggle>\n\nset cl_capturevideo_codec and fps first\n", Cmd_Argv (0));
+		Con_Printf (movie_is_capturing ? "status: movie capturing\n" : "status: not capturing\n");
+		return;
+	}
+
+	if (cls.capturedemo)
+	{
+		Con_Printf ("Can't capturevideo toggle, capturedemo running\n");
+		return;
+	}
+
+	if (movie_is_capturing)
+	{
+		Movie_Stop_Capturing ();
+	}
+	else
+	{
+//		byte	*buffer;
+		char	aviname[MAX_QPATH];
+		char	checkname[MAX_OSPATH];
+		char	barename[MAX_QPATH] = "video";
+		int		i;
+
+		if (cl.worldmodel)
+			COM_StripExtension (cl.worldmodel->name + 5, barename);
+
+	// find a file name to save it to
+		for (i=0; i<10000; i++)
+		{
+			sprintf (aviname, "%s%04i.avi", barename, i);
+			sprintf (checkname, "%s/%s", com_gamedir, aviname);
+			if (Sys_FileTime(checkname) == -1)
+				break;	// file doesn't exist
+		}
+		if (i == 10000)
+		{
+			Con_Printf ("Movie_Capture_Toggle_f: Couldn't find an unused filename\n");
+			return;
+ 		}
+
+		Movie_Start_Capturing (aviname);
+	}
+
+}
+
+void CaptureCodec_Validate (void)
+{
+	if (!capture_codec.string[0]) // Empty string ... assume user means none
+	{
+		Cvar_Set (capture_codec.name, "none");
+		Con_Printf ("%s set to \"%s\"\n", capture_codec.name, capture_codec.string);
+	}
+
+	if (capture_codec.string[0] == '0') // Begins with 0 ... set to auto
+	{
+		Cvar_Set (capture_codec.name, "auto");
+		Con_Printf ("%s set to \"%s\"\n", capture_codec.name, capture_codec.string);
+	}
 }
 
 void Movie_Init (void)
@@ -142,16 +265,16 @@ void Movie_Init (void)
 
 	captured_audio_samples = 0;
 
-	Cmd_AddCommand ("capture_start", Movie_Start_f);
-	Cmd_AddCommand ("capture_stop", Movie_Stop_f);
+	Cmd_AddCommand ("capturevideo", Movie_Capture_Toggle_f);
+	Cmd_AddCommand ("capturedemostop", Movie_Stop_Capturing);
 	Cmd_AddCommand ("capturedemo", Movie_CaptureDemo_f);
-	Cvar_RegisterVariable (&capture_codec, NULL);
+
+	Cvar_RegisterVariable (&capture_codec, CaptureCodec_Validate);
 	Cvar_RegisterVariable (&capture_fps, NULL);
-	Cvar_RegisterVariable (&capture_dir, OnChange_capture_dir);
+
 	Cvar_RegisterVariable (&capture_console, NULL);
 	Cvar_RegisterVariable (&capture_hack, NULL);
 
-	Cvar_Set ("capture_dir", va("%s/%s", host_parms.basedir, capture_dir.string));
 
 	ACM_LoadLibrary ();
 	if (!acm_loaded)
@@ -168,6 +291,12 @@ void Movie_StopPlayback (void)
 
 	cls.capturedemo = false;
 	Movie_Stop ();
+
+	// If +capturedemo in command line, we exit after demo capture 
+	// completed (even if failed .. and this is failure location here)
+
+	if (cls.capturedemo_and_exit)
+		Host_Quit ();
 }
 
 double Movie_FrameTime (void)
@@ -183,7 +312,6 @@ double Movie_FrameTime (void)
 
 void Movie_UpdateScreen (void)
 {
-
 	int	i, size = glwidth * glheight * 3;
 	byte	*buffer, temp;
 
@@ -206,7 +334,7 @@ void Movie_UpdateScreen (void)
 
 	buffer = Q_malloc (size);
 	glReadPixels (glx, gly, glwidth, glheight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
-//	ApplyGamma (buffer, size);  Baker: ProQuake doesn't use hardware gamma
+//	ApplyGamma (buffer, size);  Baker: a thought
 
 	for (i = 0 ; i < size ; i += 3)
 	{
@@ -245,15 +373,4 @@ qboolean Movie_GetSoundtime (void)
 	soundtime += Q_rint (host_frametime * shm->speed * (Movie_FrameTime() / host_frametime));
 
 	return true;
-}
-
-static qboolean OnChange_capture_dir (cvar_t *var, char *string)
-{
-	if (Movie_IsActive())
-	{
-		Con_Printf ("Cannot change capture_dir whilst capturing. Use 'capture_stop' to cease capturing first.\n");
-		return true;
-	}
-
-	return false;
 }

@@ -165,9 +165,6 @@ void S_Startup (void)
 S_Init
 ================
 */
-#ifdef BUILD_MP3_VERSION
-void CDAudioSetVolume (void);
-#endif
 void S_Init (void)
 {
 	if (COM_CheckParm("-nosound"))

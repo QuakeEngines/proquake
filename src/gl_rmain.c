@@ -1622,7 +1622,8 @@ void R_Clear (void)
 	{
 		// Baker hwgamma support
 
-		if (using_hwgamma) {
+		if (using_hwgamma) 
+		{
 			clearbits |= GL_DEPTH_BUFFER_BIT;
 			glClear (clearbits);
 		} else

@@ -23,15 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "winquake.h"
 #include "resource.h"
 
-
 #define MODE_WINDOWED			0
 #define NO_MODE					(MODE_WINDOWED - 1)
 #define MODE_FULLSCREEN_DEFAULT	(MODE_WINDOWED + 1)
-
-
-
-
-
 
 vmode_t	modelist[MAX_MODE_LIST];
 int		nummodes;
@@ -150,12 +144,13 @@ SWAPINTERVALFUNCPTR wglSwapIntervalEXT = NULL;
 
 
 void VID_Vsync_f (void);
+void Vid_Win32_InitWindow (HINSTANCE hInstance);
+void System_GammaReset (void);
+void Vidmodes_Populate (int w, int h, int bpp);
 
 void CheckVsyncControlExtensions (void)
 {
-	extern cvar_t vid_vsync;
-	// Baker: Keep the cvar even though it won't work in D3DQuake
-	Cvar_RegisterVariable (&vid_vsync, VID_Vsync_f);
+
 
 	if (COM_CheckParm("-noswapctrl"))
 	{
@@ -176,13 +171,15 @@ void CheckVsyncControlExtensions (void)
 #endif
 
 
-	if (!CheckExtension("WGL_EXT_swap_control") && !CheckExtension("GL_WIN_swap_hint")) {
+	if (!CheckExtension("WGL_EXT_swap_control") && !CheckExtension("GL_WIN_swap_hint")) 
+	{
 		Con_Warning ("Vertical sync not supported (extension not found)\n");
 		return;
 	}
 
-	if (!(wglSwapIntervalEXT = (void *)wglGetProcAddress("wglSwapIntervalEXT"))) {
-				Con_Warning ("vertical sync not supported (wglSwapIntervalEXT failed)\n");
+	if (!(wglSwapIntervalEXT = (void *)wglGetProcAddress("wglSwapIntervalEXT"))) 
+	{
+		Con_Warning ("vertical sync not supported (wglSwapIntervalEXT failed)\n");
 		return;
 	}
 
@@ -600,7 +597,9 @@ void D3D_WrapResetMode (int newmodenum, qboolean newmode_is_windowed)
 //			IN_ActivateMouse ();
 //			IN_HideMouse ();
 			IN_Mouse_Acquire ();
-		} else {
+		}
+		else 
+		{
 //			IN_DeactivateMouse ();
 //			IN_ShowMouse ();
 			IN_Mouse_Unacquire ();
@@ -892,12 +891,14 @@ void VID_Fullscreen(void)
 	if (!host_initialized)
 		return;
 
-	if (modestate == MODE_FULLSCREEN  || vid_fullscreen_only) {
+	if (modestate == MODE_FULLSCREEN  || vid_fullscreen_only) 
+	{
 		Con_DPrintf("VID_Fullscreen: Already fullscreen\n");
 		return;
 	}
 
-	if (vid_locked) {
+	if (vid_locked) 
+	{
 		Con_Printf("VID_Fullscreen: Video mode switching is locked\n");
 		return;
 	}
@@ -1064,10 +1065,6 @@ GL_EndRendering
 =================
 */
 
-#ifdef DX8QUAKE_BAKER_ALTTAB_HACK
-static int vid_force_restart_countdown=0;
-#endif
-
 
 void GL_EndRendering (void)
 {
@@ -1098,14 +1095,6 @@ void GL_EndRendering (void)
 		update_vsync = false;
 #if defined(DX8QUAKE)
 	FakeSwapBuffers();
-#ifdef DX8QUAKE_BAKER_ALTTAB_HACK
-	// Baker: cheesy workaround
-	if (vid_force_restart_countdown) {
-		vid_force_restart_countdown --;
-		if (!vid_force_restart_countdown)
-			Cbuf_AddText ("vid_force_restart\n");
-	}
-#endif // !DX8QUAKE
 
 #else
 		SwapBuffers (maindc);
@@ -1291,7 +1280,8 @@ void VID_Gamma_Shutdown (void)
 
 // Baker end hwgamma support
 
-BOOL bSetupPixelFormat(HDC hDC) {
+BOOL bSetupPixelFormat(HDC hDC) 
+{
     static PIXELFORMATDESCRIPTOR pfd = {
 	sizeof(PIXELFORMATDESCRIPTOR),	// size of this pfd
 	1,				// version number
@@ -1314,12 +1304,14 @@ BOOL bSetupPixelFormat(HDC hDC) {
     };
     int pixelformat;
 
-    if ((pixelformat = ChoosePixelFormat(hDC, &pfd)) == 0 ) {
+    if ((pixelformat = ChoosePixelFormat(hDC, &pfd)) == 0 ) 
+	{
         MessageBox(NULL, "ChoosePixelFormat failed", "Error", MB_OK);
         return FALSE;
     }
 
-    if (SetPixelFormat(hDC, pixelformat, &pfd) == FALSE) {
+    if (SetPixelFormat(hDC, pixelformat, &pfd) == FALSE) 
+	{
         MessageBox(NULL, "SetPixelFormat failed", "Error", MB_OK);
         return FALSE;
     }
@@ -1359,27 +1351,12 @@ void AppActivate(BOOL fActive, BOOL minimize)
 	{
 		S_BlockSound ();
 		S_ClearBuffer ();
-#ifdef BUILD_MP3_VERSION
-		// Need to pause CD music here if is playing
-		if (sound_started) {
-//			Cbuf_InsertText ("cd pause\n");
-//			Cbuf_Execute ();
-			CDAudio_Pause ();
-		}
-#endif
+
 		sound_active = false;
 	}
 	else if (ActiveApp && !sound_active)
 	{
 		S_UnblockSound ();
-#ifdef BUILD_MP3_VERSION
-		// Need to unpause CD music here if was playing
-		if (sound_started) {
-//			Cbuf_InsertText ("cd resume\n");
-//			Cbuf_Execute ();
-			CDAudio_Resume ();
-		}
-#endif
 		sound_active = true;
 	}
 
@@ -1443,6 +1420,11 @@ void AppActivate(BOOL fActive, BOOL minimize)
 		}
 		IN_Keyboard_Unacquire ();
 	}
+
+//	if (fActive)
+//		Sys_SetWindowCaption (va ("Active + %s", Minimized ? "Minimized" : "Not Mini") );
+//	else
+//		Sys_SetWindowCaption (va ("Deactivated + %s", Minimized ? "Minimized" : "Not Mini") );
 }
 
 int IN_MapKey (int key);
@@ -1839,6 +1821,9 @@ void VID_Init (unsigned char *palette)
 		Cvar_RegisterVariable (&vid_bpp, NULL); //johnfitz
 		Cvar_RegisterVariable (&vid_consize, VID_Consize_f); //Baker 3.97: this supercedes vid_conwidth/vid_conheight cvars
 		Cvar_RegisterVariable (&vid_refreshrate, NULL); //johnfitz
+		Cvar_RegisterVariable (&vid_vsync, VID_Vsync_f);
+
+
 		Cvar_RegisterVariable (&_windowed_mouse, NULL);
 
 		Cvar_RegisterVariable (&gl_clear, NULL); // Baker: cvar needs registered here so we can set it
@@ -1895,7 +1880,7 @@ void VID_Init (unsigned char *palette)
 			Cvar_SetValue (vid_bpp.name, val);
 	}
 	else
-		Vid_Read_Early_Cvars ();
+		Vid_Read_Early_Cvars (); // TODO: Specifying command line params doesn't read the cvars.
 
 
 	Vidmodes_Populate ((int)vid_width.value, (int)vid_height.value, (int)vid_bpp.value);
@@ -2095,28 +2080,6 @@ extern void M_DrawCheckbox (int x, int y, int on);
 
 extern qboolean	m_entersound;
 
-enum {
-	m_none,
-	m_main,
-	m_singleplayer,
-	m_load,
-	m_save,
-	m_multiplayer,
-	m_setup,
-	m_net,
-	m_options,
-	m_video,
-	m_keys,
-	m_help,
-	m_quit,
-	m_serialconfig,
-	m_modemconfig,
-	m_lanconfig,
-	m_gameoptions,
-	m_search,
-	m_slist,
-	m_preferences
-} m_state;
 
 #define VIDEO_OPTIONS_ITEMS 6
 int		video_cursor_table[] = {48, 56, 64, 72, 88, 96};

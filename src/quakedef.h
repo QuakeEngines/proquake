@@ -24,10 +24,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	QUAKE_GAME					// as opposed to utilities
 
 #define ENGINE_NAME "ProQuake"
-#define ENGINE_VERSION 	"4.91 Beta"
+#define ENGINE_VERSION 	"4.93 Beta"
 #define ENGINE_HOMEPAGE_URL "http:////www.quakeone.com//proquake"
-#define PROQUAKE_SERIES_VERSION		4.91
+#define PROQUAKE_SERIES_VERSION		4.93
 #include "version.h"
+
+
+#define SUPPORTS_SERVER_BROWSER		// Server browser implementation
+#define SUPPORTS_PLAYER_ID			// Player ID
 
 //define	PARANOID				// speed sapping error checking
 
@@ -214,6 +218,7 @@ typedef struct
 
 #include "location.h"	// JPG - for %l formatting speficier
 #include "iplog.h"		// JPG 1.05 - ip address logging
+#include "cl_server_browser.h"
 
 //=============================================================================
 
@@ -235,8 +240,6 @@ typedef struct
 //=============================================================================
 
 
-extern qboolean noclip_anglehack;
-
 // host
 extern	quakeparms_t host_parms;
 
@@ -251,7 +254,8 @@ extern	byte		*host_colormap;
 extern	int			host_framecount;		// incremented every frame, never reset
 extern	double		realtime;			// not bounded in any way, changed at
 							// start of every frame, never reset
-extern double last_angle_time; // JPG - need this for smooth chasecam
+
+extern	char		host_worldname[MAX_QPATH];
 
 #ifdef SUPPORTS_DEMO_AUTOPLAY
 extern	qboolean	nostartdemos; // Baker 3.76 - for demo autoplay support
@@ -275,7 +279,10 @@ void Host_Frame (double time);
 void Host_Quit_f (void);
 void Host_ClientCommands (char *fmt, ...);
 void Host_ShutdownServer (qboolean crash);
-void Host_WriteConfiguration ();
+void Host_WriteConfiguration (void);
+
+void Host_Stopdemo_f (void);
+void Host_Quit (void); // Get out, no questions asked
 
 extern qboolean		msg_suppress_1;			// suppresses resolution and cache size console output
                                                         //  a fullscreen DIB focus gain/loss

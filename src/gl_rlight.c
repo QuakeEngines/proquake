@@ -90,7 +90,7 @@ void R_Init_FlashBlend_Bubble (void)
 void R_RenderDlight (dlight_t *light)
 {
 	int		i, j;
-	float	a;
+//	float	a;
 	vec3_t	v;
 	float	rad;
 

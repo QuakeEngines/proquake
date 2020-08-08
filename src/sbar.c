@@ -1130,7 +1130,7 @@ void Sbar_Draw (void)
 			return;
 	}
 
-	scr_copyeverything = 1;
+//	scr_copyeverything = 1;
 	sb_updates++;
 
 	if (cl_sbar.value >=1.0 || scr_viewsize.value < 100.0)
@@ -1312,8 +1312,8 @@ void Sbar_DeathmatchOverlay (void)
 		cl.last_status_time = cl.time;
 	}
 
-	scr_copyeverything = 1;
-	scr_fullupdate = 0;
+//	scr_copyeverything = 1;
+//	scr_fullupdate = 0;
 
 	pic = Draw_CachePic ("gfx/ranking.lmp");
 	M_DrawPic ((320-pic->width)/2, 8, pic);
@@ -1425,8 +1425,8 @@ void Sbar_MiniDeathmatchOverlay (void)
 	if (vid.width < 512 || !sb_lines)
 		return;
 
-	scr_copyeverything = 1;
-	scr_fullupdate = 0;
+//	scr_copyeverything = 1;
+//	scr_fullupdate = 0;
 
 // scores
 	Sbar_SortFrags ();
@@ -1513,8 +1513,8 @@ void Sbar_IntermissionOverlay (void)
 	int		dig;
 	int		num;
 
-	scr_copyeverything = 1;
-	scr_fullupdate = 0;
+//	scr_copyeverything = 1;
+//	scr_fullupdate = 0;
 
 	if (cl.gametype == GAME_DEATHMATCH)
 	{
@@ -1556,7 +1556,7 @@ void Sbar_FinaleOverlay (void)
 {
 	qpic_t	*pic;
 
-	scr_copyeverything = 1;
+//	scr_copyeverything = 1;
 
 	pic = Draw_CachePic ("gfx/finale.lmp");
 	Draw_TransPic ( (vid.width-pic->width)/2, 16, pic);

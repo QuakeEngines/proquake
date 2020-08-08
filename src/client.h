@@ -65,7 +65,9 @@ typedef struct
 #define	NUM_CSHIFTS		4
 
 
+//
 // client_state_t should hold all pieces of the client state
+//
 
 #define	SIGNONS		4			// signon messages to receive before connected
 
@@ -90,15 +92,6 @@ typedef struct
 } beam_t;
 
 
-// added by joe
-typedef struct framepos_s
-{
-	long		baz;
-	struct framepos_s *next;
-} framepos_t;
-
-extern	framepos_t	*dem_framepos;		// by joe
-
 #define	MAX_EFRAGS		2048
 
 #define	MAX_MAPSTRING	2048
@@ -121,8 +114,10 @@ typedef struct
 } download_t;
 #endif
 
+//
 // the client_static_t structure is persistant through an arbitrary number
 // of server connections
+//
 typedef struct
 {
 	cactive_t	state;
@@ -139,6 +134,23 @@ typedef struct
 // entering a map (and clearing client_state_t)
 	qboolean	demorecording;
 	qboolean	demoplayback;
+
+	qboolean	demorewind;
+	float		demospeed;
+
+	char		demoname[MAX_QPATH];	// So we can print demo whatever completed.
+	int			demo_file_length;		// Length of file in bytes
+	int			demo_offset_start;		// If in a pak, the offset into the file otherwise 0.
+	int			demo_offset_current;	// Current offset into the file, updated as the demo is player
+	
+	float		demo_hosttime_start;	// For measuring capturedemo time completion estimates.
+	float		demo_hosttime_elapsed;	// Does not advance if paused.
+	float		demo_cltime_start;		// Above except cl.time
+	float		demo_cltime_elapsed;	// Above except cl.time
+
+	qboolean	capturedemo;			// Indicates if we are capturing demo playback
+	qboolean	capturedemo_and_exit;	// Quit after capturedemo
+
 	qboolean	timedemo;
 	int			forcetrack;			// -1 = use normal cd track
 	FILE		*demofile;
@@ -155,14 +167,25 @@ typedef struct
 	download_t	download;
 #endif
 
-	qboolean	capturedemo;
-	char		demoname[256];		// current demo playing name (length 16 on purpose)
+	char		recent_file[MAX_QPATH];
+
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+// See http_state in cl_server_browser.h for serverbrowser_state
+	qboolean	serverbrowser;
+	int			serverbrowser_state;					// The state of the process0 to 5
+	float		serverbrowser_starttime;				// When process started
+
+	float		serverbrowser_nextchecktime;			// Checks for completion of the get servers process (0 = no running)
+	float		serverbrowser_lastsuccesstime;  		//Current valid serverlist time
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 } client_static_t;
 
 extern client_static_t	cls;
 
+//
 // the client_state_t structure is wiped completely at every
 // server signon
+//
 typedef struct
 {
 	int			movemessages;	// since connecting to this server
@@ -215,18 +238,20 @@ typedef struct
 	double		time;			// clients view of time, should be between
 								// servertime and oldservertime to generate
 								// a lerp point for other data
+	double		ctime;			// inclusive of demo speed (can go backwards)
 	double		oldtime;		// previous cl.time, time-oldtime is used
 								// to decay light values and smooth step ups
-	double		ctime;			// joe: copy of cl.time, to avoid incidents caused by rewind
 
 
 	float		last_received_message;	// (realtime) for net trouble icon
 
+//
 // information that is static for the entire time connected to a server
+//
 	struct model_s		*model_precache[MAX_MODELS];
 	struct sfx_s		*sound_precache[MAX_SOUNDS];
 
-	char		levelname[40];	// for display on solo scoreboard
+	char		levelname[128];	// for display on solo scoreboard.  Originally 40.
 	int			viewentity;		// cl_entities[cl.viewentity] = player
 	int			maxclients;
 	int			gametype;
@@ -252,13 +277,20 @@ typedef struct
 	double			last_status_time;	// JPG 1.05 - last time status was obtained
 	qboolean		console_status;		// JPG 1.05 - true if the status came from the console
 	double			match_pause_time;	// JPG - time that match was paused (or 0)
-	vec3_t			lerpangles;			// JPG - angles now used by view.c so that smooth chasecam doesn't fuck up demos
+	
 	vec3_t			death_location;		// JPG 3.20 - used for %d formatting
+
+
+	double			last_angle_time;
+	vec3_t			lerpangles;			// JPG - angles now used by view.c so that smooth chasecam doesn't fuck up demos
+
+	qboolean		noclip_anglehack;
 } client_state_t;
 
-extern	client_state_t	cl;
 
+//
 // cvars
+//
 extern	cvar_t	cl_name;
 extern	cvar_t	cl_color;
 
@@ -288,11 +320,29 @@ extern	cvar_t	m_forward;
 extern	cvar_t	m_side;
 
 extern	cvar_t	cl_sbar;
-extern	cvar_t	cl_demorewind;
-extern	cvar_t	cl_demospeed;
+
+extern	cvar_t	scr_fov;
+extern	cvar_t	pq_maxfps;
+extern	cvar_t	vid_vsync;
+
+extern	cvar_t	crosshair;
+extern	cvar_t	cl_crosshaircentered;
+extern	cvar_t	r_truegunangle;
+extern	cvar_t	pq_suitblend;
+extern	cvar_t	cl_keypad;
+extern	cvar_t	cl_rollangle;
+extern	cvar_t	pq_moveup;
+extern	cvar_t	ambient_level;
+extern	cvar_t	m_directinput;
+extern	cvar_t	vid_consize;
+
+
 
 #define	MAX_TEMP_ENTITIES	64			// lightning bolts, etc
 #define	MAX_STATIC_ENTITIES	128			// torches, etc
+#define	MAX_VISEDICTS	256
+
+extern	client_state_t	cl;
 
 // FIXME, allocate dynamically
 extern	efrag_t			cl_efrags[MAX_EFRAGS];
@@ -302,10 +352,15 @@ extern	lightstyle_t	cl_lightstyle[MAX_LIGHTSTYLES];
 extern	dlight_t		cl_dlights[MAX_DLIGHTS];
 extern	entity_t		cl_temp_entities[MAX_TEMP_ENTITIES];
 extern	beam_t			cl_beams[MAX_BEAMS];
+extern	entity_t		*cl_visedicts[MAX_VISEDICTS];
+extern	int				cl_numvisedicts;
+
 
 //=============================================================================
 
-// cl_main.c
+//
+// cl_main
+//
 dlight_t *CL_AllocDlight (int key);
 void	CL_DecayLights (void);
 
@@ -321,12 +376,9 @@ void CL_Disconnect (void);
 void CL_Disconnect_f (void);
 void CL_NextDemo (void);
 
-#define			MAX_VISEDICTS	256
-extern	int				cl_numvisedicts;
-extern	entity_t		*cl_visedicts[MAX_VISEDICTS];
-
-
+//
 // cl_input.c
+//
 typedef struct
 {
 	int		down[2];		// key nums holding it down
@@ -353,30 +405,45 @@ void CL_BaseMove (usercmd_t *cmd);
 float CL_KeyState (kbutton_t *key);
 char *Key_KeynumToString (int keynum);
 
+//
 // cl_demo.c
+//
 void CL_StopPlayback (void);
 int CL_GetMessage (void);
+
 void CL_Stop_f (void);
 void CL_Record_f (void);
 void CL_PlayDemo_f (void);
+void CL_PlayDemo_NextStartDemo_f (void);
 void CL_TimeDemo_f (void);
 
+void CL_Clear_Demos_Queue (void);
+
+//
 // cl_parse.c
+//
 void CL_ParseServerMessage (void);
 void CL_NewTranslation (int slot);
 
+//
 // view.c
+//
 void V_StartPitchDrift_f (void);
 void V_StopPitchDrift (void);
 
 void V_RenderView (void);
-
 void V_Register (void);
 void V_ParseDamage (void);
 void V_SetContentsColor (int contents);
 
+
+//
 // cl_tent.c
+//
 void CL_InitTEnts (void);
 void CL_ParseTEnt (void);
 void CL_UpdateTEnts (void);
 void CL_SignonReply (void);
+
+// r_part.c
+void CL_RunParticles (void);

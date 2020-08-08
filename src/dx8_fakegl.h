@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -17,6 +17,9 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
+#ifndef __DX8_FAKEGL_H__
+#define __DX8_FAKEGL_H__
 
 // inconsistent dll linkage warning
 #pragma warning (disable: 4273)
@@ -1511,7 +1514,7 @@ PROC WINAPI wglGetProcAddress (LPCSTR s);
 BOOL WINAPI SetPixelFormat (HDC hdc, int format, CONST PIXELFORMATDESCRIPTOR * ppfd);
 
 // our fake CDS replacement
-LONG ChangeDisplaySettings_FakeGL (LPDEVMODE lpDevMode, DWORD dwflags);
+LONG WINAPI ChangeDisplaySettings_FakeGL (LPDEVMODE lpDevMode, DWORD dwflags);
 
 // remove cds
 #ifdef ChangeDisplaySettings
@@ -1523,7 +1526,7 @@ LONG ChangeDisplaySettings_FakeGL (LPDEVMODE lpDevMode, DWORD dwflags);
 void FakeSwapBuffers (void);
 
 // replacement for mode resets
-void D3D_ResetMode (int width, int height, int bpp, BOOL windowed);
+void D3D_ResetMode (int width, int height, int bpp, int windowed);
 
 // extension defines
 // these are renamed so as to not clash with defines in the program
@@ -2373,3 +2376,5 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed);
 
 #define GLD3D_TEXTURE_MAX_ANISOTROPY_EXT     0x84FE
 #define GLD3D_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+
+#endif // __DX8_FAKEGL_H__

@@ -20,8 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // in_win.c -- windows 95 mouse and joystick code
 // 02/21/97 JCB Added extended DirectInput code to support external controllers.
 
-#define DIRECTINPUT_VERSION	0x0700
-
 #include "dinput.h"
 #include "quakedef.h"
 #include "winquake.h"
@@ -1144,7 +1142,7 @@ void IN_MouseMove (usercmd_t *cmd) {
 				cl.viewangles[PITCH] = -70;
 		}
 	} else {
-		if ((in_strafe.state & 1) && noclip_anglehack)
+		if ((in_strafe.state & 1) && cl.noclip_anglehack)
 			cmd->upmove -= m_forward.value * mouse_y;
 		else
 			cmd->forwardmove -= m_forward.value * mouse_y;
@@ -1738,6 +1736,9 @@ void AllowAccessibilityShortcutKeys (qboolean bAllowKeys)
 {
 	static qboolean initialized = false;
 
+	if (COM_CheckParm ("-nokeys_s"))
+		return;
+
 	if (!initialized)
 	{	// Save the current sticky/toggle/filter key settings so they can be restored them later
 		SystemParametersInfo (SPI_GETSTICKYKEYS, sizeof (STICKYKEYS), &StartupStickyKeys, 0);
@@ -1812,7 +1813,7 @@ LRESULT CALLBACK LLWinKeyHook(int Code, WPARAM wParam, LPARAM lParam)
 			case VK_RWIN:	// Right Windows key
 			case VK_APPS: 	// Context Menu key
 
-							return 1; // Ignore these keys
+			return 1; // Ignore these keys
 		}
 	}
 
@@ -1825,6 +1826,9 @@ void AllowWindowsShortcutKeys (qboolean bAllowKeys)
 {
 	static qboolean WinKeyHook_isActive = false;
 	static HHOOK WinKeyHook;
+
+	if (COM_CheckParm ("-nokeys_w"))
+		return;
 
 	if (!bAllowKeys)
 	{
@@ -1863,8 +1867,9 @@ void IN_Keyboard_Unacquire (void)
 
 void IN_Keyboard_Acquire (void)
 {
-	AllowAccessibilityShortcutKeys (false);
 	AllowWindowsShortcutKeys (false);
+	AllowAccessibilityShortcutKeys (false);
+	
 }
 
 

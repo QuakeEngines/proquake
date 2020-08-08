@@ -711,9 +711,8 @@ void R_DrawParticles (void)
 {
 	particle_t		*p;
 	float			scale;
-	particle_t 		*kill;
+//	particle_t 		*kill;
 
-	
 	vec3_t			up, right;
 
 	VectorScale (vup, 1.5, up);

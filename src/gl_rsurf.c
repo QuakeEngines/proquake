@@ -360,7 +360,7 @@ void R_BlendLightmaps (void) {
 	int			i, j;
 	float		*v;
 	glpoly_t	*p;
-	glRect_t	*theRect;
+//	glRect_t	*theRect;
 
 	if (r_fullbright.value)
 		return;
@@ -578,62 +578,6 @@ void R_DrawWaterSurfaces (void)
 
 
 
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-// *********** SYNC LOCKER *************
-
-
 
 /*
 ================
@@ -703,7 +647,7 @@ void R_DrawSequentialPoly (msurface_t *s)
 	int			i;
 	texture_t	*t;
 	vec3_t		nv;
-	glRect_t	*theRect;
+//	glRect_t	*theRect;
 
 
 	//
@@ -719,7 +663,7 @@ void R_DrawSequentialPoly (msurface_t *s)
 
 			t = R_TextureAnimation (s->texinfo->texture);
 			// Binds world to texture env 0
-			GL_SelectTexture(TEXTURE0_SGIS);
+			GL_SelectTexture(GL_TEXTURE0_ARB);
 			GL_Bind (t->gl_texturenum);
 //			BengtQuake uploads the lightmap here
 			R_UploadLightmap (s->lightmaptexturenum);
@@ -738,8 +682,8 @@ void R_DrawSequentialPoly (msurface_t *s)
 			v = p->verts[0];
 			for (i=0 ; i<p->numverts ; i++, v+= VERTEXSIZE)
 			{
-				qglMTexCoord2fSGIS (TEXTURE0_SGIS, v[3], v[4]);
-				qglMTexCoord2fSGIS (TEXTURE1_SGIS, v[5], v[6]);
+				qglMultiTexCoord2f (GL_TEXTURE0_ARB, v[3], v[4]);
+				qglMultiTexCoord2f (GL_TEXTURE1_ARB, v[5], v[6]);
 				glVertex3fv (v);
 			}
 			glEnd ();
@@ -826,7 +770,7 @@ void R_DrawSequentialPoly (msurface_t *s)
 		p = s->polys;
 
 		t = R_TextureAnimation (s->texinfo->texture);
-		GL_SelectTexture(TEXTURE0_SGIS);
+		GL_SelectTexture(GL_TEXTURE0_ARB);
 		GL_Bind (t->gl_texturenum);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
 		GL_EnableMultitexture();
@@ -839,8 +783,8 @@ void R_DrawSequentialPoly (msurface_t *s)
 		v = p->verts[0];
 		for (i=0 ; i<p->numverts ; i++, v+= VERTEXSIZE)
 		{
-			qglMTexCoord2fSGIS (TEXTURE0_SGIS, v[3], v[4]);
-			qglMTexCoord2fSGIS (TEXTURE1_SGIS, v[5], v[6]);
+			qglMultiTexCoord2f (GL_TEXTURE0_ARB, v[3], v[4]);
+			qglMultiTexCoord2f (GL_TEXTURE1_ARB, v[5], v[6]);
 
 			nv[0] = v[0] + 8*sin(v[1]*0.05+realtime)*sin(v[2]*0.05+realtime);
 			nv[1] = v[1] + 8*sin(v[0]*0.05+realtime)*sin(v[2]*0.05+realtime);
@@ -1076,7 +1020,7 @@ void R_DrawBrushModel (entity_t *ent)
 	model_t		*clmodel = ent->model;
 	qboolean	rotated;
 
-	currenttexture = -1;
+	current_texture_num = -1;
 
 	if (ent->angles[0] || ent->angles[1] || ent->angles[2])
 	{
@@ -1311,7 +1255,7 @@ void R_DrawWorld (void)
 	VectorCopy (r_refdef.vieworg, modelorg);
 
 	currententity = &ent;
-	currenttexture = -1;
+	current_texture_num = -1;
 
 	glColor3f (1,1,1);
 	memset (lightmap_polys, 0, sizeof(lightmap_polys));
@@ -1339,7 +1283,7 @@ void R_MarkLeaves (void)
 	int		i;
 	byte	*vis, solid[4096];
 	mnode_t	*node;
-#ifdef SUPPORTS_GLHOMFIX_NEARWATER
+//#ifdef SUPPORTS_GLHOMFIX_NEARWATER
 	extern	cvar_t gl_nearwater_fix;
 	msurface_t **mark;
 	qboolean   nearwaterportal = false;
@@ -1355,7 +1299,7 @@ void R_MarkLeaves (void)
 				break;
 			}
 		}
-#endif
+//#endif
 
 	if (r_oldviewleaf == r_viewleaf && ((!r_novis.value && !nearwaterportal) || pq_cheatfree))	// JPG 3.20 - cheat protection
 		return;
@@ -1370,12 +1314,16 @@ void R_MarkLeaves (void)
 	{
 		vis = solid;
 		memset (solid, 0xff, (cl.worldmodel->numleafs+7)>>3);
-#ifdef SUPPORTS_GLHOMFIX_NEARWATER
-	} else if (nearwaterportal) {
+//#ifdef SUPPORTS_GLHOMFIX_NEARWATER
+	}
+	else if (nearwaterportal)
+	{
 		extern byte *SV_FatPVS (vec3_t org, model_t *worldmodel);
 		vis = SV_FatPVS (r_origin, cl.worldmodel);
-#endif
-	} else {
+//#endif
+	}
+	else
+	{
 		vis = Mod_LeafPVS (r_viewleaf, cl.worldmodel);
 	}
 
@@ -1549,7 +1497,7 @@ void GL_BuildLightmaps (void)
 {
 	int		i, j;
 	model_t	*m;
-	extern qboolean isPermedia;
+
 #ifdef MACOSX_EXTRA_FEATURES
         extern qboolean	gl_luminace_lightmaps;
 #endif /* MACOSX */
@@ -1564,51 +1512,11 @@ void GL_BuildLightmaps (void)
 		texture_extension_number += MAX_LIGHTMAPS;
 	}
 
-#ifdef MACOSX_EXTRA_FEATURES
+	gl_lightmap_format = GL_LUMINANCE;
+	lightmap_bytes = 1;
 
-    // <AWE> MacOS X v10.1, GLQuake v1.0.2:
-    // Using GL_LUMINACE causes frame drops in rooms with many lightmap textures.
-    // Since GL_INTENSITY, GL_ALPHA result in totaly dark surfaces, we have to use GL_RGBA as default.
-
-    if (gl_luminace_lightmaps == false)
-        gl_lightmap_format = GL_RGBA;
-    else
-
-#endif /* MACOSX */
-		gl_lightmap_format = GL_LUMINANCE;
-
-	// default differently on the Permedia
-	if (isPermedia)
-		gl_lightmap_format = GL_RGBA;
-
-	if (COM_CheckParm ("-lm_1"))
-		gl_lightmap_format = GL_LUMINANCE;
-// Baker these other lightmap formats simply don't work
-//	if (COM_CheckParm ("-lm_a"))
-//		gl_lightmap_format = GL_ALPHA;
-//	if (COM_CheckParm ("-lm_i"))
-//		gl_lightmap_format = GL_INTENSITY;
-//	if (COM_CheckParm ("-lm_2"))
-//		gl_lightmap_format = GL_RGBA4;
-	if (COM_CheckParm ("-lm_4"))
-		gl_lightmap_format = GL_RGBA;
-
-	switch (gl_lightmap_format)
+	for (j=1 ; j<MAX_MODELS ; j++) 
 	{
-	case GL_RGBA:
-		lightmap_bytes = 4;
-		break;
-//	case GL_RGBA4:
-//		lightmap_bytes = 2;
-//		break;
-//	case GL_INTENSITY:
-//	case GL_ALPHA:
-	case GL_LUMINANCE:
-		lightmap_bytes = 1;
-		break;
-	}
-
-	for (j=1 ; j<MAX_MODELS ; j++) {
 		if (!(m = cl.model_precache[j]))
 			break;
 		if (m->name[0] == '*')
@@ -1630,7 +1538,7 @@ void GL_BuildLightmaps (void)
 
 #if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
  	if (!gl_texsort.value)
- 		GL_SelectTexture(TEXTURE1_SGIS);
+ 		GL_SelectTexture(GL_TEXTURE1_ARB);
 #endif
 
 	// upload all lightmaps that were filled
@@ -1651,7 +1559,7 @@ void GL_BuildLightmaps (void)
 
 #if !defined(DX8QUAKE_NO_GL_TEXSORT_ZERO)
  	if (!gl_texsort.value)
- 		GL_SelectTexture(TEXTURE0_SGIS);
+ 		GL_SelectTexture(GL_TEXTURE0_ARB);
 #endif
 
 }

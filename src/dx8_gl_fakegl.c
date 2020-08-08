@@ -4,7 +4,7 @@ D3D8 FakeGL Wrapper is Copyright (C) 2009 MH
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -18,6 +18,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
+#define DX8_USE_POLYGON_OFFSET 0 // Baker: I cannot get this to work very well.
 
 // TODO Fix this warning instead of disabling it
 #pragma warning (disable: 4273)
@@ -96,40 +98,40 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //#pragma comment (lib, "d3dx8.lib")
 
 // used everywhere!!!
-void GL_SubmitVertexes (void);
+static void GL_SubmitVertexes (void);
 
 // d3d basic stuff
-LPDIRECT3D8 d3d_Object = NULL;
-LPDIRECT3DDEVICE8 d3d_Device = NULL;
+static LPDIRECT3D8 d3d_Object = NULL;
+static LPDIRECT3DDEVICE8 d3d_Device = NULL;
 
 // externs we need
 void Sys_Error (char *error, ...);
 void Con_Printf (char *fmt, ...);
 
 // mode definition
-int d3d_BPP = -1;
+static int d3d_BPP = -1;
 HWND d3d_Window;
 
-BOOL d3d_RequestStencil = FALSE;
+static BOOL d3d_RequestStencil = FALSE;
 
 // the desktop and current display modes
-D3DDISPLAYMODE d3d_DesktopMode;
-D3DDISPLAYMODE d3d_CurrentMode;
+static D3DDISPLAYMODE d3d_DesktopMode;
+static D3DDISPLAYMODE d3d_CurrentMode;
 
 // presentation parameters that the device was created with
-D3DPRESENT_PARAMETERS d3d_PresentParams;
+static D3DPRESENT_PARAMETERS d3d_PresentParams;
 
 // capabilities
 // these can exist for both the object and the device
-D3DCAPS8 d3d_Caps;
+static D3DCAPS8 d3d_Caps;
 
 // we're going to need this a lot so store it globally to save me having to redeclare it every time
-HRESULT hr = S_OK;
+static HRESULT hr = S_OK;
 
 // global state defines
-DWORD d3d_ClearColor = 0x00000000;
-BOOL d3d_DeviceLost = FALSE;
-D3DVIEWPORT8 d3d_Viewport;
+static DWORD d3d_ClearColor = 0x00000000;
+static BOOL d3d_DeviceLost = FALSE;
+static D3DVIEWPORT8 d3d_Viewport;
 
 // utility
 #define BYTE_CLAMP(i) (int) ((((i) > 255) ? 255 : (((i) < 0) ? 0 : (i))))
@@ -137,7 +139,7 @@ D3DVIEWPORT8 d3d_Viewport;
 // go through the vtable rather than use the macros to make this generic
 #define D3D_SAFE_RELEASE(p) {if (p) (p)->lpVtbl->Release (p); (p) = NULL;}
 
-DWORD GL_ColorToD3D (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
+static DWORD GL_ColorToD3D (GLclampf red, GLclampf green, GLclampf blue, GLclampf alpha)
 {
 	return D3DCOLOR_ARGB
 	(
@@ -172,12 +174,12 @@ typedef struct d3d_texture_s
 	struct d3d_texture_s *next;
 } d3d_texture_t;
 
-d3d_texture_t *d3d_Textures = NULL;
+static d3d_texture_t *d3d_Textures = NULL;
 
-int d3d_TextureExtensionNumber = 1;
+static int d3d_TextureExtensionNumber = 1;
 
 // opengl specified up to 32 TMUs, D3D only allows up to 8 stages, in the case of Quake we only use 2
-#define D3D_MAX_TMUS	2
+#define D3D_MAX_TMUS	8 // Baker: upgraded
 
 typedef struct gl_combine_s
 {
@@ -216,17 +218,23 @@ typedef struct gl_tmustate_s
 	BOOL texparamdirty;
 } gl_tmustate_t;
 
-gl_tmustate_t d3d_TMUs[D3D_MAX_TMUS];
+static gl_tmustate_t d3d_TMUs[D3D_MAX_TMUS];
 
-int d3d_CurrentTMU = 0;
+static int d3d_CurrentTMU = 0;
 
 // used in various places
-int D3D_TMUForTexture (GLenum texture)
+static int D3D_TMUForTexture (GLenum texture)
 {
 	switch (texture)
 	{
 	case GLD3D_TEXTURE0: return 0;
 	case GLD3D_TEXTURE1: return 1;
+	case GLD3D_TEXTURE2: return 2;
+	case GLD3D_TEXTURE3: return 3;
+	case GLD3D_TEXTURE4: return 4;
+	case GLD3D_TEXTURE5: return 5;
+	case GLD3D_TEXTURE6: return 6;
+	case GLD3D_TEXTURE7: return 7;
 
 	default:
 		// ? how best to fail gracefully (if we should fail gracefully at all?)
@@ -253,7 +261,7 @@ GLenum gl_FrontFace = GL_CCW;
 */
 
 // default to per-pixel fog
-GLenum d3d_Fog_Hint = GL_NICEST;
+static GLenum d3d_Fog_Hint = GL_NICEST;
 
 void glHint (GLenum target, GLenum mode)
 {
@@ -308,13 +316,13 @@ typedef struct d3d_matrix_s
 } d3d_matrix_t;
 
 // init all matrixes to be dirty and at depth 0 (these will be re-inited each frame)
-d3d_matrix_t d3d_ModelViewMatrix = {TRUE, 0, D3DTS_WORLD};
-d3d_matrix_t d3d_ProjectionMatrix = {TRUE, 0, D3DTS_PROJECTION};
+static d3d_matrix_t d3d_ModelViewMatrix = {TRUE, 0, D3DTS_WORLD};
+static d3d_matrix_t d3d_ProjectionMatrix = {TRUE, 0, D3DTS_PROJECTION};
 
-d3d_matrix_t *d3d_CurrentMatrix = &d3d_ModelViewMatrix;
+static d3d_matrix_t *d3d_CurrentMatrix = &d3d_ModelViewMatrix;
 
 
-void D3D_InitializeMatrix (d3d_matrix_t *m)
+static void D3D_InitializeMatrix (d3d_matrix_t *m)
 {
 	// initializes a matrix to a known state prior to rendering
 	m->dirty = TRUE;
@@ -323,7 +331,7 @@ void D3D_InitializeMatrix (d3d_matrix_t *m)
 }
 
 
-void D3D_CheckDirtyMatrix (d3d_matrix_t *m)
+static void D3D_CheckDirtyMatrix (d3d_matrix_t *m)
 {
 	if (m->dirty)
 	{
@@ -536,9 +544,9 @@ void glMultMatrixf (const GLfloat *m)
 ===================================================================================================================
 */
 
-LPDIRECT3DTEXTURE8 d3d_BoundTextures[D3D_MAX_TMUS];
+static LPDIRECT3DTEXTURE8 d3d_BoundTextures[D3D_MAX_TMUS];
 
-void D3D_SetTexture (int stage, LPDIRECT3DTEXTURE8 texture)
+static void D3D_SetTexture (int stage, LPDIRECT3DTEXTURE8 texture)
 {
 	if (d3d_BoundTextures[stage] != texture)
 	{
@@ -548,7 +556,7 @@ void D3D_SetTexture (int stage, LPDIRECT3DTEXTURE8 texture)
 }
 
 
-void D3D_DirtyAllStates (void)
+static void D3D_DirtyAllStates (void)
 {
 	int i;
 
@@ -567,18 +575,18 @@ void D3D_DirtyAllStates (void)
 
 
 // d3d8 specifies 174 render states; here we just provide headroom
-DWORD d3d_RenderStates[256];
+static DWORD d3d_RenderStates[256];
 
 // 28 stage states per stage
-DWORD d3d_TextureStates[D3D_MAX_TMUS][32];
+static DWORD d3d_TextureStates[D3D_MAX_TMUS][32];
 
-DWORD D3D_FloatToDWORD (float f)
+static DWORD D3D_FloatToDWORD (float f)
 {
 	return ((DWORD *) &f)[0];
 }
 
 
-void D3D_SetRenderState (D3DRENDERSTATETYPE state, DWORD value)
+static void D3D_SetRenderState (D3DRENDERSTATETYPE state, DWORD value)
 {
 	// filter state
 	if (d3d_RenderStates[(int) state] == value) return;
@@ -589,7 +597,7 @@ void D3D_SetRenderState (D3DRENDERSTATETYPE state, DWORD value)
 }
 
 
-void D3D_SetTextureState (DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value)
+static void D3D_SetTextureState (DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value)
 {
 	// filter state
 	if (d3d_TextureStates[Stage][(int) Type] == Value) return;
@@ -600,7 +608,7 @@ void D3D_SetTextureState (DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Valu
 }
 
 
-void D3D_SetVertexShader (DWORD shader)
+static void D3D_SetVertexShader (DWORD shader)
 {
 	// init this to something invalid so that we know it'll never match
 	static DWORD oldshader = D3DFVF_XYZ | D3DFVF_XYZRHW;
@@ -614,7 +622,7 @@ void D3D_SetVertexShader (DWORD shader)
 }
 
 
-void D3D_InitTexture (d3d_texture_t *tex)
+static void D3D_InitTexture (d3d_texture_t *tex)
 {
 	tex->glnum = 0;
 
@@ -631,7 +639,7 @@ void D3D_InitTexture (d3d_texture_t *tex)
 }
 
 
-void D3D_GetRenderStates (void)
+static void D3D_GetRenderStates (void)
 {
 	IDirect3DDevice8_GetRenderState (d3d_Device, D3DRS_ZENABLE, &d3d_RenderStates[D3DRS_ZENABLE]);
 	IDirect3DDevice8_GetRenderState (d3d_Device, D3DRS_FILLMODE, &d3d_RenderStates[D3DRS_FILLMODE]);
@@ -712,7 +720,7 @@ void D3D_GetRenderStates (void)
 }
 
 
-void D3D_SetRenderStates (void)
+static void D3D_SetRenderStates (void)
 {
 	// this forces a set of all render states will the current cached values rather than filtering, to
 	// ensure that they are properly updated
@@ -795,7 +803,7 @@ void D3D_SetRenderStates (void)
 }
 
 
-void D3D_GetTextureStates (void)
+static void D3D_GetTextureStates (void)
 {
 	int i;
 
@@ -832,7 +840,7 @@ void D3D_GetTextureStates (void)
 }
 
 
-void D3D_SetTextureStates (void)
+static void D3D_SetTextureStates (void)
 {
 	int i;
 
@@ -869,7 +877,7 @@ void D3D_SetTextureStates (void)
 }
 
 
-void D3D_InitStates (void)
+static void D3D_InitStates (void)
 {
 	int i;
 
@@ -890,7 +898,7 @@ void D3D_InitStates (void)
 }
 
 
-D3DTEXTUREOP D3D_DecodeOp (D3DTEXTUREOP opin, DWORD scale)
+static D3DTEXTUREOP D3D_DecodeOp (D3DTEXTUREOP opin, DWORD scale)
 {
 	if (scale == 1)
 		return opin;
@@ -911,7 +919,7 @@ D3DTEXTUREOP D3D_DecodeOp (D3DTEXTUREOP opin, DWORD scale)
 }
 
 
-void D3D_CheckDirtyTextureStates (int tmu)
+static void D3D_CheckDirtyTextureStates (int tmu)
 {
 	if (d3d_TMUs[tmu].boundtexture)
 	{
@@ -973,7 +981,7 @@ void D3D_CheckDirtyTextureStates (int tmu)
 	}
 }
 
-
+#if DX8_USE_POLYGON_OFFSET
 /*
 ===================================================================================================================
 
@@ -987,9 +995,9 @@ void D3D_CheckDirtyTextureStates (int tmu)
 ===================================================================================================================
 */
 
-BOOL d3d_PolyOffsetEnabled = FALSE;
-BOOL d3d_PolyOffsetSwitched = FALSE;
-float d3d_PolyOffsetFactor = 8;
+static BOOL d3d_PolyOffsetEnabled = FALSE;
+static BOOL d3d_PolyOffsetSwitched = FALSE;
+static float d3d_PolyOffsetFactor = 8;
 
 void glPolygonOffset (GLfloat factor, GLfloat units)
 {
@@ -1009,6 +1017,9 @@ void glPolygonOffset (GLfloat factor, GLfloat units)
 	if (d3d_PolyOffsetFactor > 16) d3d_PolyOffsetFactor = 16;
 }
 
+#else
+void glPolygonOffset (GLfloat factor, GLfloat units) {} // Nada!
+#endif
 
 /*
 ===================================================================================================================
@@ -1024,9 +1035,9 @@ void glPolygonOffset (GLfloat factor, GLfloat units)
 ===================================================================================================================
 */
 
-int d3d_PrimitiveMode = 0;
-int d3d_NumVerts = 0;
-int d3d_NumIndexes = 0;
+static int d3d_PrimitiveMode = 0;
+static int d3d_NumVerts = 0;
+static int d3d_NumIndexes = 0;
 
 // this should be a multiple of 12 to support both GL_QUADS and GL_TRIANGLES
 // it should also be large enough to hold the biggest tristrip or fan in use in the engine
@@ -1047,9 +1058,9 @@ typedef struct gl_xyz_s
 } gl_xyz_t;
 
 // defaults that are picked up by each glVertex call
-D3DCOLOR d3d_CurrentColor = 0xffffffff;
-gl_texcoord_t d3d_CurrentTexCoord[D3D_MAX_TMUS] = {{0, 0}, {0, 0}};
-gl_xyz_t d3d_CurrentNormal = {0, 1, 0};
+static D3DCOLOR d3d_CurrentColor = 0xffffffff;
+static gl_texcoord_t d3d_CurrentTexCoord[D3D_MAX_TMUS] = {{0, 0}, {0, 0}};
+static gl_xyz_t d3d_CurrentNormal = {0, 1, 0};
 
 // this may be a little wasteful as it's a full sized vertex for 8 TMUs
 // we'll fix it if it becomes a problem (it's not like Quake stresses the GPU too much anyway)
@@ -1060,12 +1071,12 @@ typedef struct gl_vertex_s
 	gl_texcoord_t st[D3D_MAX_TMUS];
 } gl_vertex_t;
 
-gl_vertex_t d3d_Vertexes[D3D_MAX_VERTEXES];
-unsigned short d3d_Indexes[D3D_MAX_VERTEXES];
+static gl_vertex_t d3d_Vertexes[D3D_MAX_VERTEXES];
+static unsigned short d3d_Indexes[D3D_MAX_VERTEXES];
 
-BOOL d3d_SceneBegun = FALSE;
+static BOOL d3d_SceneBegun = FALSE;
 
-void GL_SubmitVertexes (void)
+static void GL_SubmitVertexes (void)
 {
 	int i;
 	DWORD d3d_VertexShader;
@@ -1114,6 +1125,7 @@ void GL_SubmitVertexes (void)
 		IDirect3DDevice8_SetTransform (d3d_Device, D3DTS_VIEW, &d3d_ViewMatrix);
 	}
 
+#if DX8_USE_POLYGON_OFFSET
 	// check polygon offset
 	if (!d3d_PolyOffsetSwitched)
 	{
@@ -1132,6 +1144,7 @@ void GL_SubmitVertexes (void)
 		// we've switched polygon offset now
 		d3d_PolyOffsetSwitched = TRUE;
 	}
+#endif
 
 	// check for dirty matrixes
 	D3D_CheckDirtyMatrix (&d3d_ModelViewMatrix);
@@ -1231,7 +1244,7 @@ void glVertex3fv (const GLfloat *v)
 }
 
 
-int d3d_BeginVerts = 0;
+static int d3d_BeginVerts = 0;
 
 void glVertex3f (GLfloat x, GLfloat y, GLfloat z)
 {
@@ -1271,7 +1284,7 @@ void glTexCoord2fv (const GLfloat *v)
 }
 
 
-void GL_SetColor (int red, int green, int blue, int alpha)
+static void GL_SetColor (int red, int green, int blue, int alpha)
 {
 	// overwrite color incase verts set it
 	d3d_CurrentColor = D3DCOLOR_ARGB
@@ -1334,8 +1347,8 @@ void glNormal3f (GLfloat nx, GLfloat ny, GLfloat nz)
 }
 
 
-int d3d_BaseVert = 0;
-int d3d_BaseIndex = 0;
+static int d3d_BaseVert = 0;
+static int d3d_BaseIndex = 0;
 
 void glBegin (GLenum mode)
 {
@@ -1498,7 +1511,7 @@ void glClearStencil (GLint s)
 */
 
 
-d3d_texture_t *D3D_AllocTexture (void)
+static d3d_texture_t *D3D_AllocTexture (void)
 {
 	d3d_texture_t *tex;
 
@@ -1534,7 +1547,7 @@ d3d_texture_t *D3D_AllocTexture (void)
 }
 
 
-void D3D_ReleaseTextures (void)
+static void D3D_ReleaseTextures (void)
 {
 	d3d_texture_t *tex;
 
@@ -1553,7 +1566,7 @@ D3D_CheckTextureFormat
 Ensures that a given texture format will be available
 ======================
 */
-BOOL D3D_CheckTextureFormat (D3DFORMAT TextureFormat, D3DFORMAT AdapterFormat)
+static BOOL D3D_CheckTextureFormat (D3DFORMAT TextureFormat, D3DFORMAT AdapterFormat)
 {
 	hr = IDirect3D8_CheckDeviceFormat
 	(
@@ -1707,7 +1720,7 @@ void glTexEnvi (GLenum target, GLenum pname, GLint param)
 }
 
 
-void D3D_FillTextureLevel (LPDIRECT3DTEXTURE8 texture, int level, GLint internalformat, int width, int height, GLint format, const void *pixels)
+static void D3D_FillTextureLevel (LPDIRECT3DTEXTURE8 texture, int level, GLint internalformat, int width, int height, GLint format, const void *pixels)
 {
 	int i;
 	int srcbytes = 0;
@@ -1787,7 +1800,7 @@ void D3D_FillTextureLevel (LPDIRECT3DTEXTURE8 texture, int level, GLint internal
 }
 
 
-void D3D_CopyTextureLevel (LPDIRECT3DTEXTURE8 srctex, int srclevel, LPDIRECT3DTEXTURE8 dsttex, int dstlevel)
+static void D3D_CopyTextureLevel (LPDIRECT3DTEXTURE8 srctex, int srclevel, LPDIRECT3DTEXTURE8 dsttex, int dstlevel)
 {
 	LPDIRECT3DSURFACE8 srcsurf;
 	LPDIRECT3DSURFACE8 dstsurf;
@@ -2255,7 +2268,7 @@ D3D_GetDepthFormat
 Gets a valid depth format for a given adapter format
 ==================
 */
-D3DFORMAT D3D_GetDepthFormat (D3DFORMAT AdapterFormat)
+static D3DFORMAT D3D_GetDepthFormat (D3DFORMAT AdapterFormat)
 {
 	// valid depth formats
 	int i;
@@ -2304,7 +2317,7 @@ D3D_GetAdapterModeFormat
 returns a usable adapter mode for the given width, height and bpp
 ========================
 */
-D3DFORMAT D3D_GetAdapterModeFormat (int width, int height, int bpp)
+static D3DFORMAT D3D_GetAdapterModeFormat (int width, int height, int bpp)
 {
 	int i;
 
@@ -2392,7 +2405,7 @@ BOOL WINAPI SetPixelFormat (HDC hdc, int format, CONST PIXELFORMATDESCRIPTOR *pp
 }
 
 
-void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed_)
+static void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed_)
 {
 	// clear present params to NULL
 	memset (&d3d_PresentParams, 0, sizeof (D3DPRESENT_PARAMETERS));
@@ -2408,7 +2421,8 @@ void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed_)
 		d3d_CurrentMode.RefreshRate = 0;
 
 #ifdef DX8QUAKE_VSYNC_COMMANDLINE_PARAM
-		if (COM_CheckParm("-vsync")) {
+		if (COM_CheckParm("-vsync")) 
+		{
 			// required for windowed mode
 			d3d_PresentParams.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
 		}
@@ -2424,10 +2438,13 @@ void D3D_SetupPresentParams (int width, int height, int bpp, BOOL windowed_)
 			Sys_Error ("failed to get fullscreen mode");
 
 #ifdef DX8QUAKE_VSYNC_COMMANDLINE_PARAM
-		if (COM_CheckParm("-vsync")) {
+		if (COM_CheckParm("-vsync")) 
+		{
 			// vsync off
 			d3d_PresentParams.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
-		} else {
+		}
+		else 
+		{
 			d3d_PresentParams.FullScreen_PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
 		}
 #endif
@@ -2491,7 +2508,7 @@ BOOL WINAPI wglMakeCurrent (HDC hdc, HGLRC hglrc)
 
 	// setup our present parameters (popup windows are fullscreen always)
 
-		if (COM_CheckParm("-fullwindow"))
+	if (COM_CheckParm("-fullwindow"))
 			D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, 1);
 	else
 			D3D_SetupPresentParams (clientrect.right, clientrect.bottom, d3d_BPP, !(winstyle & WS_POPUP));
@@ -2553,10 +2570,12 @@ BOOL WINAPI wglMakeCurrent (HDC hdc, HGLRC hglrc)
 	// disable lighting
 	D3D_SetRenderState (D3DRS_LIGHTING, FALSE);
 
+#if DX8_USE_POLYGON_OFFSET
 	// default zbias
 	// D3D uses values of 0 to 16, with 0 being the default and higher values coming nearer
 	// because we want to push out further too, we pick an intermediate value as our new default
 	D3D_SetRenderState (D3DRS_ZBIAS, 8);
+#endif
 
 	// set projection and world to dirty, beginning of stack and identity
 	D3D_InitializeMatrix (&d3d_ModelViewMatrix);
@@ -2615,7 +2634,7 @@ HDC WINAPI wglGetCurrentDC (VOID)
 ===================================================================================================================
 */
 
-void GL_SetCompFunc (DWORD mode, GLenum func)
+static void GL_SetCompFunc (DWORD mode, GLenum func)
 {
 	switch (func)
 	{
@@ -2716,7 +2735,7 @@ void glDepthMask (GLboolean flag)
 }
 
 
-void GL_Blend (D3DRENDERSTATETYPE rs, GLenum factor)
+static void GL_Blend (D3DRENDERSTATETYPE rs, GLenum factor)
 {
 	D3DBLEND blend = D3DBLEND_ONE;
 
@@ -2843,7 +2862,7 @@ void glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum forma
 
 	GL_SubmitVertexes ();
 
-	if (format != GL_RGB || type != GL_UNSIGNED_BYTE)
+	if ((format != GL_RGB && format != GL_RGBA && format != GL_BGR_EXT && format != GL_BGRA_EXT) || type != GL_UNSIGNED_BYTE)
 	{
 		Con_Printf ("glReadPixels: invalid format or type\n");
 		return;
@@ -2860,7 +2879,7 @@ void glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum forma
 	// because we don't have a lockable backbuffer we instead copy it off to an image surface
 	// this will also handle translation between different backbuffer formats
 	hr = IDirect3DSurface8_GetDesc (bbsurf, &desc);
-	hr = IDirect3DDevice8_CreateImageSurface (d3d_Device, desc.Width, desc.Height, D3DFMT_R8G8B8, &locksurf);
+	hr = IDirect3DDevice8_CreateImageSurface (d3d_Device, desc.Width, desc.Height, D3DFMT_A8R8G8B8, &locksurf);
 	hr = D3DXLoadSurfaceFromSurface (locksurf, NULL, NULL, bbsurf, NULL, NULL, D3DX_FILTER_NONE, 0);
 
 	// now we have a surface we can lock
@@ -2868,19 +2887,81 @@ void glReadPixels (GLint x, GLint y, GLsizei width, GLsizei height, GLenum forma
 	srcdata = (unsigned char *) lockrect.pBits;
 
 	// invert the copied image
+	switch (format)
+	{
+	case GL_RGB:
+		for (row = (y + height - 1); row >= y; row--)
+		{
+			for (col = x; col < (x + width); col++)
+			{
+				int srcpos = row * (lockrect.Pitch >> 2) + col;
+
+				dstdata[2] = srcdata[srcpos * 4 + 0];
+				dstdata[1] = srcdata[srcpos * 4 + 1];
+				dstdata[0] = srcdata[srcpos * 4 + 2];
+
+				dstdata += 3;
+			}
+		}
+
+		break;
+
+	case GL_RGBA:
+		for (row = (y + height - 1); row >= y; row--)
+		{
+			for (col = x; col < (x + width); col++)
+			{
+				int srcpos = row * (lockrect.Pitch >> 2) + col;
+
+				dstdata[2] = srcdata[srcpos * 4 + 0];
+				dstdata[1] = srcdata[srcpos * 4 + 1];
+				dstdata[0] = srcdata[srcpos * 4 + 2];
+				dstdata[3] = srcdata[srcpos * 4 + 3];
+
+				dstdata += 4;
+			}
+		}
+
+		break;
+
+	case GL_BGR_EXT:
 	for (row = (y + height - 1); row >= y; row--)
 	{
 		for (col = x; col < (x + width); col++)
 		{
-			int srcpos = row * width + col;
+			int srcpos = row * (lockrect.Pitch >> 2) + col;
 
-			// swap to BGR because Quake is going to swap it back
-			dstdata[2] = srcdata[srcpos * 3 + 0];
-			dstdata[1] = srcdata[srcpos * 3 + 1];
-			dstdata[0] = srcdata[srcpos * 3 + 2];
+			dstdata[0] = srcdata[srcpos * 4 + 0];
+			dstdata[1] = srcdata[srcpos * 4 + 1];
+			dstdata[2] = srcdata[srcpos * 4 + 2];
 
 			dstdata += 3;
 		}
+	}
+
+		break;
+
+	case GL_BGRA_EXT:
+		for (row = (y + height - 1); row >= y; row--)
+		{
+			for (col = x; col < (x + width); col++)
+			{
+				int srcpos = row * (lockrect.Pitch >> 2) + col;
+
+				dstdata[0] = srcdata[srcpos * 4 + 0];
+				dstdata[1] = srcdata[srcpos * 4 + 1];
+				dstdata[2] = srcdata[srcpos * 4 + 2];
+				dstdata[3] = srcdata[srcpos * 4 + 3];
+
+				dstdata += 3;
+			}
+		}
+
+		break;
+
+	default:
+		Con_Printf ("glReadPixels: invalid format or type\n");
+		break;
 	}
 
 	hr = IDirect3DSurface8_UnlockRect (locksurf);
@@ -2911,7 +2992,7 @@ void glViewport (GLint x, GLint y, GLsizei width, GLsizei height)
 }
 
 
-void D3D_PostResetRestore (void)
+static void D3D_PostResetRestore (void)
 {
 	// set projection and world to dirty, beginning of stack and identity
 	D3D_InitializeMatrix (&d3d_ModelViewMatrix);
@@ -2927,7 +3008,7 @@ void D3D_PostResetRestore (void)
 }
 
 
-void D3D_ResetMode (int width, int height, int bpp, BOOL windowed_)
+void D3D_ResetMode (int width, int height, int bpp, int windowed_)
 {
 	RECT winrect;
 	int winstyle;
@@ -2965,7 +3046,7 @@ void D3D_ResetMode (int width, int height, int bpp, BOOL windowed_)
 	winrect.bottom = height;
 
 	winexstyle = 0;
-		winstyle = COM_CheckParm("-fullwindow") ? WS_POPUP : (windowed_ ? WS_OVERLAPPED | WS_BORDER | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX : WS_POPUP);
+	winstyle = COM_CheckParm("-fullwindow") ? WS_POPUP : (windowed_ ? WS_OVERLAPPED | WS_BORDER | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX : WS_POPUP);
 
 	// reset stuff
 	SetWindowLong (d3d_PresentParams.hDeviceWindow, GWL_EXSTYLE, winexstyle);
@@ -3093,7 +3174,7 @@ void FakeSwapBuffers (void)
 ===================================================================================================================
 */
 
-void GL_UpdateCull (void)
+static void GL_UpdateCull (void)
 {
 	if (gl_CullEnable == GL_FALSE)
 	{
@@ -3149,7 +3230,7 @@ void glScissor (GLint x, GLint y, GLsizei width, GLsizei height)
 }
 
 
-void GL_EnableDisable (GLenum cap, BOOL enabled)
+static void GL_EnableDisable (GLenum cap, BOOL enabled)
 {
 	DWORD d3d_RS;
 
@@ -3199,8 +3280,10 @@ void GL_EnableDisable (GLenum cap, BOOL enabled)
 
 	case GL_POLYGON_OFFSET_FILL:
 	case GL_POLYGON_OFFSET_LINE:
+#if DX8_USE_POLYGON_OFFSET
 		d3d_PolyOffsetEnabled = enabled;
 		d3d_PolyOffsetSwitched = FALSE;
+#endif
 
 		// we're not setting state yet here...
 		return;
@@ -3298,6 +3381,10 @@ void glGetIntegerv (GLenum pname, GLint *params)
 
 		break;
 
+	case GL_MAX_TEXTURE_UNITS_ARB:
+		params[0] = D3D_MAX_TMUS;
+		return;
+
 	default:
 		params[0] = 0;
 		return;
@@ -3305,7 +3392,7 @@ void glGetIntegerv (GLenum pname, GLint *params)
 }
 
 
-LONG ChangeDisplaySettings_FakeGL (LPDEVMODE lpDevMode, DWORD dwflags)
+LONG WINAPI ChangeDisplaySettings_FakeGL (LPDEVMODE lpDevMode, DWORD dwflags)
 {
 	if (dwflags & CDS_TEST)
 	{
@@ -3512,7 +3599,7 @@ static char *GL_ExtensionString =
 GL_ARB_texture_env_add \
 GL_EXT_texture_filter_anisotropic ";
 
-D3DADAPTER_IDENTIFIER8 d3d_AdapterID;
+static D3DADAPTER_IDENTIFIER8 d3d_AdapterID;
 
 const GLubyte *glGetString (GLenum name)
 {
@@ -3544,7 +3631,7 @@ typedef struct gld3d_entrypoint_s
 	PROC funcproc;
 } gld3d_entrypoint_t;
 
-gld3d_entrypoint_t d3d_EntryPoints[] =
+static gld3d_entrypoint_t d3d_EntryPoints[] =
 {
 	{"glActiveTexture", (PROC) GL_ActiveTexture},
 	{"glActiveTextureARB", (PROC) GL_ActiveTexture},

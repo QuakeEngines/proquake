@@ -198,6 +198,10 @@ extern  cvar_t  sv_ipmasking;
 
 extern	cvar_t	pq_fullpitch;	// JPG 2.01
 
+extern	cvar_t	sv_cullentities;
+
+
+
 extern	server_static_t	svs;				// persistant server info
 extern	server_t		sv;					// local server
 

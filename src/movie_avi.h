@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 void AVI_LoadLibrary (void);
 void ACM_LoadLibrary (void);
-qboolean Capture_Open (char *filename);
+int Capture_Open (char *filename, char *usercodec, qboolean silentish);
 void Capture_WriteVideo (byte *pixel_buffer);
 void Capture_WriteAudio (int samples, byte *sample_buffer);
 void Capture_Close (void);

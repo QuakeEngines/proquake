@@ -26,13 +26,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "movie.h"
 #endif
 
-// added by joe
-	framepos_t	*dem_framepos = NULL;
-
-static	qboolean	start_of_demo = false;
-cvar_t	cl_demorewind = {"cl_demorewind", "0"};
-
 void CL_FinishTimeDemo (void);
+
+typedef struct framepos_s
+{
+	long				baz;
+	struct framepos_s	*next;
+} framepos_t;
+
+framepos_t	*dem_framepos = NULL;
+qboolean	start_of_demo = false;
+qboolean	bumper_on = false;
 
 /*
 ==============================================================================
@@ -80,50 +84,6 @@ void CL_StopPlayback (void)
 
 }
 
-/* JPG - need to fix up the demo message
-==============
-CL_FixMsg
-==============
-*/
- void CL_FixMsg (int fix)
-{
-	char s1[7] = "coop 0";
-	char s2[7] = "cmd xs";
-	char *s;
-	int match = 0;
-	int c, i;
-
-	s = fix ? s1 : s2;
-
-	MSG_BeginReading ();
-	while (1)
-	{
-		if (msg_badread)
-			return;
-		if (MSG_ReadByte () != svc_stufftext)
-			return;
-
-		while (1)
-		{
-			c = MSG_ReadChar();
-			if (c == -1 || c == 0)
-				break;
-			if (c == s[match])
-			{
-				match++;
-				if (match == 6)
-				{
-					for (i = 0 ; i < 6 ; i++)
-						net_message.data[msg_readcount - 6 + i] ^= s1[i] ^ s2[i];
-					match = 0;
-				}
-			}
-			else
-				match = 0;
-		}
-	}
-}
-
 /*
 ====================
 CL_WriteDemoMessage
@@ -133,7 +93,8 @@ Dumps the current net message, prefixed by the length and view angles
 */
  void CL_WriteDemoMessage (void)
 {
-	int	i, len;
+	int		len;
+	int		i;
 	float	f;
 
 	len = LittleLong (net_message.cursize);
@@ -143,9 +104,7 @@ Dumps the current net message, prefixed by the length and view angles
 		f = LittleFloat (cl.viewangles[i]);
 		fwrite (&f, 4, 1, cls.demofile);
 	}
-	CL_FixMsg(1); // JPG - some demo things are bad
 	fwrite (net_message.data, net_message.cursize, 1, cls.demofile);
-	CL_FixMsg(0); // JPG - some demo things are bad
 	fflush (cls.demofile);
 }
 
@@ -189,12 +148,12 @@ int CL_GetMessage (void)
 	int		r, i;
 	float	f;
 
-	if (cl.paused & 2)		// by joe: pause during demo
+	if (cl.paused & 2)
 		return 0;
 
 	if	(cls.demoplayback)
 	{
-		if (start_of_demo && cl_demorewind.value)
+		if (start_of_demo && cls.demorewind)
 			return 0;
 
 		if (cls.signon < SIGNONS)	// clear stuffs if new demo
@@ -215,19 +174,20 @@ int CL_GetMessage (void)
 					cls.td_starttime = realtime;
 			}
 			// modified by joe to handle rewind playing
-			else if (!cl_demorewind.value && cl.ctime <= cl.mtime[0])
+			else if (!cls.demorewind && cl.ctime <= cl.mtime[0])
 					return 0;		// don't need another message yet
-			else if (cl_demorewind.value && cl.ctime >= cl.mtime[0])
+			else if (cls.demorewind && cl.ctime >= cl.mtime[0])
 				return 0;
 
 			// joe: fill in the stack of frames' positions
 			// enable on intermission or not...?
 			// NOTE: it can't handle fixed intermission views!
-			if (!cl_demorewind.value /*&& !cl.intermission*/)
+			if (!cls.demorewind /*&& !cl.intermission*/)
 				PushFrameposEntry (ftell(cls.demofile));
 		}
 
 	// get the next message
+		cls.demo_offset_current = ftell(cls.demofile);
 		fread (&net_message.cursize, 4, 1, cls.demofile);
 		VectorCopy (cl.mviewangles[0], cl.mviewangles[1]);
 		for (i=0 ; i<3 ; i++)
@@ -248,12 +208,15 @@ int CL_GetMessage (void)
 		}
 
 		// joe: get out framestack's top entry
-		if (cl_demorewind.value /*&& !cl.intermission*/)
+		if (cls.demorewind /*&& !cl.intermission*/)
 		{
+			if (dem_framepos/* && dem_framepos->baz*/)	// Baker: in theory, if this occurs we ARE at the start of the demo with demo rewind on
+			{
 			fseek (cls.demofile, dem_framepos->baz, SEEK_SET);
-			EraseTopEntry ();
+				EraseTopEntry (); // Baker: we might be able to improve this better but not right now.
+			}
 			if (!dem_framepos)
-				start_of_demo = true;
+				bumper_on = start_of_demo = true;
 		}
 
 		return 1;
@@ -335,11 +298,20 @@ void CL_Stop_f (void)
 
 // finish up
 	fclose (cls.demofile);
+	strlcpy (cls.recent_file, cls.demoname, sizeof(cls.recent_file) ); // Close demo instance #2 (record end)
+
 	cls.demofile = NULL;
 	cls.demorecording = false;
 	Con_Printf ("Completed demo\n");
 }
 
+void CL_Clear_Demos_Queue (void)
+{
+	int i;
+	for (i = 0;i < MAX_DEMOS; i ++)	// Clear demo loop queue
+		cls.demos[i][0] = 0;
+	cls.demonum = -1;				// Set next demo to none
+}
 /*
 ====================
 CL_Record_f
@@ -350,13 +322,15 @@ record <demoname> <map> [cd track]
 
 void CL_Record_f (void)
 {
-	int		c, track;
+	int		c;
 	char	name[MAX_OSPATH];
+	int		track;
 
-	if (cmd_source != src_command) // Apparently, it is not allow for the server to force a client to record
+	if (cmd_source != src_command)
 		return;
 
-	if (cls.demoplayback) {
+	if (cls.demoplayback) 
+	{
 		Con_Printf ("Can't record during demo playback\n");
 		return;
 	}
@@ -364,7 +338,8 @@ void CL_Record_f (void)
 	c = Cmd_Argc();
 	// Baker: demo parameters = 2 thru 4
 	// Not supporting autoname yet (==1)
-	if (c <2 || c>4) {
+	if (c != 2 && c != 3 && c != 4)
+	{
 		Con_Printf ("record <demoname> [<map> [cd track]]\n");
 		return;
 	}
@@ -386,10 +361,6 @@ void CL_Record_f (void)
 		return;
 	}
 
-	// JPG 3.00 - consecutive demo bug
-	if (cls.demorecording)
-		CL_Stop_f();
-
 	// write the forced cd track number, or -1
 	if (c == 4)
 	{
@@ -397,22 +368,25 @@ void CL_Record_f (void)
 		Con_Printf ("Forcing CD track to %i\n", cls.forcetrack);
 	}
 	else
-	{
 		track = -1;
-	}
 
 	SNPrintf(name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
+	CL_Clear_Demos_Queue (); // timedemo is a very intentional action
 
+//
 // start the map up
+//
 	if (c > 2)
 	{
 		Cmd_ExecuteString ( va("map %s", Cmd_Argv(2)), src_command);
-	// joe: if couldn't find the map, don't start recording
+		// If couldn't find the map, don't start recording
 		if (cls.state != ca_connected)
 			return;
 	}
 
+//
 // open the demo file
+//
 	COM_ForceExtension (name, ".dem");
 
 	Con_Printf ("recording to %s.\n", name);
@@ -423,22 +397,20 @@ void CL_Record_f (void)
 		return;
 	}
 
-#if 0
+	// Officially recording ... copy the name for reference
 	SNPrintf(cls.demoname, sizeof(cls.demoname), "%s", name);
-
-	Con_Printf("Current demo is: %s\n", cls.demoname);
-#endif
 
 	cls.forcetrack = track;
 	fprintf (cls.demofile, "%i\n", cls.forcetrack);
 
 	cls.demorecording = true;
 
-	// joe: initialize the demo file if we're already connected
-	if (c < 3 && cls.state == ca_connected)
+	// Initialize the demo file if we're already connected
+	if (c == 2 && cls.state == ca_connected)
 	{
 		byte *data = net_message.data;
-		int i, cursize = net_message.cursize;
+		int cursize = net_message.cursize;
+		int i;
 
 		for (i = 0 ; i < 2 ; i++)
 		{
@@ -471,6 +443,23 @@ void CL_Record_f (void)
 			MSG_WriteByte (&net_message, i);
 			MSG_WriteString (&net_message, cl_lightstyle[i].map);
 		}
+
+		// Write out single player stats too
+		MSG_WriteByte (&net_message, svc_updatestat);
+		MSG_WriteByte (&net_message, STAT_TOTALSECRETS);
+		MSG_WriteLong (&net_message, pr_global_struct->total_secrets);
+
+		MSG_WriteByte (&net_message, svc_updatestat);
+		MSG_WriteByte (&net_message, STAT_TOTALMONSTERS);
+		MSG_WriteLong (&net_message, pr_global_struct->total_monsters);
+
+		MSG_WriteByte (&net_message, svc_updatestat);
+		MSG_WriteByte (&net_message, STAT_SECRETS);
+		MSG_WriteLong (&net_message, pr_global_struct->found_secrets);
+
+		MSG_WriteByte (&net_message, svc_updatestat);
+		MSG_WriteByte (&net_message, STAT_MONSTERS);
+		MSG_WriteLong (&net_message, pr_global_struct->killed_monsters);
 
 		// view entity
 		MSG_WriteByte (&net_message, svc_setview);
@@ -516,6 +505,15 @@ CL_PlayDemo_f
 playdemo [demoname]
 ====================
 */
+// Baker: So we know this is a real start demo
+qboolean play_as_start_demo = false;
+void CL_PlayDemo_NextStartDemo_f (void)
+{
+	play_as_start_demo = true;
+	CL_PlayDemo_f (); // Inherits the cmd_argc and cmd_argv
+	play_as_start_demo = false;
+}
+
 void CL_PlayDemo_f (void)
 {
 	char	name[256];
@@ -523,34 +521,34 @@ void CL_PlayDemo_f (void)
 	if (cmd_source != src_command)
 		return;
 
+	if (!play_as_start_demo)
+		CL_Clear_Demos_Queue ();
 	if (Cmd_Argc() != 2)
 	{
 		Con_Printf ("playdemo <demoname> : plays a demo\n");
 		return;
 	}
 
+
+//
 // disconnect from server
+//
 	CL_Disconnect ();
 
-	// added by joe, but FIXME!
-	if (cl_demorewind.value)
-	{
-		Con_Printf ("ERROR: rewind is on\n");
-		cls.demonum = -1;
-		return;
-	}
+	// Revert
+	cls.demorewind = false;
+	cls.demospeed = 0; // 0 = Don't use
+	bumper_on = false;
 
+//
 // open the demo file
-	strcpy (name, Cmd_Argv(1));
+//
+	strlcpy (name, Cmd_Argv(1), sizeof(name));
 	COM_DefaultExtension (name, ".dem");
 
-	/*if (!strncmp(name, "../", 3) || !strncmp(name, "..\\", 3))
-		cls.demofile = fopen (va("%s/%s", com_basedir, name + 3), "rb");
-	else
-		COM_FOpenFile (name, &cls.demofile); */
-
 	COM_FOpenFile (name, &cls.demofile);
-	if (!cls.demofile) {
+	if (!cls.demofile) 
+	{
 #ifdef SUPPORTS_DEMO_AUTOPLAY
 		// Baker 3.76 - Check outside the demos folder!
 		cls.demofile = fopen(name, "rb"); // Baker 3.76 - check DarkPlaces file system
@@ -564,10 +562,11 @@ void CL_PlayDemo_f (void)
 		}
 	}
 
-#if 0
 	SNPrintf(cls.demoname, sizeof(cls.demoname), "%s", name);
-//	MessageBox(NULL, cls.demoname, "Verdict?", MB_OK);
-#endif
+	cls.demo_offset_start = ftell (cls.demofile);	// qfs_lastload.offset instead?
+	cls.demo_file_length = com_filesize;
+	cls.demo_hosttime_start	= cls.demo_hosttime_elapsed = 0; // Fill this in ... host_time;
+	cls.demo_cltime_start = cls.demo_cltime_elapsed = 0; // Fill this in
 
 	Con_Printf ("Playing demo from %s\n", COM_SkipPath(name));
 
@@ -612,7 +611,16 @@ void CL_TimeDemo_f (void)
 		return;
 	}
 
+	// Baker: Close the console for timedemo
+	// Baker: This is a performance benchmark.  No reason to have console up.
+	if (key_dest != key_game)
+		key_dest = key_game;
+	CL_Clear_Demos_Queue (); // timedemo is a very intentional action
+
 	CL_PlayDemo_f ();
+
+	// don't trigger timedemo mode if playdemo fails
+	if (!cls.demofile) return;
 
 // cls.td_starttime will be grabbed at the second frame of the demo, so
 // all the loading time doesn't get counted

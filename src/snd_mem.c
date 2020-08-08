@@ -110,16 +110,16 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 
 //Con_Printf ("S_LoadSound: %x\n", (int)stackbuf);
 // load it in
-    strcpy (namebuffer, "sound/");
+    strlcpy (namebuffer, "sound/", sizeof(namebuffer));
     strlcat (namebuffer, s->name, sizeof(namebuffer));
 
 //	Con_Printf ("loading %s\n",namebuffer);
 
 	if (!(data = COM_LoadStackFile(namebuffer, stackbuf, sizeof(stackbuf))))
 	{
-		if (mod_nosoundwarn) // Developer print it instead if -nosoundwarn used
-			Con_DPrintf ("Couldn't load %s\n", namebuffer);
-		else
+//		if (mod_nosoundwarn) // Developer print it instead if -nosoundwarn used
+//			Con_DPrintf ("Couldn't load %s\n", namebuffer);
+//		else
 			Con_Printf ("Couldn't load %s\n", namebuffer);
 		return NULL;
 	}

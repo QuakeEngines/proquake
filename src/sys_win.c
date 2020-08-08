@@ -23,9 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "winquake.h"
 #include "resource.h"
 #include "conproc.h"
-#include <limits.h>
+#include <limits.h> // Clock LONG_MAX or somethign
 #include <errno.h>
-#include <direct.h>
+
 
 // JPG 3.30 - need these for synchronization
 #include <fcntl.h>
@@ -265,11 +265,10 @@ int Sys_FileOpenWrite (char *path)
 
 	i = findhandle ();
 
-	if (!(f = fopen(path, "wb")))
+	f = fopen(path, "wb");
+	if (!f)
 		Sys_Error ("Error opening %s: %s", path,strerror(errno));
 	sys_handles[i] = f;
-
-
 
 	return i;
 }
@@ -278,37 +277,24 @@ void Sys_FileClose (int handle)
 {
 	fclose (sys_handles[handle]);
 	sys_handles[handle] = NULL;
-
 }
 
 void Sys_FileSeek (int handle, int position)
 {
-	int		t;
-
-
 	fseek (sys_handles[handle], position, SEEK_SET);
-
 }
 
 int Sys_FileRead (int handle, void *dest, int count)
 {
 	int		x;
-
-
 	x = fread (dest, 1, count, sys_handles[handle]);
-
-
 	return x;
 }
 
 int Sys_FileWrite (int handle, void *data, int count)
 {
 	int		x;
-
-
 	x = fwrite (data, 1, count, sys_handles[handle]);
-
-
 	return x;
 }
 
@@ -317,8 +303,9 @@ int	Sys_FileTime (char *path)
 	FILE	*f;
 	int		retval;
 
+	f = fopen(path, "rb");
 
-	if ((f = fopen(path, "rb")))
+	if (f)
 	{
 		fclose(f);
 		retval = 1;
@@ -331,6 +318,99 @@ int	Sys_FileTime (char *path)
 	return retval;
 }
 
+qboolean Explorer_OpenFolder_HighlightFile (char *absolutefilename)
+{
+	char folder_to_open[MAX_OSPATH];
+	char file_highlight[MAX_OSPATH];
+	char command_line  [1024];
+	int i;
+
+	if (Sys_FileTime(absolutefilename) == -1)
+	{
+		Con_DPrintf ("File \"%s\" does not exist to show\n", absolutefilename);
+		Con_Printf ("File does not exist to show\n");
+		return false;
+	}
+
+	// Copy it
+	strlcpy (file_highlight, absolutefilename, sizeof(file_highlight) );
+
+	// Windows format the slashes
+	for (i = 0; file_highlight[i]; i++)
+		if (file_highlight[i] == '/')
+			file_highlight[i] = '\\';
+
+	// Get the path
+	strlcpy (folder_to_open, file_highlight, sizeof(folder_to_open) );
+	COM_Reduce_To_Parent_Path (folder_to_open);
+
+	SNPrintf (command_line, sizeof(command_line), "/select,%s", file_highlight);
+
+	// Zero is failure, non-zero is success
+	Con_DPrintf ("Folder highlight: explorer.exe with \"%s\"\n", command_line);
+
+	return (ShellExecute(0, "Open", "explorer.exe", command_line, NULL, SW_NORMAL) != 0);
+
+}
+
+
+qboolean Explorer_OpenFolder (char *fullpath)
+{
+	char folder_to_open[MAX_OSPATH];
+	int i;
+
+	// Copy it
+	strlcpy (folder_to_open, fullpath, sizeof(folder_to_open) );
+
+	// Windows format the slashes
+	for (i = 0; folder_to_open[i]; i++)
+		if (folder_to_open[i] == '/')
+			folder_to_open[i] = '\\';
+
+	return (ShellExecute(0, "Open", "explorer.exe", folder_to_open, NULL, SW_NORMAL) != 0);
+}
+
+void Sys_OpenFolder_f (void)
+{
+	if (isDedicated)
+		return;
+
+	if (modestate != MODE_WINDOWED)
+	{
+		Con_Printf ("folder command only works in windowed mode\n");
+		return;
+	}
+
+	if (cls.recent_file[0])
+	{
+		char tempname[1024];
+		SNPrintf (tempname, sizeof(tempname), "%s/%s", com_gamedir, cls.recent_file);
+		
+		// See if this file exists ...
+		if (Sys_FileTime(tempname) != -1)
+		{
+			// It does
+			if (Explorer_OpenFolder_HighlightFile (tempname))
+				Con_Printf ("Explorer opening folder and highlighting ...\n");
+			else
+				Con_Printf ("Opening folder failed\n");
+
+			return;
+		}
+
+		// If the file didn't exist, we open the gamedir folder like normal
+	}
+
+	if (Explorer_OpenFolder (com_gamedir))
+		Con_Printf  ("Explorer opening folder ...\n");
+	else
+		Con_Printf ("Opening folder failed\n");
+
+	return;
+}
+
+
+#include <direct.h> // Baker: Removes a warning
 void Sys_mkdir (char *path) 
 {
 	_mkdir (path);
@@ -724,6 +804,18 @@ void Sys_CopyToClipboard(char *text)
 	CloseClipboard();
 }
 
+void Sys_SetWindowCaption (char *newcaption)
+{
+	if (!mainwindow)
+		return;
+
+	if (!newcaption)
+		SetWindowText (mainwindow, va("%s %s %s",ENGINE_NAME, RENDERER_NAME, ENGINE_VERSION));
+	else
+		SetWindowText (mainwindow, newcaption);
+}
+
+
 /*
 ==================
 WinMain
@@ -742,7 +834,7 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	MEMORYSTATUS	lpBuffer;
 	static	char	cwd[1024];
 	int				t, i;
-	RECT			rect;
+//	RECT			rect;
 	char			*ch;	// JPG 3.00 - for eliminating quotes from exe name
 	char			*e;
 	FILE			*fpak0;
@@ -750,6 +842,35 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
     /* previous instances do not exist in Win32 */
     if (hPrevInstance)
         return 0;
+
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+	// Check lpCmdline to see if we are to run as server browser 
+	// download process utility.  If so, we download server browser data
+	// write it to file and get out.
+	if (strstr (lpCmdLine, "-server_update") )
+	{
+		int			html_read_numbytes;
+		const char*	html_read;
+		int			exitcode = 0;
+		Server_Browser_Util_Get_Page_Alloc (&html_read, SERVER_BROWSER_URL, &html_read_numbytes);
+
+		i = GetModuleFileName(NULL, com_basedir, sizeof(com_basedir) - 1);
+		if(!i)
+			Sys_Error("FS_InitFilesystemEx: GetModuleFileName failed");
+
+		com_basedir[i] = 0; // ensure null terminator
+		for (e = com_basedir + strlen(com_basedir) - 1; e >= com_basedir; e--)
+			if (*e == '/' || *e == '\\')
+			{
+				*e = 0;
+				break;
+			}
+
+		exitcode = Server_Browser_Util_Write_Servers (html_read, html_read_numbytes, SERVER_LIST_NAME);
+		exit (exitcode);
+	}
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
+
 
 	global_hInstance = hInstance;
 	global_nCmdShow = nCmdShow;
@@ -772,7 +893,6 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 	com_basedir[i] = 0; // ensure null terminator
 
-//	sprintf(exeline, "%s %%1", com_basedir);
 	SNPrintf(exeline, sizeof(exeline), "%s \"%%1\"", com_basedir);
 #if 0
 	if (COM_CheckParm ("-noassocdem") == 0) 
@@ -869,7 +989,8 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 
 
 // take the greater of all the available memory or half the total memory,
-// but at least 8 Mb and no more than 16 Mb, unless they explicitly request otherwise
+// but at least 8 Mb and no more than 16 Mb, unless they explicitly
+// request otherwise
 	parms.memsize = lpBuffer.dwAvailPhys;
 
 	if (parms.memsize < MINIMUM_WIN_MEMORY)
@@ -892,13 +1013,17 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	// Baker 3.99n: JoeQuake doesn't do this next one
 	Sys_PageIn (parms.membase, parms.memsize);
 
-	if (!(tevent = CreateEvent(NULL, FALSE, FALSE, NULL)))
+	tevent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+	if (!tevent)
 		Sys_Error ("Couldn't create event");
 
 	if (isDedicated)
 	{
 		if (!AllocConsole ())
+		{
 			Sys_Error ("Couldn't create dedicated server console");
+		}
 
 		hinput = GetStdHandle (STD_INPUT_HANDLE);
 		houtput = GetStdHandle (STD_OUTPUT_HANDLE);
@@ -975,6 +1100,59 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
     // return success of application
     return TRUE;
 }
+
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+/*
+==================
+Sys_Process_Run
+
+Launches process with cmdline passed
+==================
+*/
+
+HANDLE Sys_Process_Run (char *cmdline, const char *description) 
+{
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+
+	memset (&si, 0, sizeof(si));
+	si.cb = sizeof(si);
+	si.wShowWindow = SW_SHOWMINNOACTIVE;
+	si.dwFlags = STARTF_USESHOWWINDOW;
+
+	Con_DPrintf("Sys_Process_Run: command line: \"%s\"\n", cmdline);
+	if (!CreateProcess(NULL, cmdline, NULL, NULL, FALSE, GetPriorityClass(GetCurrentProcess()), NULL, com_basedir, &si, &pi)) 
+	{
+		Con_Printf ("Couldn't execute %s process\n", description);
+		return NULL;
+	}
+
+	// Return the handle
+	return pi.hProcess;
+}
+
+int Sys_Process_IsStillRunning (HANDLE processhandle) 
+{
+	DWORD	ExitCode;
+
+	if (!processhandle) 
+	{
+		Con_Printf ("WARNING: NULL process handle\n");
+		return -1; // Error
+	}
+
+	if (!GetExitCodeProcess(processhandle, &ExitCode)) 
+	{
+		Con_Printf ("WARNING: GetExitCodeProcess failed\n");
+		return -1; // Error
+	}
+
+	if (ExitCode == STILL_ACTIVE)
+		return 1; // Still running
+
+	return 0; // No longer running; completed
+}
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 
 void Sys_OpenQuakeFolder_f(void)
 {
@@ -1172,3 +1350,28 @@ void Sys_Init (void)
 
 	WinNT = (vinfo.dwPlatformId == VER_PLATFORM_WIN32_NT) ? true:false;
 }
+
+int Sys_GetHardDriveSerial (const char* mydir)
+{
+	DWORD	dwSerial, dwMFL, dwSysFlags;
+	UCHAR	szFileSys[255], szVolNameBuff[255];
+	BOOL	bSuccess;
+	char drivebuf[30] = {0};
+	int i;
+	
+	// Copy until hits end of path
+	for (i = 0; i < (sizeof(drivebuf) - 2) && mydir[i]; i++)
+	{
+		drivebuf[i] = mydir[i];
+		if (mydir[i] == '\\')
+			break;
+	}
+	
+	if (bSuccess = GetVolumeInformation((LPTSTR)drivebuf,(LPTSTR)szVolNameBuff, 255, &dwSerial, &dwMFL, &dwSysFlags, (LPTSTR)szFileSys, 255) )
+	{
+		return (int)dwSerial;
+	}
+	else return 0;
+}
+
+

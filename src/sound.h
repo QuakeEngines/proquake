@@ -160,15 +160,10 @@ extern volatile dma_t *shm;
 extern volatile dma_t sn;
 extern vec_t sound_nominal_clip_dist;
 
-#ifdef BUILD_MP3_VERSION
-extern int				sound_started;
-#endif
 
 extern	cvar_t loadas8bit;
 extern	cvar_t bgmvolume;
-#ifdef PSP_MP3_SUPPORT
-extern	cvar_t bgmtype;  // Type of background source
-#endif
+
 extern	cvar_t volume;
 
 extern qboolean	snd_initialized;
@@ -186,4 +181,4 @@ void SNDDMA_Submit(void);
 void S_AmbientOff (void);
 void S_AmbientOn (void);
 
-#endif
+#endif // ! __SOUND__

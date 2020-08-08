@@ -56,7 +56,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib libpng.lib zlib.lib libjpeg.lib /nologo /subsystem:windows /profile /map /machine:I386 /out:"..\dx8_Engine_X_473.exe" /libpath:".\fmod" /libpath:".\curl" /libpath:".\zlib" /libpath:".\png" /libpath:".\jpeg" /libpath:".\dxsdk\sdk8\lib"
-# ADD LINK32 advapi32.lib gdi32.lib kernel32.lib dxguid.lib ole32.lib opengl32.lib oleaut32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib /nologo /subsystem:windows /machine:I386 /out:"C:\quake2\glpro491.exe"
+# ADD LINK32 advapi32.lib gdi32.lib kernel32.lib dxguid.lib ole32.lib opengl32.lib oleaut32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib /nologo /subsystem:windows /machine:I386 /out:"C:\quake2\glpro493.exe"
 # SUBTRACT LINK32 /profile /incremental:yes /map
 
 !ELSEIF  "$(CFG)" == "ProQuake - Win32 Debug"
@@ -84,7 +84,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 advapi32.lib comctl32.lib dsound.lib dxguid.lib gdi32.lib libcurl.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib strmiids.lib user32.lib winmm.lib wsock32.lib libpng.lib zlib.lib libjpeg.lib Comctl32.lib /nologo /subsystem:windows /profile /map /debug /machine:I386 /out:"..\dx8_Engine_X_473_dbg.exe" /libpath:".\fmod" /libpath:".\curl" /libpath:".\zlib" /libpath:".\png" /libpath:".\jpeg" /libpath:".\dxsdk\sdk8\lib"
-# ADD LINK32 advapi32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib /nologo /subsystem:windows /incremental:yes /map /debug /machine:I386 /out:"C:\quake2\glpro491_debug.exe"
+# ADD LINK32 advapi32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib /nologo /subsystem:windows /incremental:yes /map /debug /machine:I386 /out:"C:\quake2\glpro493_debug.exe"
 # SUBTRACT LINK32 /pdb:none
 
 !ELSEIF  "$(CFG)" == "ProQuake - Win32 DX8 Release"
@@ -113,7 +113,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 advapi32.lib gdi32.lib kernel32.lib dxguid.lib ole32.lib opengl32.lib oleaut32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib /nologo /subsystem:windows /incremental:yes /machine:I386 /out:"C:\quake\ProQuake5.exe"
 # SUBTRACT BASE LINK32 /profile /map
-# ADD LINK32 advapi32.lib gdi32.lib kernel32.lib dxguid.lib ole32.lib oleaut32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib dxsdk/sdk8/lib/d3d8.lib ./dxsdk/sdk8/lib/d3dx8.lib /nologo /subsystem:windows /machine:I386 /out:"C:\quake2\dx8pro491.exe" /libpath:".\dxsdk\sdk8\lib"
+# ADD LINK32 advapi32.lib gdi32.lib kernel32.lib dxguid.lib ole32.lib oleaut32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib dxsdk/sdk8/lib/d3d8.lib ./dxsdk/sdk8/lib/d3dx8.lib /nologo /subsystem:windows /machine:I386 /out:"C:\quake2\dx8pro493.exe" /libpath:".\dxsdk\sdk8\lib"
 # SUBTRACT LINK32 /pdb:none /incremental:yes
 
 !ELSEIF  "$(CFG)" == "ProQuake - Win32 DX8 Debug"
@@ -142,7 +142,7 @@ BSC32=bscmake.exe
 LINK32=link.exe
 # ADD BASE LINK32 advapi32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib ole32.lib oleaut32.lib opengl32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib /nologo /subsystem:windows /incremental:yes /map /debug /machine:I386 /out:"C:\quake\ProQuake5_debug.exe"
 # SUBTRACT BASE LINK32 /pdb:none
-# ADD LINK32 advapi32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib ole32.lib oleaut32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib dxsdk/sdk8/lib/d3d8.lib ./dxsdk/sdk8/lib/d3dx8.lib /nologo /subsystem:windows /incremental:yes /map /debug /machine:I386 /out:"C:\quake2\dx8pro491_debug.exe"
+# ADD LINK32 advapi32.lib dsound.lib dxguid.lib gdi32.lib kernel32.lib ole32.lib oleaut32.lib shell32.lib user32.lib winmm.lib wsock32.lib curl/lib/libcurl.lib zlib/lib/zlib.lib dxsdk/sdk8/lib/d3d8.lib ./dxsdk/sdk8/lib/d3dx8.lib /nologo /subsystem:windows /incremental:yes /map /debug /machine:I386 /out:"C:\quake2\dx8pro493_debug.exe"
 # SUBTRACT LINK32 /pdb:none
 
 !ENDIF 
@@ -187,6 +187,14 @@ SOURCE=.\cl_main.c
 # Begin Source File
 
 SOURCE=.\cl_parse.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\cl_server_browser.c
+# End Source File
+# Begin Source File
+
+SOURCE=.\cl_server_browser.h
 # End Source File
 # Begin Source File
 
@@ -488,14 +496,6 @@ SOURCE=.\net_wins.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\net_wipx.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\net_wipx.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\pr_cmds.c
 # End Source File
 # Begin Source File
@@ -609,10 +609,6 @@ SOURCE=.\sys.h
 # Begin Source File
 
 SOURCE=.\sys_win.c
-# End Source File
-# Begin Source File
-
-SOURCE=.\version.c
 # End Source File
 # Begin Source File
 

@@ -40,60 +40,23 @@ most exception of circumstances, right?
 #define	MAX_GLTEXTURES	1024
 
 // Multitexture
-#ifdef MACOSX
-#define    TEXTURE0_SGIS				GL_TEXTURE0_ARB
-#define    TEXTURE1_SGIS				GL_TEXTURE1_ARB
-#else
-#ifndef OLD_SGIS
-extern GLenum gl_oldtarget;
-extern GLenum gl_Texture0;
-extern GLenum gl_Texture1;
-#define    TEXTURE0_SGIS gl_Texture0
-#define    TEXTURE1_SGIS gl_Texture1
-#else
-#define    TEXTURE0_SGIS				0x835E
-#define    TEXTURE1_SGIS				0x835F
-#endif
-#endif /* MACOSX */
 
-#ifndef GL_RGBA4
-#define	GL_RGBA4	0
-#endif
-
-#if !defined(DX8QUAKE_NO_8BIT)
-#ifndef GL_COLOR_INDEX8_EXT
-#define GL_COLOR_INDEX8_EXT     0x80E5
-#endif /* GL_COLOR_INDEX8_EXT */
-#endif
+//multitexturing
+#define	GL_TEXTURE0_ARB 		0x84C0
+#define	GL_TEXTURE1_ARB 		0x84C1
+#define	GL_TEXTURE2_ARB 		0x84C2
+#define	GL_TEXTURE3_ARB 		0x84C3
+#define GL_MAX_TEXTURE_UNITS_ARB	0x84E2
 
 // GL external vars, functions
+typedef void (APIENTRY *lpMTexFUNC)(GLenum, GLfloat, GLfloat);
+typedef void (APIENTRY *lpSelTexFUNC)(GLenum);
 
-#ifdef _WIN32
-// Function prototypes for the Texture Object Extension routines
-typedef GLboolean (APIENTRY *ARETEXRESFUNCPTR)(GLsizei, const GLuint *, const GLboolean *);
-typedef void (APIENTRY *BINDTEXFUNCPTR)(GLenum, GLuint);
-typedef void (APIENTRY *DELTEXFUNCPTR)(GLsizei, const GLuint *);
-typedef void (APIENTRY *GENTEXFUNCPTR)(GLsizei, GLuint *);
-typedef GLboolean (APIENTRY *ISTEXFUNCPTR)(GLuint);
-typedef void (APIENTRY *PRIORTEXFUNCPTR)(GLsizei, const GLuint *, const GLclampf *);
-typedef void (APIENTRY *TEXSUBIMAGEPTR)(int, int, int, int, int, int, int, int, void *);
-
-extern	BINDTEXFUNCPTR bindTexFunc;
-extern	DELTEXFUNCPTR delTexFunc;
-extern	TEXSUBIMAGEPTR TexSubImage2DFunc;
-
-extern	PROC glArrayElementEXT;
-extern	PROC glColorPointerEXT;
-extern	PROC glTexturePointerEXT;
-extern	PROC glVertexPointerEXT;
-#endif
-
-typedef void (APIENTRY *lpMTexFUNC) (GLenum, GLfloat, GLfloat);
-typedef void (APIENTRY *lpSelTexFUNC) (GLenum);
-extern lpMTexFUNC qglMTexCoord2fSGIS;
-extern lpSelTexFUNC qglSelectTextureSGIS;
+extern lpMTexFUNC qglMultiTexCoord2f;
+extern lpSelTexFUNC qglActiveTexture;
 
 
+#define GL_MAX_TEXTURE_UNITS_ARB	0x84E2
 
 // Engine internal vars
 
@@ -108,7 +71,7 @@ extern	int		d_lightstylevalue[256];	// 8.8 fraction of base light value
 
 extern	qboolean	envmap;
 extern	int	cnttextures[2];
-extern	int	currenttexture;
+extern	int	current_texture_num;
 extern	int	particletexture;
 extern	int	playertextures;
 

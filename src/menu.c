@@ -36,35 +36,14 @@ void (*vid_menucmdfn)(void); //johnfitz
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
-enum {
-	m_none,
-	m_main,
-	m_singleplayer,
-	m_load,
-	m_save,
-	m_multiplayer,
-	m_setup,
-	m_net,
-	m_options,
-	m_video,
-	m_keys,
-	m_help,
-	m_quit,
-//	m_serialconfig,
-//	m_modemconfig,
-	m_lanconfig,
-	m_gameoptions,
-	m_search,
-	m_slist,
-	m_preferences,
-	m_namemaker
-} m_state;
-
 void M_Menu_Main_f (void);
 	void M_Menu_SinglePlayer_f (void);
 		void M_Menu_Load_f (void);
 		void M_Menu_Save_f (void);
 	void M_Menu_MultiPlayer_f (void);
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+		void M_Menu_ServerBrowser_f (void);
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 		void M_Menu_Setup_f (void);
 void M_Menu_NameMaker_f (void);//JQ1.5dev
 		void M_Menu_Net_f (void);
@@ -86,6 +65,9 @@ void M_Main_Draw (void);
 		void M_Load_Draw (void);
 		void M_Save_Draw (void);
 	void M_MultiPlayer_Draw (void);
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+		void M_ServerBrowser_Draw (void);
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 		void M_Setup_Draw (void);
 void M_NameMaker_Draw (void);//JQ1.5Dev
 		void M_Net_Draw (void);
@@ -121,6 +103,9 @@ void M_LanConfig_Key (int key, int ascii);
 void M_GameOptions_Key (int key, int ascii);
 void M_Search_Key (int key, int ascii);
 void M_ServerList_Key (int key, int ascii);
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+void M_ServerBrowser_Key (int key, int ascii);
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 
 qboolean	m_entersound;		// play after drawing a frame, so caching
 								// won't disrupt the sound
@@ -304,6 +289,9 @@ void M_ToggleMenu_f (void)
 }
 
 
+
+
+
 //=============================================================================
 /* MAIN MENU */
 
@@ -313,11 +301,13 @@ int	m_main_cursor;
 
 void M_Menu_Main_f (void)
 {
-	if (key_dest != key_menu)
-	{
+
+// Baker: This prevents start demos from advancing when in the menu
+//	if (key_dest != key_menu)
+//	{
 //		m_save_demonum = cls.demonum;
 //		cls.demonum = -1;
-	}
+//	}
 	key_dest = key_menu;
 	m_state = m_main;
 	m_entersound = true;
@@ -348,6 +338,7 @@ void M_Main_Key (int key, int ascii)
 
 		key_dest = key_game;
 		m_state = m_none;
+// Baker: This prevents startdemos from advancing when in the menu
 //		cls.demonum = m_save_demonum;
 //		if (cls.demonum != -1 && !cls.demoplayback && cls.state != ca_connected)
 //			CL_NextDemo ();
@@ -702,8 +693,13 @@ void M_MultiPlayer_Key (int key, int ascii)
 		switch (m_multiplayer_cursor)
 		{
 		case 0:
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+			M_Menu_ServerBrowser_f ();
+#else // Old ...
+			// Else traditional menu
 			if (/*serialAvailable ||*/ ipxAvailable || tcpipAvailable)
 				M_Menu_Net_f ();
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 			break;
 
 		case 1:
@@ -930,7 +926,8 @@ void M_Menu_NameMaker_f (void)
 	strlcpy (namemaker_name, setup_myname, sizeof(namemaker_name));
 }
 
-void M_Shortcut_NameMaker_f (void) {
+void M_Shortcut_NameMaker_f (void) 
+{
 // Baker: our little shortcut into the name maker
 	namemaker_shortcut = true;
 	strlcpy (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
@@ -970,7 +967,8 @@ void M_NameMaker_Key (int key, int ascii)
 	case K_ESCAPE:
 		key_special_dest = false;
 
-		if (namemaker_shortcut) {// Allow quick exit for namemaker command
+		if (namemaker_shortcut) 
+		{// Allow quick exit for namemaker command
 			key_dest = key_game;
 			m_state = m_none;
 
@@ -979,7 +977,9 @@ void M_NameMaker_Key (int key, int ascii)
 			//Cvar_Set(&hostname, namemaker_name);
 			// Clear the state
 			namemaker_shortcut = false;
-		} else {
+		}
+		else 
+		{
 			strlcpy (setup_myname, namemaker_name, sizeof(setup_myname));//R00k
 		M_Menu_Setup_f ();
 		}
@@ -1335,36 +1335,8 @@ void M_Menu_Options_f (void)
 #endif
 }
 
-
-extern cvar_t v_gamma; // <-- Baker hwgamma support
-
-extern cvar_t cd_enabled; // <-- Baker: ability to shut off cd player from menu
-
-	extern cvar_t scr_fov;
-	extern cvar_t r_truegunangle;
-	extern cvar_t crosshair;
-	extern cvar_t cl_crosshaircentered;
-	extern cvar_t cl_rollangle;
-	extern cvar_t pq_moveup;
-	extern cvar_t cl_keypad;
-	extern cvar_t ambient_level;
-	extern cvar_t pq_maxfps;
-#ifdef SUPPORTS_DIRECTINPUT
-	extern cvar_t m_directinput;
-#endif
-#ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
-	extern cvar_t in_keymap;
-#endif
-	extern cvar_t vid_vsync;
-	extern cvar_t vid_consize;
-	extern cvar_t pq_ringblend;
-	extern cvar_t pq_suitblend;
-
 void M_AdjustSliders (int dir)
 {
-
-
-
 	S_LocalSound ("misc/menu3.wav");
 
 	switch (options_cursor)
@@ -1390,14 +1362,17 @@ void M_AdjustSliders (int dir)
 
 		// D3DQUAKE should use hardware gamma
 		// at least for here!
-		if (using_hwgamma) {
+		if (using_hwgamma) 
+		{
 			v_gamma.value -= dir * 0.05;
 			if (v_gamma.value < 0.5)
 				v_gamma.value = 0.5;
 			if (v_gamma.value > 1)
 				v_gamma.value = 1;
 			Cvar_SetValue ("gamma", v_gamma.value);
-		} else {
+		}
+		else 
+		{
 			SCR_ModalMessage("Brightness adjustment cannot\nbe done in-game if using the\n-gamma command line parameter.\n\n\nRemove -gamma from your command\nline to use in-game brightness.\n\nPress Y or N to continue.",0.0f);
 		}
 
@@ -1432,19 +1407,24 @@ void M_AdjustSliders (int dir)
 	case 8: break;
 
 	case 9:	// always run
-		if (cl_upspeed.value > 200) {
+		if (cl_upspeed.value > 200) 
+		{
 			// Maxxed to OFF
 			Cvar_SetValue ("cl_forwardspeed", 200);
 			Cvar_SetValue ("cl_backspeed", 200);
 			Cvar_SetValue ("cl_sidespeed", 350);    // Baker 3.60 - added 350 is the default
 			Cvar_SetValue ("cl_upspeed", 200);	// Baker 3.60 - added 350 is the default
-		} else if (cl_forwardspeed.value > 200) {
+		}
+		else if (cl_forwardspeed.value > 200) 
+		{
 			// Classic to Maxxed
 			Cvar_SetValue ("cl_forwardspeed", 999); // Baker 3.60 - previously 400
 			Cvar_SetValue ("cl_backspeed", 999);    // Baker 3.60 - previously 400
 			Cvar_SetValue ("cl_sidespeed", 999);    // Baker 3.60 - added
 			Cvar_SetValue ("cl_upspeed", 999);		// Baker 3.60 - added
-		} else {
+		}
+		else 
+		{
 			// OFF to Classic
 			Cvar_SetValue ("cl_forwardspeed", 400); // Baker 3.60 - previously 400
 			Cvar_SetValue ("cl_backspeed", 400);    // Baker 3.60 - previously 400
@@ -1677,14 +1657,6 @@ void M_Options_Key (int key, int ascii)
 		if (key == K_UPARROW)
 			options_cursor = 14;
 		else
-
-	// JPG 1.05 - patch by CSR
-#if defined(X11) || defined(_BSD)	/* CSR - for _windowed_mouse */
-		if (key == K_DOWNARROW)		/* CSR */
-			options_cursor = 16;	/* CSR */
-		else						/* CSR */
-#endif								/* CSR */
-
 			options_cursor = 0;
 	}
 
@@ -2148,7 +2120,7 @@ void M_Pref_AdjustSliders (int dir)
 
 		case 16:
 
-#ifdef SUPPORTS_CONSOLE_SIZING
+//#ifdef SUPPORTS_CONSOLE_SIZING
 			// 72 ON | 120 OFF | 200 OFF | 250 OFF
 			newval = CLAMP(-2, vid_consize.value + (dir <0 ? -1 : 1), 3);
 			if (newval == 3) // We won't allow 320 selection except from console
@@ -2157,12 +2129,13 @@ void M_Pref_AdjustSliders (int dir)
 				newval = 2;
 
 			Cvar_SetValue("vid_consize", newval);
-#endif
+//#endif
 			break;
 
 		case 18:
 #ifdef SUPPORTS_DIRECTINPUT
-			if (commandline_dinput) {
+			if (commandline_dinput) 
+			{
 				SCR_ModalMessage("DirectInput is locked because the\n-dinput command line parameter\nwas used.\n\nPress Y or N to continue.",0.0f);
 				break;
 			}
@@ -2215,11 +2188,11 @@ void M_Pref_Options_Draw (void)
 #endif
 	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, pq_maxfps.value == 72 ? "72 fps" : (pq_maxfps.value == 120 ? "120 fps" : (pq_maxfps.value == 200 ? "200 fps" : (pq_maxfps.value == 250 ? "250 fps" : "custom"))) ); i += 8; 	  // 14
 	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" );  i += 8;	  // 14
-#ifdef SUPPORTS_CONSOLE_SIZING // GLQuake + D3DQuake can resize the console;  WinQuake can't
+//#ifdef SUPPORTS_CONSOLE_SIZING // GLQuake + D3DQuake can resize the console;  WinQuake can't
 	M_Print     (16, i, "     console width  "); M_Print (220, i, vid_consize.value == 0 ? "100%" : (vid_consize.value == 1 ? "50%" : (vid_consize.value == 2 ? "640 width" : (vid_consize.value == -1 ? "auto" : "custom"))) ); i += 16; 	  // 15
-#else
-	M_Print     (16, i, "     console width  "); M_Print (220, i, "n/a"); i += 16; 	  // 13
-#endif
+//#else
+//	M_Print     (16, i, "     console width  "); M_Print (220, i, "n/a"); i += 16; 	  // 13
+//#endif
 
 	M_Print     (16, i, "     directinput mouse ");
 
@@ -3296,6 +3269,7 @@ void M_ServerList_Draw (void)
 		{
 			int	i,j;
 			hostcache_t temp;
+
 			for (i = 0; i < hostCacheCount; i++)
 				for (j = i+1; j < hostCacheCount; j++)
 					if (strcmp(hostcache[j].name, hostcache[i].name) < 0)
@@ -3304,7 +3278,7 @@ void M_ServerList_Draw (void)
 						memcpy(&hostcache[j], &hostcache[i], sizeof(hostcache_t));
 						memcpy(&hostcache[i], &temp, sizeof(hostcache_t));
 					}
-		}
+				}
 		slist_sorted = true;
 	}
 
@@ -3366,8 +3340,175 @@ void M_ServerList_Key (int key, int ascii)
 	default:
 		break;
 	}
+}
+
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+//=============================================================================
+/* SERVER LIST MENU */
+
+int serverbrowser_top = 32;
+int serverbrowser_bottom = 160;
+
+int	serverbrowser_cursor = 0;
+int serverbrowser_mins = 0; // First server # showing
+int serverbrowser_range = 15; // Number of servers displayed on-screen (like 14 in 320 resolution)
+int serverbrowser_maxs = 14; // Last server # showing
+int serverbrowser_state;
+
+void M_Menu_ServerBrowser_f (void)
+{
+	// Baker: we need to determine whether or not to refresh the server list
+	// Rules: never refresh the server list if we are in the menu
+
+	// This is the entry point so ....
+
+	// If there is a server browser query in progress, just move on and leave that alone
+	
+	// We will run an update if
+	// 1. An update isn't running
+	// 2. AND ... we either don't have a last update time or the current on is over 80 seconds old
+	if (!cls.serverbrowser) 
+	{ 
+		// 2. If we don't have a last success time or the current one is over 80 seconds old
+		if (!cls.serverbrowser_lastsuccesstime || (Sys_FloatTime() - cls.serverbrowser_lastsuccesstime) > 80.0f) 
+		{
+			HTTP_ServerBrowser_Begin_Query();
+		}
+	}
+
+	key_dest = key_menu;
+	m_state = m_serverbrowser;
+	m_entersound = true;
+
+	serverbrowser_state = 0;
+	serverbrowser_range = (vid.conheight / 8) - 16; // Recalc size here
+	serverbrowser_maxs = serverbrowser_mins + serverbrowser_range - 1;
+	serverbrowser_bottom = (serverbrowser_range + 5) * 8;//160
+//	serverbrowser_mins = serverbrowser_cursor > serverbrowser_maxs)
+//		serverbrowser_mins = 0;
 
 }
+
+void M_ServerBrowser_Draw (void)
+{
+	int	serv, line;
+
+	M_Print (0, 8, va(" QuakeOne.com Server List  (%i servers)", ServerBrowser_Length()));
+	M_Print (0, 24, " Geo Server Name         Plyrs Map   Mod");
+	
+	M_Print (8, serverbrowser_top, COM_Quakebar(39));
+	M_Print (8, serverbrowser_bottom, COM_Quakebar(39));
+
+	ServerBrowser_Load ();
+
+	if (cls.serverbrowser) 
+	{
+		int elapsed_bar = ((int)((Sys_FloatTime() - cls.serverbrowser_starttime)*3) & 7) + 1;
+		// Download is in progress
+		// Baker: give serverlist download a "think" here
+		HTTP_ServerBrowser_Check_Query_Completion ();
+
+		// An update is in progress ... display status
+		M_PrintWhite (64, serverbrowser_top + 40, va("Status: %s", COM_Quakebar(elapsed_bar)) );
+
+		return;
+	}
+
+	if (!server_browser_list[0].server)
+	{
+		M_PrintWhite (48, serverbrowser_top + 24, "No servers found");
+		M_PrintWhite (48, serverbrowser_top + 32, "Is Internet on?");
+		M_PrintWhite (48, serverbrowser_top + 40, "Firewall issue?");
+		M_PrintWhite (48, serverbrowser_top + 48, "Quake permitted internet?");
+		M_PrintWhite (48, serverbrowser_top + 64, "Visit QuakeOne.com for help");
+		return;
+	}
+
+	// Draw cursor
+	M_DrawCharacter (0, (serverbrowser_cursor - serverbrowser_mins + 1) * 8 + serverbrowser_top, 12+((int)(realtime*4)&1));
+
+	// List servers
+	for (serv = serverbrowser_mins, line = 1 ; serv <= serverbrowser_maxs && serv < MAX_SERVER_LIST && server_browser_list[serv].server ; serv++, line++)
+		M_PrintWhite (vid.width <= 320 ? 8 : 16, line * 8 + serverbrowser_top, va("%1.38s", server_browser_list[serv].description));
+	
+	M_Print (16, serverbrowser_bottom + 8, va("Address: %1.35s", server_browser_list[serverbrowser_cursor].server));
+	M_PrintWhite (16, serverbrowser_bottom + 24, "Press F5 = quick access to this page");
+	
+}
+
+void M_ServerBrowser_Key (int key, int ascii)
+{
+	// If no servers and key isn't escape
+	if (!server_browser_list[0].server && key != K_ESCAPE)
+		return;
+
+	switch (key)
+	{
+	case K_ESCAPE:
+		M_Menu_MultiPlayer_f ();
+		break;
+
+	case K_UPARROW:
+		S_LocalSound ("misc/menu1.wav");
+		if (serverbrowser_cursor > 0)
+		{
+			serverbrowser_cursor--;
+		}
+		break;
+
+	case K_DOWNARROW:
+		S_LocalSound ("misc/menu1.wav");
+
+		if (serverbrowser_cursor < MAX_SERVER_LIST - 1 && server_browser_list[serverbrowser_cursor+1].server)
+			serverbrowser_cursor++;
+		break;
+
+	case K_HOME:
+		S_LocalSound ("misc/menu1.wav");
+		serverbrowser_cursor = 0;
+		break;
+
+	case K_END:
+		S_LocalSound ("misc/menu1.wav");
+		serverbrowser_cursor = ServerBrowser_Length() - 1;
+		break;
+		
+	case K_PGUP:
+		S_LocalSound ("misc/menu1.wav");
+		serverbrowser_cursor -= (serverbrowser_maxs - serverbrowser_mins);
+		if (serverbrowser_cursor < 0)
+			serverbrowser_cursor = 0;
+		break;
+
+	case K_PGDN:
+		S_LocalSound ("misc/menu1.wav");
+		serverbrowser_cursor += (serverbrowser_maxs - serverbrowser_mins);
+		if (serverbrowser_cursor >= MAX_SERVER_LIST)
+			serverbrowser_cursor = MAX_SERVER_LIST - 1;
+		while (!server_browser_list[serverbrowser_cursor].server)
+			serverbrowser_cursor--;
+		break;
+
+	case K_ENTER:
+		m_state = m_main;
+		M_ToggleMenu_f ();
+		Cbuf_AddText (va("connect \"%s\"\n", server_browser_list[serverbrowser_cursor].server));
+		break;
+
+	}
+
+	if (serverbrowser_cursor < serverbrowser_mins)
+	{
+		serverbrowser_maxs -= (serverbrowser_mins - serverbrowser_cursor);
+		serverbrowser_mins = serverbrowser_cursor;
+	}
+	if (serverbrowser_cursor > serverbrowser_maxs)
+	{
+		serverbrowser_mins += (serverbrowser_cursor - serverbrowser_maxs);
+		serverbrowser_maxs = serverbrowser_cursor;
+	}
+}
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 
 //=============================================================================
 /* Menu Subsystem */
@@ -3381,7 +3522,12 @@ void M_Init (void)
 	Cmd_AddCommand ("menu_singleplayer", M_Menu_SinglePlayer_f);
 	Cmd_AddCommand ("menu_load", M_Menu_Load_f);
 	Cmd_AddCommand ("menu_save", M_Menu_Save_f);
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+	Cmd_AddCommand ("menu_multiplayer", M_Menu_ServerBrowser_f);
+	Cmd_AddCommand ("servers", M_Menu_ServerBrowser_f);
+#else
 	Cmd_AddCommand ("menu_multiplayer", M_Menu_MultiPlayer_f);
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 	Cmd_AddCommand ("menu_setup", M_Menu_Setup_f);
 	Cmd_AddCommand ("menu_namemaker", M_Menu_NameMaker_f);
 	Cmd_AddCommand ("namemaker", M_Shortcut_NameMaker_f);
@@ -3401,12 +3547,13 @@ void M_Draw (void)
 
 	if (!m_recursiveDraw)
 	{
-		scr_copyeverything = 1;
+//		scr_copyeverything = 1;
 
 		if (scr_con_current)
 		{
 //			Draw_String (1,1, "M_Draw\n");
-			if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
+			//if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
+			if (key_dest == key_console || key_dest == key_message)
 				Draw_ConsoleBackground (vid.height);
 
 			S_ExtraUpdate ();
@@ -3415,7 +3562,7 @@ void M_Draw (void)
 		else
 			Draw_FadeScreen ();
 
-		scr_fullupdate = 0;
+//		scr_fullupdate = 0;
 	}
 	else
 	{
@@ -3498,6 +3645,12 @@ void M_Draw (void)
 	case m_search:
 		M_Search_Draw ();
 		break;
+
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+	case m_serverbrowser:
+		M_ServerBrowser_Draw ();
+		break;
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 
 	case m_slist:
 		M_ServerList_Draw ();
@@ -3603,6 +3756,12 @@ void M_Keydown (int key, int ascii, qboolean down)
 	case m_search:
 		M_Search_Key (key, ascii);
 		break;
+
+#ifdef SUPPORTS_SERVER_BROWSER // Baker change +
+	case m_serverbrowser:
+		M_ServerBrowser_Key (key, ascii);
+		break;
+#endif // Baker change + SUPPORTS_SERVER_BROWSER
 
 	case m_slist:
 		M_ServerList_Key (key, ascii);

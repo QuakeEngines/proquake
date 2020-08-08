@@ -54,11 +54,12 @@ void CL_InitTEnts (void)
 CL_ParseBeam
 =================
 */
-static void CL_ParseBeam (model_t *m)
+void CL_ParseBeam (model_t *m)
 {
-	int	i, ent;
+	int		ent;
 	vec3_t	start, end;
 	beam_t	*b;
+	int		i;
 	
 	ent = MSG_ReadShort ();
 	
@@ -75,7 +76,6 @@ static void CL_ParseBeam (model_t *m)
 
 // override any beam with the same entity
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
-	{
 		if (b->entity == ent)
 		{
 			b->entity = ent;
@@ -85,7 +85,6 @@ static void CL_ParseBeam (model_t *m)
 			VectorCopy (end, b->end);
 			return;
 		}
-	}
 
 // find a free beam
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
@@ -101,7 +100,7 @@ static void CL_ParseBeam (model_t *m)
 		}
 	}
 
-	Con_Printf ("beam list overflow!\n");	
+	Con_Printf ("Beam list overflow!\n");	
 }
 
 /*
@@ -153,9 +152,7 @@ void CL_ParseTEnt (void)
 #endif
 
 		if ( rand() % 5 )
-		{
 			S_StartSound (-1, 0, cl_sfx_tink1, pos, 1, 1);
-		}
 		else
 		{
 			rnd = rand() & 3;
@@ -178,9 +175,7 @@ void CL_ParseTEnt (void)
 #endif
 
 		if ( rand() % 5 )
-		{
 			S_StartSound (-1, 0, cl_sfx_tink1, pos, 1, 1);
-		}
 		else
 		{
 			rnd = rand() & 3;
@@ -291,7 +286,7 @@ void CL_ParseTEnt (void)
 CL_NewTempEntity
 =================
 */
-static entity_t *CL_NewTempEntity (void)
+entity_t *CL_NewTempEntity (void)
 {
 	entity_t	*ent;
 
@@ -318,7 +313,7 @@ CL_UpdateTEnts
 */
 void CL_UpdateTEnts (void)
 {
-	int			i;
+	int			i, j;
 	beam_t		*b;
 	vec3_t		dist, org;
 	float		d;
@@ -327,8 +322,7 @@ void CL_UpdateTEnts (void)
 	float		forward;
 
 	num_temp_entities = 0;
-
-	srand ((int) (cl.time * 1000)); //johnfitz -- freeze beams when paused
+	srand ((int) (cl.ctime * 1000)); // freeze beams when paused
 
 // update lightning
 	for (i=0, b=cl_beams ; i< MAX_BEAMS ; i++, b++)
@@ -361,7 +355,6 @@ void CL_UpdateTEnts (void)
 				yaw += 360;
 	
 			forward = sqrtf (dist[0]*dist[0] + dist[1]*dist[1]);
-
 			pitch = (int) (atan2f(dist[2], forward) * 180 / M_PI);
 			if (pitch < 0)
 				pitch += 360;
@@ -381,8 +374,9 @@ void CL_UpdateTEnts (void)
 			ent->angles[1] = yaw;
 			ent->angles[2] = rand()%360;
 
-			for (i=0 ; i<3 ; i++)
-				org[i] += dist[i]*30;
+			// use j instead of using i twice, so we don't corrupt memory
+			for (j = 0 ; j < 3 ; j ++)
+				org[j] += dist[j]*30;
 			d -= 30;
 		}
 	}	

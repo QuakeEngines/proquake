@@ -175,6 +175,9 @@ extern char *keybindings[256];
 extern	int		key_repeats[256];
 extern	int		key_count;			// incremented every key event
 extern	int		key_lastpress;
+extern	int		history_line;
+
+extern	cvar_t	in_keymap;
 
 void Key_Event (int key, int ascii, qboolean down);
 void Key_Init (void);

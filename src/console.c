@@ -23,9 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <unistd.h>
 #endif
 
-#ifdef _WIN32
-#include <io.h>
-#endif
+
 
 #include <fcntl.h>
 #include <errno.h>
@@ -121,6 +119,8 @@ Con_ToggleConsole_f
 */
 void Con_ToggleConsole_f (void)
 {
+	extern int history_line; //johnfitz
+
 	if (key_dest == key_console)
 	{
 		if (cls.state == ca_connected)
@@ -129,6 +129,7 @@ void Con_ToggleConsole_f (void)
 			cl_inconsole = false;//R00k
 			key_lines[edit_line][1] = 0;	// clear any typing
 			key_linepos = 1;
+			history_line = edit_line; //johnfitz -- it should also return you to the bottom of the command history
 		}
 		else
 		{
@@ -156,6 +157,8 @@ void Con_Clear_f (void)
 {
 	if (con_text)
 		memset (con_text, ' ', CON_TEXTSIZE);
+	con_backscroll = 0; //johnfitz -- if console is empty, being scrolled up is confusing
+	history_line = edit_line; //johnfitz -- it should also return you to the bottom of the command history
 }
 
 /*
@@ -259,6 +262,7 @@ void Con_Dump_f (void)
 	}
 
 	fclose (f);
+	strlcpy (cls.recent_file, name, sizeof(cls.recent_file) );
 	Con_Printf ("Dumped console text to %s.\n", name);
 }
 
@@ -409,6 +413,7 @@ void Con_CheckResize (void)
 	con_current = con_totallines - 1;
 }
 
+#include <io.h> //Baker: Removes a warning ... write, open, close
 
 /*
 ================
@@ -470,7 +475,9 @@ void Con_Init (void)
 	con_linewidth = -1;
 	Con_CheckResize ();
 
+//
 // register our commands
+//
 	Cvar_RegisterVariable (&con_notifytime, NULL);
 	Cvar_RegisterVariable (&_con_notifylines, NULL);
 
@@ -525,13 +532,12 @@ If no console is visible, the notify window will pop up.
 */
 void Con_Print (char *txt)
 {
-	int		y, c, l, mask;
+	int		y;
+	int		c, l;
 	static int	cr;
+	int		mask;
 
 	static int fixline = 0;
-
-
-
 
 	//con_backscroll = 0;  // JPG - half of a fix for an annoying problem
 
@@ -610,9 +616,8 @@ void Con_Print (char *txt)
 		txt++;
 	}
 	else
-	{
 		mask = 0;
-	}
+
 
 	while ( (c = *txt) )
 	{
@@ -695,65 +700,6 @@ void Con_DebugLog( /* char *file, */ char *fmt, ...)
     close(fd);
 }
 
-/*
-================
-Con_Success
-================
-*/
-void Con_Success (char *fmt, ...)
-{
-	va_list		argptr;
-	char		msg[MAXPRINTMSG];
-
-	va_start (argptr,fmt);
-	vsprintf (msg,fmt,argptr);
-	va_end (argptr);
-
-	//Con_SafePrintf ("\x02Success: ");
-	Con_Printf ("%s", msg);
-}
-
-
-/*
-================
-Con_Warning -- johnfitz -- prints a warning to the console
-================
-*/
-void Con_Warning (char *fmt, ...)
-{
-	va_list		argptr;
-	char		msg[MAXPRINTMSG];
-
-	va_start (argptr,fmt);
-	vsprintf (msg,fmt,argptr);
-	va_end (argptr);
-
-	Con_SafePrintf ("\x02Warning: ");
-	Con_Printf ("%s", msg);
-}
-
-/*
-==================
-Con_Debugf
-
-So Baker can remove testing notes more easily ...
-==================
-*/
-void Con_Debugf (char *fmt, ...)
-{
-	va_list		argptr;
-	char		msg[1024];
-	int			temp;
-
-	va_start (argptr,fmt);
-	VSNPrintf (msg,sizeof(msg),fmt,argptr);
-	va_end (argptr);
-
-	temp = scr_disabled_for_loading;
-	scr_disabled_for_loading = true;
-	Con_Printf ("%s", msg);
-	scr_disabled_for_loading = temp;
-}
 
 /*
 ================
@@ -803,6 +749,64 @@ void Con_Printf (char *fmt, ...)
 	}
 }
 
+/*
+================
+Con_Warning -- johnfitz -- prints a warning to the console
+================
+*/
+void Con_Warning (char *fmt, ...)
+{
+	va_list		argptr;
+	char		msg[MAXPRINTMSG];
+
+	va_start (argptr,fmt);
+	vsprintf (msg,fmt,argptr);
+	va_end (argptr);
+
+	Con_SafePrintf ("\x02Warning: ");
+	Con_Printf ("%s", msg);
+}
+
+/*
+================
+Con_DPrintf
+
+A Con_Printf that only shows up if the "developer" cvar is set
+================
+*/
+void Con_DPrintf (char *fmt, ...)
+{
+	va_list		argptr;
+	char		msg[MAXPRINTMSG];
+
+	if (!developer.value)
+		return;			// don't confuse non-developers with techie stuff...
+
+	va_start (argptr,fmt);
+	VSNPrintf (msg,sizeof(msg),fmt,argptr);
+	va_end (argptr);
+
+	Con_SafePrintf ("%s", msg);
+}
+
+/*
+================
+Con_Success
+================
+*/
+void Con_Success (char *fmt, ...)
+{
+	va_list		argptr;
+	char		msg[MAXPRINTMSG];
+
+	va_start (argptr,fmt);
+	vsprintf (msg,fmt,argptr);
+	va_end (argptr);
+
+	//Con_SafePrintf ("\x02Success: ");
+	Con_Printf ("%s", msg);
+}
+
 
 /*
 ==================
@@ -826,30 +830,6 @@ void Con_SafePrintf (char *fmt, ...)
 	Con_Printf ("%s", msg);
 	scr_disabled_for_loading = temp;
 }
-
-
-/*
-================
-Con_DPrintf
-
-A Con_Printf that only shows up if the "developer" cvar is set
-================
-*/
-void Con_DPrintf (char *fmt, ...)
-{
-	va_list		argptr;
-	char		msg[MAXPRINTMSG];
-
-	if (!developer.value)
-		return;			// don't confuse non-developers with techie stuff...
-
-	va_start (argptr,fmt);
-	VSNPrintf (msg,sizeof(msg),fmt,argptr);
-	va_end (argptr);
-
-	Con_Printf ("%s", msg);
-}
-
 
 /*
 ================
@@ -916,7 +896,6 @@ void Con_LogCenterPrint (char *str)
 	}
 }
 
-
 /*
 ==============================================================================
 
@@ -974,12 +953,12 @@ Draws the last few lines of output transparently over the game top
 */
 void Con_DrawNotify (void)
 {
-	int		x, v, i, maxlines;
+	int		x, v;
 	char	*text;
+	int		i;
 	float	time;
 	extern char chat_buffer[];
-
-	maxlines = CLAMP (0, _con_notifylines.value, NUM_CON_TIMES);
+	int		maxlines = CLAMP (0, _con_notifylines.value, NUM_CON_TIMES);
 
 	v = 0;
 	for (i = con_current - maxlines + 1 ; i <= con_current ; i++)
@@ -995,7 +974,6 @@ void Con_DrawNotify (void)
 		text = con_text + (i % con_totallines)*con_linewidth;
 
 		clearnotify = 0;
-		scr_copytop = 1;
 
 		for (x = 0 ; x < con_linewidth ; x++)
 			Draw_Character ( (x+1)<<3, v, text[x]);
@@ -1003,10 +981,10 @@ void Con_DrawNotify (void)
 		v += 8;
 	}
 
+
 	if (key_dest == key_message)
 	{
 		clearnotify = 0;
-		scr_copytop = 1;
 
 		// JPG - was x = 0 etc.. recoded with x = 5, i = 0
 		i = 0;
@@ -1084,39 +1062,3 @@ void Con_DrawConsole (int lines, qboolean drawinput)
 	if (drawinput)
 		Con_DrawInput ();
 }
-
-
-/*
-==================
-Con_NotifyBox
-==================
-*/
-void Con_NotifyBox (char *text)
-{
-	double		t1, t2;
-
-// during startup for sound / cd warnings
-	Con_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n");
-
-	Con_Printf (text);
-
-	Con_Printf ("Press a key.\n");
-	Con_Printf("\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n");
-
-	key_count = -2;		// wait for a key down and up
-	key_dest = key_console;
-
-	do 
-	{
-		t1 = Sys_FloatTime ();
-		SCR_UpdateScreen ();
-		Sys_SendKeyEvents ();
-		t2 = Sys_FloatTime ();
-		realtime += t2-t1;		// make the cursor blink
-	} while (key_count < 0);
-
-	Con_Printf ("\n");
-	key_dest = key_game;
-	realtime = 0;				// put the cursor back to invisible
-}
-

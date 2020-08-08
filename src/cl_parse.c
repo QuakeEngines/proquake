@@ -75,7 +75,7 @@ CL_EntityNum
 This error checks and tracks the total number of entities
 ===============
 */
-static entity_t	*CL_EntityNum (int num)
+entity_t	*CL_EntityNum (int num)
 {
 	if (num >= cl.num_entities)
 	{
@@ -97,11 +97,15 @@ static entity_t	*CL_EntityNum (int num)
 CL_ParseStartSoundPacket
 ==================
 */
-static void CL_ParseStartSoundPacket(void)
+void CL_ParseStartSoundPacket(void)
 {
     vec3_t  pos;
-    int 	i, channel, ent, sound_num, volume, field_mask;
+    int 	channel, ent;
+    int 	sound_num;
+    int 	volume;
+    int 	field_mask;
     float 	attenuation;
+ 	int		i;
 
     field_mask = MSG_ReadByte();
 
@@ -131,7 +135,7 @@ When the client is taking a long time to load stuff, send keepalive messages
 so the server doesn't disconnect.
 ==================
 */
-static void CL_KeepaliveMessage (void)
+void CL_KeepaliveMessage (void)
 {
 	float	time;
 	static float lastmsg;
@@ -288,16 +292,19 @@ qboolean Download_Attempt (const char* file_to_download)
 CL_ParseServerInfo
 ==================
 */
-static void CL_ParseServerInfo (void)
+void CL_ParseServerInfo (void)
 {
-	char	*str, tempname[MAX_QPATH];
-	int		i, nummodels, numsounds;
+	char	*str;
+	int		i;
+	int		nummodels, numsounds;
 	char	model_precache[MAX_MODELS][MAX_QPATH];
 	char	sound_precache[MAX_SOUNDS][MAX_QPATH];
+	char	tempname[MAX_QPATH];
 
 	Con_DPrintf ("Serverinfo packet received.\n");
-
+//
 // wipe the client_state_t struct
+//
 	CL_ClearState ();
 
 // parse protocol version number
@@ -367,13 +374,12 @@ static void CL_ParseServerInfo (void)
 		S_TouchSound (str);
 	}
 
-	{
-		char	mapname[MAX_QPATH];
-		COM_StripExtension (COM_SkipPath(model_precache[1]), mapname);
-		R_PreMapLoad (mapname);
-	}
+	COM_StripExtension (COM_SkipPath(model_precache[1]), host_worldname);	
 
+//
 // now we try to load everything else until a cache allocation fails
+//
+
 	for (i=1 ; i<nummodels ; i++)
 	{
 		cl.model_precache[i] = Mod_ForName (model_precache[i], false);
@@ -440,7 +446,6 @@ static void CL_ParseServerInfo (void)
 
 	Hunk_Check ();		// make sure nothing is hurt
 
-	noclip_anglehack = false;		// noclip is turned off at start
 }
 
 #ifdef SUPPORTS_TRANSFORM_INTERPOLATION
@@ -715,7 +720,7 @@ if (bits&(1<<i))
 CL_ParseBaseline
 ==================
 */
-static void CL_ParseBaseline (entity_t *ent)
+void CL_ParseBaseline (entity_t *ent)
 {
 	int			i;
 
@@ -846,7 +851,7 @@ CL_NewTranslation
 CL_ParseStatic
 =====================
 */
-static void CL_ParseStatic (void)
+void CL_ParseStatic (void)
 {
 	entity_t *ent;
 
@@ -1181,19 +1186,23 @@ CL_ParseServerMessage
 void Con_LogCenterPrint (char *str);
 void CL_ParseServerMessage (void)
 {
-	int			cmd, i;
+	int			cmd;
+	int			i;
 	char		*str;
 	extern	cvar_t con_nocenterprint;
 
+//
 // if recording demos, copy the message out
+//
 	if (cl_shownet.value == 1)
 		Con_Printf ("%i ",net_message.cursize);
 	else if (cl_shownet.value == 2)
 		Con_Printf ("------------------\n");
 
 	cl.onground = false;	// unless the server says otherwise
-
+//
 // parse the message
+//
 	MSG_BeginReading ();
 
 	while (1)
@@ -1292,12 +1301,12 @@ void CL_ParseServerMessage (void)
 				VectorCopy (cl.mviewangles[0], cl.mviewangles[1]);
 
 				// JPG - hack with last_angle_time to autodetect continuous svc_setangles
-				if (last_angle_time > host_time - 0.3)
-					last_angle_time = host_time + 0.3;
-				else if (last_angle_time > host_time - 0.6)
-					last_angle_time = host_time;
+				if (cl.last_angle_time > host_time - 0.3)
+					cl.last_angle_time = host_time + 0.3;
+				else if (cl.last_angle_time > host_time - 0.6)
+					cl.last_angle_time = host_time;
 				else
-					last_angle_time = host_time - 0.3;
+					cl.last_angle_time = host_time - 0.3;
 
 				for (i=0 ; i<3 ; i++)
 					cl.mviewangles[0][i] = cl.viewangles[i];
@@ -1371,10 +1380,6 @@ void CL_ParseServerMessage (void)
 		case svc_setpause:
 
 			cl.paused = MSG_ReadByte ();
-//				CDAudio_Pause ();
-//
-//			else
-//				CDAudio_Resume ();
 
 			break;
 
@@ -1387,7 +1392,7 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_killedmonster:
-			if (cls.demoplayback && cl_demorewind.value)
+			if (cls.demoplayback && cls.demorewind)
 				cl.stats[STAT_MONSTERS]--;
 			else
 			cl.stats[STAT_MONSTERS]++;
@@ -1395,7 +1400,7 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_foundsecret:
-			if (cls.demoplayback && cl_demorewind.value)
+			if (cls.demoplayback && cls.demorewind)
 				cl.stats[STAT_SECRETS]--;
 			else
 			cl.stats[STAT_SECRETS]++;
@@ -1423,15 +1428,19 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_intermission:
-			cl.intermission = 1;
+			if (cls.demoplayback && cls.demorewind)
+				cl.intermission = 0;
+			else cl.intermission = 1;
+			// intermission bugfix -- by joe 
 //			cl.completed_time = cl.time;
-			// intermission bugfix -- by joe
 			cl.completed_time = cl.mtime[0];
 			vid.recalc_refdef = true;	// go to full screen
 			break;
 
 		case svc_finale:
-			cl.intermission = 2;
+			if (cls.demoplayback && cls.demorewind)
+				cl.intermission = 0;
+			else cl.intermission = 2;
 			cl.completed_time = cl.time;
 			vid.recalc_refdef = true;	// go to full screen
 			//johnfitz -- log centerprints to console
@@ -1442,7 +1451,9 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_cutscene:
-			cl.intermission = 3;
+			if (cls.demoplayback && cls.demorewind)
+				cl.intermission = 0;
+			else cl.intermission = 3;
 			cl.completed_time = cl.time;
 			vid.recalc_refdef = true;	// go to full screen
 			//johnfitz -- log centerprints to console

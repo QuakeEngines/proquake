@@ -69,7 +69,7 @@ cvar_t	cl_web_download		= {"cl_web_download", "1", true};
 cvar_t	cl_web_download_url	= {"cl_web_download_url", "http://downloads.quake-1.com/", true};
 #endif
 
-cvar_t	cl_demospeed		= {"cl_demospeed", "1"}; // Baker 3.75 - demo rewind/ff
+
 cvar_t	cl_bobbing		= {"cl_bobbing", "0"};
 
 client_static_t	cls;
@@ -115,7 +115,9 @@ void CL_ClearState (void)
 	memset (cl_temp_entities, 0, sizeof(cl_temp_entities));
 	memset (cl_beams, 0, sizeof(cl_beams));
 
+//
 // allocate the efrags and chain together into a free list
+//
 	cl.free_efrags = cl_efrags;
 	for (i=0 ; i<MAX_EFRAGS-1 ; i++)
 		cl.free_efrags[i].entnext = &cl.free_efrags[i+1];
@@ -136,15 +138,9 @@ void CL_Disconnect (void)
 // stop sounds (especially looping!)
 	S_StopAllSounds (true);
 
-// CDAudio_Stop
-//	CDAudio_Stop();
 
-
-// bring the console down and fade the colors back to normal
-//	SCR_BringDownConsole ();
-
-	// This makes sure ambient sounds remain silent
-	cl.worldmodel = NULL;
+//	// This makes sure ambient sounds remain silent
+//	cl.worldmodel = NULL;
 
 #ifdef HTTP_DOWNLOAD
 	// We have to shut down webdownloading first
@@ -158,9 +154,7 @@ void CL_Disconnect (void)
 
 // if running a local server, shut it down
 	if (cls.demoplayback)
-	{
 		CL_StopPlayback ();
-	}
 	else if (cls.state == ca_connected)
 	{
 		if (cls.demorecording)
@@ -180,16 +174,18 @@ void CL_Disconnect (void)
 
 	cls.demoplayback = cls.timedemo = false;
 	cls.signon = 0;
-
-	SCR_EndLoadingPlaque (); // Baker: any disconnect state should end the loading plague, right?
+	cl.intermission = 0; // Baker: So critical.  SCR_UpdateScreen uses this.
+//	SCR_EndLoadingPlaque (); // Baker: NOOOOOO.  This shows between start demos.  We need this.
 
 }
 
 void CL_Disconnect_f (void)
 {
+	CL_Clear_Demos_Queue (); // disconnect is a very intentional action so clear out startdemos
+
 #ifdef HTTP_DOWNLOAD
 	// We have to shut down webdownloading first
-	if( cls.download.web )
+	if (cls.download.web)
 	{
 		cls.download.disconnect = true;
 		return;
@@ -395,7 +391,7 @@ void CL_NextDemo (void)
 	if (cls.demonum == -1)
 		return;		// don't play demos
 
-	SCR_BeginLoadingPlaque ();
+//	SCR_BeginLoadingPlaque (); // Baker: Moved below
 
 	if (!cls.demos[cls.demonum][0] || cls.demonum == MAX_DEMOS)
 	{
@@ -409,13 +405,15 @@ void CL_NextDemo (void)
 #endif  // ^^ Uses Windows specific functionality
 			Con_DPrintf ("No demos listed with startdemos\n");
 
-			CL_Disconnect();	// JPG 1.05 - patch by CSR to fix crash
+			
 			cls.demonum = -1;
+			CL_Disconnect();	// JPG 1.05 - patch by CSR to fix crash
 			return;
 		}
 	}
 
-	SNPrintf (str,sizeof(str),"playdemo %s\n", cls.demos[cls.demonum]);
+	SCR_BeginLoadingPlaque (); // Baker: Moved to AFTER we know demo will play
+	SNPrintf (str, sizeof(str), "nextstartdemo %s\n", cls.demos[cls.demonum]);
 	Cbuf_InsertText (str);
 	cls.demonum++;
 }
@@ -425,7 +423,7 @@ void CL_NextDemo (void)
 CL_PrintEntities_f
 ==============
 */
-static void CL_PrintEntities_f (void)
+void CL_PrintEntities_f (void)
 {
 	entity_t	*ent;
 	int			i;
@@ -438,7 +436,8 @@ static void CL_PrintEntities_f (void)
 			Con_Printf ("EMPTY\n");
 			continue;
 		}
-		Con_Printf ("%s:%2i  (%5.1f,%5.1f,%5.1f) [%5.1f %5.1f %5.1f]\n", ent->model->name,ent->frame, ent->origin[0], ent->origin[1], ent->origin[2], ent->angles[0], ent->angles[1], ent->angles[2]);
+		Con_Printf ("%s:%2i  (%5.1f,%5.1f,%5.1f) [%5.1f %5.1f %5.1f]\n"
+		, ent->model->name,ent->frame, ent->origin[0], ent->origin[1], ent->origin[2], ent->angles[0], ent->angles[1], ent->angles[2]);
 	}
 }
 
@@ -499,7 +498,7 @@ void CL_DecayLights (void)
 	dlight_t	*dl;
 	float		time;
 
-	time = cl.time - cl.oldtime;
+	time = fabs (cl.time - cl.oldtime); // Baker: To make sure it stays forward oriented time
 
 	dl = cl_dlights;
 	for (i=0 ; i<MAX_DLIGHTS ; i++, dl++)
@@ -521,8 +520,9 @@ Determines the fraction between the last two messages that the objects
 should be put at.
 ===============
 */
-static float CL_LerpPoint (void)
+float CL_LerpPoint (void)
 {
+	extern qboolean bumper_on;
 	float	f, frac;
 
 	f = cl.mtime[0] - cl.mtime[1];
@@ -534,23 +534,29 @@ static float CL_LerpPoint (void)
 		return 1;
 	}
 
-	if (f > 0.1)
-	{	// dropped packet, or start of demo
+	if (f > 0.1) // dropped packet, or start of demo
+	{	
 		cl.mtime[1] = cl.mtime[0] - 0.1;
-		f = 0.1;
+		f = 0.1f;
 	}
 	frac = (cl.ctime - cl.mtime[1]) / f;
 
 	if (frac < 0)
 	{
 		if (frac < -0.01)
-			cl.time = cl.ctime = cl.mtime[1];
+			if (bumper_on)
+			{
+				cl.ctime = cl.mtime[1];
+			}
+			else cl.time = cl.ctime = cl.mtime[1];
 		frac = 0;
 	}
 	else if (frac > 1)
 	{
 		if (frac > 1.01)
-			cl.time = cl.ctime = cl.mtime[0];
+			if (bumper_on)
+				cl.ctime = cl.mtime[0];
+			else cl.time = cl.ctime = cl.mtime[0]; // Here is where we get foobar'd
 		frac = 1;
 	}
 
@@ -564,12 +570,14 @@ extern cvar_t pq_timer; // JPG - need this for CL_RelinkEntities
 CL_RelinkEntities
 ===============
 */
-static void CL_RelinkEntities (void)
+void CL_RelinkEntities (void)
 {
 	entity_t	*ent;
 	int			i, j;
-	float		frac, f, d, bobjrotate;
-	vec3_t		delta, oldorg;
+	float		frac, f, d;
+	vec3_t		delta;
+	float		bobjrotate;
+	vec3_t		oldorg;
 	dlight_t	*dl;
 	void CL_ClearInterpolation (entity_t *ent);
 	void CL_EntityInterpolateOrigins (entity_t *ent);
@@ -586,11 +594,13 @@ static void CL_RelinkEntities (void)
 
 	cl_numvisedicts = 0;
 
+//
 // interpolate player info
+//
 	for (i=0 ; i<3 ; i++)
 		cl.velocity[i] = cl.mvelocity[1][i] + frac * (cl.mvelocity[0][i] - cl.mvelocity[1][i]);
 	//PROQUAKE ADDITION --START
-	if (cls.demoplayback || (last_angle_time > host_time && !(in_attack.state & 3)) && pq_smoothcam.value) // JPG - check for last_angle_time for smooth chasecam!
+	if (cls.demoplayback || (cl.last_angle_time > host_time && !(in_attack.state & 3)) && pq_smoothcam.value) // JPG - check for last_angle_time for smooth chasecam!
 	{
 	// interpolate the angles
 		for (j=0 ; j<3 ; j++)
@@ -604,13 +614,14 @@ static void CL_RelinkEntities (void)
 			// JPG - I can't set cl.viewangles anymore since that messes up the demorecording.  So instead,
 			// I'll set lerpangles (new variable), and view.c will use that instead.
 			cl.lerpangles[j] = cl.mviewangles[1][j] + frac*d;
+			if (cls.demoplayback)
+				cl.viewangles[j] = cl.mviewangles[1][j] + frac*d;
 		}
 	}
-		else
-		VectorCopy(cl.viewangles, cl.lerpangles);
+	else VectorCopy(cl.viewangles, cl.lerpangles);
 	//PROQUAKE ADDITION --END
 
-	bobjrotate = anglemod(100*cl.time);
+	bobjrotate = anglemod(100 * cl.ctime);
 
 // start on the entity after the world
 	for (i=1,ent=cl_entities+1 ; i<cl.num_entities ; i++,ent++)
@@ -635,7 +646,8 @@ static void CL_RelinkEntities (void)
 		VectorCopy (ent->origin, oldorg);
 
 		if (ent->forcelink)
-		{	// the entity was not updated in the last message so move to the final spot
+		{	// the entity was not updated in the last message 
+			// so move to the final spot
 			VectorCopy (ent->msg_origins[0], ent->origin);
 			VectorCopy (ent->msg_angles[0], ent->angles);
 		}
@@ -646,11 +658,14 @@ static void CL_RelinkEntities (void)
 			{
 				delta[j] = ent->msg_origins[0][j] - ent->msg_origins[1][j];
 				if (delta[j] > 100 || delta[j] < -100)
+				{
 					f = 1;		// assume a teleportation, not a motion
+				}
 			}
 
 #ifdef SUPPORTS_TRANSFORM_INTERPOLATION
-			if (f >= 1) CL_ClearInterpolation (ent);
+			if (f >= 1) 
+				CL_ClearInterpolation (ent);
 #endif
 
 		// interpolate the origin and angles
@@ -668,8 +683,7 @@ static void CL_RelinkEntities (void)
 
 		}
 
-//		if (!(model = cl.model_precache[ent->modelindex]))
-//			Host_Error ("CL_RelinkEntities: bad modelindex");
+
 
 #ifdef SUPPORTS_TRANSFORM_INTERPOLATION
 		CL_EntityInterpolateOrigins (ent);
@@ -762,13 +776,12 @@ int CL_ReadFromServer (void)
 {
 	int		ret;
 
-	/*cl.oldtime = cl.time;
-	cl.time += host_frametime;  //Baker 3.75 old way */
+
 
 	// Baker 3.75 - demo rewind
 	cl.oldtime = cl.ctime;
 	cl.time += host_frametime;
-	if (!cl_demorewind.value || !cls.demoplayback)	// by joe
+	if (!cls.demorewind || !cls.demoplayback)	// by joe
 		cl.ctime += host_frametime;
 	else
 		cl.ctime -= host_frametime;
@@ -791,8 +804,66 @@ int CL_ReadFromServer (void)
 
 	CL_RelinkEntities ();
 	CL_UpdateTEnts ();
+//
+// Demo progress
+//
+	if (cls.demoplayback && cls.capturedemo /*cls.demonum == -1 && !cls.timedemo && !cls.titledemo*/)
+	{
+		static float olddrealtime; // Yay.  Another timer.  Sheesh.
+		float timeslice = realtime - olddrealtime;
+		olddrealtime = realtime;
 
+		if (cl.paused & 2)
+			timeslice = 0;
+
+		// If we have no start cltime, fill it in now
+		if (!cls.demo_cltime_start)
+		{
+			cls.demo_cltime_start = cl.time;
+			cls.demo_cltime_elapsed = 0;
+		}
+		else cls.demo_cltime_elapsed += host_frametime;
+
+		// If we have no start hosttime, fill it in now
+		if (!cls.demo_hosttime_start)
+		{
+			cls.demo_hosttime_start = realtime;
+			cls.demo_hosttime_elapsed = 0;	
+		}
+		else cls.demo_hosttime_elapsed += timeslice; // Advance time only if we are not paused
+
+		while (1)
+		{
+			// This is the "percentage" (0 to 1) of the demoplay that has been completed.
+			float completed_amount = (cls.demo_offset_current - cls.demo_offset_start)/(float)cls.demo_file_length;
+			float remaining_time = 0;
+			int minutes, seconds;
+			char tempstring[256];
+			extern int vid_default;
+			extern char movie_codec[12];
+
+			if (vid_default != 0)
+				break; // Don't bother, we are in fullscreen mode.
+
+			if (timeslice = 0)
+				break; // Don't bother updating the caption if we are paused
+
+			if (cls.demo_hosttime_elapsed)
+				remaining_time = (cls.demo_hosttime_elapsed / completed_amount) - cls.demo_hosttime_elapsed;
+
+			minutes = COM_Minutes((int)remaining_time);
+			seconds = COM_Seconds((int)remaining_time);
+
+			sprintf (tempstring, "Demo: %s (%3.1f%% elapsed: %4.1f secs) - Estimated Remaining %d:%02d (Capturing: %s)", cls.demoname, completed_amount * 100, cls.demo_hosttime_elapsed, (int)minutes, (int)seconds, movie_codec);
+
+			Sys_SetWindowCaption (tempstring);
+			break;
+		}
+
+	}
+//
 // bring the links up to date
+//
 	return 0;
 }
 
@@ -848,8 +919,10 @@ void CL_SendCmd (void)
 
 extern cvar_t default_fov;
 
-void CL_Fov_f (void) {
-	if (scr_fov.value == 90.0 && default_fov.value) {
+void CL_Fov_f (void) 
+{
+	if (scr_fov.value == 90.0 && default_fov.value) 
+	{
 		if (default_fov.value == 90)
 			return; // Baker 3.99k: Don't do a message saying default FOV has been set to 90 if it is 90!
 
@@ -858,7 +931,8 @@ void CL_Fov_f (void) {
 	}
 }
 
-void CL_Default_fov_f (void) {
+void CL_Default_fov_f (void) 
+{
 
 	if (default_fov.value == 0)
 		return; // Baker: this is totally permissible and happens with Reset to defaults.
@@ -881,7 +955,8 @@ CL_SaveFOV
 Saves the FOV
 ================
 */
-static void CL_SaveFOV_f (void) {
+static void CL_SaveFOV_f (void) 
+{
 	savedfov = scr_fov.value;
 }
 
@@ -892,8 +967,10 @@ CL_RestoreFOV
 Restores FOV to saved level
 ================
 */
-static void CL_RestoreFOV_f (void) {
-	if (!savedfov) {
+static void CL_RestoreFOV_f (void) 
+{
+	if (!savedfov) 
+	{
 		Con_Printf("RestoreFOV: No saved FOV to restore\n");
 		return;
 	}
@@ -908,7 +985,8 @@ CL_SaveSensivity
 Saves the Sensitivity
 ================
 */
-static void CL_SaveSensitivity_f (void) {
+static void CL_SaveSensitivity_f (void) 
+{
 	savedsensitivity = sensitivity.value;
 }
 
@@ -919,8 +997,10 @@ CL_RestoreSensitivity
 Restores Sensitivity to saved level
 ================
 */
-static void CL_RestoreSensitivity_f (void) {
-	if (!savedsensitivity) {
+static void CL_RestoreSensitivity_f (void) 
+{
+	if (!savedsensitivity) 
+	{
 		Con_Printf("RestoreSensitivity: No saved SENSITIVITY to restore\n");
 		return;
 	}
@@ -1017,10 +1097,6 @@ void CL_Init (void)
 	Cvar_RegisterVariable (&m_side, NULL);
 
 	Cvar_RegisterVariable (&cl_gameplayhack_monster_lerp, NULL); // Hacks!
-
-//	Cvar_RegisterVariable (&cl_autofire);
-	Cvar_RegisterVariable (&cl_demorewind, NULL);
-	Cvar_RegisterVariable (&cl_demospeed, NULL);
 	Cvar_RegisterVariable (&cl_bobbing, NULL);
 
 	Cmd_AddCommand ("entities", CL_PrintEntities_f);
@@ -1028,17 +1104,17 @@ void CL_Init (void)
 	Cmd_AddCommand ("record", CL_Record_f);
 	Cmd_AddCommand ("stop", CL_Stop_f);
 	Cmd_AddCommand ("playdemo", CL_PlayDemo_f);
-	Cmd_AddCommand ("timedemo", CL_TimeDemo_f);
-	Cmd_AddCommand ("tracepos", CL_Tracepos_f); //johnfitz
-	Cmd_AddCommand ("viewpos", CL_Viewpos_f); //Baker 3.76 - Using FitzQuake's viewpos instead of my own
 
+	Cmd_AddCommand ("nextstartdemo", CL_PlayDemo_NextStartDemo_f);
 	Cmd_AddCommand ("savefov", CL_SaveFOV_f);
 	Cmd_AddCommand ("savesensitivity", CL_SaveSensitivity_f);
 	Cmd_AddCommand ("restorefov", CL_RestoreFOV_f);
 	Cmd_AddCommand ("restoresensitivity", CL_RestoreSensitivity_f);
 
+	Cmd_AddCommand ("timedemo", CL_TimeDemo_f);
 
-
+	Cmd_AddCommand ("tracepos", CL_Tracepos_f); //johnfitz
+	Cmd_AddCommand ("viewpos", CL_Viewpos_f);
 
 // JPG - added these for %r formatting
 	Cvar_RegisterVariable (&pq_needrl, NULL);

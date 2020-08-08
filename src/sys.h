@@ -19,7 +19,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // sys.h -- non-portable functions
 
+//
 // file IO
+//
 
 // returns the file size
 // return -1 if file is not present
@@ -35,15 +37,16 @@ int	Sys_FileTime (char *path);
 void Sys_mkdir (char *path);
 
 
+//
 // system IO
+//
 void Sys_DebugLog(char *file, char *fmt, ...);
 
-// an error will cause the entire program to exit
 void Sys_Error (char *error, ...);
+// an error will cause the entire program to exit
 
-// send text to the console
 void Sys_Printf (char *fmt, ...);
-
+// send text to the console
 
 void Sys_Quit (void);
 
@@ -56,11 +59,8 @@ void Sys_Sleep (void);
 // called to yield for a little bit so as
 // not to hog cpu when paused or debugging
 
-// Perform Key_Event () callbacks until the input que is empty
 void Sys_SendKeyEvents (void);
-
-
-
+// Perform Key_Event () callbacks until the input que is empty
 
 #ifdef _WIN32
 void Sys_InfoInit(void);
@@ -76,3 +76,7 @@ void Sys_Init (void);
 void Sys_GetLock (void);
 void Sys_ReleaseLock (void);
 #endif
+
+void Sys_SetWindowCaption (char *newcaption);
+void Sys_OpenFolder_f (void);
+int Sys_GetHardDriveSerial (const char* mydir);

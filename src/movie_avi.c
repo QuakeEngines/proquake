@@ -219,7 +219,7 @@ BOOL CALLBACK acmDriverEnumCallback (HACMDRIVERID mp3_driver_id, DWORD dwInstanc
 	return true;
 }
 
-qboolean Capture_Open (char *filename)
+int Capture_Open (char *filename, char *usercodec, qboolean silentish)
 {
 	HRESULT			hr;
 	BITMAPINFOHEADER bitmap_info_header;
@@ -232,15 +232,17 @@ qboolean Capture_Open (char *filename)
 	m_uncompressed_video_stream = m_compressed_video_stream = m_audio_stream = NULL;
 	m_audio_is_mp3 = (qboolean)capture_mp3.value;
 
-	if (*(fourcc = capture_codec.string) != '0')	// codec fourcc supplied
+	fourcc = usercodec;
+	if (strcasecmp(fourcc, "none") != 0)	// codec fourcc supplied
 		m_codec_fourcc = mmioFOURCC (fourcc[0], fourcc[1], fourcc[2], fourcc[3]);
 
 	qAVIFileInit ();
 	hr = qAVIFileOpen (&m_file, filename, OF_WRITE | OF_CREATE, NULL);
 	if (FAILED(hr))
 	{
-		Con_Printf ("ERROR: Couldn't open AVI file\n");
-		return false;
+		if (!silentish)
+			Con_Printf ("ERROR: Couldn't open AVI file for writing\n");
+		return -1;
 	}
 
 	// initialize video data
@@ -268,8 +270,9 @@ qboolean Capture_Open (char *filename)
 	hr = qAVIFileCreateStream (m_file, &m_uncompressed_video_stream, &stream_header);
 	if (FAILED(hr))
 	{
+		if (!silentish)
 		Con_Printf ("ERROR: Couldn't create video stream\n");
-		return false;
+		return -2;
 	}
 
 	if (m_codec_fourcc)
@@ -284,8 +287,9 @@ qboolean Capture_Open (char *filename)
 		hr = qAVIMakeCompressedStream (&m_compressed_video_stream, m_uncompressed_video_stream, &opts, NULL);
 		if (FAILED(hr))
 		{
+			if (!silentish)
 			Con_Printf ("ERROR: Couldn't make compressed video stream\n");
-			return false;
+			return -3;
 		}
 	}
 

@@ -169,9 +169,9 @@ void SV_StartSound (edict_t *entity, int channel, char *sample, int volume, floa
 
     if ( sound_num == MAX_SOUNDS || !sv.sound_precache[sound_num] )
     {
-    	if (mod_nosoundwarn) // DPrint it instead
-        	Con_DPrintf ("SV_StartSound: %s not precacheed\n", sample);
-        else
+//    	if (mod_nosoundwarn) // DPrint it instead
+//        	Con_DPrintf ("SV_StartSound: %s not precacheed\n", sample);
+//       else
         Con_Printf ("SV_StartSound: %s not precacheed\n", sample);
         return;
     }
@@ -1372,7 +1372,8 @@ void SV_SpawnServer (char *server)
 
 	memset (&sv, 0, sizeof(sv));
 
-	strcpy (sv.name, server);
+	strlcpy (sv.name, server, sizeof(sv.name) );
+	strlcpy (host_worldname, server, sizeof(host_worldname) );	// Shouldn't be fps sensitive
 
 // load progs to get entity field count
 	PR_LoadProgs (sv_progs.string);
@@ -1406,9 +1407,8 @@ void SV_SpawnServer (char *server)
 	sv.paused = false;
 
 	sv.time = 1.0;
-	R_PreMapLoad (server);		// joe
 
-	strcpy (sv.name, server);
+	strlcpy (sv.name, server, sizeof(sv.name) );
 	SNPrintf (sv.modelname, sizeof(sv.modelname), "maps/%s.bsp", server);
 	sv.worldmodel = Mod_ForName (sv.modelname, false);
 

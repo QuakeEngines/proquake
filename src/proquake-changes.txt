@@ -1,13 +1,29 @@
 ProQuake 4.91 - Change Log - Baker   wwww.quakeone.com - January 23, 2008
 ------------------------------------------------------------------------------------
-This is an effort to update the ProQuake engine with bug-fixes and some add modern conveniences without altering any of the look or feel of the ProQuake engine.  Conservative improvements like making the brightness controls work in GLPro, fixing major rendering bugs like the historical GLQuake FOV bug, and simple things like command completion are in the scope of this; things like adding 24-bit texture support, new particle effects or unnecessary things (like an MP3 player) are not in the scope of this project.
+This is an effort to update the ProQuake engine with bug-fixes and some add modern conveniences without altering any of the 
+look or feel of the ProQuake engine.  Conservative improvements like making the brightness controls work in GLPro, fixing 
+major rendering bugs like the historical GLQuake FOV bug, and simple things like command completion are in the 
+scope of this; things like adding 24-bit texture support, new particle effects or unnecessary things (like an MP3 player) 
+are not in the scope of this project.
 
 This is merely an attempt to improve the best engine for an authentic 1999-style deathmatch experience.  
 
-ProQuake is modification of GLQuake/WinQuake by JP Grossman that really evolved into the gold standard classic Quake client for online play.  In December 2007, this project became the official continuation of ProQuake.
+ProQuake is modification of GLQuake/WinQuake by JP Grossman that really evolved into the gold standard classic Quake client 
+for online play.  In December 2007, this project became the official continuation of ProQuake.
 
-Source code is available at http://quakeone.com/proquake under the GPL v2 or later, but the binaries are distributed under
-the GPL v3.
+Source code is available at http://quakeone.com/proquake under the GPL v3 or later, binaries are distributed under the 
+GPL v3.
+
+V4.93 - October 24, 2012
+============================================================================================================================
+1. Server browser.  Press F5 or Menu->Multiplayer->Join Game.  Refreshes every 80 seconds.
+2. Support for a QuakeOne.com player id.
+3. MH fixed a DX8 wrapper screenshot issue reported by Arkon.  I pressed CTRL-V.  Thanks MH!
+4. Removed ancient SGIS OpenGL stuff and used ARB.
+5. Miscellaneous improvements robbed from FitzQuake Mark V and Engine X.  Demo tweaks, history file refinement, zzzzz.
+6. Timedemo automatically closes console.
+7. Added 2 testing command line parameters for potentially addressing Polarite keyboard issue.
+8. General code cleanups and streamlining.
 
 V4.91 Beta - October 5, 2012
 ============================================================================================================================

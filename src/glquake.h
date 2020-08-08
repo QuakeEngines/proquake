@@ -25,23 +25,23 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifdef _WIN32
 #include <windows.h>
+#if defined(DX8QUAKE)
+#include "dx8_fakegl.h"
+#else
+#include <GL/gl.h>
+#include <GL/glu.h>
 #endif
 
+#endif
 #ifdef MACOSX
 #include 	<OpenGL/gl.h>
 #include 	<OpenGL/glu.h>
 #include	<OpenGL/glext.h>
 #include	<math.h>
-#elif defined(DX8QUAKE)
-#include "dx8_fakegl.h"
-#else
-#include <GL/gl.h>
-#include <GL/glu.h>
-#endif /* MACOSX */
 
-#ifndef APIENTRY
 #define APIENTRY
-#endif
+#endif // MACOSX
+
 
 #define TEX_NOFLAGS			0 // Baker: I use this to mark the absense of any flags
 #define TEX_MIPMAP			2
@@ -156,7 +156,6 @@ extern	cvar_t	gl_polyblend;
 extern	cvar_t	gl_flashblend;
 extern	cvar_t	gl_nocolors;
 //extern	cvar_t	gl_doubleeyes;
-extern	cvar_t	gl_xflip;
 extern	cvar_t	gl_playermip;
 extern	cvar_t	gl_fullbright;
 extern	cvar_t	r_ringalpha;
@@ -234,6 +233,7 @@ void R_TimeRefresh_f (void);
 void R_ReadPointFile_f (void);
 void R_TranslatePlayerSkin (int playernum);
 void R_InitParticleTexture (void);
+void R_Init_FlashBlend_Bubble (void);
 
 // gl_rpart.c
 

@@ -67,9 +67,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // Define exceptions to the "rule"
 #ifdef DX8QUAKE
 //# define DX8QUAKE_NO_8BIT					// D3D8 wrapper didn't keep the 8bit support
-# define DX8QUAKE_NO_BINDTEXFUNC			// SGIS/ancient GL pathway removal
+//# define DX8QUAKE_NO_BINDTEXFUNC			// SGIS/ancient GL pathway removal
 # define DX8QUAKE_NO_GL_ZTRICK				// DX8QUAKE hates gl_ztrick; clear the buffers every time
-# define DX8QUAKE_GL_READPIXELS_NO_RGBA		// Wrapper only supports GL_RGBA; not GL_RGBA like envmap command uses
+//# define DX8QUAKE_GL_READPIXELS_NO_RGBA		// Wrapper only supports GL_RGBA; not GL_RGBA like envmap command uses
 # define DX8QUAKE_VSYNC_COMMANDLINE_PARAM	// Vsync command line param option ... -vsync
 #endif
 
@@ -89,7 +89,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef _WIN32
 # define SUPPORTS_AVI_CAPTURE					// Hopelessly Windows locked
 # define SUPPORTS_INTERNATIONAL_KEYBOARD		// I only know how to detect and address on Windows
-# define SUPPORTS_CD_PLAYER						// Windows yes, maybe Linux too.  Not MACOSX, Fruitz of Dojo not support it.
+
 # define SUPPORTS_DEMO_AUTOPLAY					// Windows only.  Uses file association
 # define SUPPORTS_DIRECTINPUT 
 # define SUPPORTS_INTERNATIONAL_KEYBOARD		// Windows only implementation for now?; the extra key byte
@@ -116,31 +116,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #endif
 
-#ifdef MACOSX
 
-# define FULL_BACKGROUND_VOLUME_CONTROL
-#endif
-
-#ifdef BUILD_MP3_VERSION
-# define FULL_BACKGROUND_VOLUME_CONTROL
-#endif
 
 // Define Specific Rendering Capabilities
 
 
 
-# define SUPPORTS_GLHOMFIX_NEARWATER			// Specific problem and solution for GL
-# define SUPPORTS_CONSOLE_SIZING				// GL can size the console; WinQuake can't do that yet
+//# define SUPPORTS_GLHOMFIX_NEARWATER			// Specific problem and solution for GL
+//# define SUPPORTS_CONSOLE_SIZING				// GL can size the console; WinQuake can't do that yet
+//# define SUPPORTS_GL_DELETETEXTURES				// D3DQuake isn't emulating them at this time
 # define SUPPORTS_HARDWARE_ANIM_INTERPOLATION	// The hardware interpolation route
 # define SUPPORTS_2DPICS_ALPHA					// Transparency of 2D pics
 # define SUPPORTS_GL_OVERBRIGHTS				// Overbright method GLQuake is using, WinQuake always had them
-# define SUPPORTS_GL_DELETETEXTURES				// D3DQuake isn't emulating them at this time
-# define GL_QUAKE_SKIN_METHOD					// GLQuake uses a different method for skinning
-//# define SUPPORTS_ENTITY_ALPHA				// Transparency ... NOT YET
-//# define SUPPORTS_SOFTWARE_FTESTAIN				// FTESTAIN
 
-
-
+//# define GL_QUAKE_SKIN_METHOD					// GLQuake uses a different method for skinning
 
 
 // Alternate Methods
@@ -160,23 +149,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // Discarded DX8QUAKE #ifdefs -- all functional but either not necessary or some such thing
 
-// # define DX8QUAKE_CANNOT_DETECT_FULLSCREEN_BY_MODESTATE	// Detecting modestate == MS_FULLDIB can't distinguish between windowed and fullscreen modes
+//# define DX8QUAKE_CANNOT_DETECT_FULLSCREEN_BY_MODESTATE	// Detecting modestate == MS_FULLDIB can't distinguish between windowed and fullscreen modes
 //# undef  SUPPORTS_GLVIDEO_MODESWITCH  // Not now, isn't working right
 //#define DX8QUAKE_NO_DIALOGS				// No "starting Quake type "dialogs for DX8QUAKE, Improvement applicable to GL
 //# define DX8QUAKE_NO_FRONT_BACK_BUFFER		// Baker: 4.42 - wasn't necessary, seems DX8 wrapper can do this
 //# define DX8QUAKE_GL_MAX_SIZE_FAKE			// Baker  4.42 - this is no different than dx8 wrapper doing it right way
 //# define DX8QUAKE_ALT_MODEL_TEXTURE				// Believe this is unnecessary skin sharpening option applicanle to GL
-// # define DX8QUAKE_ALT_RESAMPLE				// Removing redundant function ... I think
+//# define DX8QUAKE_ALT_RESAMPLE				// Removing redundant function ... I think
 //# define DX8QUAKE_NO_GL_TEXSORT_ZERO			// gl_texsort 0 is for no multitexture (can be applied to GL)
 //# define DX8QUAKE_NO_GL_KEEPTJUNCTIONS_ZERO		// gl_keeptjunction 0 is (can be applied to GL) * Note below
 //# define DX8QUAKE_BAKER_ALTTAB_HACK				// Possibly removeable now
-
-
-
-int build_number (void);
-void Host_Version_f (void);
-char *VersionString (void);
-
 
 
 #endif

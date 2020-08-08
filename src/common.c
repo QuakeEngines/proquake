@@ -22,24 +22,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 #include <assert.h>  // strltrim strrtrim
 
-
-#define NUM_SAFE_ARGVS  7
+#define NUM_SAFE_ARGVS  4
 
 static char     *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
 static char     *argvdummy = " ";
 
-static char     *safeargvs[NUM_SAFE_ARGVS] = {"-stdvid", "-nolan", "-nosound", "-nocdaudio", "-joystick", "-nomouse", "-dibonly"};
+static char     *safeargvs[NUM_SAFE_ARGVS] = {"-nolan", "-nosound", "-joystick", "-nomouse"};
 
 cvar_t  registered = {"registered","0"};
-cvar_t  cmdline = {"cmdline","0", false, true};
+cvar_t  cmdline = {"cmdline", "", false, true};
 
 qboolean	com_modified;   // set true if using non-id files
 
-static qboolean	proghack;
+qboolean	proghack;
 
-static int             static_registered = 1;  // only for startup check, then set
+int static_registered = 1;  // only for startup check, then set
 
-qboolean		msg_suppress_1 = 0;
 
 void COM_InitFilesystem (void);
 
@@ -54,26 +52,18 @@ int		com_argc;
 char	**com_argv;
 
 #define CMDLINE_LENGTH	256
-static char	com_cmdline[CMDLINE_LENGTH];
+char	com_cmdline[CMDLINE_LENGTH];
 
 qboolean		standard_quake = true, rogue, hipnotic;
 
 // Special command line options
 
-
-
-qboolean		mod_deeplair = false;		// Deep lair mod: alternate HUD
-
-qboolean		mod_conhide  = false;		// Conceal the console more
-
-qboolean		mod_nosoundwarn = false;	// Don't warn about missing sounds
-
-
-
+//qboolean		mod_conhide  = false;		// Conceal the console more
+//qboolean		mod_nosoundwarn = false;	// Don't warn about missing sounds
 
 
 // this graphic needs to be in the pak file to use registered features
-static unsigned short pop[] =
+unsigned short pop[] =
 {
  0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000
 ,0x0000,0x0000,0x6600,0x0000,0x0000,0x0000,0x6600,0x0000
@@ -106,10 +96,10 @@ filesystem initialization.
 
 The "game directory" is the first tree on the search path and directory that all
 generated files (savegames, screenshots, demos, config files) will be saved to.
-This can be overridden with the "-game" command line parameter.
-The game directory can never be changed while quake is executing.
-This is a precacution against having a malicious server instruct clients to
-write files over areas they shouldn't.
+This can be overridden with the "-game" command line parameter.  The game
+directory can never be changed while quake is executing.  This is a precacution
+against having a malicious server instruct clients to write files over areas they
+shouldn't.
 
 The "cache directory" is only used during development to save network bandwidth,
 especially over ISDN / T1 lines.  If there is a cache directory specified, when
@@ -121,8 +111,8 @@ FIXME:
 The file "parms.txt" will be read out of the game directory and appended to the
 current command line arguments to allow different games to initialize startup
 parms differently. This could be used to add a "-sspeed 22050" for the high
-quality sound edition. Because they are added at the end, they will not override
-an explicit setting on the original command line.
+quality sound edition.  Because they are added at the end, they will not
+override an explicit setting on the original command line.
 
 */
 
@@ -350,15 +340,9 @@ void MSG_WriteCoord (sizebuf_t *sb, float f)
 
 void MSG_WriteAngle (sizebuf_t *sb, float f)
 {
-	//MSG_WriteByte (sb, (int)floor(f * 256 / 360 + 0.5) & 255); // Baker 3.76 - LordHavoc precision aiming fix
 	MSG_WriteByte (sb, ((int)f*256/360) & 255);
 }
 
-// joe: added from FuhQuake
-void R_PreMapLoad (char *mapname)
-{
-	Cvar_Set ("host_mapname", mapname);
-}
 
 // JPG - precise aim for ProQuake!
 void MSG_WritePreciseAngle (sizebuf_t *sb, float f)
@@ -511,26 +495,13 @@ float MSG_ReadCoord (void)
 
 float MSG_ReadAngle (void)
 {
-#ifdef SMOOTH_SINGLEPLAYER_TEST
-	if (PRIVATE_PROTOCOL_OK)
-		return MSG_ReadFloat();
-	else
-#endif
 	return MSG_ReadChar() * (360.0/256);
 }
 
 // JPG - exact aim for proquake!
 float MSG_ReadPreciseAngle (void)
 {
-#ifdef SMOOTH_SINGLEPLAYER_TEST
-	if (PRIVATE_PROTOCOL_OK)
-		return MSG_ReadFloat();
-	else
-#endif
-	{
-	int val = MSG_ReadShort();
-	return val * (360.0/65536);
-	}
+	return MSG_ReadShort() * (360.0/65536);
 }
 
 //===========================================================================
@@ -654,8 +625,8 @@ char *COM_FileExtension (char *in)
 	static char exten[8];
 	int             i;
 
-	if (!(in = strrchr(in, '.')))
-
+	in = strrchr(in, '.');
+	if (!in)
 		return "";
 	in++;
 	for (i=0 ; i<7 && *in ; i++,in++)
@@ -910,8 +881,6 @@ void COM_CheckRegistered (void)
 			Sys_Error ("Corrupted data file.");
 
 	Cvar_Set ("cmdline", com_cmdline);
-	// Baker: 3.99k this is horrible!!!!! Never do that again -> cmdline.string = com_cmdline;
-
 	Cvar_Set ("registered", "1");
 	static_registered = 1;
 	Con_Printf ("Playing registered version.\n");
@@ -953,8 +922,7 @@ void COM_InitArgv (int argc, char **argv)
 
 	safe = false;
 
-	for (com_argc=0 ; (com_argc<MAX_NUM_ARGVS) && (com_argc < argc) ;
-		 com_argc++)
+	for (com_argc=0 ; (com_argc < MAX_NUM_ARGVS) && (com_argc < argc) ; com_argc++)
 	{
 		largv[com_argc] = argv[com_argc];
 		if (!strcmp ("-safe", argv[com_argc]))
@@ -989,18 +957,31 @@ void COM_InitArgv (int argc, char **argv)
 
 
 	//ProQuake 4.10 new extras
-
-
-
-	if (COM_CheckParm ("-deeplair")) 		mod_deeplair = true;
-
-	if (COM_CheckParm ("-conhide"))  		mod_conhide = true;
-
-	if (COM_CheckParm ("-nosoundwarn"))  	mod_nosoundwarn = true;
-
-
+	//if (COM_CheckParm ("-conhide"))  		mod_conhide = true;
+	//if (COM_CheckParm ("-nosoundwarn"))  	mod_nosoundwarn = true;
 
 }
+
+
+/*
+================
+Test_f -- johnfitz
+================
+*/
+#ifdef _DEBUG
+void Test_f (void)
+{
+}
+
+void Crash_f (void)
+{
+	void (*Crash_Me_Now) (void);
+
+	Crash_Me_Now = NULL;
+	Crash_Me_Now ();	// CRASH!!  To test crash protection.
+}
+
+#endif // _DEBUG
 
 
 /*
@@ -1036,10 +1017,16 @@ void COM_Init (char *basedir)
 
 	Cvar_RegisterVariable (&registered, NULL);
 	Cvar_RegisterVariable (&cmdline, NULL);  // Baker 3.99c: needed for test2 command
+	Cmd_AddCommand ("folder", Sys_OpenFolder_f);
 	Cmd_AddCommand ("path", COM_Path_f);
 
 	COM_InitFilesystem ();
 	COM_CheckRegistered ();
+
+#ifdef _DEBUG
+	Cmd_AddCommand ("test", Test_f); //johnfitz
+	Cmd_AddCommand ("crash", Crash_f); //johnfitz
+#endif
 }
 
 
@@ -1110,11 +1097,10 @@ typedef struct
 	int             dirlen;
 } dpackheader_t;
 
-#define MAX_FILES_IN_PACK       4096 // Baker: HL Support as Half-Life Pak0.pak has a lot of files
-
+#define MAX_FILES_IN_PACK       2048
 
 char    com_cachedir[MAX_OSPATH];
-char    com_gamedir[MAX_OSPATH] = "";	// JPG 3.20 - added initialization
+char    com_gamedir[MAX_OSPATH];	// JPG 3.20 - added initialization
 
 typedef struct searchpath_s
 {
@@ -1180,8 +1166,6 @@ void COM_WriteFile (char *filename, void *data, int len)
 /*
 ============
 COM_CreatePath
-
-Only used for CopyFile
 ============
 */
 void    COM_CreatePath (char *path)
@@ -1410,9 +1394,9 @@ Filename are reletive to the quake directory.
 Allways appends a 0 byte.
 ============
 */
-static cache_user_t *loadcache;
-static byte    *loadbuf;
-static int             loadsize;
+cache_user_t *loadcache;
+byte  *loadbuf;
+int   loadsize;
 byte *COM_LoadFile (char *path, int usehunk)
 {
 	int             h;
@@ -1651,7 +1635,7 @@ void COM_InitFilesystem () //johnfitz -- modified based on topaz's tutorial
 		if ((basedir[j-1] == '\\') || (basedir[j-1] == '/'))
 			basedir[j-1] = 0;
 	}
-
+	strlcpy (com_basedir, basedir, sizeof(com_basedir) );
 //
 // -cachedir <path>
 // Overrides the system supplied cache directory (NULL or /qcache)
@@ -1752,10 +1736,7 @@ void COM_ModelCRC (void)
 	com_searchpaths = search;
 }
 
-
-//======================================
-// LordHavoc: added these because they are useful
-
+/*
 void COM_ToLowerString(char *in, char *out)
 {
 	while (*in)
@@ -1766,6 +1747,8 @@ void COM_ToLowerString(char *in, char *out)
 			*out++ = *in++;
 	}
 }
+*/
+
 
 #ifdef _MSC_VER
 size_t VSNPrintf (char *buffer, const size_t count, const char *format, va_list args)
@@ -1882,6 +1865,53 @@ char *strrtrim(char *s)
 	*tt = '\0';
 
 	return s;
+}
+
+
+void COM_SlashesForward_Like_Unix (char *WindowsStylePath)
+{
+	size_t	i;
+	// Translate "\" to "/"
+	for (i = 0 ; i < strlen(WindowsStylePath) ; i ++)
+		if (WindowsStylePath[i] == '\\')
+			WindowsStylePath[i] = '/';
+}
+
+void COM_Reduce_To_Parent_Path (char* myPath)
+{
+	char* terminatePoint = strrchr (myPath, '/');
+
+	if (terminatePoint)
+		*terminatePoint = '\0';
+
+}
+
+char *COM_NiceFloatString (float floatvalue)
+{
+	static char buildstring[32];
+	int			i;
+
+	SNPrintf (buildstring, sizeof(buildstring), "%f", floatvalue);
+
+	// Strip off ending zeros
+	for (i = strlen(buildstring) - 1 ; i > 0 && buildstring[i] == '0' ; i--)
+		buildstring[i] = 0;
+
+	// Strip off ending period
+	if (buildstring[i] == '.')
+		buildstring[i] = 0;
+
+	return buildstring;
+}
+
+int COM_Minutes (int seconds)
+{
+	return seconds / 60;
+}
+
+int COM_Seconds (int seconds)
+{
+	return seconds %60;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

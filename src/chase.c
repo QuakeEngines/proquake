@@ -76,11 +76,7 @@ void Chase_Update (void)
     if ((int)chase_active.value != 2)
     {
 	// if can't see player, reset
-#ifdef PSP
-	AngleVectors (cl.viewangles, forward, right, up);
-#else
 	AngleVectors (cl.lerpangles, forward, right, up);
-#endif
 
 	// calc exact destination
 	for (i=0 ; i<3 ; i++)
@@ -90,19 +86,11 @@ void Chase_Update (void)
 	// find the spot the player is looking at
 	VectorMA (r_refdef.vieworg, 4096, forward, dest);
 	TraceLine (r_refdef.vieworg, dest, stop);
-
 	// calculate pitch to look at the same spot from camera
 	VectorSubtract (stop, r_refdef.vieworg, stop);
 
 	dist = max(1, DotProduct(stop, forward));
-
-	if (dist < 1)
-	{
-		dist = 1;	// should never happen
-	}
-  
-
-	r_refdef.viewangles[PITCH] = -180 / M_PI * atan2( stop[2], dist );
+	r_refdef.viewangles[PITCH] = -180 / M_PI * atan2f( stop[2], dist );
 	r_refdef.viewangles[YAW] -= chase_yaw.value;
 
 	TraceLine (r_refdef.vieworg, chase_dest, stop);
