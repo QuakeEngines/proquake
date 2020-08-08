@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -83,10 +83,6 @@ dlight_t		cl_dlights[MAX_DLIGHTS];
 int				cl_numvisedicts;
 entity_t		*cl_visedicts[MAX_VISEDICTS];
 
-#ifdef SUPPORTS_AUTOID
-modelindex_t		cl_modelindex[NUM_MODELINDEX];
-char			*cl_modelnames[NUM_MODELINDEX];
-#endif
 
 extern cvar_t scr_fov;
 static float		savedsensitivity;
@@ -320,7 +316,7 @@ void CL_SignonReply (void)
 		MSG_WriteString (&cls.message, va("color %i %i\n", ((int)cl_color.value)>>4, ((int)cl_color.value)&15));
 
 		MSG_WriteByte (&cls.message, clc_stringcmd);
-		snprintf (str, sizeof(str), "spawn %s", cls.spawnparms);
+		SNPrintf (str, sizeof(str), "spawn %s", cls.spawnparms);
 		MSG_WriteString (&cls.message, str);
 
 		// JPG 3.20 - model and .exe checking
@@ -418,7 +414,7 @@ void CL_NextDemo (void)
 		}
 	}
 
-	snprintf (str,sizeof(str),"playdemo %s\n", cls.demos[cls.demonum]);
+	SNPrintf (str,sizeof(str),"playdemo %s\n", cls.demos[cls.demonum]);
 	Cbuf_InsertText (str);
 	cls.demonum++;
 }
@@ -750,10 +746,6 @@ static void CL_RelinkEntities (void)
 			cl_visedicts[cl_numvisedicts] = ent;
 			cl_numvisedicts++;
 		}
-#ifdef SUPPORTS_ENTITY_ALPHA
-		if (!ent->transparency)
-			ent->transparency = 1;
-#endif
 	}
 
 }
@@ -781,7 +773,8 @@ int CL_ReadFromServer (void)
 		cl.ctime -= host_frametime;
 	// Baker 3.75 - end demo fast rewind
 
-	do {
+	do 
+	{
 		ret = CL_GetMessage ();
 		if (ret == -1)
 			Host_Error ("CL_ReadFromServer: lost server connection");
@@ -985,33 +978,6 @@ void CL_Viewpos_f (void)
 #endif
 }
 
-#ifdef SUPPORTS_ENTITY_ALPHA
-void SortEntitiesByTransparency (void)
-{
-	int		i, j;
-	entity_t	*tmp;
-
-	for (i = 0 ; i < cl_numvisedicts ; i++)
-	{
-		if (cl_visedicts[i]->istransparent)
-		{
-			for (j = cl_numvisedicts - 1 ; j > i ; j--)
-			{
-				// if not transparent, exchange with transparent
-				if (!(cl_visedicts[j]->istransparent))
-				{
-					tmp = cl_visedicts[i];
-					cl_visedicts[i] = cl_visedicts[j];
-					cl_visedicts[j] = tmp;
-					break;
-				}
-			}
-			if (j == i)
-				return;
-		}
-	}
-}
-#endif
 
 
 /*
@@ -1024,9 +990,6 @@ void CL_Init (void)
 	SZ_Alloc (&cls.message, 1024);
 
 	CL_InitInput ();
-#ifdef SUPPORTS_AUTOID
-	CL_InitModelnames ();
-#endif
 	CL_InitTEnts ();
 
 // register our commands

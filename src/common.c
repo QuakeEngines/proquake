@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // common.c -- misc functions used in client and server
 
 #include "quakedef.h"
-#include <assert.h>
+#include <assert.h>  // strltrim strrtrim
 
 
 #define NUM_SAFE_ARGVS  7
@@ -95,22 +95,34 @@ static unsigned short pop[] =
 
 /*
 
+All of Quake's data access is through a hierchal file system, but the contents
+of the file system can be transparently merged from several sources.
 
-All of Quake's data access is through a hierchal file system, but the contents of the file system can be transparently merged from several sources.
+The "base directory" is the path to the directory holding the quake.exe and all
+game directories. The sys_* files pass this to host_init in quakeparms_t->basedir.
+This can be overridden with the "-basedir" command line parm to allow code
+debugging in a different directory. The base directory is only used during
+filesystem initialization.
 
-The "base directory" is the path to the directory holding the quake.exe and all game directories.  The sys_* files pass this to host_init in quakeparms_t->basedir.  This can be overridden with the "-basedir" command line parm to allow code debugging in a different directory.  The base directory is
-only used during filesystem initialization.
+The "game directory" is the first tree on the search path and directory that all
+generated files (savegames, screenshots, demos, config files) will be saved to.
+This can be overridden with the "-game" command line parameter.
+The game directory can never be changed while quake is executing.
+This is a precacution against having a malicious server instruct clients to
+write files over areas they shouldn't.
 
-The "game directory" is the first tree on the search path and directory that all generated files (savegames, screenshots, demos, config files) will be saved to.  This can be overridden with the "-game" command line parameter.  The game directory can never be changed while quake is executing.  This is a precacution against having a malicious server instruct clients to write files over areas they shouldn't.
-
-The "cache directory" is only used during development to save network bandwidth, especially over ISDN / T1 lines.  If there is a cache directory
-specified, when a file is found by the normal search path, it will be mirrored
-into the cache directory, then opened there.
-
+The "cache directory" is only used during development to save network bandwidth,
+especially over ISDN / T1 lines.  If there is a cache directory specified, when
+a file is found by the normal search path, it will be mirrored into the cache
+directory, then opened there.
 
 
 FIXME:
-The file "parms.txt" will be read out of the game directory and appended to the current command line arguments to allow different games to initialize startup parms differently.  This could be used to add a "-sspeed 22050" for the high quality sound edition.  Because they are added at the end, they will not override an explicit setting on the original command line.
+The file "parms.txt" will be read out of the game directory and appended to the
+current command line arguments to allow different games to initialize startup
+parms differently. This could be used to add a "-sspeed 22050" for the high
+quality sound edition. Because they are added at the end, they will not override
+an explicit setting on the original command line.
 
 */
 
@@ -144,431 +156,29 @@ void InsertLinkAfter (link_t *l, link_t *after)
 	l->next->prev = l;
 }
 
-#ifdef BUILD_MP3_VERSION
-
-// fast safe printbuffers courtesy of lord havoc.
-int va_snprintf (char *function, char *buffer, size_t buffersize, const char *format, ...)
-{
-	va_list args;
-	int		result;
-
-	va_start (args, format);
-	result = va_vsnprintf (function, buffer, buffersize, format, args);
-	va_end (args);
-
-	return result;
-}
-
-int va_vsnprintf (char *function, char *buffer, size_t buffersize, const char *format, va_list args)
-{
-	size_t result;
-
-	result = vsnprintf (buffer, buffersize, format, args);
-
-	if (result < 0 || result >= buffersize)
-	{
-		static qboolean inside;
-
-		// Beware recursion here
-		if (!inside)
-		{
-			inside = true;
-			Con_SafePrintf ("%s: excessive string length, max = %d\n", function, buffersize);
-		}
-		inside = false;
-		buffer[buffersize - 1] = '\0';
-		return -1;
-	}
-	return result;
-}
-#endif
 
 
 /*
-============================================================================
-
-					LIBRARY REPLACEMENT FUNCTIONS
-
-============================================================================
-*/
-
-/*void Q_memset (void *dest, int fill, int count)
-
-{
-	int             i;
-
-	if ( (((long)dest | count) & 3) == 0)
-	{
-		count >>= 2;
-		fill = fill | (fill<<8) | (fill<<16) | (fill<<24);
-		for (i=0 ; i<count ; i++)
-			((int *)dest)[i] = fill;
-	}
-	else
-		for (i=0 ; i<count ; i++)
-			((byte *)dest)[i] = fill;
-}*/
-
-
-/*void Q_memcpy (void *dest, void *src, int count)
-
-{
-	int             i;
-
-	if (( ( (long)dest | (long)src | count) & 3) == 0 )
-	{
-		count>>=2;
-		for (i=0 ; i<count ; i++)
-			((int *)dest)[i] = ((int *)src)[i];
-	}
-	else
-		for (i=0 ; i<count ; i++)
-			((byte *)dest)[i] = ((byte *)src)[i];
-}*/
-
-
-/*int Q_memcmp (void *m1, void *m2, int count)
-
-{
-	while(count)
-	{
-		count--;
-		if (((byte *)m1)[count] != ((byte *)m2)[count])
-			return -1;
-	}
-	return 0;
-}*/
-
-
-/*
-
-void Q_strcpy (char *dest, char *src)
-
-{
-	while (*src)
-	{
-		*dest++ = *src++;
-	}
-	*dest++ = 0;
-}
-
-void Q_strncpy (char *dest, char *src, int count)
-{
-	while (*src && count--)
-	{
-		*dest++ = *src++;
-	}
-	if (count)
-		*dest++ = 0;
-}
-*/
-
-
-
-
-/*
-
 ================
-
 COM_Quakebar
-
 ================
-
 */
 
 char *COM_Quakebar (int len)
-
 {
 
 	static char bar[42];
-
 	int i;
-
-
-
 	len = min(len, sizeof(bar) - 2);
-
-
-
 	bar[0] = '\36';
 
 	for (i = 1; i < len - 1; i++)
-
 		bar[i] = '\36';
-
 	bar[len-1] = '\36';
-
 	bar[len] = 0;
-
-
-
 	return bar;
 
 }
-
-
-
-
-
-/*int Q_strlen (char *str)
-
-{
-	int             count;
-
-	count = 0;
-	while (str[count])
-		count++;
-
-	return count;
-}*/
-
-
-/*char *strrchr(char *s, char c)
-
-{
-    int len = strlen(s);
-    s += len;
-    while (len--)
-	if (*--s == c) return s;
-    return 0;
-}*/
-
-
-/*void Q_strcat (char *dest, char *src)
-
-{
-	dest += strlen(dest);
-	Q_strcpy (dest, src);
-
-}*/
-
-
-/*int Q_strcmp (char *s1, char *s2)
-
-{
-	while (1)
-	{
-		if (*s1 != *s2)
-			return -1;              // strings not equal
-		if (!*s1)
-			return 0;               // strings are equal
-		s1++;
-		s2++;
-	}
-
-	return -1;
-}*/
-
-
-/*int Q_strncmp (char *s1, char *s2, int count)
-
-{
-	while (1)
-	{
-		if (!count--)
-			return 0;
-		if (*s1 != *s2)
-			return -1;              // strings not equal
-		if (!*s1)
-			return 0;               // strings are equal
-		s1++;
-		s2++;
-	}
-
-	return -1;
-}*/
-
-/*
-int strncasecmp (char *s1, char *s2, int n)
-{
-	int             c1, c2;
-
-	while (1)
-	{
-		c1 = *s1++;
-		c2 = *s2++;
-
-		if (!n--)
-			return 0;               // strings are equal until end point
-
-		if (c1 != c2)
-		{
-			if (c1 >= 'a' && c1 <= 'z')
-				c1 -= ('a' - 'A');
-			if (c2 >= 'a' && c2 <= 'z')
-				c2 -= ('a' - 'A');
-			if (c1 != c2)
-				return -1;              // strings not equal
-		}
-		if (!c1)
-			return 0;               // strings are equal
-//              s1++;
-//              s2++;
-	}
-
-	return -1;
-}
-
-int strcasecmp (char *s1, char *s2)
-{
-	return strncasecmp (s1, s2, 99999);
-}
-
-int atoi (char *str)
-{
-	int             val;
-	int             sign;
-	int             c;
-
-	if (*str == '-')
-	{
-		sign = -1;
-		str++;
-	}
-	else
-		sign = 1;
-
-	val = 0;
-
-//
-// check for hex
-//
-	if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X') )
-	{
-		str += 2;
-		while (1)
-		{
-			c = *str++;
-			if (c >= '0' && c <= '9')
-				val = (val<<4) + c - '0';
-			else if (c >= 'a' && c <= 'f')
-				val = (val<<4) + c - 'a' + 10;
-			else if (c >= 'A' && c <= 'F')
-				val = (val<<4) + c - 'A' + 10;
-			else
-				return val*sign;
-		}
-	}
-
-//
-// check for character
-//
-	if (str[0] == '\'')
-	{
-		return sign * str[1];
-	}
-
-//
-// assume decimal
-//
-	while (1)
-	{
-		c = *str++;
-		if (c <'0' || c > '9')
-			return val*sign;
-		val = val*10 + c - '0';
-	}
-
-	return 0;
-}
-
-
-float atof (char *str)
-{
-	float			val;
-
-	int             sign;
-	int             c;
-	int             decimal, total;
-
-	if (*str == '-')
-	{
-		sign = -1;
-		str++;
-	}
-	else
-		sign = 1;
-
-	val = 0;
-
-//
-// check for hex
-//
-	if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X') )
-	{
-		str += 2;
-		while (1)
-		{
-			c = *str++;
-			if (c >= '0' && c <= '9')
-				val = (val*16) + c - '0';
-			else if (c >= 'a' && c <= 'f')
-				val = (val*16) + c - 'a' + 10;
-			else if (c >= 'A' && c <= 'F')
-				val = (val*16) + c - 'A' + 10;
-			else
-				return val*sign;
-		}
-	}
-
-//
-// check for character
-//
-	if (str[0] == '\'')
-	{
-		return sign * str[1];
-	}
-
-//
-// assume decimal
-//
-	decimal = -1;
-	total = 0;
-	while (1)
-	{
-		c = *str++;
-		if (c == '.')
-		{
-			decimal = total;
-			continue;
-		}
-		if (c <'0' || c > '9')
-			break;
-		val = val*10 + c - '0';
-		total++;
-	}
-
-	if (decimal == -1)
-		return val*sign;
-	while (total > decimal)
-	{
-		val /= 10;
-		total--;
-	}
-
-	return val*sign;
-}
-
-// Always ensures string is terminated
-
-void Q_strncpyz (char *dest, char *src, size_t size)
-{
-	strncpy (dest, src, size - 1);
-	dest[size-1] = 0;
-}
-
-// Always ensures string is terminated
-void Q_snprintfz (char *dest, size_t size, char *fmt, ...)
-{
-	va_list		argptr;
-
-	va_start (argptr, fmt);
-	vsnprintf (dest, size, fmt, argptr);
-	va_end (argptr);
-
-	dest[size - 1] = 0;
-}
-*/
 
 /*
 ============================================================================
@@ -734,23 +344,13 @@ void MSG_WriteCoord (sizebuf_t *sb, float f)
 }
 
 
-// Baker: we are using this for super-smooth floats for angles in pure single player
-//        with no demos recording or being played with the server running with maxplayers of 1
-//        This means our little private protocol will not be interfering with any Quake standards
-//        of any importance because no interaction with other clients and/or demos is occurring
 
-#define PRIVATE_PROTOCOL_OK	(sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)
-//#define SINGLE_PLAYER_ACTIVE (sv.active && cls.state != ca_dedicated && !cls.demoplayback && !cls.demorecording && svs.maxclients == 1) // && svs.maxclientslimit == 1)
-#undef SMOOTH_SINGLEPLAYER_TEST
+
+
 
 void MSG_WriteAngle (sizebuf_t *sb, float f)
 {
 	//MSG_WriteByte (sb, (int)floor(f * 256 / 360 + 0.5) & 255); // Baker 3.76 - LordHavoc precision aiming fix
-#ifdef SMOOTH_SINGLEPLAYER_TEST
-	if (PRIVATE_PROTOCOL_OK)
-		MSG_WriteFloat (sb, f);
-	else
-#endif
 	MSG_WriteByte (sb, ((int)f*256/360) & 255);
 }
 
@@ -763,15 +363,10 @@ void R_PreMapLoad (char *mapname)
 // JPG - precise aim for ProQuake!
 void MSG_WritePreciseAngle (sizebuf_t *sb, float f)
 {
-#ifdef SMOOTH_SINGLEPLAYER_TEST
-	if (PRIVATE_PROTOCOL_OK)
-		MSG_WriteFloat (sb, f);
-	else
-#endif
-	{
+
 	int val = (int)f*65536/360;
 	MSG_WriteShort (sb, val & 65535);
-	}
+
 }
 
 //
@@ -1448,42 +1043,12 @@ void COM_Init (char *basedir)
 }
 
 
-/*
-============
-va
-
-does a varargs printf into a temp buffer, so I don't need to have
-varargs versions of all text functions.
-FIXME: make this buffer size safe someday
-============
-*/
-char    *va(char *format, ...)
-{
-	va_list         argptr;
-	static char             string[1024];
-
-	va_start (argptr, format);
-	vsnprintf (string, sizeof(string), format,argptr);
-
-	va_end (argptr);
-
-	return string;
-}
 
 char *CopyString (char *in)
-
 {
-
 	char	*out;
-
-
-
 	out = Z_Malloc (strlen(in)+1);
-
 	strcpy (out, in);
-
-
-
 	return out;
 
 }
@@ -1597,7 +1162,7 @@ void COM_WriteFile (char *filename, void *data, int len)
 	Sys_mkdir (com_gamedir); //johnfitz -- if we've switched to a nonexistant gamedir, create it now so we don't crash
 
 
-	snprintf (name, sizeof(name), "%s/%s", com_gamedir, filename);
+	SNPrintf (name, sizeof(name), "%s/%s", com_gamedir, filename);
 
 	handle = Sys_FileOpenWrite (name);
 	if (handle == -1)
@@ -1734,7 +1299,7 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 					continue;
 			}
 
-			snprintf (netpath, sizeof(netpath), "%s/%s",search->filename, filename);
+			SNPrintf (netpath, sizeof(netpath), "%s/%s",search->filename, filename);
 
 			findtime = Sys_FileTime (netpath);
 			if (findtime == -1)
@@ -1747,15 +1312,15 @@ int COM_FindFile (char *filename, int *handle, FILE **file)
 			{
 #if defined(_WIN32)
 				if ((strlen(netpath) < 2) || (netpath[1] != ':'))
-					snprintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath);
+					SNPrintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath);
 
 				else
-					snprintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath+2);
+					SNPrintf(cachepath, sizeof(cachepath),"%s%s", com_cachedir, netpath+2);
 
 //#elif defined (MACOSX) || defined (LINUX)
 #else // Above line is insufficient since we do PSP and Flash now too
 
-				snprintf (cachepath,sizeof(cachepath),"%s%s", com_cachedir, netpath);
+				SNPrintf (cachepath,sizeof(cachepath),"%s%s", com_cachedir, netpath);
 #endif //^^ Windows prefixes drive names (no idea what OSX or Linux do for multiple drives).  In truth the above needs work for Windows networked drives prefixes (see aguirRe Quake for solution)
 
 
@@ -2042,7 +1607,7 @@ void COM_AddGameDirectory (char *dir)
 // add any pak files in the format pak0.pak pak1.pak, ...
 	for (i=0 ; ; i++)
 	{
-		snprintf (pakfile, sizeof(pakfile), "%s/pak%i.pak", dir, i);
+		SNPrintf (pakfile, sizeof(pakfile), "%s/pak%i.pak", dir, i);
 		pak = COM_LoadPackFile (pakfile);
 		if (!pak)
 			break;
@@ -2187,139 +1752,55 @@ void COM_ModelCRC (void)
 	com_searchpaths = search;
 }
 
+
 //======================================
+// LordHavoc: added these because they are useful
 
-
-
-// snprintf and vsnprintf are NOT portable. Use their DP counterparts instead
-
-
-
-int dpsnprintf (char *buffer, size_t buffersize, const char *format, ...)
-
+void COM_ToLowerString(char *in, char *out)
 {
+	while (*in)
+	{
+		if (*in >= 'A' && *in <= 'Z')
+			*out++ = *in++ + 'a' - 'A';
+		else
+			*out++ = *in++;
+	}
+}
 
-	va_list args;
+#ifdef _MSC_VER
+size_t VSNPrintf (char *buffer, const size_t count, const char *format, va_list args)
+{
+	size_t result;
 
-	int result;
+	// For _vSNPrintf, if the number of bytes to write exceeds buffer, then count bytes are written
+	// and ñ1 is returned.
 
+	result = _vsnprintf (buffer, count, format, args);
 
+	// Conditionally null terminate the string
+	if (result == -1)
+		buffer[count - 1] = '\0';
+
+	return result;
+}
+
+size_t SNPrintf (char *buffer, const size_t count, const char *format, ...)
+{
+	va_list args;			// pointer to the list of arguments
+	size_t result;
 
 	va_start (args, format);
-
-	result = dpvsnprintf (buffer, buffersize, format, args);
-
+	result = VSNPrintf (buffer, count, format, args);
 	va_end (args);
 
-
-
 	return result;
-
 }
 
+#endif
 
 
 
-int dpvsnprintf (char *buffer, size_t buffersize, const char *format, va_list args)
-
-{
-
-	int result;
-
-
-
-	result = vsnprintf (buffer, buffersize, format, args);
-
-	if (result < 0 || (size_t)result >= buffersize)
-
-	{
-
-		buffer[buffersize - 1] = '\0';
-
-		return -1;
-
-	}
-
-
-
-	return result;
-
-}
-
-
-
-//========================================================
-
-// strlcat and strlcpy, from OpenBSD
-
-
-
-/*
-
- * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
-
- *
-
- * Permission to use, copy, modify, and distribute this software for any
-
- * purpose with or without fee is hereby granted, provided that the above
-
- * copyright notice and this permission notice appear in all copies.
-
- *
-
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-
- */
-
-
-
-/*	$OpenBSD: strlcat.c,v 1.11 2003/06/17 21:56:24 millert Exp $	*/
-
-/*	$OpenBSD: strlcpy.c,v 1.8 2003/06/17 21:56:24 millert Exp $	*/
-
-
-
-#if !defined(FLASH)
-
-//========================================================
-// strlcat and strlcpy, from OpenBSD
-
-/*
- * Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
- *
- * Permission to use, copy, modify, and distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
-
-/*	$OpenBSD: strlcat.c,v 1.11 2003/06/17 21:56:24 millert Exp $	*/
-/*	$OpenBSD: strlcpy.c,v 1.8 2003/06/17 21:56:24 millert Exp $	*/
-
-
-#ifndef HAVE_STRLCAT
-size_t
-strlcat (char *dst, const char *src, size_t siz)
+size_t strlcat(char *dst, const char *src, size_t siz)
 {
 	register char *d = dst;
 	register const char *s = src;
@@ -2334,8 +1815,10 @@ strlcat (char *dst, const char *src, size_t siz)
 
 	if (n == 0)
 		return(dlen + strlen(s));
-	while (*s != '\0') {
-		if (n != 1) {
+	while (*s != '\0')
+	{
+		if (n != 1)
+		{
 			*d++ = *s;
 			n--;
 		}
@@ -2345,27 +1828,26 @@ strlcat (char *dst, const char *src, size_t siz)
 
 	return(dlen + (s - src));	/* count does not include NUL */
 }
-#endif  // #ifndef HAVE_STRLCAT
 
-
-#ifndef HAVE_STRLCPY
-size_t
-strlcpy(char *dst, const char *src, size_t siz)
+size_t strlcpy(char *dst, const char *src, size_t siz)
 {
-	register char *d = dst;
-	register const char *s = src;
-	register size_t n = siz;
+	char *d = dst;
+	const char *s = src;
+	size_t n = siz;
 
 	/* Copy as many bytes as will fit */
-	if (n != 0 && --n != 0) {
-		do {
+	if (n != 0 && --n != 0)
+	{
+		do
+		{
 			if ((*d++ = *s++) == 0)
 				break;
 		} while (--n != 0);
 	}
 
 	/* Not enough room in dst, add NUL and traverse rest of src */
-	if (n == 0) {
+	if (n == 0)
+	{
 		if (siz != 0)
 			*d = '\0';		/* NUL-terminate dst */
 		while (*s++)
@@ -2375,59 +1857,62 @@ strlcpy(char *dst, const char *src, size_t siz)
 	return(s - src - 1);	/* count does not include NUL */
 }
 
-#endif  // #ifndef HAVE_STRLCPY
-
-
-#endif
-
-
-#if !defined(FLASH)
 
 // Baker: strip leading spaces from string
-
-char *strltrim(char *s) {
-
+char *strltrim(char *s)
+{
 	char *t;
 
+	assert(s != NULL);
+	for (t = s; isspace(*t); ++t)
+		continue;
+	memmove(s, t, strlen(t)+1);	/* +1 so that '\0' is moved too */
+	return s;
+}
+
+char *strrtrim(char *s)
+{
+	char *t, *tt;
 
 	assert(s != NULL);
 
-	for (t = s; isspace(*t); ++t)
-
-		continue;
-
-	memmove(s, t, strlen(t)+1);	/* +1 so that '\0' is moved too */
+	for (tt = t = s; *t != '\0'; ++t)
+		if (!isspace(*t))
+			tt = t+1;
+	*tt = '\0';
 
 	return s;
-
 }
 
-#endif
+///////////////////////////////////////////////////////////////////////////////
+//
+//
+//	va:  does a varargs printf into a temp buffer
+//
+//
+///////////////////////////////////////////////////////////////////////////////
 
-
-
-//======================================
-
-// LordHavoc: added these because they are useful
-
-
-
-void COM_ToLowerString(char *in, char *out)
-
+char *va (const char *format, ...)
 {
+	static char 	buffers[8][1024];
+	// Let this malarky self-calculate and just do it once per session
+	// There is still a single point of control
+	// and the rest of the code adapts.
+	static size_t 	sizeof_a_buffer 	= sizeof(buffers[0]);
+	static size_t 	num_buffers			= sizeof(buffers) / sizeof(buffers[0]);
+	static size_t 	cycle = 0;
 
-	while (*in)
+	char			*buffer_to_use = buffers[cycle];
+	va_list 		args;
 
-	{
+	va_start 		(args, format);
+	VSNPrintf 		(buffer_to_use, sizeof_a_buffer, format, args);
+	va_end 			(args);
 
-		if (*in >= 'A' && *in <= 'Z')
+	// Cycle through to next buffer for next time function is called
+	if (++cycle >= num_buffers)		cycle = 0;
 
-			*out++ = *in++ + 'a' - 'A';
-
-		else
-
-			*out++ = *in++;
-
-	}
-
+	return buffer_to_use;
 }
+
+

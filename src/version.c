@@ -74,7 +74,7 @@ char *VersionString (void)
 {
 	static	char	str[32];
 
-	snprintf (str, sizeof(str), "%s (build %i)", ENGINE_VERSION, build_number());
+	SNPrintf (str, sizeof(str), "%s (build %i)", ENGINE_VERSION, build_number());
 
 	return str;
 }
@@ -96,9 +96,9 @@ char *VersionString (void)
 	//                        "Windows D3D ProQuake 3.99x"
 
 
-	snprintf(str, sizeof(str), "%s %s %s", OS_NAME, RENDERER_NAME, ENGINE_VERSION);
+	SNPrintf(str, sizeof(str), "%s %s %s", OS_NAME, RENDERER_NAME, ENGINE_VERSION);
 
-//	Q_snprintfz (str, sizeof(str), "Mac OS X glpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
+//	Q_SNPrintfz (str, sizeof(str), "Mac OS X glpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
 
 	return str;
 }

@@ -199,7 +199,7 @@ void Host_Game_f (void)
 			//Load the paks if any are found:
 			for (i = 0; ; i++)
 			{
-				snprintf(pakfile, sizeof(pakfile), "%s/pak%i.pak", com_gamedir, i);
+				SNPrintf(pakfile, sizeof(pakfile), "%s/pak%i.pak", com_gamedir, i);
 				pak = COM_LoadPackFile (pakfile);
 				if (!pak)
 				break;
@@ -280,7 +280,7 @@ void Modlist_Init (void) //TODO: move win32 specific stuff to sys_win.c
 	char			filestring[MAX_OSPATH], childstring[MAX_OSPATH];
 	int				count=0, temp;
 
-	snprintf(filestring, sizeof(filestring),"%s/*", host_parms.basedir);
+	SNPrintf(filestring, sizeof(filestring),"%s/*", host_parms.basedir);
 	Find = FindFirstFile(filestring, &FindFileData);
 	if (Find == INVALID_HANDLE_VALUE)
 	{
@@ -290,10 +290,10 @@ void Modlist_Init (void) //TODO: move win32 specific stuff to sys_win.c
 
 	do
 	{
-		snprintf(childstring, sizeof(childstring),"%s/%s/progs.dat", host_parms.basedir, FindFileData.cFileName);
+		SNPrintf(childstring, sizeof(childstring),"%s/%s/progs.dat", host_parms.basedir, FindFileData.cFileName);
 		FindProgs = FindFirstFile(childstring, &FindChildData);
 
-		snprintf(childstring, sizeof(childstring),"%s/%s/*.pak", host_parms.basedir, FindFileData.cFileName);
+		SNPrintf(childstring, sizeof(childstring),"%s/%s/*.pak", host_parms.basedir, FindFileData.cFileName);
 		FindPak = FindFirstFile(childstring, &FindChildData);
 
 		if (FindProgs == INVALID_HANDLE_VALUE && FindPak == INVALID_HANDLE_VALUE)
@@ -423,7 +423,7 @@ void Host_Status_f (void)
 	}
 }
 
-#ifdef QCEXEC
+
 /*
 ==================
 Host_QC_Exec
@@ -454,7 +454,7 @@ void Host_QC_Exec (void)
 		Con_Printf("bad function\n");
 
 }
-#endif
+
 
 /*
 ==================
@@ -743,7 +743,7 @@ void Host_Map_f (void)
 		return;
 
 	//johnfitz -- check for client having map before anything else
-	//	snprintf(name, sizeof(name), "maps/%s.bsp", Cmd_Argv(1));
+	//	SNPrintf(name, sizeof(name), "maps/%s.bsp", Cmd_Argv(1));
 	//	if (COM_OpenFile (name, &i) == -1)
 	//	{
 	//		Con_Printf("Host_Map_f: cannot find map %s\n", name);
@@ -817,7 +817,7 @@ void Host_Changelevel_f (void)
 	}
 
 	//johnfitz -- check for client having map before anything else
-	//snprintf(level, sizeof(level), "maps/%s.bsp", Cmd_Argv(1));
+	//SNPrintf(level, sizeof(level), "maps/%s.bsp", Cmd_Argv(1));
 	//if (COM_OpenFile (level, &i) == -1)
 	//{
 	//	Con_Printf("Host_Changelevel_f: cannot find map %s\n", level);
@@ -865,13 +865,12 @@ This is sent just before a server changes levels
 */
 void Host_Reconnect_f (void)
 {
-
-#ifdef SUPPORTS_MULTIMAP_DEMOS
-	if (cls.demoplayback) {
+	if (cls.demoplayback)  // Multimap demo playback
+	{
 		Con_DPrintf("Demo playing; ignoring reconnect\n");
 		return;
 	}
-#endif
+
 	SCR_BeginLoadingPlaque ();
 	cls.signon = 0;		// need new connection messages
 }
@@ -928,7 +927,7 @@ void Host_SavegameComment (char *text)
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
 		text[i] = ' ';
 	memcpy (text, cl.levelname, min(strlen(cl.levelname),22)); //johnfitz -- only copy 22 chars.
-	snprintf (kills,sizeof(kills),"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
+	SNPrintf (kills,sizeof(kills),"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	memcpy (text+22, kills, strlen(kills));
 // convert space to _ to make stdio happy
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
@@ -992,15 +991,12 @@ void Host_Savegame_f (void)
 		}
 	}
 
-	snprintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
+	SNPrintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 	COM_ForceExtension (name, ".sav"); // joe: force to ".sav"
 
 	Con_Printf ("Saving game to %s...\n", name);
-#ifdef FLASH_FILE_SYSTEM
-	f = as3OpenWriteFile(name);
-#else
 	f = fopen (name, "w");
-#endif
+
 	if (!f)
 	{
 		Con_Printf ("ERROR: couldn't open save file for writing.\n");
@@ -1035,9 +1031,6 @@ void Host_Savegame_f (void)
 	}
 	fclose (f);
 
-#ifdef FLASH_FILE_SYSTEM
-	as3UpdateFileSharedObject(name);
-#endif
 
 	Con_Printf ("done.\n");
 }
@@ -1072,7 +1065,7 @@ void Host_Loadgame_f (void)
 
 	cls.demonum = -1;		// stop demo loop in case this fails
 
-	snprintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
+	SNPrintf (name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".sav");
 
 // we can't call SCR_BeginLoadingPlaque, because too much stack space has
@@ -1312,9 +1305,9 @@ void Host_Say(qboolean teamonly)
 		if (pq_showedict.value)
 			Sys_Printf("#%d ", NUM_FOR_EDICT(host_client->edict));
 		if (teamplay.value && teamonly) // JPG - added () for mm2
-			snprintf(text, sizeof(text), "%c(%s): ", 1, save->name);
+			SNPrintf(text, sizeof(text), "%c(%s): ", 1, save->name);
 		else
-			snprintf(text, sizeof(text), "%c%s: ", 1, save->name);
+			SNPrintf(text, sizeof(text), "%c%s: ", 1, save->name);
 
 		// JPG 3.20 - optionally remove '\r'
 		if (pq_removecr.value)
@@ -1327,7 +1320,7 @@ void Host_Say(qboolean teamonly)
 			}
 		}
 	} else {
-		snprintf (text, sizeof(text), "%c<%s> ", 1, hostname.string);
+		SNPrintf (text, sizeof(text), "%c<%s> ", 1, hostname.string);
 	}
 
 	j = sizeof(text) - 2 - strlen(text);  // -2 for /n and null terminator
@@ -1674,7 +1667,7 @@ void Host_Spawn_f (void)
 		pr_global_struct->self = EDICT_TO_PROG(sv_player);
 		PR_ExecuteProgram (pr_global_struct->ClientConnect);
 
-		if ((Sys_DoubleTime() - host_client->netconnection->connecttime) <= sv.time)
+		if ((Sys_FloatTime() - host_client->netconnection->connecttime) <= sv.time)
 			Sys_Printf ("%s entered the game\n", host_client->name);
 
 		PR_ExecuteProgram (pr_global_struct->PutClientInServer);
@@ -2529,9 +2522,9 @@ void Host_InitCommands (void)
 
 	Cmd_AddCommand ("mcache", Mod_Print);
 
-#ifdef QCEXEC
+
 	Cmd_AddCommand ("qcexec", Host_QC_Exec);
-#endif
+
 
 	Cmd_AddCommand ("identify", Host_Identify_f);	// JPG 1.05 - player IP logging
 	Cmd_AddCommand ("ipdump", IPLog_Dump_f);			// JPG 1.05 - player IP logging

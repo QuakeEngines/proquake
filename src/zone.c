@@ -21,11 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-#ifdef PSP_LOW_MEMORY_SYSTEM
-#define	ZONE_DEFAULT_SIZE	0xc000
-#else
 #define	ZONE_DEFAULT_SIZE	0x100000	// 1Mb
-#endif
+
 
 #define	ZONEID	0x1d4a11
 #define MINFRAGMENT	64

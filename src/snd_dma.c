@@ -175,13 +175,7 @@ void S_Init (void)
 
 	Con_Printf("\nSound Initialization\n");
 
-
-
-#ifndef FLASH	//Always faked dma on Flash
-
 	if (COM_CheckParm("-simsound"))
-#endif
-
 		fakedma = true;
 
 	Cmd_AddCommand("play", S_Play_f);
@@ -231,14 +225,8 @@ void S_Init (void)
 		shm = (void *) Hunk_AllocName(sizeof(*shm), "shm");
 		shm->splitbuffer = 0;
 		shm->samplebits = 16;
-#ifdef FLASH_SOUND_DIFFERENCE
-
-		shm->speed = 44100; //Flash sampling rate is 44.1KHz
-
-#else
 
 		shm->speed = 22050;
-#endif
 
 		shm->channels = 2;
 		shm->samples = 32768;
@@ -823,7 +811,7 @@ void S_Update(vec3_t origin, vec3_t forward, vec3_t right, vec3_t up)
 
 void GetSoundtime(void)
 {
-#ifndef FLASH	//For Flash, the SampleDataEvent tells how much to add onto the soundtime value, so dont do anything here.
+
 
 	int		samplepos;
 	static	int		buffers;
@@ -857,7 +845,7 @@ void GetSoundtime(void)
 	oldsamplepos = samplepos;
 
 	soundtime = buffers*fullsamples + samplepos/shm->channels;
-#endif //ifndef FLASH
+
 
 }
 
@@ -876,10 +864,10 @@ void S_ExtraUpdate (void)
 	if (snd_noextraupdate.value)
 		return;		// don't pollute timings
 
-#ifndef FLASH
+
 
 	S_Update_();
-#endif
+
 
 }
 
@@ -908,11 +896,6 @@ void S_Update_(void)
 // mix ahead of current position
 	endtime = soundtime + _snd_mixahead.value
 
-#ifdef FLASH_SOUND_DIFFERENCE
-
-		/ 2.0f //For Flash we need to halve the mixahead amount, probably because we doubled the sampling rate.
-
-#endif
 
 		* shm->speed;
 
@@ -927,7 +910,7 @@ void S_Update_(void)
 
 		if (pDSBuf)
 		{
-			if (pDSBuf->lpVtbl->GetStatus (pDSBuf, &dwStatus) != DD_OK)
+			if (pDSBuf->lpVtbl->GetStatus (pDSBuf, &dwStatus) != DS_OK)
 				Con_Printf ("Couldn't get sound buffer status\n");
 
 			if (dwStatus & DSBSTATUS_BUFFERLOST)
@@ -941,10 +924,10 @@ void S_Update_(void)
 
 	S_PaintChannels (endtime);
 
-#ifndef FLASH
+
 
 	SNDDMA_Submit ();
-#endif
+
 
 }
 
@@ -1043,7 +1026,7 @@ void S_VolumeDown_f (void)
 {
 	S_LocalSound ("misc/menu3.wav");
 	volume.value -= 0.1;
-	volume.value = bound(0, volume.value, 1);
+	volume.value = CLAMP (0, volume.value, 1);
 	Cvar_SetValue ("volume", volume.value);
 	volume_changed = true;
 }
@@ -1052,7 +1035,7 @@ void S_VolumeUp_f (void)
 {
 	S_LocalSound ("misc/menu3.wav");
 	volume.value += 0.1;
-	volume.value = bound(0, volume.value, 1);
+	volume.value = CLAMP (0, volume.value, 1);
 	Cvar_SetValue ("volume", volume.value);
 	volume_changed = true;
 }

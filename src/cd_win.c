@@ -47,7 +47,7 @@ static void CD_f (void);
 static void MP3_f (void);
 
 // it's a dumb warning anyway...
-#pragma warning(disable : 4761)
+//#pragma warning(disable : 4761)
 
 
 extern	cvar_t	bgmvolume;
@@ -208,7 +208,7 @@ static void CD_f (void)
 		for (i = 2; i < Cmd_Argc (); i++)
 		{
 			mp3nametemp = Cmd_Argv (i);
-			snprintf (MP3FileName, sizeof(MP3FileName), "%s%s ", MP3FileName, mp3nametemp);
+			SNPrintf (MP3FileName, sizeof(MP3FileName), "%s%s ", MP3FileName, mp3nametemp);
 		}
 
 		// get rid of the trailing space
@@ -275,7 +275,7 @@ static void MP3_f (void)
 	for (i = 1; i < Cmd_Argc (); i++)
 	{
 		mp3nametemp = Cmd_Argv (i);
-		snprintf (MP3FileName, sizeof(MP3FileName), "%s%s ", MP3FileName, mp3nametemp);
+		SNPrintf (MP3FileName, sizeof(MP3FileName), "%s%s ", MP3FileName, mp3nametemp);
 	}
 
 	// get rid of the trailing space
@@ -412,8 +412,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cd_win.c
 
 #include <windows.h>
+#include "winquake.h"
 
-extern	HWND	mainwindow;
+
 extern	cvar_t	bgmvolume;
 cvar_t	cd_enabled = {"cd_enabled","1", true}; // Baker 3.99e: the ability to have the cdplayer shut off from menu
 

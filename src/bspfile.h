@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -50,8 +50,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //=============================================================================
 
 
-#define Q1_BSPVERSION	29
-#define HL_BSPVERSION	30
+#define BSPVERSION	29
 
 typedef struct
 {
@@ -225,6 +224,10 @@ typedef struct
 
 #ifndef QUAKE_GAME
 
+#define	ANGLE_UP	-1
+#define	ANGLE_DOWN	-2
+
+
 // the utilities get to be lazy and just use large static arrays
 
 extern	int			nummodels;
@@ -273,8 +276,44 @@ extern	int			numsurfedges;
 extern	int			dsurfedges[MAX_MAP_SURFEDGES];
 
 
+void DecompressVis (byte *in, byte *decompressed);
+int CompressVis (byte *vis, byte *dest);
+
 void	LoadBSPFile (char *filename);
 void	WriteBSPFile (char *filename);
 void	PrintBSPFileSizes (void);
+
+//===============
+
+
+typedef struct epair_s
+{
+	struct epair_s	*next;
+	char	*key;
+	char	*value;
+} epair_t;
+
+typedef struct
+{
+	vec3_t		origin;
+	int			firstbrush;
+	int			numbrushes;
+	epair_t		*epairs;
+} entity_t;
+
+extern	int			num_entities;
+extern	entity_t	entities[MAX_MAP_ENTITIES];
+
+void	ParseEntities (void);
+void	UnparseEntities (void);
+
+void 	SetKeyValue (entity_t *ent, char *key, char *value);
+char 	*ValueForKey (entity_t *ent, char *key);
+// will return "" if not present
+
+vec_t	FloatForKey (entity_t *ent, char *key);
+void 	GetVectorForKey (entity_t *ent, char *key, vec3_t vec);
+
+epair_t *ParseEpair (void);
 
 #endif

@@ -63,7 +63,7 @@ BOOL PASCAL FAR BlockingHook(void)
     MSG		msg;
     BOOL	ret;
 
-	if ((Sys_DoubleTime() - blocktime) > 2.0)
+	if ((Sys_FloatTime() - blocktime) > 2.0)
 	{
 		WSACancelBlockingCall();
 		return FALSE;
@@ -130,7 +130,7 @@ void WINS_GetLocalAddress()
 	if (pgethostname(buff, MAXHOSTNAMELEN) == SOCKET_ERROR)
 		return;
 
-	blocktime = Sys_DoubleTime();
+	blocktime = Sys_FloatTime();
 	WSASetBlockingHook(BlockingHook);
 	local = pgethostbyname(buff);
 	WSAUnhookBlockingHook();
@@ -142,7 +142,7 @@ void WINS_GetLocalAddress()
 
 		myAddr = *(int *)local->h_addr_list[0];
 		addr = ntohl(myAddr);
-		snprintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
+		SNPrintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
 
 		// Baker: is ip address #0 = 169.254.x.x ?
 		if (WINS_iptype(addr) == 1) {
@@ -153,7 +153,7 @@ void WINS_GetLocalAddress()
 				// ip address #1 exists, use it.
 				myAddr = *(int *)local->h_addr_list[1];
 				addr = ntohl(myAddr);
-				snprintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
+				SNPrintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
 				Con_DPrintf ("WINS_GetLocalAddress: ip address #1 (%s) found.  Using.\n", my_tcpip_address);
 			} else {
 				Con_DPrintf("WINS_GetLocalAddress: ip address #1 does not exist\n");
@@ -180,7 +180,7 @@ void WINS_GetLocalAddress()
 		addr0 = ntohl(myAddr);
 
 		addrtype0 = WINS_iptype(addr0);
-		snprintf(tcpip0, sizeof(tcpip0), "%d.%d.%d.%d", (addr0 >> 24) & 0xff, (addr0 >> 16) & 0xff, (addr0 >> 8) & 0xff, addr0 & 0xff);
+		SNPrintf(tcpip0, sizeof(tcpip0), "%d.%d.%d.%d", (addr0 >> 24) & 0xff, (addr0 >> 16) & 0xff, (addr0 >> 8) & 0xff, addr0 & 0xff);
 
 		if (local->h_addr_list[1]) {
 
@@ -190,7 +190,7 @@ void WINS_GetLocalAddress()
 			myAddr = *(int *)local->h_addr_list[1];
 			addr1 = ntohl(myAddr);
 			addrtype1 = WINS_iptype(addr1);
-			snprintf(tcpip1, sizeof(tcpip1), "%d.%d.%d.%d", (addr1 >> 24) & 0xff, (addr1 >> 16) & 0xff, (addr1 >> 8) & 0xff, addr1 & 0xff);
+			SNPrintf(tcpip1, sizeof(tcpip1), "%d.%d.%d.%d", (addr1 >> 24) & 0xff, (addr1 >> 16) & 0xff, (addr1 >> 8) & 0xff, addr1 & 0xff);
 			Con_Printf("ip #1: %s %s\n", ((addrtype1 == 3) ? "internet     " : ((addrtype1 == 2) ? "local network" : ((addrtype1 == 1) ? "unresolvable " : "no device    "))), tcpip1);
 
 			if (addrtype1 >= addrtype0)
@@ -201,7 +201,7 @@ void WINS_GetLocalAddress()
 				myAddr = *(int *)local->h_addr_list[2];
 				addr2 = ntohl(myAddr);
 				addrtype2 = WINS_iptype(addr2);
-				snprintf(tcpip2, sizeof(tcpip2), "%d.%d.%d.%d", (addr2 >> 24) & 0xff, (addr2 >> 16) & 0xff, (addr2 >> 8) & 0xff, addr2 & 0xff);
+				SNPrintf(tcpip2, sizeof(tcpip2), "%d.%d.%d.%d", (addr2 >> 24) & 0xff, (addr2 >> 16) & 0xff, (addr2 >> 8) & 0xff, addr2 & 0xff);
 				Con_Printf("ip #2: %s %s\n", ((addrtype2 == 3) ? "internet     " : ((addrtype2 == 2) ? "local network" : ((addrtype2 == 1) ? "unresolvable " : "no device    "))), tcpip2);
 
 				if (addrtype2 >= (choice == 0 ? addrtype0 : addrtype1))
@@ -210,14 +210,14 @@ void WINS_GetLocalAddress()
 
 			myAddr = *(int *)local->h_addr_list[choice];
 			addr = ntohl(myAddr);
-			snprintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
+			SNPrintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
 			Con_Printf("%s", Con_Quakebar(36));
 			Con_Printf("Using ip %s\n", my_tcpip_address);
 			Con_Printf("%s\n", Con_Quakebar(36));
 		} else {
 			myAddr = *(int *)local->h_addr_list[0];
 			addr = ntohl(myAddr);
-			snprintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
+			SNPrintf(my_tcpip_address, sizeof(my_tcpip_address), "%d.%d.%d.%d", (addr >> 24) & 0xff, (addr >> 16) & 0xff, (addr >> 8) & 0xff, addr & 0xff);
 		}
 	}
 
@@ -517,9 +517,9 @@ int WINS_Read (int socket, byte *buf, int len, struct qsockaddr *addr)
 	ret = precvfrom (socket, buf, len, 0, (struct sockaddr *)addr, &addrlen);
 	if (ret == -1)
 	{
-		int errno = pWSAGetLastError();
+		int xerrno = pWSAGetLastError();
 
-		if (errno == WSAEWOULDBLOCK || errno == WSAECONNREFUSED)
+		if (xerrno == WSAEWOULDBLOCK || xerrno == WSAECONNREFUSED)
 			return 0;
 
 	}

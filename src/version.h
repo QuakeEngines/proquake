@@ -36,46 +36,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifdef _WIN32
 # define OS_NAME "Windows"
-//#error no touch
 #elif defined(MACOSX)
 # define OS_NAME "Mac OSX"
-#elif defined(FLASH)
-# define OS_NAME "Flash"
-#elif defined(PSP)
-# define OS_NAME "Sony PSP"
-#else // Everything else gets to be Linux for now
+#else 
 # define OS_NAME "Linux"
 # define LINUX // Everything else gets to be Linux for now ;)
 #endif
 
 
-// Define platforms where we do not use assembly
 
-#if defined(MACOSX) || defined(FLASH)
-# define NO_ASSEMBLY
-#endif
-
-#ifdef GLQUAKE
-# define NO_ASSEMBLY
-#endif
-
-#if defined(_WIN32) && !defined(WINDED) && defined(_M_IX86)
-#define __i386__	1
-#endif
-
-#if defined(__i386__)  && !defined(NO_ASSEMBLY)
-#define id386	1
-#else
-#define id386	0
-#endif
-
-// Smooth rotation test
-//#define SMOOTH_SINGLEPLAYER_TEST
-#define QCEXEC
-#define SUPPORTS_MULTIMAP_DEMOS
 #define CHASE_CAM_FIX
 #define SUPPORTS_TRANSFORM_INTERPOLATION // We are switching to r_interpolate_transform
-#define SUPPORTS_AUTOID
+
 
 
 // Define Support For Cheat-Free Mode
@@ -86,42 +58,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // Define Renderer Name
 
-#ifdef D3DQUAKE
-# define RENDERER_NAME "D3D"
-#elif defined(DX8QUAKE) // !d3dquake
+#if defined(DX8QUAKE) 
 # define RENDERER_NAME "DX8"
-#elif defined (FLASH)
-# define RENDERER_NAME "Software"
-#elif defined(GLQUAKE) // !d3dquake
+#else 
 # define RENDERER_NAME "GL"
-#elif defined(PSP_HARDWARE_VIDEO)
-# define RENDERER_NAME "PSPGU"
-#else
-# define RENDERER_NAME "Win"
 #endif // end !d3dquake
 
 // Define exceptions to the "rule"
 #ifdef DX8QUAKE
-# define DX8QUAKE_NO_8BIT					// D3D8 wrapper didn't keep the 8bit support
-# define DX8QUAKE_GET_GL_MAX_SIZE			// D3D8 wrapper obtains the maxsize from the video card
+//# define DX8QUAKE_NO_8BIT					// D3D8 wrapper didn't keep the 8bit support
 # define DX8QUAKE_NO_BINDTEXFUNC			// SGIS/ancient GL pathway removal
 # define DX8QUAKE_NO_GL_ZTRICK				// DX8QUAKE hates gl_ztrick; clear the buffers every time
 # define DX8QUAKE_GL_READPIXELS_NO_RGBA		// Wrapper only supports GL_RGBA; not GL_RGBA like envmap command uses
 # define DX8QUAKE_VSYNC_COMMANDLINE_PARAM	// Vsync command line param option ... -vsync
 #endif
 
-#ifdef D3DQUAKE
-# define D3DQ_EXTRA_FEATURES // (D3D_FEATURE)
-# define D3DQ_CANNOT_DO_THIS // D3D_NOT_CAPABLE
-# define D3DQ_WORKAROUND     // D3DQ_WORKAROUND
-# define D3DQ_CONTRAST
-#endif
 
 #ifdef MACOSX
 # define MACOSX_EXTRA_FEATURES
-# define MACOSX_TEXRAM_CHECK
 # define MACOSX_UNKNOWN_DIFFERENCE
-# define MACOSX_QUESTIONABLE_VALUE
 # define MACOSX_NETWORK_DIFFERENCE
 # define MACOSX_KEYBOARD_EXTRAS
 # define MACOSX_KEYBOARD_KEYPAD
@@ -138,36 +93,31 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 # define SUPPORTS_DEMO_AUTOPLAY					// Windows only.  Uses file association
 # define SUPPORTS_DIRECTINPUT 
 # define SUPPORTS_INTERNATIONAL_KEYBOARD		// Windows only implementation for now?; the extra key byte
-# define SUPPORTS_SYSSLEEP						// Make this work on OS X sometime; "usleep"
-# define SUPPORTS_CLIPBOARD
+
+
 
 # define WINDOWS_SCROLLWHEEL_PEEK				// CAPTURES MOUSEWHEEL WHEN keydest != game
 # define HTTP_DOWNLOAD
-# define BUILD_MP3_VERSION
+//# define BUILD_MP3_VERSION
 
 
 	// GLQUAKE additive features on top of _WIN32 only
-	#if defined(GLQUAKE) && !defined(D3DQUAKE)
-	# define SUPPORTS_ENHANCED_GAMMA 			// Windows only for now.  Probably can be multiplat in future.
+
 	# define SUPPORTS_GLVIDEO_MODESWITCH  		// Windows only for now.  Probably can be multiplat in future.
 	# define SUPPORTS_VSYNC 					// Vertical sync; only GL does this for now
 	# define SUPPORTS_TRANSPARENT_SBAR 			// Not implemented in OSX?
 
 	# define RELEASE_MOUSE_FULLSCREEN			// D3DQUAKE gets an error if it loses focus in fullscreen, so that'd be stupid
-	#endif
 
-	#if defined(GLQUAKE) && !defined(DX8QUAKE)
+
 	# define OLD_SGIS							// Old multitexture ... for now.
 	# define INTEL_OPENGL_DRIVER_WORKAROUND		// Windows only issue?  Or is Linux affected too?  OS X is not affected
-	#endif
 
-	#ifndef GLQUAKE // WinQuake
-	# define SUPPORTS_SW_ALTENTER				// Hacky ALT-ENTER
-	#endif
+
 #endif
 
 #ifdef MACOSX
-# define SUPPORTS_SYSSLEEP
+
 # define FULL_BACKGROUND_VOLUME_CONTROL
 #endif
 
@@ -177,53 +127,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // Define Specific Rendering Capabilities
 
-#ifdef GLQUAKE
-# define SUPPORTS_SKYBOX						// Skyboxes are 24-bit; WinQuake can't do that (yet)
+
+
 # define SUPPORTS_GLHOMFIX_NEARWATER			// Specific problem and solution for GL
 # define SUPPORTS_CONSOLE_SIZING				// GL can size the console; WinQuake can't do that yet
-# define SUPPORTS_ENTITY_ALPHA					// Transparency
 # define SUPPORTS_HARDWARE_ANIM_INTERPOLATION	// The hardware interpolation route
 # define SUPPORTS_2DPICS_ALPHA					// Transparency of 2D pics
-# define SUPPORTS_HLBSP							// Requires 24 bit color for now
 # define SUPPORTS_GL_OVERBRIGHTS				// Overbright method GLQuake is using, WinQuake always had them
-# define SUPPORTS_XFLIP
-
-	#if !defined(D3DQUAKE)	// Any platform except D3DQUAKE
-	# define SUPPORTS_GL_DELETETEXTURES			// D3DQuake isn't emulating them at this time
-	# define SUPPORTS_FOG						// D3DQuake can't do the fog thing
-	#endif
-
-# define NO_MGRAPH								// This is for WinQuake rendering, we don't use it for GLQuake
+# define SUPPORTS_GL_DELETETEXTURES				// D3DQuake isn't emulating them at this time
 # define GL_QUAKE_SKIN_METHOD					// GLQuake uses a different method for skinning
-#endif
-
-
-#ifndef GLQUAKE		// WinQuake
-# define SUPPORTS_SOFTWARE_ANIM_INTERPOLATION	// WinQuake method for animation interpolation
-# define SUPPORTS_3D_CVARS						// 3-D LCD_X stuff
 //# define SUPPORTS_ENTITY_ALPHA				// Transparency ... NOT YET
-# define SUPPORTS_SOFTWARE_FTESTAIN				// FTESTAIN
-# define SUPPORTS_SW_SKYBOX
-# define SUPPORTS_SW_WATERALPHA
-#endif
+//# define SUPPORTS_SOFTWARE_FTESTAIN				// FTESTAIN
 
 
-#ifdef SUPPORTS_AUTOID
-#if defined(GLQUAKE) && !defined(D3DQUAKE) && !defined(DX8QUAKE)
-# define SUPPORTS_AUTOID_HARDWARE				// The way I chose to do AUTOID for true OpenGL
-#else
-# define SUPPORTS_AUTOID_SOFTWARE				// WinQuake, DX8QUAKE and D3DQUAKE use calculations for 2D projection of 3D
-#endif
-#endif
+
 
 
 // Alternate Methods
 
-#ifdef FLASH
-# define FLASH_FILE_SYSTEM
-# define FLASH_CONSOLE_TRACE_ECHO
-# define FLASH_SOUND_DIFFERENCE
-#endif
 
 
 

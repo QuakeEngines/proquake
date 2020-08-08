@@ -34,8 +34,6 @@ int Sys_FileWrite (int handle, void *data, int count);
 int	Sys_FileTime (char *path);
 void Sys_mkdir (char *path);
 
-// memory protection
-void Sys_MakeCodeWriteable (unsigned long startaddr, unsigned long length);
 
 // system IO
 void Sys_DebugLog(char *file, char *fmt, ...);
@@ -49,7 +47,7 @@ void Sys_Printf (char *fmt, ...);
 
 void Sys_Quit (void);
 
-double Sys_DoubleTime (void);
+double Sys_FloatTime (void);
 
 char *Sys_ConsoleInput (void);
 
@@ -62,19 +60,17 @@ void Sys_Sleep (void);
 void Sys_SendKeyEvents (void);
 
 
-void Sys_LowFPPrecision (void);
-void Sys_HighFPPrecision (void);
-void Sys_SetFPCW (void);
+
 
 #ifdef _WIN32
 void Sys_InfoInit(void);
 char *Sys_GetClipboardData (void);
 #endif
 
-#ifndef PSP
+
 void Sys_CopyToClipboard(char *);
 void Sys_Init (void);
-#endif
+
 
 #ifdef _WIN32
 void Sys_GetLock (void);

@@ -100,7 +100,7 @@ char *StrAddr (struct qsockaddr *addr)
 
 	for (n = 0; n < 16; n++)
 #ifdef MACOSX_NETWORK_DIFFERENCE
-		snprintf (buf + n << 1, 34 - (n << 1), "%02x", *p++);
+		SNPrintf (buf + n << 1, 34 - (n << 1), "%02x", *p++);
 #else
 		sprintf (buf + n * 2, "%02x", *p++);
 #endif /* MACOSX */
@@ -1174,7 +1174,7 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 		MSG_WriteString(&net_message, client->netconnection->address);
 		} else {
 			if (sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3) // Baker 3.60 - engine side IP masking
-			snprintf (address, sizeof(address), "%d.%d.%d.xxx", a, b, c);
+			SNPrintf (address, sizeof(address), "%d.%d.%d.xxx", a, b, c);
 			MSG_WriteString(&net_message, address);
 		}
 

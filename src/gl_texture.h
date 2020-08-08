@@ -98,11 +98,8 @@ extern lpSelTexFUNC qglSelectTextureSGIS;
 // Engine internal vars
 
 extern qboolean gl_mtexable;
-#if !defined(DX8QUAKE_GET_GL_MAX_SIZE)
-extern	cvar_t	gl_max_size;
-#else
 extern	int		gl_max_size;
-#endif
+
 
 extern	int texture_extension_number;
 
@@ -135,7 +132,7 @@ void GL_EnableMultitexture(void);
 
 
 
-void GL_Upload8_EXT (byte *, int, int, int);
+
 void GL_Upload32 (unsigned *data, int width, int height, int mode);
 void GL_Upload8 (byte *data, int width, int height, int mode);
 int GL_LoadTexture (char *identifier, int width, int height, byte *data, int mode);

@@ -106,35 +106,7 @@ cvar_t  gl_fullbright = {"gl_fullbright","0", true};
 cvar_t  gl_overbright = {"gl_overbright","0", true};
 #endif
 
-#ifdef MACOSX
-cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","1"};
-#else
-cvar_t	gl_keeptjunctions = {"gl_keeptjunctions","0"};
-#endif /* MACOSX */
 
-cvar_t	gl_reporttjunctions = {"gl_reporttjunctions","0"};
-cvar_t	gl_doubleeyes = {"gl_doubleeyes", "1"};				// JPG 3.02 - fixed spelling
-
-#ifdef SUPPORTS_XFLIP
-cvar_t gl_xflip = {"gl_xflip", "0"}; //Atomizer - GL_XFLIP
-#endif
-
-#ifdef SUPPORTS_SKYBOX
-cvar_t r_oldsky = {"r_oldsky", "1"}; // set the skybox to on, and save the value in the config file (true)
-#endif
-
-#ifdef SUPPORTS_FOG
-// NATAS - BramBo - Fog Code
-cvar_t gl_fogenable = {"gl_fogenable", "0"};
-cvar_t gl_fogstart = {"gl_fogstart", "50.0"};
-cvar_t gl_fogend = {"gl_fogend", "800.0"};
-cvar_t gl_fogdensity = {"gl_fogdensity", "0.8"};
-cvar_t gl_fogred = {"gl_fogred","0.6"};
-cvar_t gl_foggreen = {"gl_foggreen","0.5"};
-cvar_t gl_fogblue = {"gl_fogblue","0.4"};
-cvar_t gl_fogalpha = {"gl_fogalpha", "0.5"};
-// END
-#endif
 
 extern	cvar_t	gl_ztrick;
 
@@ -158,26 +130,6 @@ qboolean R_CullBox (vec3_t mins, vec3_t maxs)
 	return false;
 }
 
-#ifdef SUPPORTS_AUTOID_HARDWARE
-/*
-=================
-R_CullSphere
-
-Returns true if the sphere is completely outside the frustum
-=================
-*/
-qboolean R_CullSphere (vec3_t centre, float radius)
-{
-	int			i;
-	mplane_t	*p;
-
-	for (i = 0, p = frustum ; i < 4 ; i++, p++)
-		if (PlaneDiff(centre, p) <= -radius)
-			return true;
-
-	return false;
-}
-#endif
 
 void R_RotateForEntity (entity_t *ent)
 {
@@ -188,80 +140,6 @@ void R_RotateForEntity (entity_t *ent)
     glRotatef (ent->angles[2],  1, 0, 0);
 }
 
-#if 0
-/*
-=============
-R_BlendedRotateForEntity
-
-fenix@io.com: model transform interpolation
-=============
-*/
-void R_BlendedRotateForEntity (entity_t *ent)
-{
-	float	blend;
-	vec3_t	d;
-	int		i;
-	float		timepassed;
-
-	// positional interpolation
-	timepassed = cl.time - ent->translate_start_time;
-
-	if (ent->translate_start_time == 0  || timepassed > 1) {
-		ent->translate_start_time = cl.time;
-		VectorCopy (ent->origin, ent->lastorigin);
-		VectorCopy (ent->origin, ent->currorigin);
-	}
-
-	if (!VectorCompare (ent->origin, ent->currorigin)) {
-		ent->translate_start_time = cl.time;
-		VectorCopy (ent->currorigin, ent->lastorigin);
-		VectorCopy (ent->origin,  ent->currorigin);
-		blend = 0;
-	} else {
-		blend = timepassed / 0.1;
-		if (cl.paused || blend > 1)
-			blend = 1;
-	}
-
-	VectorSubtract (ent->currorigin, ent->lastorigin, d);
-
-	glTranslatef (ent->lastorigin[0] + (blend * d[0]), ent->lastorigin[1] + (blend * d[1]), ent->lastorigin[2] + (blend * d[2]));
-
-	// orientation interpolation (Euler angles, yuck!)
-	timepassed = cl.time - ent->rotate_start_time;
-
-	if (ent->rotate_start_time == 0 || timepassed > 1) {
-		ent->rotate_start_time = cl.time;
-		VectorCopy (ent->angles, ent->lastangles);
-		VectorCopy (ent->angles, ent->currangles);
-	}
-
-	if (!VectorCompare (ent->angles, ent->currangles)) {
-		ent->rotate_start_time = cl.time;
-		VectorCopy (ent->currangles, ent->lastangles);
-		VectorCopy (ent->angles,  ent->currangles);
-		blend = 0;
-	} else {
-		blend = timepassed / 0.1;
-		if (cl.paused || blend > 1)
-			blend = 1;
-	}
-
-	VectorSubtract (ent->currangles, ent->lastangles, d);
-
-	// always interpolate along the shortest path
-	for (i = 0; i < 3; i++)  {
-		if (d[i] > 180)
-			d[i] -= 360;
-		else if (d[i] < -180)
-			d[i] += 360;
-	}
-
-	glRotatef ( ent->lastangles[1] + ( blend * d[1]),  0, 0, 1);
-	glRotatef (-ent->lastangles[0] + (-blend * d[0]),  0, 1, 0);
-	glRotatef ( ent->lastangles[2] + ( blend * d[2]),  1, 0, 0);
-}
-#endif
 
 /*
 ===============================================================================
@@ -420,9 +298,6 @@ GL_DrawAliasFrame
 =============
 */
 
-// Begin D3DQuake
-int gNoAlias;
-// End D3DQuake
 void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 {
 	float	alpha;
@@ -436,9 +311,6 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 
 	lastposenum = posenum;
 
-// Begin D3DQuake
-	if ( gNoAlias ) return;
-// End D3DQuake
 
 	verts = (trivertx_t *)((byte *)paliashdr + paliashdr->posedata);
 	verts += posenum * paliashdr->poseverts;
@@ -464,7 +336,7 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do 
+		do
 		{
 			// texture coordinates come from the draw list
 			glTexCoord2f (((float *)order)[0], ((float *)order)[1]);
@@ -475,14 +347,11 @@ void GL_DrawAliasFrame (aliashdr_t *paliashdr, int posenum)
 			else
 				// normals and vertexes come from the frame list
 				l = shadedots[verts->lightnormalindex] * shadelight;
-#ifdef D3DQ_WORKAROUND
-				if ( l > 1 ) l = 1; // Manually clamp
-#endif
 				// Baker 3.80x - This is no longer used
 				// glColor3f (l, l, l);
 				glColor4f (l, l, l, alpha); // Baker 3.80x - transparent weapon
 				glVertex3f (verts->v[0], verts->v[1], verts->v[2]);
-	
+
 				verts++;
 		}
 		while (--count);
@@ -574,7 +443,7 @@ void GL_DrawAliasBlendedFrame (aliashdr_t *paliashdr, int pose1, int pose2, floa
 
 	if (alpha < 1)
 		glDisable (GL_BLEND);
-		
+
 }
 
 /*
@@ -617,7 +486,7 @@ void GL_DrawAliasShadow (aliashdr_t *paliashdr, int posenum)
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do 
+		do
 		{
 			// texture coordinates come from the draw list
 			// (skipped for shadows) glTexCoord2fv ((float *)order);
@@ -693,7 +562,7 @@ void GL_DrawAliasBlendedShadow (aliashdr_t *paliashdr, int pose1, int pose2, ent
 			glBegin (GL_TRIANGLE_STRIP);
 		}
 
-		do 
+		do
 		{
 			order += 2;
 
@@ -903,11 +772,14 @@ void R_DrawAliasModel (entity_t *ent)
 
 	R_RotateForEntity (ent);
 
-	if (!strcmp (clmodel->name, "progs/eyes.mdl") && gl_doubleeyes.value) {
+	if (!strcmp (clmodel->name, "progs/eyes.mdl") /*&& gl_doubleeyes.value*/) 
+	{
 		// double size of eyes, since they are really hard to see in gl
 		glTranslatef (paliashdr->scale_origin[0], paliashdr->scale_origin[1], paliashdr->scale_origin[2] - (22 + 8));
 		glScalef (paliashdr->scale[0]*2, paliashdr->scale[1]*2, paliashdr->scale[2]*2);
-	} else {
+	} 
+	else 
+	{
 		glTranslatef (paliashdr->scale_origin[0], paliashdr->scale_origin[1], paliashdr->scale_origin[2]);
 		glScalef (paliashdr->scale[0], paliashdr->scale[1], paliashdr->scale[2]);
 	}
@@ -915,42 +787,16 @@ void R_DrawAliasModel (entity_t *ent)
 	anim = (int)(cl.time*10) & 3;
     GL_Bind(paliashdr->gl_texturenum[currententity->skinnum][anim]);
 
-
 	// we can't dynamically colormap textures, so they are cached
 	// seperately for the players.  Heads are just uncolored.
-	if (currententity->colormap != vid.colormap && !gl_nocolors.value) {
-		client_no = currententity - cl_entities;
-		if (client_no >= 1 && client_no<=cl.maxclients /* && !strcmp (currententity->model->name, "progs/player.mdl") */)
-		    GL_Bind(playertextures - 1 + client_no);
-#if 0
-		else {
-			// Color the player
-			for (client_no=1 ; client_no < (cl.maxclients+1) ; client_no++) {
-//				Con_Printf("Colormap is %i : %i but mine is %i\n", i, cl_entities[i].colormap, currententity->colormap);
-				Con_Printf("b2 ");
-				Con_Printf("b2 ce model %s", currententity->model->name);
-				Con_Printf("b2 cl model num %i is %s", client_no, cl_entities[client_no].model->name);
-				if (cl_entities[client_no].colormap == currententity->colormap && currententity->model->name !=NULL && cl_entities[client_no].model->name != NULL && !strcmp(currententity->model->name, cl_entities[client_no].model->name)) {
-					Con_Printf("b3 ");
-					if (client_no >= 1 && client_no<=cl.maxclients /* && !strcmp (currententity->model->name, "progs/player.mdl") */) {
-						Con_Printf("b4 ");
-						Con_Printf("Match on %i %i and mine %i\n", client_no, cl_entities[client_no].colormap, currententity->colormap);
-						Con_Printf("b5 ");
-						GL_Bind(playertextures - 1 + client_no);
-						Con_Printf("b6 break");
-						break; 
-					} else {
-						Con_Printf("b6b break ");
-						break;
-					}
-				}
-			}
-			Con_Printf("cln %i", client_no); 
-		}
-#endif
+	if (1 <= currententity->colormap && currententity->colormap <= MAX_SCOREBOARD && !gl_nocolors.value) 
+	{
+		if (currententity->model->flags & MOD_PLAYER)
+//		client_no = currententity - cl_entities;
+//		if (client_no >= 1 && client_no<=cl.maxclients /* && !strcmp (currententity->model->name, "progs/player.mdl") */)
+			GL_Bind(playertextures - 1 + currententity->colormap /*client_no*/);
 	}
-
-
+		    
 	if (gl_smoothmodels.value)
 		glShadeModel (GL_SMOOTH);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -1038,9 +884,6 @@ void R_DrawEntitiesOnList (void)
 	// Baker: http://forums.inside3d.com/viewtopic.php?p=13458
 	//        Transparent entities need sorted to ensure items behind transparent objects get drawn (z-buffer)
 
-#ifdef SUPPORTS_ENTITY_ALPHA	
-	SortEntitiesByTransparency ();
-#endif
 
 	// draw sprites seperately, because of alpha blending
 	for (i=0 ; i<cl_numvisedicts ; i++)
@@ -1185,11 +1028,11 @@ void R_PolyBlend (void)
 	if (!v_blend[3])	// No blends ... get outta here
 		return;
 
-#ifdef SUPPORTS_ENHANCED_GAMMA
+
 	// Baker hwgamma support
 	if (using_hwgamma && vid_hwgamma_enabled && gl_hwblend.value) {
 //		Con_Printf("gl_hwblend.value is %f\n",gl_hwblend.value);
-		
+
 		if (!vid_hwgamma_enabled) {// Hardware gamma unavailable
 			return;
 		}
@@ -1218,7 +1061,7 @@ void R_PolyBlend (void)
 
 		glColor3ubv (color_white);
 	} else
-#endif // !d3dquake
+
 	{ // Baker end hwgamma support
 		if (!gl_polyblend.value)
 			return;
@@ -1237,17 +1080,6 @@ void R_PolyBlend (void)
 
 		glColor4fv (v_blend);
 
-#ifdef D3DQ_WORKAROUND
-	/* Work around GeForce D3D driver bug where drawing abutting
-	 * triangles with the viewport set to something less than full screen
-	 * causes a visible seam. Draw one triangle instead of one quad.
-	 */
-		glBegin (GL_TRIANGLES);
-		glVertex3f (10, 400, 100);
-		glVertex3f (10, -400, 100);
-		glVertex3f (10, 0, -400);
-		glEnd ();
-#else
 		glBegin (GL_QUADS);
 
 		glVertex3f (10, 100, 100);
@@ -1255,7 +1087,7 @@ void R_PolyBlend (void)
 		glVertex3f (10, -100, -100);
 		glVertex3f (10, 100, -100);
 		glEnd ();
-#endif
+
 		glDisable (GL_BLEND);
 		glEnable (GL_TEXTURE_2D);
 		glEnable (GL_ALPHA_TEST);
@@ -1268,7 +1100,7 @@ void R_PolyBlend (void)
 R_BrightenScreen
 ================
 */
-#ifdef SUPPORTS_ENHANCED_GAMMA
+
 // baker hwgamma support - if disabled, this should not be called
 void R_BrightenScreen (void)
 {
@@ -1310,7 +1142,7 @@ void R_BrightenScreen (void)
 }
 
 // Baker end hwgamma support
-#endif
+
 
 int SignbitsForPlane (mplane_t *out)
 {
@@ -1531,10 +1363,6 @@ void R_Init (void)
 	Cmd_AddCommand ("envmap", R_Envmap_f);
 	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);
 
-#ifdef SUPPORTS_SKYBOX
-	Cmd_AddCommand ("sky", R_SkyCommand_f);
-	Cmd_AddCommand ("loadsky", R_SkyCommand_f);
-#endif
 
 	Cvar_RegisterVariable (&r_norefresh, NULL);
 	Cvar_RegisterVariable (&r_lightmap, NULL);
@@ -1575,32 +1403,12 @@ void R_Init (void)
 	Cvar_RegisterVariable (&gl_playermip, NULL);
 	Cvar_RegisterVariable (&gl_nocolors, NULL);
 
-	Cvar_RegisterVariable (&gl_keeptjunctions, NULL);
-	Cvar_RegisterVariable (&gl_reporttjunctions, NULL);
+//	Cvar_RegisterVariable (&gl_keeptjunctions, NULL);
+//	Cvar_RegisterVariable (&gl_reporttjunctions, NULL);
 	Cvar_RegisterVariable (&gl_fullbright, NULL);
 	Cvar_RegisterVariable (&gl_overbright, NULL);
 
-	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
-
-#ifdef SUPPORTS_XFLIP
-	Cvar_RegisterVariable (&gl_xflip, NULL);  //Atomizer - GL_XFLIP
-#endif
-
-#ifdef SUPPORTS_SKYBOX
-	Cvar_RegisterVariable (&r_oldsky, NULL);
-#endif
-
-#ifdef SUPPORTS_FOG // Baker: d3dquake hates fog
-	Cvar_RegisterVariable (&gl_fogenable, NULL);
-	Cvar_RegisterVariable (&gl_fogstart, NULL);
-	Cvar_RegisterVariable (&gl_fogend, NULL);
-	Cvar_RegisterVariable (&gl_fogdensity, NULL);
-	Cvar_RegisterVariable (&gl_fogalpha, NULL);
-	Cvar_RegisterVariable (&gl_fogred, NULL);
-	Cvar_RegisterVariable (&gl_fogblue, NULL);
-	Cvar_RegisterVariable (&gl_foggreen, NULL);
-
-#endif
+//	Cvar_RegisterVariable (&gl_doubleeyes, NULL);
 
 	Cvar_RegisterVariable (&gl_nearwater_fix, NULL);
 	Cvar_RegisterVariable (&gl_fadescreen_alpha, NULL);
@@ -1615,9 +1423,9 @@ void R_Init (void)
 
 	playertextures = texture_extension_number;
 	texture_extension_number += MAX_SCOREBOARD;
-	
+
 	skyboxtextures = texture_extension_number;
-	texture_extension_number += 6;	
+	texture_extension_number += 6;
 }
 
 
@@ -1668,13 +1476,13 @@ void R_Clear (void)
 {
 	int	clearbits = 0;
 
-#ifdef SUPPORTS_ENHANCED_GAMMA
+
 	// If gl_clear is 1, we always clear the color buffer
 	// Or if hardware gamma isn't enabled and contrast is greater than 1
 	if (using_hwgamma) // Baker hwgamma
 		if (gl_clear.value || (!vid_hwgamma_enabled && v_contrast.value > 1))
 			clearbits |= GL_COLOR_BUFFER_BIT;
-#endif // D3D no support v_constrast
+
 
 	if (r_mirroralpha.value < 1.0) // Baker 3.99: was != 1.0, changed in event gets set to # higher than 1.0
 	{
@@ -1687,7 +1495,7 @@ void R_Clear (void)
 		glDepthFunc (GL_LEQUAL);
 	}
 #ifndef DX8QUAKE_NO_GL_ZTRICK // MH says "ztrick doesn't play nice with D3D (it shouldn't be used in GL either)"
-	else if (gl_ztrick.value) 
+	else if (gl_ztrick.value)
 	{
 		static int trickframe;
 
@@ -1695,12 +1503,12 @@ void R_Clear (void)
 			glClear (GL_COLOR_BUFFER_BIT);
 
 		trickframe++;
-		if (trickframe & 1) 
+		if (trickframe & 1)
 		{
 			gldepthmin = 0;
 			gldepthmax = 0.49999;
 			glDepthFunc (GL_LEQUAL);
-		} 
+		}
 		else
 		{
 			gldepthmin = 1;
@@ -1712,12 +1520,12 @@ void R_Clear (void)
 	else
 	{
 		// Baker hwgamma support
-#ifdef SUPPORTS_ENHANCED_GAMMA
+
 		if (using_hwgamma) {
 			clearbits |= GL_DEPTH_BUFFER_BIT;
 			glClear (clearbits);
 		} else
-#endif
+
 		{
 			if (gl_clear.value)
 				glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -1831,7 +1639,7 @@ void R_RenderView (void)
 	if (r_speeds.value)
 	{
 		glFinish ();
-		time1 = Sys_DoubleTime ();
+		time1 = Sys_FloatTime ();
 		c_brush_polys = 0;
 		c_alias_polys = 0;
 	}
@@ -1845,32 +1653,11 @@ void R_RenderView (void)
 
 	// render normal view
 
-#ifdef SUPPORTS_FOG //Baker: d3dquake hates
-// NATAS - BramBo - fog code
-
-if( gl_fogenable.value ) {
-	glFogi(GL_FOG_MODE, GL_LINEAR);
-	colors[0] = gl_fogred.value;
-	colors[1] = gl_foggreen.value;
-	colors[2] = gl_fogblue.value;
-	glFogfv(GL_FOG_COLOR, colors);
-	glFogf(GL_FOG_START, gl_fogstart.value);
-	glFogf(GL_FOG_END, gl_fogend.value);
-	glFogf(GL_FOG_DENSITY, gl_fogdensity.value);
-	glEnable(GL_FOG);
-} else {
-	glDisable(GL_FOG);
-}
-#endif
 
 	R_RenderScene ();
 	R_DrawViewModel ();
 	R_DrawWaterSurfaces ();
 
-#ifdef SUPPORTS_FOG
-   // NATAS - BramBo - Fog code
-   glDisable(GL_FOG);
-#endif
 
 	// render mirror view
 	R_Mirror ();
@@ -1879,7 +1666,7 @@ if( gl_fogenable.value ) {
 
 	if (r_speeds.value)
 	{
-		time2 = Sys_DoubleTime ();
+		time2 = Sys_FloatTime ();
 		Con_Printf ("%3i ms  %4i wpoly %4i epoly\n", (int)((time2-time1)*1000), c_brush_polys, c_alias_polys);
 	}
 }

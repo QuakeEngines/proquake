@@ -345,13 +345,7 @@ void M_Main_Key (int key, int ascii)
 	switch (key)
 	{
 	case K_ESCAPE:
-#ifdef FLASH_FILE_SYSTEM
-		//For FLASH, we write config.cfg every time we leave the main menu.
-		//This is because we cant do it when we quit (as is done originally),
-		//as you cant quit a flash app
 
-		Host_WriteConfiguration();
-#endif
 		key_dest = key_game;
 		m_state = m_none;
 //		cls.demonum = m_save_demonum;
@@ -497,10 +491,8 @@ void M_ScanSaves (void)
 	{
 		strcpy (m_filenames[i], "--- UNUSED SLOT ---");
 		loadable[i] = false;
-		snprintf (name, sizeof(name), "%s/s%i.sav", com_gamedir, i);
-#ifdef FLASH_FILE_SYSTEM
-		as3ReadFileSharedObject(name);
-#endif
+		SNPrintf (name, sizeof(name), "%s/s%i.sav", com_gamedir, i);
+
 		f = fopen (name, "r");
 		if (!f)
 			continue;
@@ -981,14 +973,14 @@ void M_NameMaker_Key (int key, int ascii)
 		if (namemaker_shortcut) {// Allow quick exit for namemaker command
 			key_dest = key_game;
 			m_state = m_none;
-			
+
 			//Save the name
 			Cbuf_AddText (va("name \"%s\"\n", namemaker_name));
 			//Cvar_Set(&hostname, namemaker_name);
 			// Clear the state
 			namemaker_shortcut = false;
 		} else {
-			strlcpy (setup_myname, namemaker_name, sizeof(setup_myname));//R00k			
+			strlcpy (setup_myname, namemaker_name, sizeof(setup_myname));//R00k
 		M_Menu_Setup_f ();
 		}
 
@@ -1074,7 +1066,7 @@ void M_NameMaker_Key (int key, int ascii)
 					//M_DrawCharacter (32 + (16 * x), 40 + (8 * y), NAMEMAKER_TABLE_SIZE * y + x);
 					//Draw_Fill(rectx, recty, 8,8, NAMEMAKER_TABLE_SIZE * y + x); // Draw our hotspots
 
-					//Draw_Fill(rectx, recty, 8,8, 0); // Draw our hotspots						
+					//Draw_Fill(rectx, recty, 8,8, 0); // Draw our hotspots
 					if (extmousex >= rectx && extmousey >=recty) {
 						if (extmousex <=rectx+7 && extmousey <= recty+7) {
 							namemaker_cursor_x = x;
@@ -1336,16 +1328,16 @@ void M_Menu_Options_f (void)
 	m_entersound = true;
 
 #ifdef _WIN32
-	if ((options_cursor == 16) && (modestate != MS_WINDOWED)) // Baker 3.60 - New menu items
+	if ((options_cursor == 16) && (modestate != MODE_WINDOWED)) // Baker 3.60 - New menu items
 	{
 		options_cursor = 0;
 	}
 #endif
 }
 
-#ifdef SUPPORTS_ENHANCED_GAMMA
+
 extern cvar_t v_gamma; // <-- Baker hwgamma support
-#endif
+
 extern cvar_t cd_enabled; // <-- Baker: ability to shut off cd player from menu
 
 	extern cvar_t scr_fov;
@@ -1367,9 +1359,6 @@ extern cvar_t cd_enabled; // <-- Baker: ability to shut off cd player from menu
 	extern cvar_t vid_consize;
 	extern cvar_t pq_ringblend;
 	extern cvar_t pq_suitblend;
-#ifndef GLQUAKE
-	extern cvar_t r_drawviewmodel;
-#endif
 
 void M_AdjustSliders (int dir)
 {
@@ -1398,7 +1387,7 @@ void M_AdjustSliders (int dir)
 		break;
 	case 5:	// gamma
 		// Baker hwgamma support
-#ifdef SUPPORTS_ENHANCED_GAMMA
+
 		// D3DQUAKE should use hardware gamma
 		// at least for here!
 		if (using_hwgamma) {
@@ -1411,14 +1400,6 @@ void M_AdjustSliders (int dir)
 		} else {
 			SCR_ModalMessage("Brightness adjustment cannot\nbe done in-game if using the\n-gamma command line parameter.\n\n\nRemove -gamma from your command\nline to use in-game brightness.\n\nPress Y or N to continue.",0.0f);
 		}
-#else
-		vold_gamma.value -= dir * 0.05;
-			if (vold_gamma.value < 0.5)
-				vold_gamma.value = 0.5;
-			if (vold_gamma.value > 1)
-				vold_gamma.value = 1;
-			Cvar_SetValue ("gamma", vold_gamma.value);
-#endif
 
 		// Baker end hwgamma support
 		break;
@@ -1544,9 +1525,9 @@ void M_DrawCheckbox (int x, int y, int on)
 		M_Print (x, y, "off");
 }
 
-#ifdef GLQUAKE
+
 extern qboolean video_options_disabled;
-#endif
+
 void M_Options_Draw (void)
 {
 	float		r;
@@ -1571,11 +1552,10 @@ void M_Options_Draw (void)
 	M_Print (16, 72, "            Brightness");
 
 	// Baker hwgamma support
-#ifdef SUPPORTS_ENHANCED_GAMMA
+
 	if (using_hwgamma)
 		r = (1.0 - v_gamma.value) / 0.5;
 	else
-#endif
 		r = (1.0 - vold_gamma.value) / 0.5;
 
 	M_DrawSlider (220, 72, r);
@@ -1635,16 +1615,16 @@ void M_Options_Draw (void)
 //	if (vid_menudrawfn)
 		M_Print (16, 152, "         Video Options");
 
-#ifdef GLQUAKE
+
 	{
 
 		if (video_options_disabled)
 			M_Print (220, 152, "[locked]");
 	}
-#endif
+
 
 #ifdef _WIN32
-	if (modestate == MS_WINDOWED)
+	if (modestate == MODE_WINDOWED)
 
 #endif													/* JPG 1.05 by CSR */
 #if defined(_WIN32) || defined(X11) || defined(_BSD)	/* JPG 1.05 by CSR */
@@ -1696,16 +1676,10 @@ void M_Options_Key (int key, int ascii)
 			M_Menu_Preferences_f ();
 			break;
 		case 15:
-#ifdef GLQUAKE
-			if (video_options_disabled)
-#ifdef D3DQ_WORKAROUND // DVDQuake crashes if it loses focuses, a video mode change tends to do this.
-				SCR_ModalMessage("Direct3D version does not support\nin-game video mode changes.  Sorry.\n\nPress Y or N to continue.",0.0f);
-#else
-				SCR_ModalMessage("Video options are disabled when\nusing the -window command\nline parameter.\n\nRemove -window from your command\nline to enable in-game\nresolution changing.\n\nPress Y or N to continue.",0.0f);
-#endif
-				else
-#endif
 
+			if (video_options_disabled)
+				SCR_ModalMessage("Video options are disabled when\nusing the -window command\nline parameter.\n\nRemove -window from your command\nline to enable in-game\nresolution changing.\n\nPress Y or N to continue.",0.0f);
+			else
 				M_Menu_Video_f ();
 
 			break;
@@ -1755,7 +1729,7 @@ void M_Options_Key (int key, int ascii)
 	}
 
 #ifdef _WIN32
-	if ((options_cursor == 16) && (modestate != MS_WINDOWED))
+	if ((options_cursor == 16) && (modestate != MODE_WINDOWED))
 	{
 		if (key == K_UPARROW)
 			options_cursor = 15;
@@ -1937,7 +1911,7 @@ void M_Keys_Key (int key, int ascii, qboolean down)
 		{
 			//Con_Printf("Trying to bind %d",key);
 			//Con_Printf("name is  %s",Key_KeynumToString (key));
-			snprintf (cmd, sizeof(cmd), "bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
+			SNPrintf (cmd, sizeof(cmd), "bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
 			Cbuf_InsertText (cmd);
 		}
 
@@ -2044,7 +2018,7 @@ void M_Pref_AdjustSliders (int dir)
 
 		case 3:	// draw weapon  on | off | always
 
-#ifdef SUPPORTS_ENTITY_ALPHA
+//#ifdef SUPPORTS_ENTITY_ALPHA
 			if (!r_drawviewmodel.value)
 				newval = (dir<0) ? 1 : 3;
 			else if (r_ringalpha.value < 1)
@@ -2069,9 +2043,6 @@ void M_Pref_AdjustSliders (int dir)
 					Cvar_Set("r_ringalpha", "0.4");
 					break;
 			}
-#else
-			Cvar_Set("r_drawviewmodel",r_drawviewmodel.value ? "0" : "1");
-#endif
 
 			break;
 
@@ -2219,7 +2190,7 @@ void M_Pref_AdjustSliders (int dir)
 
 #ifdef SUPPORTS_CONSOLE_SIZING
 			// 72 ON | 120 OFF | 200 OFF | 250 OFF
-			newval = bound(-2, vid_consize.value + (dir <0 ? -1 : 1), 3);
+			newval = CLAMP(-2, vid_consize.value + (dir <0 ? -1 : 1), 3);
 			if (newval == 3) // We won't allow 320 selection except from console
 				newval = -1;
 			else if (newval == -2)
@@ -2265,11 +2236,8 @@ void M_Pref_Options_Draw (void)
 	title = "view setup"; M_PrintWhite ((320-8*strlen(title))/2, i, title); 	i += 8;								  // 0
 	i += 8;
 	M_Print     (16, i, "     crosshair      "); M_Print (220, i, crosshair.value ? (cl_crosshaircentered.value ? "centered" : "on" ) : "off"); i += 8; 	  // 2
-#ifdef SUPPORTS_ENTITY_ALPHA
+//#ifdef SUPPORTS_ENTITY_ALPHA
 	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? (r_ringalpha.value < 1 ? "always" : "on" ) : "off"); i += 8;     // 3
-#else
-	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? "on" : "off"); i += 8; //3
-#endif
 
 	M_Print     (16, i, "     weapon style   "); M_Print (220, i, r_truegunangle.value ? "darkplaces" : "classic" ); i += 8; 	  // 4
 	M_Print     (16, i, "     view blends    "); M_Print (220, i, pq_suitblend.value >=1 ? "classic" : "deathmatch"); i += 8; 	  // 5
@@ -3105,7 +3073,7 @@ void M_Menu_LanConfig_f (void)
 	if (StartingGame && lanConfig_cursor == 2)
 		lanConfig_cursor = 1;
 	lanConfig_port = DEFAULTnet_hostport;
-	snprintf(lanConfig_portname,  sizeof(lanConfig_portname), "%u", lanConfig_port);
+	SNPrintf(lanConfig_portname,  sizeof(lanConfig_portname), "%u", lanConfig_port);
 
 	m_return_onerror = false;
 	m_return_reason[0] = 0;
@@ -3278,7 +3246,7 @@ void M_LanConfig_Key (int key, int ascii)
 		l = lanConfig_port;
 	else
 		lanConfig_port = l;
-	snprintf(lanConfig_portname, sizeof(lanConfig_portname), "%u", lanConfig_port);
+	SNPrintf(lanConfig_portname, sizeof(lanConfig_portname), "%u", lanConfig_port);
 }
 
 //=============================================================================
@@ -3845,9 +3813,9 @@ void M_ServerList_Draw (void)
 	for (n = 0; n < hostCacheCount; n++)
 	{
 		if (hostcache[n].maxusers)
-			snprintf(string, sizeof(string), "%-15.15s %-15.15s %2u/%2u\n", hostcache[n].name, hostcache[n].map, hostcache[n].users, hostcache[n].maxusers);
+			SNPrintf(string, sizeof(string), "%-15.15s %-15.15s %2u/%2u\n", hostcache[n].name, hostcache[n].map, hostcache[n].users, hostcache[n].maxusers);
 		else
-			snprintf(string, sizeof(string), "%-15.15s %-15.15s\n", hostcache[n].name, hostcache[n].map);
+			SNPrintf(string, sizeof(string), "%-15.15s %-15.15s\n", hostcache[n].name, hostcache[n].map);
 		M_Print (16, 32 + 8*n, string);
 	}
 	M_DrawCharacter (0, 32 + slist_cursor*8, 12+((int)(realtime*4)&1));
@@ -3940,9 +3908,9 @@ void M_Draw (void)
 //			Draw_String (1,1, "M_Draw\n");
 			if (mod_conhide==false || (key_dest == key_console || key_dest == key_message))
 				Draw_ConsoleBackground (vid.height);
-			VID_UnlockBuffer ();
+
 			S_ExtraUpdate ();
-			VID_LockBuffer ();
+
 		}
 		else
 			Draw_FadeScreen ();
@@ -4047,9 +4015,9 @@ void M_Draw (void)
 		m_entersound = false;
 	}
 
-	VID_UnlockBuffer ();
+
 	S_ExtraUpdate ();
-	VID_LockBuffer ();
+
 }
 
 

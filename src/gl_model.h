@@ -338,6 +338,9 @@ typedef enum {
 #define	EF_TRACER2	64			// orange split trail + rotate
 #define	EF_TRACER3	128			// purple trail
 
+#define NOCOLORMAP	256	
+#define MOD_PLAYER	512	
+
 typedef struct model_s
 {
 	char		name[MAX_QPATH];
@@ -404,9 +407,9 @@ typedef struct model_s
 	byte		*lightdata;
 	char		*entities;
 
-#ifdef SUPPORTS_HLBSP
+//#ifdef SUPPORTS_HLBSP
 	int			bspversion;
-#endif
+//#endif
 
 	qboolean	isworldmodel;
 

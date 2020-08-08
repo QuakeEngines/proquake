@@ -311,7 +311,7 @@ void IPLog_DumpTree (iplog_t *root, FILE *f)
 		return;
 	IPLog_DumpTree(root->children[0], f);
 
-	snprintf(address, sizeof(address), "%d.%d.%d.xxx", root->addr >> 16, (root->addr >> 8) & 0xff, root->addr & 0xff);
+	SNPrintf(address, sizeof(address), "%d.%d.%d.xxx", root->addr >> 16, (root->addr >> 8) & 0xff, root->addr & 0xff);
 	strcpy(name, root->name);
 	for (ch = name ; *ch ; ch++)
 	{

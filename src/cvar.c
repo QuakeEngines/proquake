@@ -407,9 +407,9 @@ void Cvar_SetValue (char *var_name, float value)
 	char	val[32];
 
 	if (value == (int)value)
-		snprintf(val, sizeof(val),  "%d", (int)value);
+		SNPrintf(val, sizeof(val),  "%d", (int)value);
 	else
-	snprintf (val, sizeof(val), "%f",value);
+	SNPrintf (val, sizeof(val), "%f",value);
 	Cvar_Set (var_name, val);
 }
 

@@ -297,41 +297,41 @@ char *PR_ValueString (etype_t type, eval_t *val)
 	switch (type)
 	{
 	case ev_string:
-		snprintf(line, sizeof(line), "%s", pr_strings + val->string);
+		SNPrintf(line, sizeof(line), "%s", pr_strings + val->string);
 		break;
 
 	case ev_entity:
-		snprintf(line, sizeof(line), "entity %i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)) );
+		SNPrintf(line, sizeof(line), "entity %i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)) );
 		break;
 
 	case ev_function:
 		f = pr_functions + val->function;
-		snprintf(line, sizeof(line), "%s()", pr_strings + f->s_name);
+		SNPrintf(line, sizeof(line), "%s()", pr_strings + f->s_name);
 		break;
 
 	case ev_field:
 		def = ED_FieldAtOfs ( val->_int );
-		snprintf(line, sizeof(line), ".%s", pr_strings + def->s_name);
+		SNPrintf(line, sizeof(line), ".%s", pr_strings + def->s_name);
 		break;
 
 	case ev_void:
-		snprintf(line, sizeof(line), "void");
+		SNPrintf(line, sizeof(line), "void");
 		break;
 
 	case ev_float:
-		snprintf(line, sizeof(line), "%5.1f", val->_float);
+		SNPrintf(line, sizeof(line), "%5.1f", val->_float);
 		break;
 
 	case ev_vector:
-		snprintf(line, sizeof(line), "'%5.1f %5.1f %5.1f'", val->vector[0], val->vector[1], val->vector[2]);
+		SNPrintf(line, sizeof(line), "'%5.1f %5.1f %5.1f'", val->vector[0], val->vector[1], val->vector[2]);
 		break;
 
 	case ev_pointer:
-		snprintf(line, sizeof(line), "pointer");
+		SNPrintf(line, sizeof(line), "pointer");
 		break;
 
 	default:
-		snprintf(line, sizeof(line), "bad type %i", type);
+		SNPrintf(line, sizeof(line), "bad type %i", type);
 		break;
 	}
 
@@ -357,37 +357,37 @@ char *PR_UglyValueString (etype_t type, eval_t *val)
 	switch (type)
 	{
 	case ev_string:
-		snprintf(line, sizeof(line), "%s", pr_strings + val->string);
+		SNPrintf(line, sizeof(line), "%s", pr_strings + val->string);
 		break;
 
 	case ev_entity:
-		snprintf(line, sizeof(line), "%i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)));
+		SNPrintf(line, sizeof(line), "%i", NUM_FOR_EDICT(PROG_TO_EDICT(val->edict)));
 		break;
 
 	case ev_function:
 		f = pr_functions + val->function;
-		snprintf(line, sizeof(line), "%s", pr_strings + f->s_name);
+		SNPrintf(line, sizeof(line), "%s", pr_strings + f->s_name);
 		break;
 
 	case ev_field:
 		def = ED_FieldAtOfs ( val->_int );
-		snprintf(line, sizeof(line), "%s", pr_strings + def->s_name);
+		SNPrintf(line, sizeof(line), "%s", pr_strings + def->s_name);
 		break;
 
 	case ev_void:
-		snprintf(line, sizeof(line), "void");
+		SNPrintf(line, sizeof(line), "void");
 		break;
 
 	case ev_float:
-		snprintf(line, sizeof(line), "%f", val->_float);
+		SNPrintf(line, sizeof(line), "%f", val->_float);
 		break;
 
 	case ev_vector:
-		snprintf(line, sizeof(line), "%f %f %f", val->vector[0], val->vector[1], val->vector[2]);
+		SNPrintf(line, sizeof(line), "%f %f %f", val->vector[0], val->vector[1], val->vector[2]);
 		break;
 
 	default:
-		snprintf(line, sizeof(line), "bad type %i", type);
+		SNPrintf(line, sizeof(line), "bad type %i", type);
 		break;
 	}
 
@@ -413,12 +413,12 @@ char *PR_GlobalString (int ofs)
 	val = (void *)&pr_globals[ofs];
 	if (!(def = ED_GlobalAtOfs(ofs)))
 	{
-		snprintf(line, sizeof(line),"%i(???)", ofs);
+		SNPrintf(line, sizeof(line),"%i(???)", ofs);
 	}
 	else
 	{
 		s = PR_ValueString (def->type, val);
-		snprintf(line, sizeof(line),"%i(%s)%s", ofs, pr_strings + def->s_name, s);
+		SNPrintf(line, sizeof(line),"%i(%s)%s", ofs, pr_strings + def->s_name, s);
 	}
 
 	i = strlen(line);
@@ -436,9 +436,9 @@ char *PR_GlobalStringNoContents (int ofs)
 	static char	line[128];
 
 	if (!(def = ED_GlobalAtOfs(ofs)))
-		snprintf(line, sizeof(line),"%i(???)", ofs);
+		SNPrintf(line, sizeof(line),"%i(???)", ofs);
 	else
-		snprintf(line, sizeof(line),"%i(%s)", ofs, pr_strings + def->s_name);
+		SNPrintf(line, sizeof(line),"%i(%s)", ofs, pr_strings + def->s_name);
 
 	i = strlen(line);
 	for ( ; i<20 ; i++)
@@ -882,7 +882,7 @@ if (!strcmp(com_token, "light"))
 			char	temp[32];
 
 			strncpy (temp, com_token, sizeof(temp));
-			snprintf (com_token, sizeof(com_token), "0 %s 0", temp);
+			SNPrintf (com_token, sizeof(com_token), "0 %s 0", temp);
 		}
 
 		if (!ED_ParseEpair ((void *)&ent->v, key, com_token))

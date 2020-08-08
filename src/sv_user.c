@@ -569,10 +569,10 @@ nextmsg:
 					ret = 1;
 				else if (strncasecmp(s, "ban", 3) == 0)
 					ret = 1;
-#ifdef QCEXEC
+
 				else if (strncasecmp(s, "qcexec", 6) == 0)
 					 ret = 1;
-#endif
+
 
 				if (ret == 2)
 					Cbuf_InsertText (s);

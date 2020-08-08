@@ -39,10 +39,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	U_SKIN		(1<<12)
 #define	U_EFFECTS	(1<<13)
 #define	U_LONGENTITY	(1<<14)
-// nehahra support
-#ifdef SUPPORTS_ENTITY_ALPHA
-#define	U_TRANS		(1<<15)
-#endif
 
 #define	SU_VIEWHEIGHT	(1<<0)
 #define	SU_IDEALPITCH	(1<<1)
@@ -133,12 +129,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define svc_cutscene		34
 
-// Nehahra
-#define	svc_showlmp		35	// [string] slotname [string] lmpfilename [coord] x [coord] y
-#define	svc_hidelmp		36	// [string] slotname
-#define	svc_skybox		37	// [string] skyname
-
-#define svc_fog			51	// [byte] enable <optional past this point, only included if enable is true> [float] density [byte] red [byte] green [byte] blue
 
 
 // client to server

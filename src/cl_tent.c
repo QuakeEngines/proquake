@@ -307,7 +307,7 @@ static entity_t *CL_NewTempEntity (void)
 	cl_visedicts[cl_numvisedicts] = ent;
 	cl_numvisedicts++;
 
-	ent->colormap = vid.colormap;
+	ent->colormap = 0;
 	return ent;
 }
 
@@ -355,20 +355,14 @@ void CL_UpdateTEnts (void)
 		}
 		else
 		{
-#if !defined(FLASH)
+
 			yaw = (int) (atan2f(dist[1], dist[0]) * 180 / M_PI);
-#else
-			yaw = (int) (myAtan2(dist[1], dist[0]) * 180 / M_PI);
-#endif
 			if (yaw < 0)
 				yaw += 360;
 	
 			forward = sqrtf (dist[0]*dist[0] + dist[1]*dist[1]);
-#if !defined(FLASH)
+
 			pitch = (int) (atan2f(dist[2], forward) * 180 / M_PI);
-#else
-			pitch = (int) (myAtan2(dist[2], forward) * 180 / M_PI);
-#endif
 			if (pitch < 0)
 				pitch += 360;
 		}

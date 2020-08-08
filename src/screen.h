@@ -52,6 +52,5 @@ extern  cvar_t		pq_drawfps;
 extern	int			scr_copytop;
 extern	int			scr_copyeverything;
 
-extern qboolean		block_drawing;
 
 void SCR_UpdateWholeScreen (void);

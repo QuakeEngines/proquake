@@ -40,7 +40,7 @@ extern	int nanmask;
 #define	IS_NAN(x) (((*(int *)&x)&nanmask)==nanmask)
 
 #define Q_rint(x) ((x) > 0 ? (int)((x) + 0.5) : (int)((x) - 0.5))
-#define CLAMP(min, x, max) ((x) < (min) ? (min) : (x) > (max) ? (max) : (x)) //johnfitz
+
 
 #define DotProduct(x,y) (x[0]*y[0]+x[1]*y[1]+x[2]*y[2])
 #define VectorSubtract(a,b,c) {c[0]=a[0]-b[0];c[1]=a[1]-b[1];c[2]=a[2]-b[2];}
@@ -49,7 +49,7 @@ extern	int nanmask;
 #define VectorClear(a)		((a)[0] = (a)[1] = (a)[2] = 0)
 #define VectorNegate(a, b)	((b)[0] = -(a)[0], (b)[1] = -(a)[1], (b)[2] = -(a)[2])
 
-#ifndef PSP
+
 #define sqrtf(x) sqrt(x)
 #define cosf(x) cos(x)
 #define sinf(x) sin(x)
@@ -60,15 +60,11 @@ extern	int nanmask;
 #define fabsf(x) fabs(x)
 #define powf(x,y) pow(x,y)
 
-#ifdef FLASH
-//For Flash, we need to swap round the arguments for atan2
-#define atan2f(x,y) atan2(y,x)
-#else
 #define atan2f(x,y) atan2(x,y)
-#endif
 
 
-#endif
+
+
 
 void VectorMA (vec3_t veca, float scale, vec3_t vecb, vec3_t vecc);
 
@@ -112,11 +108,6 @@ float	anglemod(float a);
 	:										\
 		BoxOnPlaneSide( (emins), (emaxs), (p)))
 
-#ifdef SUPPORTS_AUTOID
-#define PlaneDiff(point, plane) (				\
-	(((plane)->type < 3) ? (point)[(plane)->type] - (plane)->dist : DotProduct((point), (plane)->normal) - (plane)->dist)	\
-)
-#endif
 
 float VectorNormalize (vec3_t v);		// returns vector length
 

@@ -92,8 +92,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <d3dx8.h>
 
 // link to d3d8 libraries this way do that we don't need to modify the project
-#pragma comment (lib, "d3d8.lib")
-#pragma comment (lib, "d3dx8.lib")
+//#pragma comment (lib, "d3d8.lib")
+//#pragma comment (lib, "d3dx8.lib")
 
 // used everywhere!!!
 void GL_SubmitVertexes (void);

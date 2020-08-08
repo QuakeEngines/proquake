@@ -60,9 +60,9 @@ int			key_repeats[256];	// if > 1, it is autorepeating
 qboolean	keydown[256];
 qboolean	keygamedown[256];  // Baker: to prevent -aliases from triggering
 
-#if defined(SUPPORTS_GLVIDEO_MODESWITCH) || defined(SUPPORTS_SW_ALTENTER)
+
 cvar_t		cl_key_altenter = {"cl_key_altenter", "1", true}; // Baker 3.99q: allows user to disable new ALT-ENTER behavior
-#endif
+
 
 #ifdef SUPPORTS_INTERNATIONAL_KEYBOARD
 static qboolean key_international = true;
@@ -388,7 +388,7 @@ void Key_Console (int key, int ascii)
 				best = least;
 		}
 
-		snprintf(key_lines[edit_line], sizeof(key_lines[edit_line]), "]%s ", best);
+		SNPrintf(key_lines[edit_line], sizeof(key_lines[edit_line]), "]%s ", best);
 		key_linepos = strlen(key_lines[edit_line]);
 		return;
 	}
@@ -654,11 +654,7 @@ int Key_StringToKeynum (char *str)
 		return -1;
 
 	if (!str[1])
-#if !defined(FLASH)
 		return tolower(str[0]);
-#else
-		return str[0]; // Fix me: use COM_Tolower or whatever from LordHavoc
-#endif
 
 	for (kn = keynames; kn->name; kn++) {
 		if (!strcasecmp(str, kn->name))
@@ -1028,9 +1024,9 @@ void Key_Init (void)
 // register our functions
 
 	Cvar_RegisterVariable(&cl_bindprotect, NULL);
-#if defined(SUPPORTS_GLVIDEO_MODESWITCH) || defined(SUPPORTS_SW_ALTENTER)
+
 	Cvar_RegisterVariable(&cl_key_altenter, NULL);
-#endif
+
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
 	Cmd_AddCommand ("bind",Key_Bind_f);
 	Cmd_AddCommand ("unbind",Key_Unbind_f);
@@ -1076,14 +1072,15 @@ void Key_Event (int key, int ascii, qboolean down)
 			else if  (key == K_MOUSECLICK_BUTTON4)
 				M_Keydown (K_MOUSE4, 0, down);
 			else if  (key == K_MOUSECLICK_BUTTON5)
-				M_Keydown (K_MOUSE5, 0, down);	
-		}		
+				M_Keydown (K_MOUSE5, 0, down);
+		}
 		return; // Get outta here
 	}
-	
 
-#ifdef SUPPORTS_GLVIDEO_MODESWITCH
-	if (alt_down && key == K_ENTER && !down && cl_key_altenter.value) {
+
+
+	if (alt_down && key == K_ENTER && !down && cl_key_altenter.value) 
+	{
 		// Alt-Enter detected
 		// swallow it and process
 
@@ -1099,46 +1096,10 @@ void Key_Event (int key, int ascii, qboolean down)
 		}
 		return; // Get out of here and don't process the key
 	}
-#endif
-
-#ifdef SUPPORTS_SW_ALTENTER
-	// Baker: the basics of this ...
-	// Remember our current mode and preserve both the windowed and fullscreen settings
-	// And just make it work
-	if (alt_down && key == K_ENTER && !down && cl_key_altenter.value) {
-		// Alt-Enter detected
-		// swallow it and process
-		extern cvar_t vid_fullscreen_mode;
-		extern cvar_t vid_windowed_mode;
-		extern cvar_t vid_mode; 
-		
-		if (vid_mode.value >=3) {
-			// We are in fullscreen mode, this is our switch mode
-			Cvar_SetValue ("vid_fullscreen_mode", vid_mode.value);
-		} else {
-			Cvar_SetValue ("vid_windowed_mode", vid_mode.value);
-		}
 
 
-		if (vid_mode.value >=3) {
-			// fullscreen switching to windowed mode					
-			
-			Cbuf_InsertText (va("vid_mode %i\n", (int) vid_windowed_mode.value));
-			Cbuf_Execute ();
-			
-		} else {
-			// windowed mode switching to fullscreen mode
-			
-			Cbuf_InsertText (va("vid_mode %i\n", (int) vid_fullscreen_mode.value));
-			Cbuf_Execute ();
-			
-		}
-		
-		return; // Get out of here and don't process the key
-	}
-#endif
-
-	if (!key_international) {
+	if (!key_international) 
+	{
 		flex_ascii = (key & 255);
 		if (flex_ascii > 127)
 			flex_ascii = 0;
@@ -1193,19 +1154,13 @@ void Key_Event (int key, int ascii, qboolean down)
 	}
 
 	if (key == K_SHIFT)
-	{
 		shift_down = down;
-	}
 
 	if (key == K_ALT)
-	{
 		alt_down = down;
-	}
 
 	if (key == K_CTRL)
-	{
 		ctrl_down = down;
-	}
 
 
 // handle escape specialy, so the user can never unbind it
@@ -1247,7 +1202,7 @@ void Key_Event (int key, int ascii, qboolean down)
 			kb = keybindings[key];  // Baker 3.703 is this right
 			if (kb && kb[0] == '+')
 			{
-				snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
+				SNPrintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
 				Cbuf_AddText (cmd);
 			}
 			if (keyshift[key] != key)
@@ -1255,7 +1210,7 @@ void Key_Event (int key, int ascii, qboolean down)
 				kb = keybindings[keyshift[key]];
 				if (kb && kb[0] == '+')
 				{
-					snprintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
+					SNPrintf (cmd, sizeof(cmd), "-%s %i\n", kb+1, key);
 					Cbuf_AddText (cmd);
 				}
 			}
@@ -1328,7 +1283,7 @@ void Key_Event (int key, int ascii, qboolean down)
 
 			if (kb[0] == '+')
 			{	// button commands add keynum as a parm
-				snprintf (cmd, sizeof(cmd), "%s %i\n", kb, key);
+				SNPrintf (cmd, sizeof(cmd), "%s %i\n", kb, key);
 				Cbuf_AddText (cmd);
 			}
 			else

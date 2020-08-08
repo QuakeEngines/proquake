@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -19,107 +19,88 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // winquake.h: Win32-specific Quake header file
 
-#ifdef _WIN32
-
-#pragma warning( disable : 4229 )  // mgraph gets this
 
 #include <windows.h>
+
+
+#if defined(_MSC_VER) && _MSC_VER <=1200 // MSVC6 ONLY -- Do not do for CodeBlocks/MinGW/GCC
 #define WM_MOUSEWHEEL                   0x020A
-#define WM_XBUTTONDOWN		0x020B
-#define WM_XBUTTONUP		0x020C
-
-#define MK_XBUTTON1         0x0020
-#define MK_XBUTTON2         0x0040
-
-#ifndef WITHOUT_WINKEYHOOK
-
+#define MK_XBUTTON1 0x0020
+#define MK_XBUTTON2 0x0040
 #define LLKHF_UP			(KF_UP >> 8)
 #define KF_UP				0x8000
+#define WM_GRAPHNOTIFY  WM_USER + 13
+
+
 
 typedef ULONG ULONG_PTR; // Baker 3.99r: this is not appropriate for 64 bit, only 32 but I'm not building 64 bit version
-
-typedef struct {
+typedef struct 
+{
     DWORD   vkCode;
     DWORD   scanCode;
     DWORD   flags;
     DWORD   time;
     ULONG_PTR dwExtraInfo;
 } *PKBDLLHOOKSTRUCT;
-
 #endif
 
+
+
 #ifndef SERVERONLY
-#include <ddraw.h>
+// Sound
 #include <dsound.h>
-#ifndef GLQUAKE
-#ifndef NO_MGRAPH
-#include "mgraph.h"
-#endif
-#endif
-#endif
 
-extern	HINSTANCE	global_hInstance;
-extern	int			global_nCmdShow;
-
-#ifndef SERVERONLY
-
-extern LPDIRECTDRAW		lpDD;
-extern qboolean			DDActive;
-extern LPDIRECTDRAWSURFACE	lpPrimary;
-extern LPDIRECTDRAWSURFACE	lpFrontBuffer;
-extern LPDIRECTDRAWSURFACE	lpBackBuffer;
-extern LPDIRECTDRAWPALETTE	lpDDPal;
 extern LPDIRECTSOUND pDS;
 extern LPDIRECTSOUNDBUFFER pDSBuf;
 
 extern DWORD gSndBufSize;
-//#define SNDBUFSIZE 65536
+void S_BlockSound (void);
+void S_UnblockSound (void);
 
-void	VID_LockBuffer (void);
-void	VID_UnlockBuffer (void);
+// CD
+LONG CDAudio_MessageHandler (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-#endif
+// Handles
+extern	HINSTANCE	global_hInstance;
+extern	int			global_nCmdShow;
 
-typedef enum {
-	MS_WINDOWED, MS_FULLSCREEN, MS_FULLDIB, MS_UNINIT
-} modestate_t;
+// Window states
+
 
 extern modestate_t	modestate;
 
 extern HWND			mainwindow;
 extern qboolean		ActiveApp, Minimized;
+void VID_SetDefaultMode (void);
+
+
+// Input
 extern cvar_t _windowed_mouse;
-
-extern qboolean	WinNT;
-
-int VID_ForceUnlockedAndReturnState (void);
-void VID_ForceLockState (int lk);
-
-void IN_ShowMouse (void);
-void IN_DeactivateMouse (void);
-void IN_HideMouse (void);
-void IN_ActivateMouse (void);
-void IN_RestoreOriginalMouseState (void);
-void IN_SetQuakeMouseState (void);
+void IN_Mouse_Acquire (void);
+void IN_Mouse_Unacquire (void);
 void IN_MouseEvent (int mstate);
-
-extern qboolean	winsock_lib_initialized;
-
 extern int		window_center_x, window_center_y;
 extern RECT		window_rect;
 
 extern qboolean	mouseinitialized;
 extern HWND		hwnd_dialog;
-
-extern HANDLE	hinput, houtput;
-
 void IN_UpdateClipCursor (void);
 void CenterWindow(HWND hWndCenter, int width, int height, BOOL lefttopjustify);
 
-void S_BlockSound (void);
-void S_UnblockSound (void);
+#endif
 
-void VID_SetDefaultMode (void);
+
+
+extern qboolean	WinNT;
+
+
+
+extern qboolean	winsock_lib_initialized;
+
+
+extern HANDLE	hinput, houtput;
+
+
 
 int (PASCAL FAR *pWSAStartup)(WORD wVersionRequired, LPWSADATA lpWSAData);
 int (PASCAL FAR *pWSACleanup)(void);
@@ -134,5 +115,3 @@ int (PASCAL FAR *pgethostname)(char FAR * name, int namelen);
 struct hostent FAR * (PASCAL FAR *pgethostbyname)(const char FAR * name);
 struct hostent FAR * (PASCAL FAR *pgethostbyaddr)(const char FAR * addr, int len, int type);
 int (PASCAL FAR *pgetsockname)(SOCKET s, struct sockaddr FAR *name, int FAR * namelen);
-
-#endif	//_WIN32

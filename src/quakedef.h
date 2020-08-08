@@ -24,9 +24,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define	QUAKE_GAME					// as opposed to utilities
 
 #define ENGINE_NAME "ProQuake"
-#define ENGINE_VERSION 	"4.52 Beta"
+#define ENGINE_VERSION 	"4.90 Beta"
 #define ENGINE_HOMEPAGE_URL "http:////www.quakeone.com//proquake"
-#define PROQUAKE_SERIES_VERSION		4.52
+#define PROQUAKE_SERIES_VERSION		4.90
 #include "version.h"
 
 //define	PARANOID				// speed sapping error checking
@@ -40,39 +40,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdlib.h>
 #include <setjmp.h>
 
-#ifdef FLASH
-#include "AS3.h"
-#endif
 
-#ifdef FLASH_CONSOLE_TRACE_ECHO
-void trace(char *fmt, ...);
-#endif
 
-#ifdef FLASH_FILE_SYSTEM
-FILE* as3OpenWriteFile(const char* filename);
-void as3UpdateFileSharedObject(const char* filename);
-void as3ReadFileSharedObject(const char* filename);
-#endif
-
-#if defined(_WIN32)
-
-void	VID_LockBuffer (void);
-void	VID_UnlockBuffer (void);
-
-#else
-
-#define	VID_LockBuffer()
-#define	VID_UnlockBuffer()
-
-#endif
-
-#ifndef NO_ASSEMBLY // Formerly #if id386
-#define UNALIGNED_OK		1			// set to 0 if unaligned accesses are not supported
-#else
-#define UNALIGNED_OK		0
-#endif
-
-#define UNUSED(x)		(x = x)			// for pesky compiler / lint warnings
 
 #define	MINIMUM_MEMORY		0x550000
 #define	MINIMUM_MEMORY_LEVELPAK	(MINIMUM_MEMORY + 0x100000)
@@ -231,35 +200,19 @@ typedef struct
 #include "progs.h"
 #include "server.h"
 
-#ifdef GLQUAKE
 #include "gl_model.h"
-#elif defined(PSP) && defined(PSP_HARDWARE_VIDEO)
-#include "pspgu/video_hardware_model.h"
-#else
-#include "r_model.h"
-#include "d_iface.h"
-#endif
 
 #include "input.h"
-#include "sv_world.h"
-#ifdef MACOSX
-#include "osxdiff_keys.h"
-#else
+#include "world.h"
 #include "keys.h"
-#endif
 #include "console.h"
-#include "cl_view.h"
+#include "view.h"
 #include "menu.h"
 #include "crc.h"
 #include "cdaudio.h"
 
-#ifdef GLQUAKE
-#include "gl_local.h"
-#elif defined(PSP) && defined(PSP_HARDWARE_VIDEO)
-#include "pspgu/video_hardware.h"
-#else
-#include "r_local.h"
-#endif
+
+#include "glquake.h"
 
 #include "location.h"	// JPG - for %l formatting speficier
 #include "iplog.h"		// JPG 1.05 - ip address logging
@@ -342,19 +295,14 @@ extern	cvar_t	chase_active;
 void Chase_Init (void);
 void Chase_Reset (void);
 void Chase_Update (void);
-#ifdef SUPPORTS_AUTOID
-qboolean CL_Visible_To_Client (vec3_t viewer, vec3_t seen);
-#endif
 
 extern char dequake[256];	// JPG 1.05 - dedicated console translation
 extern cvar_t pq_dequake;	// JPG 1.05 - dedicated console translation
 
 
 #ifdef _WIN32
-// Baker D3DQuake
 #pragma warning(disable : 4244) /* MIPS conversion to float, possible loss of data */
 #pragma warning(disable : 4305) /* MIPS truncation from const double to float */
 #pragma warning(disable : 4018) /* MIPS signed/unsigned mismatch */
-#pragma warning(disable : 4101) /* MIPS unreferenced local variable */
-// End D3DQuake
+//#pragma warning(disable : 4101) /* MIPS unreferenced local variable */
 #endif

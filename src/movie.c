@@ -76,7 +76,7 @@ void Movie_Start_f (void)
 
 	hack_ctr = capture_hack.value;
 
-	snprintf (path, sizeof(path), "%s/%s", capture_dir.string, name);
+	SNPrintf (path, sizeof(path), "%s/%s", capture_dir.string, name);
 	if (!(moviefile = fopen(path, "wb")))
 	{
 		COM_CreatePath (path);
@@ -178,18 +178,14 @@ double Movie_FrameTime (void)
 		time = !capture_hack.value ? 1.0 / capture_fps.value : 1.0 / (capture_fps.value * (capture_hack.value + 1.0));
 	else
 		time = 1.0 / 30.0;
-	return bound(1.0 / 1000, time, 1.0);
+	return CLAMP (1.0 / 1000, time, 1.0);
 }
 
 void Movie_UpdateScreen (void)
 {
-#ifdef GLQUAKE
+
 	int	i, size = glwidth * glheight * 3;
 	byte	*buffer, temp;
-#else
-	int	i, j, rowp;
-	byte	*buffer, *p;
-#endif
 
 	if (!Movie_IsActive())
 		return;
@@ -207,7 +203,7 @@ void Movie_UpdateScreen (void)
 		hack_ctr--;
 	}
 
-#ifdef GLQUAKE
+
 	buffer = Q_malloc (size);
 	glReadPixels (glx, gly, glwidth, glheight, GL_RGB, GL_UNSIGNED_BYTE, buffer);
 //	ApplyGamma (buffer, size);  Baker: ProQuake doesn't use hardware gamma
@@ -218,26 +214,6 @@ void Movie_UpdateScreen (void)
 		buffer[i] = buffer[i+2];
 		buffer[i+2] = temp;
 	}
-#else
-	buffer = Q_malloc (vid.width * vid.height * 3);
-
-	D_EnableBackBufferAccess ();
-
-	p = buffer;
-	for (i = vid.height - 1 ; i >= 0 ; i--)
-	{
-		rowp = i * vid.rowbytes;
-		for (j = 0 ; j < vid.width ; j++)
-		{
-			*p++ = host_basepal[vid.buffer[rowp]*3+2];
-			*p++ = host_basepal[vid.buffer[rowp]*3+1];
-			*p++ = host_basepal[vid.buffer[rowp]*3+0]; // JoeQuake uses current_pal
-			rowp++;
-		}
-	}
-
-	D_DisableBackBufferAccess ();
-#endif
 
 	Capture_WriteVideo (buffer);
 

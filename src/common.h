@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -20,11 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // common.h  -- general definitions
 
 
-#ifndef COMMON_H
-
-#define COMMON_H
-
-
+#ifndef __COMMON_H__
+#define __COMMON_H__
 
 #if !defined BYTE_DEFINED
 typedef unsigned char 		byte;
@@ -37,12 +34,10 @@ typedef unsigned char 		byte;
 typedef enum {false, true}	qboolean;
 
 #ifndef NULL
-
 #define NULL ((void *)0)
-
 #endif
 
-
+// Baker: these aren't used on MSVC6 (part of stdlib.h)
 #ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
@@ -50,11 +45,9 @@ typedef enum {false, true}	qboolean;
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
-// by joe
-#define bound(a, b, c) ((a) >= (c) ? (a) : (b) < (a) ? (a) : (b) > (c) ? (c) : (b))
 
+#define CLAMP(a, b, c) ((a) >= (c) ? (a) : (b) < (a) ? (a) : (b) > (c) ? (c) : (b))
 
-//============================================================================
 
 typedef struct sizebuf_s
 {
@@ -71,8 +64,6 @@ void SZ_Clear (sizebuf_t *buf);
 void *SZ_GetSpace (sizebuf_t *buf, int length);
 void SZ_Write (sizebuf_t *buf, void *data, int length);
 void SZ_Print (sizebuf_t *buf, char *data);	// strcats onto the sizebuf
-
-//============================================================================
 
 typedef struct link_s
 {
@@ -141,91 +132,13 @@ char *MSG_ReadString (void);
 
 float MSG_ReadCoord (void);
 float MSG_ReadAngle (void);
+
 float MSG_ReadPreciseAngle (void); // JPG - precise aim!!
 
-//============================================================================
-
-#ifdef _WIN32
-
-#undef snprintf
-#undef vsnprintf
-#define vsnprintf _vsnprintf
-#define snprintf _snprintf
 
 
 
-// MSVC has a different name for several standard functions
 
-# define strcasecmp stricmp
-
-# define strncasecmp strnicmp
-
-#endif
-
-#ifdef BUILD_MP3_VERSION
-
-int		va_snprintf (char *function, char *buffer, size_t buffersize, const char *format, ...);
-int		va_vsnprintf (char *function, char *buffer, size_t buffersize, const char *format, va_list args);
-
-#endif
-
-
-
-int dpsnprintf (char *buffer, size_t buffersize, const char *format, ...);
-
-int dpvsnprintf (char *buffer, size_t buffersize, const char *format, va_list args);
-
-
-
-#if !defined(FLASH)
-
-char *strltrim(char *s);
-
-// strlcat and strlcpy, from OpenBSD
-// Most (all?) BSDs already have them
-#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(MACOSX)
-# define HAVE_STRLCAT 1
-# define HAVE_STRLCPY 1
-#endif
-
-#ifndef HAVE_STRLCAT
-/*
- * Appends src to string dst of size siz (unlike strncat, siz is the
- * full size of dst, not space left).  At most siz-1 characters
- * will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
- * Returns strlen(src) + MIN(siz, strlen(initial dst)).
- * If retval >= siz, truncation occurred.
- */
-size_t strlcat(char *dst, const char *src, size_t siz);
-#endif  // #ifndef HAVE_STRLCAT
-
-#ifndef HAVE_STRLCPY
-/*
- * Copy src to string dst of size siz.  At most siz-1 characters
- * will be copied.  Always NUL terminates (unless siz == 0).
- * Returns strlen(src); if retval >= siz, truncation occurred.
- */
-size_t strlcpy(char *dst, const char *src, size_t siz);
-
-#endif  // #ifndef HAVE_STRLCPY
-
-#endif
-
-
-
-//void Q_strcpy (char *dest, char *src);
-//void Q_strncpy (char *dest, char *src, int count);
-
-
-//int strcasecmp (char *s1, char *s2);
-//int strncasecmp (char *s1, char *s2, int n);
-//int	atoi (char *str);
-//float atof (char *str);
-
-//void Q_strncpyz (char *dest, char *src, size_t size);
-//void Q_snprintfz (char *dest, size_t size, char *fmt, ...);
-
-//============================================================================
 
 extern	char		com_token[1024];
 extern	qboolean	com_eof;
@@ -246,8 +159,7 @@ char *COM_FileExtension (char *in);
 void COM_FileBase (char *in, char *out);
 void COM_DefaultExtension (char *path, char *extension);
 
-char	*va(char *format, ...);
-// does a varargs printf into a temp buffer
+char *va (const char *format, ...);
 
 char *CopyString (char *s);
 
@@ -299,4 +211,54 @@ extern void COM_ToLowerString(char *in, char *out);
 
 void R_PreMapLoad (char *mapname);
 
+#if defined(_WIN32) && defined(_MSC_VER)
+
+// vc++ snprintf and vsnprintf are non-standard and not compatible with C99.
+size_t SNPrintf		(char *str,    const size_t n,     const char *format, ...);
+size_t VSNPrintf	(char *buffer, const size_t count, const char *format, va_list argptr);
+
+// MSVC has a different name for several standard functions
+
+#define strcasecmp stricmp
+#define strncasecmp strnicmp
+
+#else
+
+#define SNPrintf snprintf
+#define VSNPrintf vsnprintf
+
+
+#endif // GNUC even on Windows has this you know ...
+
+
+// strlcat and strlcpy, from OpenBSD
+// Most (all?) BSDs already have them
+#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__) || defined(MACOSX)
+# define HAVE_STRLCAT 1
+# define HAVE_STRLCPY 1
 #endif
+
+#ifndef HAVE_STRLCAT
+/*!
+ * Appends src to string dst of size siz (unlike strncat, siz is the
+ * full size of dst, not space left).  At most siz-1 characters
+ * will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
+ * Returns strlen(src) + MIN(siz, strlen(initial dst)).
+ * If retval >= siz, truncation occurred.
+ */
+size_t strlcat(char *dst, const char *src, size_t siz);
+#endif  // #ifndef HAVE_STRLCAT
+
+#ifndef HAVE_STRLCPY
+/*!
+ * Copy src to string dst of size siz.  At most siz-1 characters
+ * will be copied.  Always NUL terminates (unless siz == 0).
+ * Returns strlen(src); if retval >= siz, truncation occurred.
+ */
+size_t strlcpy(char *dst, const char *src, size_t siz);
+
+#endif  // #ifndef HAVE_STRLCPY
+char *strltrim(char *s);
+//============================================================================
+
+#endif // __COMMON_H__

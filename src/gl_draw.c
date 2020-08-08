@@ -22,14 +22,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "quakedef.h"
 
-extern unsigned char d_15to8table[65536];
 
 cvar_t		gl_nobind = {"gl_nobind", "0"};
-#ifdef DX8QUAKE_GET_GL_MAX_SIZE
+
 int			gl_max_size = 1024;
-#else
-cvar_t		gl_max_size = {"gl_max_size", "1024"};
-#endif
+
 cvar_t		gl_picmip = {"gl_picmip", "0", true};
 cvar_t		gl_crosshairalpha = {"crosshairalpha", "1", true};
 cvar_t		gl_texturemode = {"gl_texturemode", "GL_LINEAR_MIPMAP_NEAREST", false}; // Let's not save to config
@@ -141,9 +138,6 @@ int			numgltextures;
 
 void GL_Bind (int texnum)
 {
-#ifdef MACOSX_EXTRA_FEATURES
-        extern qboolean		gl_texturefilteranisotropic;
-#endif /* MACOSX */
 
 	if (gl_nobind.value)
 		texnum = char_texture;
@@ -452,42 +446,6 @@ void OnChange_gl_texturemode (void)
 	}
 }
 
-// D3D diff 1 of 14
-#ifdef D3DQ_EXTRA_FEATURES
-
-#define    D3D_TEXTURE_MAXANISOTROPY 0xf70001
-float gl_maxAnisotropy = 1.0;
-/*
-===============
-Draw_MaxAnisotropy_f
-===============
-*/
-void Draw_MaxAnisotropy_f (void)
-{
-	int		i;
-	gltexture_t	*glt;
-
-	if (Cmd_Argc() == 1)
-	{
-		Con_Printf ("current max anisotropy is %g\n", gl_maxAnisotropy);
-		return;
-	}
-
-	gl_maxAnisotropy = atof(Cmd_Argv(1));
-
-	// change all the existing mipmap texture objects
-	for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
-	{
-		if (glt->texmode & TEX_MIPMAP)
-		{
-			GL_Bind (glt->texnum);
-			glTexParameterf(GL_TEXTURE_2D, D3D_TEXTURE_MAXANISOTROPY, gl_maxAnisotropy);
-		}
-	}
-}
-
-#endif // D3D_FEATURE
-
 /*
 ===============
 Draw_SmoothFont_f
@@ -558,11 +516,6 @@ static void Load_CharSet (void)
 Draw_Init
 ===============
 */
-// D3D diff 2 of 14
-#ifdef D3DQ_EXTRA_FEATURES
-
-float d3dGetD3DDriverVersion();
-#endif
 void Draw_InitConback_Old(void);
 void Draw_Init (void)
 {
@@ -588,23 +541,12 @@ void Draw_Init (void)
 	Cvar_RegisterVariable (&gl_free_world_textures, NULL);//R00k
 #endif
 
-#ifdef DX8QUAKE_GET_GL_MAX_SIZE
+
 	glGetIntegerv (GL_MAX_TEXTURE_SIZE, &gl_max_size);
-#else
-	Cvar_RegisterVariable (&gl_max_size, NULL);
-	// 3dfx can only handle 256 wide textures
-	if (!strncasecmp ((char *)gl_renderer, "3dfx",4) ||
-		strstr((char *)gl_renderer, "Glide"))
-		Cvar_Set ("gl_max_size", "256");
-#endif
 
 	Cvar_RegisterVariable (&gl_texturemode, &OnChange_gl_texturemode);
 	Cmd_AddCommand ("gl_smoothfont", Draw_SmoothFont_f);
-// D3D diff 3 of 14
-#ifdef D3DQ_EXTRA_FEATURES
 
-	Cmd_AddCommand ("d3d_maxanisotropy", Draw_MaxAnisotropy_f);
-#endif
 	// load the console background and the charset
 	// by hand, because we need to write the version
 	// string into the background before turning
@@ -662,7 +604,7 @@ void Draw_InitConback_Old(void) {
 	// hack the version number directly into the pic
 
 
-	snprintf(ver, sizeof(ver), "(ProQuake) %4.2f", (float)PROQUAKE_SERIES_VERSION); // JPG - obvious change
+	SNPrintf(ver, sizeof(ver), "(ProQuake) %4.2f", (float)PROQUAKE_SERIES_VERSION); // JPG - obvious change
 
 
 
@@ -701,10 +643,6 @@ It can be clipped to the top of the screen to allow the console to be
 smoothly scrolled off.
 ================
 */
-// D3D diff 6 of 14
-// Begin D3DQuake
-int gNoChars;
-// End D3DQuake
 
 static qboolean IsValid (int y, int num)
 {
@@ -745,10 +683,6 @@ static void Character (int x, int y, int num)
 
 void Draw_Character (int x, int y, int num)
 {
-// D3D diff 7 of 14
-// Begin D3DQuake
-	if ( gNoChars ) return;
-// End D3DQuake
 	if (!IsValid (y, num))
 		return;
 
@@ -826,32 +760,16 @@ void Draw_Crosshair(void)
 
 		col = StringToRGB (crosshaircolor.string);
 
-		if (gl_crosshairalpha.value) {
+		if (gl_crosshairalpha.value)
+		{
 			glDisable (GL_ALPHA_TEST);
 			glEnable (GL_BLEND);
-			col[3] = bound(0, gl_crosshairalpha.value, 1) * 255;
-#if defined(D3DQ_WORKAROUND)// || defined(DX8QUAKE)
-// D3DQUAKE doesn't have gl_Color4ubv wrapper or whatever
-
-// so we'd have to extract the RGB colors and pass them in glColor4f
-
-// which I am too lazy to do right now.
-
-			glColor4f (1, 1, 1, bound(0, gl_crosshairalpha.value, 1));
-
-#else
+			col[3] = CLAMP (0, gl_crosshairalpha.value, 1) * 255;
 			glColor4ubv (col);
-#endif // Workaround
-
-		} else {
-#ifdef D3DQ_WORKAROUND
-			glColor3f (1, 1, 1);
-
-#else
-
+		}
+		else
+		{
 			glColor3ubv (col);
-#endif // ditto
-
 		}
 
 			GL_Bind (crosshairtextures[(int)crosshair.value-2]);
@@ -860,8 +778,8 @@ void Draw_Crosshair(void)
 			tl = sl = 0;
 			sh = th = 1;
 
-		ofs1 *= (vid.width / 320) * bound(0, crosshairsize.value, 20);
-		ofs2 *= (vid.width / 320) * bound(0, crosshairsize.value, 20);
+		ofs1 *= (vid.width / 320) * CLAMP (0, crosshairsize.value, 20);
+		ofs2 *= (vid.width / 320) * CLAMP (0, crosshairsize.value, 20);
 
 		glBegin (GL_QUADS);
 		glTexCoord2f (sl, tl);
@@ -932,11 +850,6 @@ void Draw_AlphaPic (int x, int y, qpic_t *pic, float alpha)
 	glEnable (GL_BLEND);
 //	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 //	glCullFace(GL_FRONT);
-// D3D diff 8 of 14
-#ifdef D3DQ_WORKAROUND
-
-	if ( alpha > 1 ) alpha = 1; // manually clamp
-#endif
 	glColor4f (1,1,1,alpha);
 	GL_Bind (gl->texnum);
 	glBegin (GL_QUADS);
@@ -1056,9 +969,6 @@ void Draw_TransPicTranslate (int x, int y, qpic_t *pic, byte *translation)
 		}
 	}
 
-#ifdef MACOSX_TEXRAM_CHECK
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_alpha_format, 64, 64, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
 
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_alpha_format, 64, 64, 0, GL_RGBA, GL_UNSIGNED_BYTE, trans);
 
@@ -1083,18 +993,9 @@ void Draw_TransPicTranslate (int x, int y, qpic_t *pic, byte *translation)
 Draw_ConsoleBackground
 ================
 */
-// D3D diff 9 of 14
-// Begin D3DQuake
-int noConsoleBackground;
-// End D3DQuake
 void Draw_ConsoleBackground (int lines)
 {
 	int y = (vid.height * 3) >> 2;
-// D3D diff 10 of 14
-// Begin D3DQuake
-	if (noConsoleBackground)
-		return;
-// End D3DQuake
 #if 0
 #ifdef MACOSX_UNKNOWN_DIFFERENCE
 
@@ -1252,7 +1153,7 @@ Fills a box of pixels with a single color
 */
 void Draw_AlphaFill(int x, int y, int w, int h, int c, float alpha)
 {
-	alpha = bound(0, alpha, 1);
+	alpha = CLAMP (0, alpha, 1);
 
 	if (!alpha)
 		return;
@@ -1321,7 +1222,7 @@ Draw_FadeScreen
 void Draw_FadeScreen (void)
 {
 	extern cvar_t gl_fadescreen_alpha;
-	
+
 	glEnable (GL_BLEND);
 	glDisable (GL_TEXTURE_2D);
 	glColor4f (0, 0, 0, gl_fadescreen_alpha.value);
@@ -1362,7 +1263,7 @@ void Draw_BeginDisc (void)
 
 	if (!draw_disc)
 		return;
-	
+
 	if (mod_conhide==true && (key_dest != key_console && key_dest != key_message)) {
 		// No draw this either
 		return;
@@ -1524,52 +1425,12 @@ void GL_MipMap (byte *in, int width, int height)
 	}
 }
 
-#ifndef DX8QUAKE_NO_8BIT
-/*
-================
-GL_MipMap8Bit
-
-Mipping for 8 bit textures
-================
-*/
-void GL_MipMap8Bit (byte *in, int width, int height)
-{
-	int		i, j;
-	unsigned short     r,g,b;
-	byte	*out, *at1, *at2, *at3, *at4;
-
-//	width <<=2;
-	height >>= 1;
-	out = in;
-	for (i=0 ; i<height ; i++, in+=width)
-	{
-		for (j=0 ; j<width ; j+=2, out+=1, in+=2)
-		{
-			at1 = (byte *) (d_8to24table + in[0]);
-			at2 = (byte *) (d_8to24table + in[1]);
-			at3 = (byte *) (d_8to24table + in[width+0]);
-			at4 = (byte *) (d_8to24table + in[width+1]);
-
- 			r = (at1[0]+at2[0]+at3[0]+at4[0]); r>>=5;
- 			g = (at1[1]+at2[1]+at3[1]+at4[1]); g>>=5;
- 			b = (at1[2]+at2[2]+at3[2]+at4[2]); b>>=5;
-
-			out[0] = d_15to8table[(r<<0) + (g<<5) + (b<<10)];
-		}
-	}
-}
-#endif
 
 /*
 ===============
 GL_Upload32
 ===============
 */
-// D3D diff 11 of 11
-#ifdef D3DQ_WORKAROUND
-
-void d3dHint_GenerateMipMaps(int);
-#endif
 void GL_Upload32 (unsigned *data, int width, int height, int mode)
 {
 	int			samples;
@@ -1584,61 +1445,22 @@ static	unsigned	scaled[1024*512];	// [512*256];
 	scaled_width >>= (int)gl_picmip.value;
 	scaled_height >>= (int)gl_picmip.value;
 
-#ifdef DX8QUAKE_GET_GL_MAX_SIZE
 	if (scaled_width > gl_max_size) scaled_width = gl_max_size;
 	if (scaled_height > gl_max_size) scaled_height = gl_max_size;
-#else
-	if (scaled_width > gl_max_size.value)
-		scaled_width = gl_max_size.value;
-	if (scaled_height > gl_max_size.value)
-		scaled_height = gl_max_size.value;
-#endif
 
 	if (scaled_width * scaled_height > sizeof(scaled)/4)
 		Sys_Error ("GL_LoadTexture: too big");
 
 	samples = (mode & TEX_ALPHA) ? gl_alpha_format : gl_solid_format;
 
-#if 0
-	if (mipmap)
-		gluBuild2DMipmaps (GL_TEXTURE_2D, samples, width, height, GL_RGBA, GL_UNSIGNED_BYTE, trans);
-	else if (scaled_width == width && scaled_height == height)
-         {
-#ifdef MACOSX_TEXRAM_CHECK
-                GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, width, height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
-		glTexImage2D (GL_TEXTURE_2D, 0, samples, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, trans);
-         }
-	else
-	{
-                    gluScaleImage (GL_RGBA, width, height, GL_UNSIGNED_BYTE, trans,
-                            scaled_width, scaled_height, GL_UNSIGNED_BYTE, scaled);
-#ifdef MACOSX_TEXRAM_CHECK
-                    GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
-                    glTexImage2D (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
-    }
-#else
-texels += scaled_width * scaled_height;
+	texels += scaled_width * scaled_height;
 
 	if (scaled_width == width && scaled_height == height)
 	{
 		if (!(mode & TEX_MIPMAP))
 		{
-// D3D diff 12 of 14
-#ifdef D3DQ_WORKAROUND
-
-			d3dHint_GenerateMipMaps(0);
-#endif
-#ifdef MACOSX_TEXRAM_CHECK
-                        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
 			glTexImage2D (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 // D3D diff 13 of 14
-#ifdef D3DQ_WORKAROUND
-
-			d3dHint_GenerateMipMaps(1);
-#endif
 			goto done;
 		}
 		memcpy (scaled, data, width*height*4);
@@ -1646,9 +1468,6 @@ texels += scaled_width * scaled_height;
 	else
 		GL_ResampleTexture (data, width, height, scaled, scaled_width, scaled_height);
 
-#ifdef MACOSX_TEXRAM_CHECK
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
 	if ((mode & TEX_MIPMAP))
 	{
@@ -1665,15 +1484,12 @@ texels += scaled_width * scaled_height;
 			if (scaled_height < 1)
 				scaled_height = 1;
 			miplevel++;
-#ifdef MACOSX_TEXRAM_CHECK
-                        GL_CheckTextureRAM (GL_TEXTURE_2D, miplevel, samples, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
 
 			glTexImage2D (GL_TEXTURE_2D, miplevel, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, scaled);
 		}
 	}
-done: ;
-#endif
+done:
+
 
 
 	if ((mode & TEX_MIPMAP))
@@ -1688,105 +1504,7 @@ done: ;
 	}
 }
 
-#ifndef DX8QUAKE_NO_8BIT
-void GL_Upload8_EXT (byte *data, int width, int height, int mode)
-{
-	int			i, s;
-	qboolean		noalpha;
-	int			samples;
-        static unsigned char 	scaled[1024*512];	// [512*256];
-	int			scaled_width, scaled_height;
 
-	s = width*height;
-	// if there are no transparent pixels, make it a 3 component
-	// texture even if it was specified as otherwise
-	if (mode & TEX_ALPHA)
-	{
-		noalpha = true;
-		for (i=0 ; i<s ; i++)
-		{
-			if (data[i] == 255)
-				noalpha = false;
-		}
-
-		if (noalpha)
-			mode = mode - TEX_ALPHA;
-	}
-	for (scaled_width = 1 ; scaled_width < width ; scaled_width<<=1)
-		;
-	for (scaled_height = 1 ; scaled_height < height ; scaled_height<<=1)
-		;
-
-	scaled_width >>= (int)gl_picmip.value;
-	scaled_height >>= (int)gl_picmip.value;
-
-	if (scaled_width > gl_max_size.value)
-		scaled_width = gl_max_size.value;
-	if (scaled_height > gl_max_size.value)
-		scaled_height = gl_max_size.value;
-
-	if (scaled_width * scaled_height > sizeof(scaled))
-		Sys_Error ("GL_LoadTexture: too big");
-
-	samples = 1; // alpha ? gl_alpha_format : gl_solid_format;
-
-	texels += scaled_width * scaled_height;
-
-	if (scaled_width == width && scaled_height == height)
-	{
-		if (!(mode & TEX_MIPMAP))
-		{
-#ifdef MACOSX_TEXRAM_CHECK
-                        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
-			glTexImage2D (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, GL_COLOR_INDEX , GL_UNSIGNED_BYTE, data);
-			goto done;
-		}
-		memcpy (scaled, data, width*height);
-	}
-	else
-		GL_Resample8BitTexture (data, width, height, scaled, scaled_width, scaled_height);
-
-#ifdef MACOSX_TEXRAM_CHECK
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
-	glTexImage2D (GL_TEXTURE_2D, 0, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, scaled);
-	if ((mode & TEX_MIPMAP))
-	{
-		int		miplevel;
-
-		miplevel = 0;
-		while (scaled_width > 1 || scaled_height > 1)
-		{
-			GL_MipMap8Bit ((byte *)scaled, scaled_width, scaled_height);
-			scaled_width >>= 1;
-			scaled_height >>= 1;
-			if (scaled_width < 1)
-				scaled_width = 1;
-			if (scaled_height < 1)
-				scaled_height = 1;
-			miplevel++;
-#ifdef MACOSX_TEXRAM_CHECK
-            GL_CheckTextureRAM (GL_TEXTURE_2D, miplevel, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
-                        glTexImage2D (GL_TEXTURE_2D, miplevel, GL_COLOR_INDEX8_EXT, scaled_width, scaled_height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, scaled);
-		}
-	}
-done: ;
-
-
-	if (mode & TEX_MIPMAP)
-	{
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_min);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
-	}
-	else
-	{
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_max);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_max);
-	}
-}
-#endif
 
 /*
 ===============
@@ -1830,12 +1548,6 @@ static	unsigned	trans[640*480];		// FIXME, temporary
 		}
 	}
 
-#ifndef DX8QUAKE_NO_8BIT
- 	if (VID_Is8bit() && !(mode & TEX_ALPHA) && (data!=scrap_texels[0])) {
- 		GL_Upload8_EXT (data, width, height, mode);
- 		return;
-	}
-#endif
 
 	GL_Upload32 (trans, width, height, mode);
 }
@@ -1997,115 +1709,6 @@ void HalfLife_Gamma_Table (void) {
 #endif
 
 
-#ifdef SUPPORTS_HLBSP
-/*
-
-================
-
-GL_LoadTexture32
-
-================
-
-*/
-
-int GL_LoadTexture32 (char *identifier, int width, int height, byte *data, int mode)
-
-{
-
-	qboolean	noalpha;
-
-	int			i, p, s;
-
-	gltexture_t	*glt;
-
-	int image_size = width * height;
-
-
-
-	// see if the texture is already present
-
-	if (identifier[0])
-
-	{
-
-		for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
-
-		{
-
-			if (!strcmp (identifier, glt->identifier))
-
-			{
-
-				if (width != glt->width || height != glt->height)
-
-					Sys_Error ("GL_LoadTexture: cache mismatch");
-
-				return gltextures[i].texnum;
-
-			}
-
-		}
-
-	}
-
-	else {
-
-		glt = &gltextures[numgltextures];
-
-		numgltextures++;
-
-	}
-
-
-
-	strcpy (glt->identifier, identifier);
-
-	glt->texnum = texture_extension_number;
-	glt->width = width;
-	glt->height = height;
-	glt->texmode = mode;
-
-
-
-	GL_Bind(texture_extension_number );
-
-
-
-#if 0
-
-	if (1 /*gamma*/ ) {
-
-		//extern	byte	vid_gamma_table[256];
-
-		for (i = 0; i < image_size; i++){
-
-			data[4 * i] = vid_gamma_table[data[4 * i]];
-
-			data[4 * i + 1] = vid_gamma_table[data[4 * i + 1]];
-
-			data[4 * i + 2] = vid_gamma_table[data[4 * i + 2]];
-
-		}
-
-	}
-
-#endif
-
-
-
-	GL_Upload32 ((unsigned *)data, width, height, mode);
-
-
-
-	texture_extension_number++;
-
-
-
-	return texture_extension_number-1;
-
-}
-
-#endif
 
 
 /*

@@ -73,22 +73,6 @@ extern cvar_t	pq_moveup;
 	if (b == &in_jump && pq_moveup.value && cl.stats[STAT_HEALTH] > 0 && cl.inwater)
 		b = &in_up;
 
-	/* FIXME - remove this if the other code works
-	if (b == &in_jump && pq_moveup.value && cl.stats[STAT_HEALTH] > 0)
-	{
-		int	cont;
-
-		if (cl_entities[0].model)
-		{
-			cont = SV_HullPointContents (&cl_entities[0].model->hulls[0], 0, cl_entities[cl.viewentity].origin);
-			if (cont <= CONTENTS_CURRENT_0 && cont >= CONTENTS_CURRENT_DOWN)
-				cont = CONTENTS_WATER;
-
-			if (cont == CONTENTS_WATER)
-				b = &in_up;
-		}
-	}
-	*/
 
 	if (k == b->down[0] || k == b->down[1])
 		return;		// repeating key
@@ -112,7 +96,8 @@ extern cvar_t	pq_moveup;
 	b->state |= 1 + 2;	// down + impulse down
 }
 
- void KeyUp (kbutton_t *b) {
+ void KeyUp (kbutton_t *b) 
+{
 	int		k;
 	char	*c;
 
@@ -232,7 +217,8 @@ Returns 0.25 if a key was pressed and released during the frame,
 1.0 if held for the entire time
 ===============
 */
- float CL_KeyState (kbutton_t *key) {
+ float CL_KeyState (kbutton_t *key) 
+{
 	float		val;
 	qboolean	impulsedown, impulseup, down;
 
@@ -288,9 +274,6 @@ Moves the local angle positions
 
 	speed = (in_speed.state & 1) ? host_frametime * cl_anglespeedkey.value : host_frametime;
 
-#ifdef SUPPORTS_XFLIP
-	if (gl_xflip.value) cl.viewangles[YAW] *= -1;   //Atomizer - GL_XFLIP
-#endif
 
 	if (!(in_strafe.state & 1))
 	{
@@ -299,9 +282,6 @@ Moves the local angle positions
 		cl.viewangles[YAW] = anglemod(cl.viewangles[YAW]);
 	}
 
-#ifdef SUPPORTS_XFLIP
-	if (gl_xflip.value) cl.viewangles[YAW] *= -1;  //Atomizer - GL_XFLIP
-#endif
 
 	if (in_klook.state & 1)
 	{
@@ -343,7 +323,8 @@ Moves the local angle positions
 }
 
 //Send the intended movement message to the server
-void CL_BaseMove (usercmd_t *cmd) {
+void CL_BaseMove (usercmd_t *cmd) 
+{
 	if (cls.signon != SIGNONS)
 		return;
 
@@ -351,7 +332,8 @@ void CL_BaseMove (usercmd_t *cmd) {
 
 	memset (cmd, 0, sizeof(*cmd));
 
-	if (in_strafe.state & 1) {
+	if (in_strafe.state & 1) 
+	{
 		cmd->sidemove += cl_sidespeed.value * CL_KeyState (&in_right);
 		cmd->sidemove -= cl_sidespeed.value * CL_KeyState (&in_left);
 	}
@@ -360,21 +342,20 @@ void CL_BaseMove (usercmd_t *cmd) {
 	cmd->sidemove -= cl_sidespeed.value * CL_KeyState (&in_moveleft);
 
 
-#ifdef SUPPORTS_XFLIP
-	if(gl_xflip.value) cmd->sidemove *= -1;   //Atomizer - GL_XFLIP
-#endif
 
 
 	cmd->upmove += cl_upspeed.value * CL_KeyState (&in_up);
 	cmd->upmove -= cl_upspeed.value * CL_KeyState (&in_down);
 
-	if (! (in_klook.state & 1) ) {
+	if (! (in_klook.state & 1) ) 
+	{
 		cmd->forwardmove += cl_forwardspeed.value * CL_KeyState (&in_forward);
 		cmd->forwardmove -= cl_backspeed.value * CL_KeyState (&in_back);
 	}
 
 // adjust for speed key
-	if (in_speed.state & 1) {
+	if (in_speed.state & 1) 
+	{
 		cmd->forwardmove *= cl_movespeedkey.value;
 		cmd->sidemove *= cl_movespeedkey.value;
 		cmd->upmove *= cl_movespeedkey.value;
@@ -493,7 +474,8 @@ void CL_SendMove (usercmd_t *cmd)
 }
 
 
-void CL_InitInput (void) {
+void CL_InitInput (void) 
+{
 	Cmd_AddCommand ("+moveup",IN_UpDown);
 	Cmd_AddCommand ("-moveup",IN_UpUp);
 	Cmd_AddCommand ("+movedown",IN_DownDown);

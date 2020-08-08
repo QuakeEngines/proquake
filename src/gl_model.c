@@ -209,7 +209,7 @@ model_t *Mod_FindName (char *name)
 
 	if (i == mod_numknown)
 	{
-		if (mod_numknown == MAX_MOD_KNOWN) 
+		if (mod_numknown == MAX_MOD_KNOWN)
 			Sys_Error ("mod_numknown == MAX_MOD_KNOWN");
 
 		mod_numknown++;
@@ -247,14 +247,14 @@ model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 	unsigned *buf;
 	byte	stackbuf[1024];		// avoid dirtying the cache heap
 
-	if (!mod->needload) 
+	if (!mod->needload)
 	{
-		if (mod->type == mod_alias) 
+		if (mod->type == mod_alias)
 		{
 			if (Cache_Check (&mod->cache))
 				return mod;
 		}
-		 else 
+		 else
 		{
 			return mod;		// not cached at all
 		}
@@ -392,51 +392,33 @@ void Mod_LoadTextures (lump_t *l)
 
 		if (cls.state != ca_dedicated)	// Dedicated skips this whole ordeal
 		{
-			
+
 			// If world model and sky texture and q1 bsp and not dedicated ...
-			if (loadmodel->isworldmodel && ISSKYTEX(tx->name) && loadmodel->bspversion == Q1_BSPVERSION) 
+			if (loadmodel->isworldmodel && ISSKYTEX(tx->name) && loadmodel->bspversion == BSPVERSION)
 					R_InitSky (tx);
 
-			// If world model and NOT sky texture 
+			// If world model and NOT sky texture
 			if (loadmodel->isworldmodel && !ISSKYTEX(tx->name))//R00k
 				texture_flag |= TEX_WORLD;
 
-			if (loadmodel->bspversion == Q1_BSPVERSION) 
+			if (loadmodel->bspversion == BSPVERSION)
 			{
 				texture_mode = GL_LINEAR_MIPMAP_NEAREST; //_LINEAR;
 				tx->gl_texturenum = GL_LoadTexture (mt->name, tx->width, tx->height, (byte *)(tx+1), texture_flag | TEX_MIPMAP);
 				texture_mode = GL_LINEAR;
 			}
 
-#ifdef SUPPORTS_HLBSP
-			if (loadmodel->bspversion == HL_BSPVERSION) 
-			{
-				byte		*data;
-
-				if ((data = WAD3_LoadTexture(mt))) 
-				{
-					//com_netpath[0] = 0;
-					//alpha_flag = ISALPHATEX(tx->name) ? TEX_ALPHA : 0;
-					texture_mode = GL_LINEAR_MIPMAP_NEAREST; //_LINEAR;
-					tx->gl_texturenum = GL_LoadTexture32 (mt->name, tx->width, tx->height, (byte *)data, texture_flag | TEX_MIPMAP);
-					texture_mode = GL_LINEAR;
-					free(data);
-					continue;
-				}
-
-			}
-#endif
 
 			tx->fullbright = -1; // because 0 is a potentially valid texture number
 			// check for fullbright pixels in the texture - only if it ain't liquid, etc also
 
-			if (loadmodel->bspversion == Q1_BSPVERSION && !ISTURBTEX(tx->name) && FindFullbrightTexture ((byte *)(tx+1), pixels))
+			if (loadmodel->bspversion == BSPVERSION && !ISTURBTEX(tx->name) && FindFullbrightTexture ((byte *)(tx+1), pixels))
 			{
 				// convert any non fullbright pixel to fully transparent
 				ConvertPixels ((byte *)(tx + 1), pixels);
 
 				// get a new name for the fullbright mask to avoid cache mismatches
-				snprintf (fbr_mask_name, sizeof(fbr_mask_name), "fullbright_mask_%s", mt->name);
+				SNPrintf (fbr_mask_name, sizeof(fbr_mask_name), "fullbright_mask_%s", mt->name);
 
 				// load the fullbright pixels version of the texture
 				tx->fullbright = GL_LoadTexture (fbr_mask_name, tx->width, tx->height, (byte *)(tx + 1), texture_flag | TEX_MIPMAP | TEX_ALPHA);
@@ -456,37 +438,37 @@ void Mod_LoadTextures (lump_t *l)
 			continue;
 		if (tx->anim_next)
 			continue;	// already sequenced
-		
+
 		// find the number of frames in the animation
 		memset (anims, 0, sizeof(anims));
 		memset (altanims, 0, sizeof(altanims));
-		
+
 		max = tx->name[1];
 		altmax = 0;
 		if (max >= 'a' && max <= 'z')
 			max -= 'a' - 'A';
-	
-		
-		
-		if (max >= '0' && max <= '9') 
+
+
+
+		if (max >= '0' && max <= '9')
 		{
 			max -= '0';
 			altmax = 0;
 			anims[max] = tx;
 			max++;
-		} 
-		else if (max >= 'A' && max <= 'J') 
+		}
+		else if (max >= 'A' && max <= 'J')
 		{
 			altmax = max - 'A';
 			max = 0;
 			altanims[altmax] = tx;
 			altmax++;
 		}
-		else 
+		else
 		{
 			Sys_Error ("Bad animating texture %s", tx->name);
 		}
-		
+
 		for (j=i+1 ; j<m->nummiptex ; j++)
 		{
 			tx2 = loadmodel->textures[j];
@@ -494,30 +476,30 @@ void Mod_LoadTextures (lump_t *l)
 				continue;
 			if (strcmp (tx2->name+2, tx->name+2))
 				continue;
-			
+
 			num = tx2->name[1];
 			if (num >= 'a' && num <= 'z')
 				num -= 'a' - 'A';
-			if (num >= '0' && num <= '9') 
+			if (num >= '0' && num <= '9')
 			{
 				num -= '0';
 				anims[num] = tx2;
 				if (num+1 > max)
 				max = num + 1;
-			} 
-			else if (num >= 'A' && num <= 'J') 
+			}
+			else if (num >= 'A' && num <= 'J')
 			{
 				num = num - 'A';
 				altanims[num] = tx2;
 				if (num+1 > altmax)
 				altmax = num+1;
-			} 
-			else 
+			}
+			else
 			{
 				Sys_Error ("Bad animating texture %s", tx->name);
 			}
 		}
-			
+
 		#define	ANIM_CYCLE	2
 		// link them all together
 		for (j=0 ; j<max ; j++)
@@ -532,7 +514,7 @@ void Mod_LoadTextures (lump_t *l)
 			if (altmax)
 				tx2->alternate_anims = altanims[0];
 		}
-		
+
 		for (j=0 ; j<altmax ; j++)
 		{
 			tx2 = altanims[j];
@@ -561,58 +543,6 @@ void Mod_LoadLighting (lump_t *l)
 		return;
 	}
 
-#ifdef SUPPORTS_HLBSP
-	if (loadmodel->bspversion == HL_BSPVERSION) {
-		//int litlen = l->filelen / 3;
-		int i;
-
-		//MessageBox(NULL,va("real size = %i comp len = %i", l->filelen, litlen),"lightdata",MB_OK);
-		loadmodel->lightdata = Hunk_AllocName(l->filelen, loadname);
-		// dest, source, count
-		memcpy (loadmodel->lightdata, mod_base + l->fileofs, l->filelen);
-
-		// Cheat!
-		// Run thru the lightmap data and average the colors to make it a shade of gray, haha!
-		for (i=0; i<l->filelen; i+=3)
-		{
-			int grayscale;
-			byte out;
-			grayscale = (loadmodel->lightdata[i] + loadmodel->lightdata[i+1] + loadmodel->lightdata[i+2])/3;
-			if (grayscale > 255) grayscale = 255;
-			if (grayscale < 0) grayscale = 0;
-			out = (byte)grayscale;
-#if 0 // Spike said this was bad
-			loadmodel->lightdata[i] = loadmodel->lightdata[i+1] = loadmodel->lightdata[i+2] = out;
-#endif
-#if 1
-			loadmodel->lightdata[i/3] = out;
-#endif
-		}
-
-//		memset(loadmodel->lightdata, 128, l->filelen);
-#if 0
-		for (i=0, j=l->fileofs; i<litlen; i++,j+=3)
-		{
-			int x=0;
-			x = (mod_base[j] + mod_base[j+1] + mod_base[j+2])/3;
-			loadmodel->lightdata[j] = x;
-		}
-#endif
-#if 0
-		for (i=0, j=0; i<l->filelen; i+=3, j++) {
-			loadmodel->lightdata[j] = 0;(byte)((mod_base[l->fileofs + i] + mod_base[l->fileofs + i+1] + mod_base[l->fileofs + i+ 2]) /3);
-			//memcpy (loadmodel->lightdata + j, mod_base + l->fileofs +i, 1);
-			//loadmodel->lightdata[j] = mod_base + l->fileofs + i;
-		}
-#endif
-
-		l->filelen = l->filelen/3;
-		memcpy (loadmodel->lightdata, mod_base + l->fileofs, l->filelen);
-
-		return;
-	}
-#endif
-
 	loadmodel->lightdata = Hunk_AllocName ( l->filelen, loadname);
 	memcpy (loadmodel->lightdata, mod_base + l->fileofs, l->filelen);
 }
@@ -633,64 +563,6 @@ void Mod_LoadVisibility (lump_t *l)
 	memcpy (loadmodel->visdata, mod_base + l->fileofs, l->filelen);
 }
 
-#ifdef SUPPORTS_HLBSP
-static void Mod_ParseWadsFromEntityLump(char *data) {
-	char *s, key[1024], value[1024];
-	int i, j, k;
-
-	if (!data || !(data = COM_Parse(data)))
-		return;
-
-	if (com_token[0] != '{')
-		return; // error
-
-	while (1) {
-		if (!(data = COM_Parse(data)))
-			return; // error
-
-		if (com_token[0] == '}')
-			break; // end of worldspawn
-
-		strlcpy (key, (com_token[0] == '_') ? com_token + 1 : com_token, sizeof(key));
-
-		for (s = key + strlen(key) - 1; s >= key && *s == ' '; s--)		// remove trailing spaces
-			*s = 0;
-
-		if (!(data = COM_Parse(data)))
-			return; // error
-
-		strlcpy (value, com_token, sizeof(value));
-
-// Baker:
-//		if (!strcmp("sky", key) || !strcmp("skyname", key))
-//			Cvar_Set(&r_skybox, value);
-
-		if (!strcmp("wad", key)) {
-			j = 0;
-			for (i = 0; i < strlen(value); i++) {
-				if (value[i] != ';' && value[i] != '\\' && value[i] != '/' && value[i] != ':')
-					break;
-			}
-			if (!value[i])
-				continue;
-			for ( ; i < sizeof(value); i++) {
-				// ignore path - the \\ check is for HalfLife... stupid windoze 'programmers'...
-				if (value[i] == '\\' || value[i] == '/' || value[i] == ':') {
-					j = i + 1;
-				} else if (value[i] == ';' || value[i] == 0) {
-					k = value[i];
-					value[i] = 0;
-					if (value[j])
-						WAD3_LoadTextureWadFile (value + j);
-					j = i + 1;
-					if (!k)
-						break;
-				}
-			}
-		}
-	}
-}
-#endif
 
 /*
 =================
@@ -1348,17 +1220,11 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 
 	header = (dheader_t *)buffer;
 
-#ifdef SUPPORTS_HLBSP
+
 	mod->bspversion = LittleLong (header->version);
 
-	if (mod->bspversion != Q1_BSPVERSION && mod->bspversion != HL_BSPVERSION)
-		Host_Error ("Mod_LoadBrushModel: %s has wrong version number (%i should be %i (Quake) or %i (HalfLife))", mod->name, mod->bspversion, Q1_BSPVERSION, HL_BSPVERSION);
-#else
-	i = LittleLong (header->version);
-	if (i != Q1_BSPVERSION)
-		Host_Error ("Mod_LoadBrushModel: %s has wrong version number (%i should be %i)", mod->name, i, Q1_BSPVERSION);
-
-#endif
+	if (mod->bspversion != BSPVERSION)
+		Host_Error ("Mod_LoadBrushModel: %s has wrong version number (%i should be %i)", mod->name, mod->bspversion, BSPVERSION);
 
 	{
 		extern cvar_t host_mapname;
@@ -1427,7 +1293,7 @@ void Mod_LoadBrushModel (model_t *mod, void *buffer)
 		{	// duplicate the basic information
 			char	name[10];
 
-			snprintf (name, sizeof(name), "*%i", i+1);
+			SNPrintf (name, sizeof(name), "*%i", i+1);
 			loadmodel = Mod_FindName (name);
 			*loadmodel = *mod;
 			strcpy (loadmodel->name, name);
@@ -1497,7 +1363,7 @@ void * Mod_LoadAliasFrame (void * pin, maliasframedesc_t *frame)
 Mod_LoadAliasGroup
 =================
 */
-void *Mod_LoadAliasGroup (void *pin,  maliasframedesc_t *frame) 
+void *Mod_LoadAliasGroup (void *pin,  maliasframedesc_t *frame)
 {
 	int					i, numframes;
 	void				*ptemp;
@@ -1583,11 +1449,11 @@ void Mod_FloodFillSkin( byte *skin, int skinwidth, int skinheight )
 	byte				fillcolor = *skin; // assume this is the pixel to fill
 	floodfill_t			fifo[FLOODFILL_FIFO_SIZE];
 
-	if (filledcolor == -1) 
+	if (filledcolor == -1)
 	{
 		filledcolor = 0;
 		// attempt to find opaque black
-		for (i = 0; i < 256; ++i) 
+		for (i = 0; i < 256; ++i)
 		{
 			if (d_8to24table[i] == (255 << 0)) // alpha 1.0
 			{
@@ -1653,7 +1519,7 @@ void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 				pheader->texels[i] = texels - (byte *)pheader;
 				memcpy (texels, (byte *)(pskintype + 1), size);
 
-			snprintf (name, sizeof(name), "%s_%i", loadmodel->name, i);
+			SNPrintf (name, sizeof(name), "%s_%i", loadmodel->name, i);
 			pheader->gl_texturenum[i][0] =
 			pheader->gl_texturenum[i][1] =
 			pheader->gl_texturenum[i][2] =
@@ -1678,7 +1544,7 @@ void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 						pheader->texels[i] = texels - (byte *)pheader;
 						memcpy (texels, (byte *)(pskintype), size);
 					}
-					snprintf (name, sizeof(name), "%s_%i_%i", loadmodel->name, i,j);
+					SNPrintf (name, sizeof(name), "%s_%i_%i", loadmodel->name, i,j);
 					pheader->gl_texturenum[i][j&3] =
 						GL_LoadTexture (name, pheader->skinwidth,
 						pheader->skinheight, (byte *)(pskintype), TEX_MIPMAP);
@@ -1692,6 +1558,33 @@ void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 
 	return (void *)pskintype;
 }
+
+qboolean COM_ListMatch (char *liststr, const char *itemstr)
+{
+	char	*start, *matchspot, *nextspot;
+	int		itemlen;
+
+	// Check for disqualifying situations ...
+	if (liststr == NULL || itemstr == NULL || *itemstr == 0 || strchr (itemstr, ','))
+		return false;
+
+	itemlen = strlen (itemstr);
+
+	for (start = liststr ; matchspot = strstr (start, itemstr) ; start = nextspot)
+	{
+		nextspot = matchspot + itemlen;
+
+		// Validate that either the match begins the string or the previous character is a comma
+		// And that the terminator is either null or a comma.  This protects against partial
+		// matches
+
+		if ((matchspot == start || *(matchspot - 1) == ',') && (*nextspot == 0 || *nextspot == ','))
+			return true; // matchspot;
+	}
+
+	return false;
+}
+
 
 /*
 =================
@@ -1722,6 +1615,12 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 
 	mod->flags = LittleLong (pinmodel->flags);
 
+//	if (COM_ListMatch ("progs/eyes.mdl,progs/h_player.mdl,progs/gib1.mdl,progs/gib2.mdl,progs/gib3.mdl", mod->name) == true)
+//		mod->flags |= MOD_NOCOLORMAP;
+
+	if (strcmp ("progs/player.mdl", mod->name) == 0)
+		mod->flags |= MOD_PLAYER;
+
 // endian-adjust and copy the data, starting with the alias model header
 	pheader->boundingradius = LittleFloat (pinmodel->boundingradius);
 	pheader->numskins = LittleLong (pinmodel->numskins);
@@ -1735,7 +1634,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 
 	if (pheader->numverts <= 0)
 		Sys_Error ("Mod_LoadAliasModel: model %s has no vertices", mod->name);
-	
+
 	if (pheader->numverts > MAXALIASVERTS)
 		Sys_Error ("Mod_LoadAliasModel: model %s has too many vertices (%d, max = %d)", mod->name, pheader->numverts, MAXALIASVERTS);
 
@@ -1743,7 +1642,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 
 	if (pheader->numtris <= 0)
 		Sys_Error ("Mod_LoadAliasModel: model %s has no triangles", mod->name);
-	
+
 	if (pheader->numtris > MAXALIASTRIS)
 		Sys_Error ("Mod_LoadAliasModel: model %s has too many triangles (%d, max = %d)", mod->name, pheader->numtris, MAXALIASTRIS);
 
@@ -1795,13 +1694,13 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	aliasbboxmins[0] = aliasbboxmins[1] = aliasbboxmins[2] = 255;
 	aliasbboxmaxs[0] = aliasbboxmaxs[1] = aliasbboxmaxs[2] = 0;
 
-	for (i=0 ; i<numframes ; i++) 
+	for (i=0 ; i<numframes ; i++)
 	{
 		aliasframetype_t	frametype;
 
 		frametype = LittleLong (pframetype->type);
 
-		if (frametype == ALIAS_SINGLE) 
+		if (frametype == ALIAS_SINGLE)
 			pframetype = (daliasframetype_t *) Mod_LoadAliasFrame (pframetype + 1, &pheader->frames[i]);
 		else
 			pframetype = (daliasframetype_t *) Mod_LoadAliasGroup (pframetype + 1, &pheader->frames[i]);
@@ -1825,7 +1724,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	for (i = 0; i < pheader->numposes; i++)
 	{
 	  	int		j;
-	  	for (j = 0; j < pheader->numverts; j++) 
+	  	for (j = 0; j < pheader->numverts; j++)
 		{
 	     	byte	*vert = poseverts[i][j].v;
 	     	float	v;
@@ -1835,12 +1734,12 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	        	v = (float)vert[k];
 	        	v *= pheader->scale[k];
 	        	v += pheader->scale_origin[k];
-	
+
 	        	if (v < mod->mins[k])
 	        	{
 	           		mod->mins[k] = v;
 	        	}
-	        	
+
 				if (v > mod->maxs[k])
 	        	{
 	           		mod->maxs[k] = v;
@@ -1853,7 +1752,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	 	mod->mins[k] -= 32.0f;
 	  	mod->maxs[k] += 32.0f;
 	}
-	
+
 	if (mod->maxs[1] > mod->maxs[0])
 	{
 	  	mod->maxs[0] = mod->maxs[1];
@@ -1888,7 +1787,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	{
 	  	mod->mins[2] = mod->mins[0];
 	}
-	
+
 	mod->radius = RadiusFromBounds (mod->mins, mod->maxs);
 #endif
 	// build the draw lists
@@ -1942,7 +1841,7 @@ void * Mod_LoadSpriteFrame (void * pin, mspriteframe_t **ppframe, int framenum)
 	pspriteframe->left = origin[0];
 	pspriteframe->right = width + origin[0];
 
-	snprintf (name, sizeof(name), "%s_%i", loadmodel->name, framenum);
+	SNPrintf (name, sizeof(name), "%s_%i", loadmodel->name, framenum);
 	pspriteframe->gl_texturenum = GL_LoadTexture (name, width, height, (byte *)(pinframe + 1), TEX_MIPMAP | TEX_ALPHA);
 
 	return (void *)((byte *)pinframe + sizeof (dspriteframe_t) + size);

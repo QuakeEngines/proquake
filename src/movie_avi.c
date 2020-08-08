@@ -244,21 +244,14 @@ qboolean Capture_Open (char *filename)
 	}
 
 	// initialize video data
-#ifdef GLQUAKE
+
 	m_video_frame_size = glwidth * glheight * 3;
-#else
-	m_video_frame_size = vid.width * vid.height * 3;
-#endif
 
 	memset (&bitmap_info_header, 0, sizeof(bitmap_info_header));
 	bitmap_info_header.biSize = sizeof(BITMAPINFOHEADER);
-#ifdef GLQUAKE
+
 	bitmap_info_header.biWidth = glwidth;
 	bitmap_info_header.biHeight = glheight;
-#else
-	bitmap_info_header.biWidth = vid.width;
-	bitmap_info_header.biHeight = vid.height;
-#endif
 	bitmap_info_header.biPlanes = 1;
 	bitmap_info_header.biBitCount = 24;
 	bitmap_info_header.biCompression = BI_RGB;
@@ -393,11 +386,8 @@ void Capture_Close (void)
 void Capture_WriteVideo (byte *pixel_buffer)
 {
 	HRESULT	hr;
-#ifdef GLQUAKE
+
 	int	size = glwidth * glheight * 3;
-#else
-	int	size = vid.width * vid.height * 3;
-#endif
 
 	// check frame size (TODO: other things too?) hasn't changed
 	if (m_video_frame_size != size)

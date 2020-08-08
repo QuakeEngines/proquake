@@ -237,12 +237,8 @@ store:
 				t >>= 7;
 				if (t > 255)
 					t = 255;
-#ifdef D3DQ_WORKAROUND
-				// Really??????
-				dest[3] = 255-t;
-#else
 				dest[3] = 255-gammatable[t];	// JPG 3.02 - t -> gammatable[t]
-#endif
+
 				dest += 4;
 			}
 		}
@@ -709,12 +705,6 @@ void R_DrawSequentialPoly (msurface_t *s)
 	vec3_t		nv;
 	glRect_t	*theRect;
 
-// Begin D3DQuake
-#ifdef D3DQ_WORKAROUND
-int gNoSurfaces=0;
-	if ( gNoSurfaces ) return;
-// End D3DQuake
-#endif // D3DQ_WORKAROUND
 
 	//
 	// normal lightmaped poly
@@ -1106,13 +1096,8 @@ void R_DrawBrushModel (entity_t *ent)
 	if (R_CullBox (mins, maxs))
 		return;
 
-	if (ISTRANSPARENT(ent)) {
-		glEnable (GL_BLEND);
-		glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-		glColor4f (1, 1, 1, ent->transparency);
-	} else {
-		glColor3f (1,1,1);
-	}
+	glColor3f (1,1,1);
+	
 	memset (lightmap_polys, 0, sizeof(lightmap_polys));
 
 	VectorSubtract (r_refdef.vieworg, ent->origin, modelorg);
@@ -1174,11 +1159,6 @@ void R_DrawBrushModel (entity_t *ent)
 
 	glPopMatrix ();
 
-	if (ISTRANSPARENT(ent))
-	{
-		glColor3ubv (color_white);
-		glDisable (GL_BLEND);
-	}
 }
 
 /*
@@ -1335,9 +1315,6 @@ void R_DrawWorld (void)
 
 	glColor3f (1,1,1);
 	memset (lightmap_polys, 0, sizeof(lightmap_polys));
-#ifdef SUPPORTS_SKYBOX
-	R_ClearSkyBox ();
-#endif
 
 	R_RecursiveWorldNode (cl.worldmodel->nodes);
 
@@ -1350,9 +1327,6 @@ void R_DrawWorld (void)
 		DrawFullBrightTextures (cl.worldmodel->surfaces, cl.worldmodel->numsurfaces);
 #endif
 
-#ifdef SUPPORTS_SKYBOX
-	R_DrawSkyBox ();
-#endif
 }
 
 /*
@@ -1538,43 +1512,6 @@ void BuildSurfaceDisplayList (msurface_t *fa)
 		poly->verts[i][5] = s;
 		poly->verts[i][6] = t;
 	}
-#if !defined(DX8QUAKE_NO_GL_KEEPTJUNCTIONS_ZERO)
-	// remove co-linear points - Ed
-	if (!gl_keeptjunctions.value && (!(fa->flags & SURF_UNDERWATER) && !r_waterwarp.value)) {
-		for (i = 0 ; i < lnumverts ; ++i) {
-			vec3_t v1, v2;
-			float *prev, *this, *next;
-
-			prev = poly->verts[(i + lnumverts - 1) % lnumverts];
-			this = poly->verts[i];
-			next = poly->verts[(i + 1) % lnumverts];
-
-			VectorSubtract( this, prev, v1 );
-			VectorNormalize( v1 );
-			VectorSubtract( next, prev, v2 );
-			VectorNormalize( v2 );
-
-			// skip co-linear points
-			#define COLINEAR_EPSILON 0.001
-			if ((fabs( v1[0] - v2[0] ) <= COLINEAR_EPSILON) &&
-				(fabs( v1[1] - v2[1] ) <= COLINEAR_EPSILON) &&
-				(fabs( v1[2] - v2[2] ) <= COLINEAR_EPSILON))
-			{
-				int j;
-				for (j = i + 1; j < lnumverts; ++j)
-				{
-					int k;
-					for (k = 0; k < VERTEXSIZE; ++k)
-						poly->verts[j - 1][k] = poly->verts[j][k];
-				}
-				--lnumverts;
-				++nColinElim;
-				// retry next vertex next time, which is now current vertex
-				--i;
-			}
-		}
-	}
-#endif
 	poly->numverts = lnumverts;
 }
 
@@ -1709,9 +1646,6 @@ void GL_BuildLightmaps (void)
 		GL_Bind(lightmap_textures + i);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-#ifdef MACOSX_TEXRAM_CHECK
-                GL_CheckTextureRAM (GL_TEXTURE_2D, 0, lightmap_bytes, BLOCK_WIDTH, BLOCK_HEIGHT, 0, 0, gl_lightmap_format, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
 		glTexImage2D (GL_TEXTURE_2D, 0, lightmap_bytes, BLOCK_WIDTH, BLOCK_HEIGHT, 0, gl_lightmap_format, GL_UNSIGNED_BYTE, lightmaps+i*BLOCK_WIDTH*BLOCK_HEIGHT*lightmap_bytes);
 	}
 

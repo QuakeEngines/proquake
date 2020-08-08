@@ -72,6 +72,21 @@ void AddLightBlend (float r, float g, float b, float a2)
 	v_blend[2] = v_blend[2]*(1-a2) + b*a2;
 }
 
+static float	bubble_sin[17], bubble_cos[17];
+
+void R_Init_FlashBlend_Bubble (void)
+{
+	int	i;
+	float	a;
+
+	for (i = 16 ; i >= 0 ; i --)
+	{
+		a = i/16.0 * M_PI * 2;
+		bubble_sin[i] = sin(a);
+		bubble_cos[i] = cos(a);
+	}
+}
+
 void R_RenderDlight (dlight_t *light)
 {
 	int		i, j;
@@ -96,10 +111,8 @@ void R_RenderDlight (dlight_t *light)
 	glColor3f (0,0,0);
 	for (i=16 ; i>=0 ; i--)
 	{
-		a = i/16.0 * M_PI*2;
 		for (j=0 ; j<3 ; j++)
-			v[j] = light->origin[j] + vright[j]*cos(a)*rad
-				+ vup[j]*sin(a)*rad;
+			v[j] = light->origin[j] + vright[j] * bubble_cos[i] * rad + vup[j] * bubble_sin[i] * rad;
 		glVertex3fv (v);
 	}
 	glEnd ();
@@ -120,12 +133,6 @@ void R_RenderDlights (void)
 
 	r_dlightframecount = r_framecount + 1;	// because the count hasn't
 											//  advanced yet for this frame
-#ifdef SUPPORTS_FOG
-  // NATAS - BramBo - Disable drawing fog on lights - looks better
-        if (gl_fogenable.value) {
-            glDisable(GL_FOG);
-        }
-#endif
 	glDepthMask (0);
 	glDisable (GL_TEXTURE_2D);
 	glShadeModel (GL_SMOOTH);
@@ -145,13 +152,6 @@ void R_RenderDlights (void)
 	glEnable (GL_TEXTURE_2D);
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDepthMask (1);
-#ifdef SUPPORTS_FOG
-    // NATAS - BramBo - re-enable fog again
-        if (gl_fogenable.value) {
-        	glEnable(GL_FOG);
-        }
-    // END
-#endif
 }
 
 /*

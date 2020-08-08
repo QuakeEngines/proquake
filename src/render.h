@@ -34,10 +34,6 @@ typedef struct efrag_s
 	struct efrag_s		*entnext;
 } efrag_t;
 
-#ifdef SUPPORTS_SW_WATERALPHA
-extern cvar_t r_wateralpha; // Manoel Kasimier - translucent water
-byte r_foundwater, r_drawwater; // Manoel Kasimier - translucent water
-#endif
 
 typedef struct entity_s
 {
@@ -70,39 +66,20 @@ typedef struct entity_s
 
 	int		modelindex;
 	
-#ifdef SUPPORTS_HARDWARE_ANIM_INTERPOLATION
-        // fenix@io.com: model animation interpolation
-        float           frame_start_time;
-        float			frame_interval;
-        int             lastpose, currpose;
 
-		// fenix@io.com: model transform interpolation
-        float           translate_start_time;
-		vec3_t          lastorigin, currorigin;
+    // fenix@io.com: model animation interpolation
+    float           frame_start_time;
+    float			frame_interval;
+    int             lastpose, currpose;
 
-        float			rotate_start_time;
-        vec3_t			lastangles, currangles;
-#endif
+	// fenix@io.com: model transform interpolation
+    float           translate_start_time;
+	vec3_t          lastorigin, currorigin;
 
-#ifdef SUPPORTS_SOFTWARE_ANIM_INTERPOLATION
-		float           frame_start_time;
-		int				lastpose, currpose;
-		int				lastframe;
+    float			rotate_start_time;
+    vec3_t			lastangles, currangles;
 
-		// fenix@io.com: model transform interpolation
-        float           translate_start_time;
-		vec3_t          lastorigin, currorigin;
 
-        float			rotate_start_time;
-        vec3_t			lastangles, currangles;
-
-#endif
-
-#ifdef SUPPORTS_ENTITY_ALPHA
-		// nehahra support
-		float			transparency;
-		qboolean 		istransparent;
-#endif
 
 		qboolean		monsterstep;
 } entity_t;
@@ -149,18 +126,9 @@ void R_InitTextures (void);
 void R_InitEfrags (void);
 void R_RenderView (void);		// must set r_refdef first
 void R_ViewChanged (vrect_t *pvrect, int lineadj, float aspect); // called whenever r_refdef or vid change
-#ifdef PSP_HARDWARE_VIDEO
-void R_InitSky (byte *mt);	// called at level load
-#else
+
 void R_InitSky (struct texture_s *mt);	// called at level load
-#endif
-#ifdef SUPPORTS_SKYBOX
-void R_SkyCommand_f (void);
-#endif
-#ifdef SUPPORTS_SW_SKYBOX
-void R_LoadSky (char *s); // Manoel Kasimier - skyboxes
-void LoadPCX (char *filename, byte **pic, int *width, int *height); // Manoel Kasimier - skyboxes
-#endif
+
 
 
 void R_AddEfrags (entity_t *ent);

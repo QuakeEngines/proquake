@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -84,62 +84,6 @@ char *svc_strings[] =
 	"svc_fog"		// [byte] enable <optional past this point, only included if enable is true> [float] density [byte] red [byte] green [byte] blue
 };
 
-//=============================================================================
-
-#ifdef SUPPORTS_AUTOID
-void CL_InitModelnames (void)
-{
-	int	i;
-
-	memset (cl_modelnames, 0, sizeof(cl_modelnames));
-
-	cl_modelnames[mi_player] = "progs/player.mdl";
-	cl_modelnames[mi_q3torso] = "progs/player/upper.md3";
-	cl_modelnames[mi_q3head] = "progs/player/head.md3";
-	cl_modelnames[mi_h_player] = "progs/h_player.mdl";
-	cl_modelnames[mi_eyes] = "progs/eyes.mdl";
-	cl_modelnames[mi_rocket] = "progs/missile.mdl";
-	cl_modelnames[mi_grenade] = "progs/grenade.mdl";
-	cl_modelnames[mi_flame0] = "progs/flame0.mdl";
-	cl_modelnames[mi_flame0_md3] = "progs/flame.md3";
-	cl_modelnames[mi_flame1] = "progs/flame.mdl";
-	cl_modelnames[mi_flame2] = "progs/flame2.mdl";
-	cl_modelnames[mi_explo1] = "progs/s_explod.spr";
-	cl_modelnames[mi_explo2] = "progs/s_expl.spr";
-	cl_modelnames[mi_bubble] = "progs/s_bubble.spr";
-	cl_modelnames[mi_gib1] = "progs/gib1.mdl";
-	cl_modelnames[mi_gib2] = "progs/gib2.mdl";
-	cl_modelnames[mi_gib3] = "progs/gib3.mdl";
-	cl_modelnames[mi_fish] = "progs/fish.mdl";
-	cl_modelnames[mi_dog] = "progs/dog.mdl";
-	cl_modelnames[mi_soldier] = "progs/soldier.mdl";
-	cl_modelnames[mi_enforcer] = "progs/enforcer.mdl";
-	cl_modelnames[mi_knight] = "progs/knight.mdl";
-	cl_modelnames[mi_hknight] = "progs/hknight.mdl";
-	cl_modelnames[mi_scrag] = "progs/wizard.mdl";
-	cl_modelnames[mi_ogre] = "progs/ogre.mdl";
-	cl_modelnames[mi_fiend] = "progs/demon.mdl";
-	cl_modelnames[mi_vore] = "progs/shalrath.mdl";
-	cl_modelnames[mi_shambler] = "progs/shambler.mdl";
-	cl_modelnames[mi_h_dog] = "progs/h_dog.mdl";
-	cl_modelnames[mi_h_soldier] = "progs/h_guard.mdl";
-	cl_modelnames[mi_h_enforcer] = "progs/h_mega.mdl";
-	cl_modelnames[mi_h_knight] = "progs/h_knight.mdl";
-	cl_modelnames[mi_h_hknight] = "progs/h_hellkn.mdl";
-	cl_modelnames[mi_h_scrag] = "progs/h_wizard.mdl";
-	cl_modelnames[mi_h_ogre] = "progs/h_ogre.mdl";
-	cl_modelnames[mi_h_fiend] = "progs/h_demon.mdl";
-	cl_modelnames[mi_h_vore] = "progs/h_shal.mdl";
-	cl_modelnames[mi_h_shambler] = "progs/h_shams.mdl";
-	cl_modelnames[mi_h_zombie] = "progs/h_zombie.mdl";
-
-	for (i = 0 ; i < NUM_MODELINDEX ; i++)
-	{
-		if (!cl_modelnames[i])
-			Sys_Error ("cl_modelnames[%d] not initialized", i);
-	}
-}
-#endif
 
 /*
 ===============
@@ -157,7 +101,7 @@ static entity_t	*CL_EntityNum (int num)
 
 		while (cl.num_entities<=num)
 		{
-			cl_entities[cl.num_entities].colormap = vid.colormap;
+			cl_entities[cl.num_entities].colormap = 0;
 			cl.num_entities++;
 		}
 	}
@@ -221,7 +165,8 @@ static void CL_KeepaliveMessage (void)
 	old = net_message;
 	memcpy (olddata, net_message.data, net_message.cursize);
 
-	do {
+	do 
+	{
 		ret = CL_GetMessage ();
 		switch (ret)
 		{
@@ -246,7 +191,7 @@ static void CL_KeepaliveMessage (void)
 	memcpy (net_message.data, olddata, net_message.cursize);
 
 // check time
-	time = Sys_DoubleTime ();
+	time = Sys_FloatTime ();
 	if (time - lastmsg < 5)
 		return;
 	lastmsg = time;
@@ -275,7 +220,7 @@ static int CL_WebDownloadProgress( double percent )
 	cls.download.percent = percent;
 		CL_KeepaliveMessage();
 
-	newtime = Sys_DoubleTime ();
+	newtime = Sys_FloatTime ();
 	time = newtime - oldtime;
 
 	Host_Frame (time);
@@ -286,6 +231,10 @@ static int CL_WebDownloadProgress( double percent )
 }
 #endif
 
+void CL_NewMap (void)
+{
+
+}
 /*
 ==================
 CL_ParseServerInfo
@@ -334,7 +283,7 @@ static void CL_ParseServerInfo (void)
 	str = MSG_ReadString ();
 	strncpy (cl.levelname, str, sizeof(cl.levelname)-1);
 
-// seperate the printfs so the server message can have a color
+// separate the printfs so the server message can have a color
 	Con_Printf("\n\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n\n");
 	Con_Printf ("%c%s\n", 2, str);
 
@@ -343,10 +292,6 @@ static void CL_ParseServerInfo (void)
 // needlessly purge it
 
 // precache models
-#ifdef SUPPORTS_AUTOID
-	for (i=0 ; i<NUM_MODELINDEX ; i++)
-		cl_modelindex[i] = -1;
-#endif
 
 	memset (cl.model_precache, 0, sizeof(cl.model_precache));
 	for (nummodels=1 ; ; nummodels++)
@@ -362,16 +307,6 @@ static void CL_ParseServerInfo (void)
 		strcpy (model_precache[nummodels], str);
 		Mod_TouchModel (str);
 
-#ifdef SUPPORTS_AUTOID
-		for (i = 0 ; i < NUM_MODELINDEX ; i++)
-		{
-			if (!strcmp(cl_modelnames[i], model_precache[nummodels]))
-			{
-				cl_modelindex[i] = nummodels;
-				break;
-			}
-		}
-#endif
 	}
 
 // precache sounds
@@ -381,7 +316,8 @@ static void CL_ParseServerInfo (void)
 		str = MSG_ReadString ();
 		if (!str[0])
 			break;
-		if (numsounds==MAX_SOUNDS) {
+		if (numsounds==MAX_SOUNDS) 
+		{
 			Con_Printf ("Server sent too many sound precaches\n");
 			return;
 		}
@@ -406,24 +342,19 @@ static void CL_ParseServerInfo (void)
 			{
 				char url[1024];
 				qboolean success = false;
-				char download_tempname[MAX_OSPATH],download_finalname[MAX_OSPATH];
-				char folder[MAX_QPATH];
-				char name[MAX_QPATH];
+				char download_tempname[MAX_OSPATH];
+				char download_finalname[MAX_OSPATH];
 				extern char server_name[MAX_QPATH];
 				extern int net_hostport;
 
 				//Create the FULL path where the file should be written
-				snprintf (download_tempname, sizeof(download_tempname), "%s/%s.tmp", com_gamedir, model_precache[i]);
+				SNPrintf (download_tempname, sizeof(download_tempname), "%s/%s.tmp", com_gamedir, model_precache[i]);
 
-				//determine the proper folder and create it, the OS will ignore if already exsists
-				COM_GetFolder(model_precache[i],folder);// "progs/","maps/"
-				snprintf (name, sizeof(name), "%s/%s", com_gamedir, folder);
-				Sys_mkdir (name);
-
+				COM_CreatePath (download_tempname); // COM_CreatePath drills down.  We don't need to waste time purifying the filename to just a path.
 				Con_Printf( "Web downloading: %s from %s%s\n", model_precache[i], cl_web_download_url.string, model_precache[i]);
 
 				//assign the url + path + file + extension we want
-				snprintf( url, sizeof( url ), "%s%s", cl_web_download_url.string, model_precache[i]);
+				SNPrintf( url, sizeof( url ), "%s%s", cl_web_download_url.string, model_precache[i]);
 
 				cls.download.web = true;
 				cls.download.disconnect = false;
@@ -436,23 +367,35 @@ static void CL_ParseServerInfo (void)
 
 				cls.download.web = false;
 
-				free(url);
-				free(name);
-				free(folder);
 
+#if 0
 				if (success)
 				{
 					Con_Printf("Web download successful: %s\n", download_tempname);
 					//Rename the .tmp file to the final precache filename
-					snprintf (download_finalname, sizeof(download_finalname), "%s/%s", com_gamedir, model_precache[i]);
+					SNPrintf (download_finalname, sizeof(download_finalname), "%s/%s", com_gamedir, model_precache[i]);
 					rename (download_tempname, download_finalname);
 
-					free(download_tempname);
-					free(download_finalname);
+#if 0
+					Cbuf_AddText (va("connect %s:%u\n",server_name,net_hostport));//reconnect after each success
+					return;
+#endif
 
-						Cbuf_AddText (va("connect %s:%u\n",server_name,net_hostport));//reconnect after each success
-						return;
-					}
+
+				}
+#else
+				if (success)
+				{
+				   Con_Printf("Web download successful: %s\n", download_tempname);
+				   //Rename the .tmp file to the final precache filename
+				   SNPrintf (download_finalname, sizeof(download_finalname), "%s/%s", com_gamedir, model_precache[i]);
+				   rename (download_tempname, download_finalname);
+
+				   CL_KeepaliveMessage ();
+				   i--; // Subtract 1 so we try this model again in next iteration
+				   continue;  // Bail on loop and resume
+				}
+#endif
 				else
 				{
 					remove (download_tempname);
@@ -460,18 +403,18 @@ static void CL_ParseServerInfo (void)
 					return;
 				}
 
-				free(download_tempname);
-
 				if( cls.download.disconnect )//if the user type disconnect in the middle of the download
 				{
 					cls.download.disconnect = false;
 					CL_Disconnect_f();
 					return;
 				}
-			} else
+			} 
+			else
 #endif
 			{
 				Con_Printf("Model %s not found\n", model_precache[i]);
+				//don't disconnect, let them sit in console and ask for help.
 				return;
 			}
 		}
@@ -548,7 +491,7 @@ void CL_EntityInterpolateOrigins (entity_t *ent)
 		}
 
 
-	
+
 
 	}
 }
@@ -712,16 +655,16 @@ if (bits&(1<<i))
 
 	i = (bits & U_COLORMAP) ? MSG_ReadByte() : ent->baseline.colormap;
 	if (!i)
-		ent->colormap = vid.colormap;
+		ent->colormap = 0;
 	else
 	{
 //		Con_Printf("ent: num %i colormap %i frame %i\n", num, i, ent->frame);
 		if (i > cl.maxclients)
 			Sys_Error ("i >= cl.maxclients");
-		ent->colormap = cl.scores[i-1].translations;
+		ent->colormap = i;
 	}
 
-#ifdef GL_QUAKE_SKIN_METHOD
+
 	skin = (bits & U_SKIN) ? MSG_ReadByte() : ent->baseline.skin;
 	if (skin != ent->skinnum)
 	{
@@ -729,9 +672,6 @@ if (bits&(1<<i))
 		if (num > 0 && num <= cl.maxclients)
 			R_TranslatePlayerSkin (num - 1);
 	}
-#else
-		ent->skinnum = (bits & U_SKIN) ? MSG_ReadByte(): ent->baseline.skin;
-#endif
 
 	ent->effects = (bits & U_EFFECTS) ? MSG_ReadByte() : ent->baseline.effects;
 
@@ -748,20 +688,6 @@ if (bits&(1<<i))
 	ent->msg_origins[0][2] = (bits & U_ORIGIN3) ? MSG_ReadCoord() : ent->baseline.origin[2];
 	ent->msg_angles[0][2] = (bits & U_ANGLE3) ? MSG_ReadAngle() : ent->baseline.angles[2];
 
-#ifdef SUPPORTS_ENTITY_ALPHA
-	if (bits & U_TRANS) {
-		int	fullbright, temp;
-
-		temp = MSG_ReadFloat ();
-		ent->istransparent = true;
-		ent->transparency = MSG_ReadFloat ();
-		if (temp == 2)
-			fullbright = MSG_ReadFloat ();
-	} else {
-		ent->istransparent = false;
-		ent->transparency = 1.0;
-	}
-#endif
 
 	{
 		extern cvar_t cl_gameplayhack_monster_lerp;
@@ -907,35 +833,11 @@ CL_NewTranslation
 */
  void CL_NewTranslation (int slot)
 {
-	int		i, j, top, bottom;
-	byte	*dest, *source;
+// CL_Parse calls this
 
-	if (slot > cl.maxclients)
-		Sys_Error ("CL_NewTranslation: slot > cl.maxclients");
-	dest = cl.scores[slot].translations;
-	source = vid.colormap;
-	memcpy (dest, vid.colormap, sizeof(cl.scores[slot].translations));
-	top = cl.scores[slot].colors & 0xf0;
-	bottom = (cl.scores[slot].colors &15)<<4;
 
-#ifdef GL_QUAKE_SKIN_METHOD
 	R_TranslatePlayerSkin (slot);
-#endif
 
-	for (i=0 ; i<VID_GRADES ; i++, dest += 256, source+=256)
-	{
-		if (top < 128)	// the artists made some backwards ranges.  sigh.
-			memcpy (dest + TOP_RANGE, source + top, 16);
-		else
-			for (j=0 ; j<16 ; j++)
-				dest[TOP_RANGE+j] = source[top+15-j];
-
-		if (bottom < 128)
-			memcpy (dest + BOTTOM_RANGE, source + bottom, 16);
-		else
-			for (j=0 ; j<16 ; j++)
-				dest[BOTTOM_RANGE+j] = source[bottom+15-j];
-	}
 }
 
 /*
@@ -956,7 +858,7 @@ static void CL_ParseStatic (void)
 // copy it to the current state
 	ent->model = cl.model_precache[ent->baseline.modelindex];
 	ent->frame = ent->baseline.frame;
-	ent->colormap = vid.colormap;
+	ent->colormap = 0;
 	ent->skinnum = ent->baseline.skin;
 	ent->effects = ent->baseline.effects;
 
@@ -1466,17 +1368,12 @@ void CL_ParseServerMessage (void)
 			break;
 
 		case svc_setpause:
-			if ((cl.paused = MSG_ReadByte ())) {
-					CDAudio_Pause ();
-#ifdef _WIN32
-					VID_HandlePause (true);
-#endif
-			} else {
-					CDAudio_Resume ();
-#ifdef _WIN32
-					VID_HandlePause (false);
-#endif
-			}
+			if ((cl.paused = MSG_ReadByte ()))
+				CDAudio_Pause ();
+
+			else
+				CDAudio_Resume ();
+
 			break;
 
 		case svc_signonnum:
@@ -1555,44 +1452,7 @@ void CL_ParseServerMessage (void)
 		case svc_sellscreen:
 			Cmd_ExecuteString ("help", src_command);
 			break;
-		case svc_showlmp:
-			// Just parse msg
-			MSG_ReadString ();
-			MSG_ReadString ();
-			MSG_ReadByte();
-			MSG_ReadByte();
-			break;
 
-		case svc_skybox:
-#ifdef SUPPORTS_SKYBOX
-			R_LoadSkys (MSG_ReadString());
-#else
-            MSG_ReadString (); // Just parse msg
-#endif
-                        break;
-		case svc_fog:
-			if (MSG_ReadByte())
-			{
-#ifdef SUPPORTS_FOG
-				Cvar_SetValue ("gl_fogdensity", MSG_ReadFloat());
-				Cvar_SetValue ("gl_fogred", MSG_ReadByte() / 255.0);
-				Cvar_SetValue ("gl_foggreen", MSG_ReadByte() / 255.0);
-				Cvar_SetValue ("gl_fogblue", MSG_ReadByte() / 255.0);
-				Cvar_SetValue ("gl_fogenable", 1);
-#else
-			// Just parse msg
-				MSG_ReadFloat ();
-				MSG_ReadByte ();
-				MSG_ReadByte ();
-				MSG_ReadByte ();
-#endif
-			} else {
-#ifdef SUPPORTS_FOG
-				Cvar_SetValue ("gl_fogenable", 0);
-				Cvar_SetValue ("gl_fogdensity", 0);
-#endif
-			}
-			break;
 		}
 	}
 }

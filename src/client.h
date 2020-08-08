@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -43,7 +43,6 @@ typedef struct
 	int		colors;			// two 4 bit fields
 	int		ping;			// JPG - added this
 	int		addr;			// JPG - added this
-	byte	translations[VID_GRADES*256];
 } scoreboard_t;
 
 // JPG - added this for teamscore status bar
@@ -326,21 +325,6 @@ void CL_NextDemo (void);
 extern	int				cl_numvisedicts;
 extern	entity_t		*cl_visedicts[MAX_VISEDICTS];
 
-#ifdef SUPPORTS_AUTOID
-// model indexes
-typedef	enum modelindex_s {
-	mi_player, mi_q3torso, mi_q3head, mi_eyes, mi_rocket, mi_grenade,
-	mi_flame0, mi_flame0_md3, mi_flame1, mi_flame2, mi_explo1, mi_explo2, mi_bubble,
-	mi_fish, mi_dog, mi_soldier, mi_enforcer, mi_knight, mi_hknight,
-	mi_scrag, mi_ogre, mi_fiend, mi_vore, mi_shambler,
-	mi_h_dog, mi_h_soldier, mi_h_enforcer, mi_h_knight, mi_h_hknight, mi_h_scrag,
-	mi_h_ogre, mi_h_fiend, mi_h_vore, mi_h_shambler, mi_h_zombie, mi_h_player,
-	mi_gib1, mi_gib2, mi_gib3, NUM_MODELINDEX
-} modelindex_t;
-
-extern	modelindex_t cl_modelindex[NUM_MODELINDEX];
-extern	char		*cl_modelnames[NUM_MODELINDEX];
-#endif
 
 // cl_input.c
 typedef struct
@@ -380,9 +364,6 @@ void CL_TimeDemo_f (void);
 // cl_parse.c
 void CL_ParseServerMessage (void);
 void CL_NewTranslation (int slot);
-#ifdef SUPPORTS_AUTOID
-void CL_InitModelnames (void);
-#endif
 
 // view.c
 void V_StartPitchDrift_f (void);

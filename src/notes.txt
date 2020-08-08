@@ -1,0 +1,10 @@
+TO DO LIST:
+
+1. Make colormapped skin support better (i.e. support radical mods like Slide, FVF, etc.)
+2. Enemy skin support (helps if you are used to a certain color and have difficulty adjusting).
+3. Investigate different gamma/contrast improvement options
+4. Obviously the Mac build.
+5. Rewrite video mode selection.
+6. MH model of input possibly.
+7. Proper implementation of skybox/fog
+

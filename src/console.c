@@ -3,7 +3,7 @@ Copyright (C) 1996-1997 Id Software, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
+as published by the Free Software Foundation; either version 3
 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -198,7 +198,7 @@ void Con_Dump_f (void)
 #if 1
 	//johnfitz -- there is a security risk in writing files with an arbitrary filename. so,
 	//until stuffcmd is crippled to alleviate this risk, just force the default filename.
-	snprintf(name, sizeof(name), "%s/condump.txt", com_gamedir);
+	SNPrintf(name, sizeof(name), "%s/condump.txt", com_gamedir);
 #else
 	if (Cmd_Argc() > 2)
 	{
@@ -213,11 +213,11 @@ void Con_Dump_f (void)
 			Con_Printf ("Relative pathnames are not allowed.\n");
 			return;
 		}
-		snprintf(name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
+		SNPrintf(name, sizeof(name), "%s/%s", com_gamedir, Cmd_Argv(1));
 		COM_DefaultExtension (name, ".txt");
 	}
 	else
-		snprintf(name, sizeof(name), "%s/condump.txt", com_gamedir);
+		SNPrintf(name, sizeof(name), "%s/condump.txt", com_gamedir);
 #endif
 
 	COM_CreatePath (name);
@@ -262,7 +262,7 @@ void Con_Dump_f (void)
 	Con_Printf ("Dumped console text to %s.\n", name);
 }
 
-#ifdef SUPPORTS_CLIPBOARD
+
 /*
 ================
 Con_Copy_f -- Baker -- adapted from Con_Dump
@@ -309,7 +309,7 @@ void Con_Copy_f (void)
 	Sys_CopyToClipboard(outstring);
 	Con_Printf ("Copied console to clipboard\n");
 }
-#endif
+
 
 /*
 ================
@@ -370,11 +370,7 @@ void Con_CheckResize (void)
 
 	if (width < 1)			// video hasn't been initialized yet
 	{
-#ifdef GLQUAKE // Baker: GLQuake runs in 640x480 by default
 		width = 78;
-#else
-		width = 38;
-#endif
 		con_linewidth = width;
 		con_totallines = CON_TEXTSIZE / con_linewidth;
 		memset (con_text, ' ', CON_TEXTSIZE);
@@ -441,16 +437,16 @@ void Con_Init (void)
 				do
 				{
 					n = n + 1;
-					snprintf (logfilename, sizeof(logfilename), com_argv[con_debuglog+1], n);
+					SNPrintf (logfilename, sizeof(logfilename), com_argv[con_debuglog+1], n);
 					strlcat (logfilename, ".log", sizeof(logfilename));
-					snprintf (temp, sizeof(temp), "%s/%s", com_gamedir, logfilename);
+					SNPrintf (temp, sizeof(temp), "%s/%s", com_gamedir, logfilename);
 					fd = open(temp, O_CREAT | O_EXCL | O_WRONLY, 0666);
 				}
 				while (fd == -1);
 				close(fd);
 			}
 			else
-				snprintf (logfilename, sizeof(logfilename), "%s.log", com_argv[con_debuglog+1]);
+				SNPrintf (logfilename, sizeof(logfilename), "%s.log", com_argv[con_debuglog+1]);
 		}
 		else
 			strcpy(logfilename, "qconsole.log");
@@ -458,7 +454,7 @@ void Con_Init (void)
 		// JPG - changed t2 to logfilename
 		if (strlen (com_gamedir) < (MAXGAMEDIRLEN - strlen (logfilename)))
 		{
-			snprintf(temp, sizeof(temp), "%s/%s", com_gamedir, logfilename); // JPG - added the '/'
+			SNPrintf(temp, sizeof(temp), "%s/%s", com_gamedir, logfilename); // JPG - added the '/'
 			unlink (temp);
 		}
 
@@ -491,9 +487,9 @@ void Con_Init (void)
 	Cmd_AddCommand ("clear", Con_Clear_f);
 	Cmd_AddCommand ("condump", Con_Dump_f); //johnfitz
 	Cmd_AddCommand ("time", Con_Showtime_f); // Baker 3.60 - "time command
-#ifdef SUPPORTS_CLIPBOARD
+
 	Cmd_AddCommand ("copy", Con_Copy_f); // Baker 399.m - copy console to clipboard
-#endif
+
 	con_initialized = true;
 	Con_Printf ("Console initialized\n");
 }
@@ -533,18 +529,8 @@ void Con_Print (char *txt)
 
 	static int fixline = 0;
 
-#ifdef FLASH_CONSOLE_TRACE_ECHO
-	{
-		AS3_Val as3Str = AS3_String(txt);
-		AS3_Trace(as3Str);
-		AS3_Release(as3Str);
-	}
-#endif
 
-#ifdef MACOSX_QUESTIONABLE_VALUE
-    if (con_initialized == false)
-        return;
-#endif // ^^ the above is probably not necessary.  Research in future as to why Fruitz did this.
+
 
 	//con_backscroll = 0;  // JPG - half of a fix for an annoying problem
 
@@ -597,9 +583,9 @@ void Con_Print (char *txt)
 			if (msg_time < match_time - 2 || msg_time > match_time + 2)
 			{
 				if (pq_timestamp.value == 1)
-					snprintf (buff, sizeof(buff), "%d%c%02d", minutes, 'X' + 128, seconds);
+					SNPrintf (buff, sizeof(buff), "%d%c%02d", minutes, 'X' + 128, seconds);
 				else
-					snprintf (buff, sizeof(buff), "%02d", seconds);
+					SNPrintf (buff, sizeof(buff), "%02d", seconds);
 
 				if (cr)
 				{
@@ -701,7 +687,7 @@ void Con_DebugLog( /* char *file, */ char *fmt, ...)
     int fd;
 
     va_start(argptr, fmt);
-    vsnprintf(data, sizeof(data), fmt, argptr);
+    VSNPrintf(data, sizeof(data), fmt, argptr);
     va_end(argptr);
     fd = open(va("%s/%s", com_gamedir, logfilename), O_WRONLY | O_CREAT | O_APPEND, 0666);
     write(fd, data, strlen(data));
@@ -759,7 +745,7 @@ void Con_Debugf (char *fmt, ...)
 	int			temp;
 
 	va_start (argptr,fmt);
-	vsnprintf (msg,sizeof(msg),fmt,argptr);
+	VSNPrintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 	temp = scr_disabled_for_loading;
@@ -783,7 +769,7 @@ void Con_Printf (char *fmt, ...)
 	static qboolean	inupdate;
 
 	va_start (argptr,fmt);
-	vsnprintf (msg,sizeof(msg),fmt,argptr);
+	VSNPrintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 // also echo to debugging console
@@ -831,7 +817,7 @@ void Con_SafePrintf (char *fmt, ...)
 	int			temp;
 
 	va_start (argptr,fmt);
-	vsnprintf (msg,sizeof(msg),fmt,argptr);
+	VSNPrintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 	temp = scr_disabled_for_loading;
@@ -857,7 +843,7 @@ void Con_DPrintf (char *fmt, ...)
 		return;			// don't confuse non-developers with techie stuff...
 
 	va_start (argptr,fmt);
-	vsnprintf (msg,sizeof(msg),fmt,argptr);
+	VSNPrintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 	Con_Printf ("%s", msg);
@@ -879,7 +865,7 @@ void Con_CenterPrintf (int linewidth, char *fmt, ...)
 	int		len, s;
 
 	va_start (argptr,fmt);
-	vsnprintf (msg,sizeof(msg),fmt,argptr);
+	VSNPrintf (msg,sizeof(msg),fmt,argptr);
 	va_end (argptr);
 
 	linewidth = min (linewidth, con_linewidth);
@@ -992,7 +978,7 @@ void Con_DrawNotify (void)
 	float	time;
 	extern char chat_buffer[];
 
-	maxlines = bound(0, _con_notifylines.value, NUM_CON_TIMES);
+	maxlines = CLAMP (0, _con_notifylines.value, NUM_CON_TIMES);
 
 	v = 0;
 	for (i = con_current - maxlines + 1 ; i <= con_current ; i++)
@@ -1119,11 +1105,12 @@ void Con_NotifyBox (char *text)
 	key_count = -2;		// wait for a key down and up
 	key_dest = key_console;
 
-	do {
-		t1 = Sys_DoubleTime ();
+	do 
+	{
+		t1 = Sys_FloatTime ();
 		SCR_UpdateScreen ();
 		Sys_SendKeyEvents ();
-		t2 = Sys_DoubleTime ();
+		t2 = Sys_FloatTime ();
 		realtime += t2-t1;		// make the cursor blink
 	} while (key_count < 0);
 

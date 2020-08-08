@@ -59,6 +59,8 @@ void	R_InitTextures (void)
 					*dest++ = 0xff;
 			}
 	}
+
+	R_Init_FlashBlend_Bubble ();
 }
 
 byte	dottexture[8][8] =
@@ -93,9 +95,6 @@ void R_InitParticleTexture (void)
 			data[y][x][3] = dottexture[x][y]*255;
 		}
 	}
-#ifdef MACOSX_TEXRAM_CHECK
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_alpha_format, 8, 8, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_alpha_format, 8, 8, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
@@ -129,81 +128,7 @@ Grab six views for environment mapping tests
 */
 void R_Envmap_f (void)
 {
-// Baker: this really foobars DX8QUAKE
-// Tried it in d3d8quake
-#if !defined(DX8QUAKE_GL_READPIXELS_NO_RGBA)
-	byte	buffer[256*256*4];
-	int		x,y, width, height;
-
-	glDrawBuffer  (GL_FRONT);
-	glReadBuffer  (GL_FRONT);
-	envmap = true;
-
-	// Baker: store them
-	x = r_refdef.vrect.x;
-	y = r_refdef.vrect.y;
-	width = r_refdef.vrect.width;
-	height = r_refdef.vrect.height;
-
-	r_refdef.vrect.x = 0;
-	r_refdef.vrect.y = 0;
-	r_refdef.vrect.width = 256;
-	r_refdef.vrect.height = 256;
-
-	r_refdef.viewangles[0] = 0;
-	r_refdef.viewangles[1] = 0;
-	r_refdef.viewangles[2] = 0;
-	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
-	R_RenderView ();
-	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env0.rgb", buffer, sizeof(buffer));
-
-	r_refdef.viewangles[1] = 90;
-	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
-	R_RenderView ();
-	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env1.rgb", buffer, sizeof(buffer));
-
-	r_refdef.viewangles[1] = 180;
-	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
-	R_RenderView ();
-	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env2.rgb", buffer, sizeof(buffer));
-
-	r_refdef.viewangles[1] = 270;
-	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
-	R_RenderView ();
-	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env3.rgb", buffer, sizeof(buffer));
-
-	r_refdef.viewangles[0] = -90;
-	r_refdef.viewangles[1] = 0;
-	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
-	R_RenderView ();
-	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env4.rgb", buffer, sizeof(buffer));
-
-	r_refdef.viewangles[0] = 90;
-	r_refdef.viewangles[1] = 0;
-	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
-	R_RenderView ();
-	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env5.rgb", buffer, sizeof(buffer));
-
-	envmap = false;
-	glDrawBuffer  (GL_BACK);
-	glReadBuffer  (GL_BACK);
-
-	// Baker: restore them
-	r_refdef.vrect.x = x;
-	r_refdef.vrect.y = y;
-	r_refdef.vrect.width = width;
-	r_refdef.vrect.height = height;
-
-	GL_EndRendering ();
-#else
 	Con_Printf("Envmap command not supported\n");
-#endif
 }
 
 
@@ -218,6 +143,10 @@ Translates a skin texture by the per-player color lookup
 #ifdef MACOSX
 static unsigned int	pixels[512*256];
 #endif /* MACOSX */
+
+qboolean recentcolor_isSet[MAX_SCOREBOARD];
+int recentcolor[MAX_SCOREBOARD];
+int recentskinnum[MAX_SCOREBOARD];
 
 void R_TranslatePlayerSkin (int playernum)
 {
@@ -236,6 +165,21 @@ void R_TranslatePlayerSkin (int playernum)
 	byte		*inrow;
 	unsigned	frac, fracstep;
 
+	// locate the original skin pixels
+	currententity = &cl_entities[1+playernum];
+	if (!(model = currententity->model))
+		return;		// player doesn't have a model yet
+	if (model->type != mod_alias)
+		return; // only translate skins on alias models
+	if ((currententity->model->flags & MOD_PLAYER) == 0)
+		return; // Only translate player model
+	if (recentcolor_isSet[playernum] && recentcolor[playernum] == cl.scores[playernum].colors &&  recentskinnum[playernum] == currententity->skinnum)
+		return; // Same color as before
+
+	recentcolor_isSet[playernum] = true;
+	recentcolor[playernum] = cl.scores[playernum].colors;
+	recentskinnum[playernum] = currententity->skinnum;
+
 	GL_DisableMultitexture();
 
 	top = cl.scores[playernum].colors & 0xf0;
@@ -251,19 +195,16 @@ void R_TranslatePlayerSkin (int playernum)
 		translate[BOTTOM_RANGE+i] = (bottom < 128) ? bottom + i : bottom + 15 - i;
 	}
 
-	// locate the original skin pixels
-	currententity = &cl_entities[1+playernum];
-	if (!(model = currententity->model))
-		return;		// player doesn't have a model yet
-	if (model->type != mod_alias)
-		return; // only translate skins on alias models
 
 	paliashdr = (aliashdr_t *)Mod_Extradata (model);
 	size = paliashdr->skinwidth * paliashdr->skinheight;
-	if (currententity->skinnum < 0 || currententity->skinnum >= paliashdr->numskins) {
+	if (currententity->skinnum < 0 || currententity->skinnum >= paliashdr->numskins) 
+	{
 		Con_Printf("(%d): Invalid player skin #%d\n", playernum, currententity->skinnum);
 		original = (byte *)paliashdr + paliashdr->texels[0];
-	} else {
+	}
+	 else 
+	{
 		original = (byte *)paliashdr + paliashdr->texels[currententity->skinnum];
 	}
 
@@ -277,65 +218,13 @@ void R_TranslatePlayerSkin (int playernum)
 	// instead of sending it through gl_upload 8
     GL_Bind(playertextures + playernum);
 
-#if 0
-	byte	translated[320*200];
 
-	for (i=0 ; i<s ; i+=4)
-	{
-		translated[i] = translate[original[i]];
-		translated[i+1] = translate[original[i+1]];
-		translated[i+2] = translate[original[i+2]];
-		translated[i+3] = translate[original[i+3]];
-	}
-
-
-	// don't mipmap these, because it takes too long
-	GL_Upload8 (translated, paliashdr->skinwidth, paliashdr->skinheight, false, false, true);
-#else
-#ifdef DX8QUAKE_GET_GL_MAX_SIZE
 	scaled_width = gl_max_size < 512 ? gl_max_size : 512;
 	scaled_height = gl_max_size < 256 ? gl_max_size : 256;
-#else
-	scaled_width = gl_max_size.value < 512 ? gl_max_size.value : 512;
-	scaled_height = gl_max_size.value < 256 ? gl_max_size.value : 256;
-#endif
 
 	// allow users to crunch sizes down even more if they want
 	scaled_width >>= (int)gl_playermip.value;
 	scaled_height >>= (int)gl_playermip.value;
-
-#if !defined(DX8QUAKE_NO_8BIT)
-	if (VID_Is8bit()
-#ifdef MACOSX
-            && gl_palettedtex
-#endif /* MACOSX */
-        ) { // 8bit texture upload
-		byte *out2;
-
-		out2 = (byte *)pixels;
-		memset(pixels, 0, sizeof(pixels));
-		fracstep = inwidth*0x10000/scaled_width;
-		for (i=0 ; i<scaled_height ; i++, out2 += scaled_width)
-		{
-			inrow = original + inwidth*(i*inheight/scaled_height);
-			frac = fracstep >> 1;
-			for (j=0 ; j<scaled_width ; j+=4)
-			{
-				out2[j] = translate[inrow[frac>>16]];
-				frac += fracstep;
-				out2[j+1] = translate[inrow[frac>>16]];
-				frac += fracstep;
-				out2[j+2] = translate[inrow[frac>>16]];
-				frac += fracstep;
-				out2[j+3] = translate[inrow[frac>>16]];
-				frac += fracstep;
-			}
-		}
-
-		GL_Upload8_EXT ((byte *)pixels, scaled_width, scaled_height, TEX_NOFLAGS);
-		return;
-	}
-#endif
 
 	for (i=0 ; i<256 ; i++)
 		translate32[i] = d_8to24table[translate[i]];
@@ -358,21 +247,16 @@ void R_TranslatePlayerSkin (int playernum)
 			frac += fracstep;
 		}
 	}
-#ifdef MACOSX_TEXRAM_CHECK
-        GL_CheckTextureRAM (GL_TEXTURE_2D, 0, gl_solid_format, scaled_width, scaled_height, 0, 0, GL_RGBA, GL_UNSIGNED_BYTE);
-#endif /* MACOSX */
 	glTexImage2D (GL_TEXTURE_2D, 0, gl_solid_format, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-#endif
+
 
 }
 
-#ifdef D3DQ_WORKAROUND
-void d3dEvictTextures();
-#endif
+
 
 /*
 ===============
@@ -384,9 +268,7 @@ void R_NewMap (void)
 {
 	int		i;
 
-#ifdef D3DQ_WORKAROUND
-	d3dEvictTextures();
-#endif
+
 
 	for (i=0 ; i<256 ; i++)
 		d_lightstylevalue[i] = 264;		// normal light value
@@ -420,7 +302,7 @@ void R_NewMap (void)
  		cl.worldmodel->textures[i]->texturechain = NULL;
 	}
 
-	R_Sky_NewMap ();
+
 }
 
 
@@ -448,7 +330,7 @@ void R_TimeRefresh_f (void)
 		glDrawBuffer  (GL_FRONT);
 	glFinish ();
 
-	start = Sys_DoubleTime ();
+	start = Sys_FloatTime ();
 	for (i=0 ; i<128 ; i++)
 	{
 		r_refdef.viewangles[1] = i * (360.0 / 128.0);
@@ -456,7 +338,7 @@ void R_TimeRefresh_f (void)
 	}
 
 	glFinish ();
-	stop = Sys_DoubleTime ();
+	stop = Sys_FloatTime ();
 	time = stop-start;
 	Con_Printf ("%f seconds (%f fps)\n", time, 128.0/time);
 

@@ -91,7 +91,7 @@ void SV_Init (void)
 
 
 	for (i=0 ; i<MAX_MODELS ; i++)
-		snprintf (localmodels[i], sizeof(localmodels[i]), "*%i", i);
+		SNPrintf (localmodels[i], sizeof(localmodels[i]), "*%i", i);
 }
 
 /*
@@ -221,11 +221,11 @@ void SV_SendServerinfo (client_t *client)
 
 	// JPG - This used to be VERSION 1.09 SERVER (xxxxx CRC)
 	MSG_WriteByte (&client->message, svc_print);
-	snprintf(message, sizeof(message), "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n"
+	SNPrintf(message, sizeof(message), "\n\35\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\36\37\n"
 					  "\n   \01\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\02\03");
 	MSG_WriteString (&client->message,message);
 	MSG_WriteByte (&client->message, svc_print);
-	snprintf(message, sizeof(message), "\02\n   \04ProQuake Server Version %4.2f\06"
+	SNPrintf(message, sizeof(message), "\02\n   \04ProQuake Server Version %4.2f\06"
 					  "\n   \07\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\10\11", PROQUAKE_SERIES_VERSION);
 	MSG_WriteString (&client->message,message);
 
@@ -238,7 +238,7 @@ void SV_SendServerinfo (client_t *client)
 	else
 		MSG_WriteByte (&client->message, GAME_COOP);
 
-	snprintf(message, sizeof(message), pr_strings+sv.edicts->v.message);
+	SNPrintf(message, sizeof(message), pr_strings+sv.edicts->v.message);
 
 	MSG_WriteString (&client->message,message);
 
@@ -745,10 +745,6 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 	byte	*pvs;
 	vec3_t	org;
 	edict_t	*ent;
-#ifdef SUPPORTS_ENTITY_ALPHA
-	eval_t  *val;
-	float	alpha, fullbright;
-#endif
 
 // find the client's PVS
 	VectorAdd (clent->v.origin, clent->v.view_ofs, org);
@@ -841,22 +837,6 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 		if (ent->baseline.modelindex != ent->v.modelindex)
 			bits |= U_MODEL;
 
-#ifdef SUPPORTS_ENTITY_ALPHA
-   // nehahra: model alpha
-      if ((val = GETEDICTFIELDVALUE(ent, eval_alpha)))
-         alpha = val->_float;
-      else
-         alpha = 1;
-
-		if ((val = GETEDICTFIELDVALUE(ent, eval_fullbright)))
-			fullbright = val->_float;
-		else
-			fullbright = 0;
-
-		if ((alpha < 1 && alpha > 0) || fullbright)
-         bits |= U_TRANS;
-#endif
-
 		if (e >= 256)
 			bits |= U_LONGENTITY;
 
@@ -894,13 +874,6 @@ void SV_WriteEntitiesToClient (edict_t	*clent, sizebuf_t *msg, qboolean nomap)
 			MSG_WriteCoord (msg, ent->v.origin[2]);
 		if (bits & U_ANGLE3)
 			MSG_WriteAngle(msg, ent->v.angles[2]);
-#ifdef SUPPORTS_ENTITY_ALPHA
-      	if (bits & U_TRANS) {
-                MSG_WriteFloat (msg, 2);
-                MSG_WriteFloat (msg, alpha);
-                MSG_WriteFloat (msg, fullbright);
-		}
-#endif
 	}
 }
 
@@ -1390,7 +1363,7 @@ void SV_SpawnServer (char *server)
 	if (coop.value)
 		Cvar_SetValue ("deathmatch", 0);
 	current_skill = (int)(skill.value + 0.5);
-	current_skill = bound(0, current_skill, 3);
+	current_skill = CLAMP (0, current_skill, 3);
 
 	Cvar_SetValue ("skill", (float)current_skill);
 
@@ -1436,14 +1409,14 @@ void SV_SpawnServer (char *server)
 	R_PreMapLoad (server);		// joe
 
 	strcpy (sv.name, server);
-	snprintf (sv.modelname, sizeof(sv.modelname), "maps/%s.bsp", server);
+	SNPrintf (sv.modelname, sizeof(sv.modelname), "maps/%s.bsp", server);
 	sv.worldmodel = Mod_ForName (sv.modelname, false);
 
 	//Baker 3.99b: R00k if map isnt found then load the sv_defaultmap instead
 	if (!sv.worldmodel && sv_defaultmap.string[0])
 	{
 		strcpy (sv.name, sv_defaultmap.string);
-		vsnprintf (sv.modelname, sizeof(sv.modelname), "maps/%s.bsp", sv_defaultmap.string);
+		VSNPrintf (sv.modelname, sizeof(sv.modelname), "maps/%s.bsp", sv_defaultmap.string);
 		sv.worldmodel = Mod_ForName (sv.modelname, false);
 	}
 	// Baker 3.99b: end mod

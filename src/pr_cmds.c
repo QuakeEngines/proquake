@@ -413,11 +413,8 @@ void PF_vectoyaw (void)
 		yaw = 0;
 	else
 	{
-#if !defined(FLASH)
+
 		yaw = (int) (atan2f(value1[1], value1[0]) * 180 / M_PI);
-#else
-		yaw = (int) (myAtan2(value1[1], value1[0]) * 180 / M_PI);
-#endif
 		if (yaw < 0)
 			yaw += 360;
 	}
@@ -449,20 +446,14 @@ void PF_vectoangles (void)
 	}
 	else
 	{
-#if !defined(FLASH)
+
 		yaw = (int) (atan2f(value1[1], value1[0]) * 180 / M_PI);
-#else
-		yaw = (int) (myAtan2(value1[1], value1[0]) * 180 / M_PI);
-#endif
 		if (yaw < 0)
 			yaw += 360;
 
 		forward = sqrtf (value1[0]*value1[0] + value1[1]*value1[1]);
-#if !defined(FLASH)
+
 		pitch = (int) (atan2f(value1[2], forward) * 180 / M_PI);
-#else
-		yaw = (int) (myAtan2(value1[1], value1[0]) * 180 / M_PI);
-#endif
 		if (pitch < 0)
 			pitch += 360;
 	}
@@ -951,9 +942,9 @@ void PF_ftos (void)
 	v = G_FLOAT(OFS_PARM0);
 
 	if (v == (int)v)
-		snprintf (pr_string_temp, sizeof(pr_string_temp), "%d",(int)v);
+		SNPrintf (pr_string_temp, sizeof(pr_string_temp), "%d",(int)v);
 	else
-		snprintf (pr_string_temp, sizeof(pr_string_temp), "%5.1f",v);
+		SNPrintf (pr_string_temp, sizeof(pr_string_temp), "%5.1f",v);
 	G_INT(OFS_RETURN) = pr_string_temp - pr_strings;
 }
 
@@ -966,14 +957,14 @@ void PF_fabs (void)
 
 void PF_vtos (void)
 {
-	snprintf (pr_string_temp, sizeof(pr_string_temp), "'%5.1f %5.1f %5.1f'", G_VECTOR(OFS_PARM0)[0], G_VECTOR(OFS_PARM0)[1], G_VECTOR(OFS_PARM0)[2]);
+	SNPrintf (pr_string_temp, sizeof(pr_string_temp), "'%5.1f %5.1f %5.1f'", G_VECTOR(OFS_PARM0)[0], G_VECTOR(OFS_PARM0)[1], G_VECTOR(OFS_PARM0)[2]);
 	G_INT(OFS_RETURN) = pr_string_temp - pr_strings;
 }
 
 #ifdef QUAKE2
 void PF_etos (void)
 {
-	snprintf (pr_string_temp, sizeof(pr_string_temp), "entity %i", G_EDICTNUM(OFS_PARM0));
+	SNPrintf (pr_string_temp, sizeof(pr_string_temp), "entity %i", G_EDICTNUM(OFS_PARM0));
 	G_INT(OFS_RETURN) = pr_string_temp - pr_strings;
 }
 #endif
