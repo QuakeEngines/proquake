@@ -1,3 +1,4 @@
+// D3D diff 14 of 14
 /*
 Copyright (C) 1996-1997 Id Software, Inc.
 
@@ -371,12 +372,52 @@ void Draw_TextureMode_f (void)
 	}
 }
 
-void Draw_InitConback_Old(void);
+// D3D diff 1 of 14
+#ifdef D3DQUAKE
+#define    D3D_TEXTURE_MAXANISOTROPY 0xf70001
+float gl_maxAnisotropy = 1.0;
+/*
+===============
+Draw_MaxAnisotropy_f
+===============
+*/
+void Draw_MaxAnisotropy_f (void)
+{
+	int		i;
+	gltexture_t	*glt;
+
+	if (Cmd_Argc() == 1)
+	{
+		Con_Printf ("current max anisotropy is %g\n", gl_maxAnisotropy);
+		return;
+	}
+
+	gl_maxAnisotropy = Q_atof(Cmd_Argv(1));
+
+	// change all the existing mipmap texture objects
+	for (i=0, glt=gltextures ; i<numgltextures ; i++, glt++)
+	{
+		if (glt->mipmap)
+		{
+			GL_Bind (glt->texnum);
+			glTexParameterf(GL_TEXTURE_2D, D3D_TEXTURE_MAXANISOTROPY, gl_maxAnisotropy);
+		}
+	}
+}
+
+#endif
+
+
 /*
 ===============
 Draw_Init
 ===============
 */
+// D3D diff 2 of 14
+#ifdef D3DQUAKE
+float d3dGetD3DDriverVersion();
+#endif
+void Draw_InitConback_Old(void);
 void Draw_Init (void)
 {
 	int		i;
@@ -399,7 +440,10 @@ void Draw_Init (void)
 		Cvar_Set ("gl_max_size", "256");
 
 	Cmd_AddCommand ("gl_texturemode", &Draw_TextureMode_f);
-
+// D3D diff 3 of 14
+#ifdef D3DQUAKE
+	Cmd_AddCommand ("d3d_maxanisotropy", &Draw_MaxAnisotropy_f);
+#endif
 	// load the console background and the charset
 	// by hand, because we need to write the version
 	// string into the background before turning
@@ -485,8 +529,14 @@ void Draw_InitConback_Old(void) {
 #if defined(__linux__)
 	sprintf (ver, "(Linux %2.2f, gl %4.2f) %4.2f", (float)LINUX_VERSION, (float)GLQUAKE_VERSION, (float)VERSION);
 #else
+// D3D diff 4 of 14
+#ifdef D3DQUAKE
 	//sprintf (ver, "(gl %4.2f) %4.2f", (float)GLQUAKE_VERSION, (float)VERSION);
+	sprintf(ver, "(D3DProQuake) %4.2f", (float)PROQUAKE_VERSION); // JPG - obvious change
+// D3D diff 5 of 14
+#else
 	sprintf(ver, "(ProQuake) %4.2f", (float)PROQUAKE_VERSION); // JPG - obvious change
+#endif
 #endif
 	dest = cb->data + 320*186 + 320 - 11 - 8*strlen(ver);
 	y = strlen(ver);
@@ -564,10 +614,18 @@ It can be clipped to the top of the screen to allow the console to be
 smoothly scrolled off.
 ================
 */
+// D3D diff 6 of 14
+// Begin D3DQuake
+int gNoChars;
+// End D3DQuake
 void Draw_Character (int x, int y, int num)
 {	
 	int				row, col;
 	float			frow, fcol, size;
+// D3D diff 7 of 14
+// Begin D3DQuake
+	if ( gNoChars ) return;
+// End D3DQuake
 
 	if (num == 32)
 		return;		// space
@@ -642,6 +700,10 @@ void Draw_AlphaPic (int x, int y, qpic_t *pic, float alpha)
 	glEnable (GL_BLEND);
 //	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 //	glCullFace(GL_FRONT);
+// D3D diff 8 of 14
+#ifdef D3DQUAKE
+	if ( alpha > 1 ) alpha = 1; // manually clamp
+#endif
 	glColor4f (1,1,1,alpha);
 	GL_Bind (gl->texnum);
 	glBegin (GL_QUADS);
@@ -762,10 +824,18 @@ Draw_ConsoleBackground
 
 ================
 */
+// D3D diff 9 of 14
+// Begin D3DQuake
+int noConsoleBackground;
+// End D3DQuake
 void Draw_ConsoleBackground (int lines)
 {
 	int y = (vid.height * 3) >> 2;
-
+// D3D diff 10 of 14
+// Begin D3DQuake
+	if (noConsoleBackground) 
+		return;
+// End D3DQuake
 	if (lines > y)
 		Draw_Pic(0, lines - vid.height, conback);
 	else
@@ -1058,6 +1128,10 @@ void GL_MipMap8Bit (byte *in, int width, int height)
 GL_Upload32
 ===============
 */
+// D3D diff 11 of 11
+#ifdef D3DQUAKE
+void d3dHint_GenerateMipMaps(int);
+#endif
 void GL_Upload32 (unsigned *data, int width, int height,  qboolean mipmap, qboolean alpha)
 {
 	int			samples;
@@ -1100,7 +1174,15 @@ texels += scaled_width * scaled_height;
 	{
 		if (!mipmap)
 		{
+// D3D diff 12 of 14
+#ifdef D3DQUAKE
+			d3dHint_GenerateMipMaps(0);
+#endif
 			glTexImage2D (GL_TEXTURE_2D, 0, samples, scaled_width, scaled_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+// D3D diff 13 of 14
+#ifdef D3DQUAKE
+			d3dHint_GenerateMipMaps(1);
+#endif
 			goto done;
 		}
 		memcpy (scaled, data, width*height*4);

@@ -445,15 +445,34 @@ void Sys_Error (char *error, ...)
 		{
 			in_sys_error0 = 1;
 			VID_SetDefaultMode ();
-			MessageBox(NULL, text, "Quake Error",
+#ifdef UNICODE
+			{
+				TCHAR ttext[1024];
+				mbstowcs(ttext,text,strlen(text));
+				MessageBox(NULL, ttext, TEXT("Quake Error"),
+						   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+			}
+#else
+			MessageBox(NULL, text, TEXT("Quake Error"),
 					   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+#endif
 		}
 		else
 		{
-			MessageBox(NULL, text, "Double Quake Error",
+#ifdef UNICODE
+			{
+				TCHAR ttext[1024];
+				mbstowcs(ttext,text,strlen(text));
+				MessageBox(NULL, ttext, TEXT("Double Quake Error"),
+						   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+			}
+#else
+			MessageBox(NULL, text, TEXT("Double Quake Error"),
 					   MB_OK | MB_SETFOREGROUND | MB_ICONSTOP);
+#endif
 		}
 	}
+
 
 	if (!in_sys_error1)
 	{
@@ -743,6 +762,32 @@ void SleepUntilInput (int time)
 	MsgWaitForMultipleObjects(1, &tevent, FALSE, time, QS_ALLINPUT);
 }
 
+#if !id386
+void Sys_HighFPPrecision (void)
+{
+}
+
+void Sys_LowFPPrecision (void)
+{
+}
+
+void Sys_SetFPCW (void)
+{
+}
+
+void MaskExceptions (void)
+{
+}
+
+void Sys_PopFPCW (void)
+{
+}
+
+void Sys_PushFPCW_SetHigh (void)
+{
+}
+
+#endif
 
 /*
 ==================
@@ -779,8 +824,17 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 	lpBuffer.dwLength = sizeof(MEMORYSTATUS);
 	GlobalMemoryStatus (&lpBuffer);
 
+#ifdef UNICODE
+	{
+		TCHAR tcwd[1024];
+		if (!GetCurrentDirectory (sizeof(tcwd), tcwd))
+			Sys_Error ("Couldn't determine current directory");
+		wcstombs(cwd,tcwd,sizeof(cwd));
+	}
+#else
 	if (!GetCurrentDirectory (sizeof(cwd), cwd))
 		Sys_Error ("Couldn't determine current directory");
+#endif
 
 	if (cwd[Q_strlen(cwd)-1] == '/')
 		cwd[Q_strlen(cwd)-1] = 0;
@@ -1008,6 +1062,9 @@ int WINAPI WinMain (HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLin
 		}
 		else
 		{
+#ifdef D3DQUAKE
+			Sleep(1); // For NVIDIA drivers on Windows 2000
+#endif
 		// yield the CPU for a little while when paused, minimized, or not the focus
 			if ((cl.paused && (!ActiveApp && !DDActive)) || Minimized || block_drawing)
 			{

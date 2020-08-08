@@ -67,6 +67,13 @@ typedef struct entity_s
 	struct mnode_s			*topnode;		// for bmodels, first world node
 											//  that splits bmodel, or NULL if
 											//  not split
+#ifdef GLQUAKE
+        // model animation interpolation
+        int             pose1, pose2;
+        float           translate_start_time, rotate_start_time;
+        float           frame_start_time, frame_interval;
+        vec3_t          origin1, origin2, angles1, angles2;
+#endif
 } entity_t;
 
 // !!! if this is changed, it must be changed in asm_draw.h too !!!

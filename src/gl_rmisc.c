@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -35,13 +35,13 @@ void	R_InitTextures (void)
 
 // create a simple checkerboard texture for the default
 	r_notexture_mip = Hunk_AllocName (sizeof(texture_t) + 16*16+8*8+4*4+2*2, "notexture");
-	
+
 	r_notexture_mip->width = r_notexture_mip->height = 16;
 	r_notexture_mip->offsets[0] = sizeof(texture_t);
 	r_notexture_mip->offsets[1] = r_notexture_mip->offsets[0] + 16*16;
 	r_notexture_mip->offsets[2] = r_notexture_mip->offsets[1] + 8*8;
 	r_notexture_mip->offsets[3] = r_notexture_mip->offsets[2] + 4*4;
-	
+
 	for (m=0 ; m<4 ; m++)
 	{
 		dest = (byte *)r_notexture_mip + r_notexture_mip->offsets[m];
@@ -53,7 +53,7 @@ void	R_InitTextures (void)
 				else
 					*dest++ = 0xff;
 			}
-	}	
+	}
 }
 
 byte	dottexture[8][8] =
@@ -122,39 +122,39 @@ void R_Envmap_f (void)
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 	R_RenderView ();
 	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env0.rgb", buffer, sizeof(buffer));		
+	COM_WriteFile ("env0.rgb", buffer, sizeof(buffer));
 
 	r_refdef.viewangles[1] = 90;
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 	R_RenderView ();
 	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env1.rgb", buffer, sizeof(buffer));		
+	COM_WriteFile ("env1.rgb", buffer, sizeof(buffer));
 
 	r_refdef.viewangles[1] = 180;
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 	R_RenderView ();
 	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env2.rgb", buffer, sizeof(buffer));		
+	COM_WriteFile ("env2.rgb", buffer, sizeof(buffer));
 
 	r_refdef.viewangles[1] = 270;
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 	R_RenderView ();
 	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env3.rgb", buffer, sizeof(buffer));		
+	COM_WriteFile ("env3.rgb", buffer, sizeof(buffer));
 
 	r_refdef.viewangles[0] = -90;
 	r_refdef.viewangles[1] = 0;
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 	R_RenderView ();
 	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env4.rgb", buffer, sizeof(buffer));		
+	COM_WriteFile ("env4.rgb", buffer, sizeof(buffer));
 
 	r_refdef.viewangles[0] = 90;
 	r_refdef.viewangles[1] = 0;
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 	R_RenderView ();
 	glReadPixels (0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	COM_WriteFile ("env5.rgb", buffer, sizeof(buffer));		
+	COM_WriteFile ("env5.rgb", buffer, sizeof(buffer));
 
 	envmap = false;
 	glDrawBuffer  (GL_BACK);
@@ -162,7 +162,7 @@ void R_Envmap_f (void)
 	GL_EndRendering ();
 }
 
-cvar_t r_waterwarp = {"r_waterwarp", "1", true}; // Baker 3.60 - Save this to config now
+cvar_t r_waterwarp = {"r_waterwarp", "0", true}; // Baker 3.60 - Save this to config now
 
 /*
 ===============
@@ -170,13 +170,13 @@ R_Init
 ===============
 */
 void R_Init (void)
-{	
+{
 	extern byte *hunk_base;
 	extern cvar_t gl_finish;
 
-	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);	
-	Cmd_AddCommand ("envmap", R_Envmap_f);	
-	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);	
+	Cmd_AddCommand ("timerefresh", R_TimeRefresh_f);
+	Cmd_AddCommand ("envmap", R_Envmap_f);
+	Cmd_AddCommand ("pointfile", R_ReadPointFile_f);
 
 	Cvar_RegisterVariable (&r_norefresh, NULL);
 	Cvar_RegisterVariable (&r_lightmap, NULL);
@@ -192,6 +192,10 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_novis, NULL);
 	Cvar_RegisterVariable (&r_speeds, NULL);
 	Cvar_RegisterVariable (&r_waterwarp, NULL);
+	Cvar_RegisterVariable (&r_interpolate_model_animation, NULL);
+	Cvar_RegisterVariable (&r_interpolate_model_transform, NULL);
+	Cvar_RegisterVariable (&r_interpolate_model_weapon, NULL);
+
 
 	Cvar_RegisterVariable (&gl_finish, NULL);
 	Cvar_RegisterVariable (&gl_clear, NULL);
@@ -261,7 +265,7 @@ void R_TranslatePlayerSkin (int playernum)
 			translate[TOP_RANGE+i] = top+i;
 		else
 			translate[TOP_RANGE+i] = top+15-i;
-				
+
 		if (bottom < 128)
 			translate[BOTTOM_RANGE+i] = bottom+i;
 		else
@@ -374,6 +378,9 @@ void R_TranslatePlayerSkin (int playernum)
 
 }
 
+#ifdef D3DQUAKE
+void d3dEvictTextures();
+#endif
 
 /*
 ===============
@@ -383,7 +390,11 @@ R_NewMap
 void R_NewMap (void)
 {
 	int		i;
-	
+
+#ifdef D3DQUAKE
+	d3dEvictTextures();
+#endif
+
 	for (i=0 ; i<256 ; i++)
 		d_lightstylevalue[i] = 264;		// normal light value
 
@@ -394,7 +405,7 @@ void R_NewMap (void)
 // FIXME: is this one short?
 	for (i=0 ; i<cl.worldmodel->numleafs ; i++)
 		cl.worldmodel->leafs[i].efrags = NULL;
-		 	
+
 	r_viewleaf = NULL;
 	R_ClearParticles ();
 

@@ -254,7 +254,7 @@ void VID_Gamma_f (void)
 			palette[i] = inf;
 		}
 
-		VID_SetPalette (palette);
+		VID_SetPaletteOld (palette);
 
 		vid.recalc_refdef = 1;				// force a surface cache flush
 	}
@@ -444,7 +444,7 @@ void VID_ShiftPalette(unsigned char *p)
 	VID_SetPalette(p);
 }
 
-void VID_SetPalette(byte *palette)
+void VID_SetPaletteOld(byte *palette)
 {
 
 	static int tmppal[256*3];
@@ -535,7 +535,7 @@ int VID_SetMode (int modenum, unsigned char *palette)
 // get goin'
 
 	vga_setmode(current_mode);
-	VID_SetPalette(palette);
+	VID_SetPaletteOld(palette);
 
 	VGA_pagebase = vid.direct = framebuffer_ptr = (char *) vga_getgraphmem();
 //		if (vga_setlinearaddressing()>0)
@@ -602,7 +602,7 @@ void VID_Init(unsigned char *palette)
 	// set vid parameters
 		VID_SetMode(current_mode, palette);
 
-		VID_SetPalette(palette);
+		VID_SetPaletteOld(palette);
 
 		// we do want to run in the background when switched away
 		vga_runinbackground(1);	

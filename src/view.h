@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -19,10 +19,18 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // view.h
 
-extern	cvar_t		v_gamma;
+// Baker hwgamma support
+#if defined(GLQUAKE) && !defined(D3DQUAKE)
+extern	cvar_t	v_gamma;
+extern	cvar_t	v_contrast;
+extern	cvar_t	gl_hwblend;
+
+#endif
+extern	cvar_t		vold_gamma;
+// Baker end hwgamma support
 
 extern	byte		gammatable[256];	// palette is sent through this
-extern	byte		ramps[3][256];
+extern	byte		rampsold[3][256];
 extern float v_blend[4];
 
 extern cvar_t lcd_x;
@@ -30,6 +38,8 @@ extern cvar_t lcd_x;
 void V_Init (void);
 void V_RenderView (void);
 float V_CalcRoll (vec3_t angles, vec3_t velocity);
-void V_UpdatePalette (void);
+void V_UpdatePaletteOld (void);
 
+#ifndef D3DQUAKE
 void BuildGammaTable (float g);			// JPG 3.02
+#endif

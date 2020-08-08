@@ -124,10 +124,7 @@ SQUAKE_OBJS = \
 	$(BUILDDIR)/squake/d_zpoint.o \
 	$(BUILDDIR)/squake/host.o \
 	$(BUILDDIR)/squake/host_cmd.o \
-	$(BUILDDIR)/squake/iplog.o \
 	$(BUILDDIR)/squake/keys.o \
-	$(BUILDDIR)/squake/location.o \
-	$(BUILDDIR)/squake/matrix.o \
 	$(BUILDDIR)/squake/menu.o \
 	$(BUILDDIR)/squake/mathlib.o \
 	$(BUILDDIR)/squake/model.o \
@@ -276,16 +273,7 @@ $(BUILDDIR)/squake/host.o :     $(MOUNT_DIR)/host.c
 $(BUILDDIR)/squake/host_cmd.o : $(MOUNT_DIR)/host_cmd.c
 	$(DO_CC)
 
-$(BUILDDIR)/squake/iplog.o :    $(MOUNT_DIR)/iplog.c
-	$(DO_CC)
-
 $(BUILDDIR)/squake/keys.o :     $(MOUNT_DIR)/keys.c
-	$(DO_CC)
-
-$(BUILDDIR)/squake/location.o : $(MOUNT_DIR)/location.c
-	$(DO_CC)
-
-$(BUILDDIR)/squake/matrix.o :   $(MOUNT_DIR)/matrix.c
 	$(DO_CC)
 
 $(BUILDDIR)/squake/menu.o :     $(MOUNT_DIR)/menu.c
@@ -510,10 +498,7 @@ X11_OBJS = \
 	$(BUILDDIR)/x11/d_zpoint.o \
 	$(BUILDDIR)/x11/host.o \
 	$(BUILDDIR)/x11/host_cmd.o \
-	$(BUILDDIR)/x11/iplog.o \
 	$(BUILDDIR)/x11/keys.o \
-	$(BUILDDIR)/x11/location.o \
-	$(BUILDDIR)/x11/matrix.o \
 	$(BUILDDIR)/x11/menu.o \
 	$(BUILDDIR)/x11/mathlib.o \
 	$(BUILDDIR)/x11/model.o \
@@ -661,16 +646,7 @@ $(BUILDDIR)/x11/host.o :     $(MOUNT_DIR)/host.c
 $(BUILDDIR)/x11/host_cmd.o : $(MOUNT_DIR)/host_cmd.c
 	$(DO_X11_CC)
 
-$(BUILDDIR)/x11/iplog.o :    $(MOUNT_DIR)/iplog.c
-	$(DO_X11_CC)
-
 $(BUILDDIR)/x11/keys.o :     $(MOUNT_DIR)/keys.c
-	$(DO_X11_CC)
-
-$(BUILDDIR)/x11/location.o : $(MOUNT_DIR)/location.c
-	$(DO_X11_CC)
-
-$(BUILDDIR)/x11/matrix.o :   $(MOUNT_DIR)/matrix.c
 	$(DO_X11_CC)
 
 $(BUILDDIR)/x11/menu.o :     $(MOUNT_DIR)/menu.c
@@ -895,10 +871,7 @@ GLQUAKE_OBJS= \
 	\
 	$(BUILDDIR)/glquake/host.o \
 	$(BUILDDIR)/glquake/host_cmd.o \
-	$(BUILDDIR)/glquake/iplog.o \
 	$(BUILDDIR)/glquake/keys.o \
-	$(BUILDDIR)/glquake/location.o \
-	$(BUILDDIR)/glquake/matrix.o \
 	$(BUILDDIR)/glquake/menu.o \
 	$(BUILDDIR)/glquake/mathlib.o \
 	$(BUILDDIR)/glquake/net_dgrm.o \
@@ -1023,16 +996,7 @@ $(BUILDDIR)/glquake/host.o :         $(MOUNT_DIR)/host.c
 $(BUILDDIR)/glquake/host_cmd.o :     $(MOUNT_DIR)/host_cmd.c
 	$(DO_GL_CC)
 
-$(BUILDDIR)/glquake/iplog.o :        $(MOUNT_DIR)/iplog.c
-	$(DO_GL_CC)
-
 $(BUILDDIR)/glquake/keys.o :         $(MOUNT_DIR)/keys.c
-	$(DO_GL_CC)
-
-$(BUILDDIR)/glquake/location.o :     $(MOUNT_DIR)/location.c
-	$(DO_GL_CC)
-
-$(BUILDDIR)/glquake/matrix.o :       $(MOUNT_DIR)/matrix.c
 	$(DO_GL_CC)
 
 $(BUILDDIR)/glquake/menu.o :         $(MOUNT_DIR)/menu.c

@@ -45,7 +45,7 @@ BASE_CFLAGS=-Dstricmp=strcasecmp
 #	-fomit-frame-pointer -fexpensive-optimizations
 RELEASE_CFLAGS=$(BASE_CFLAGS) -g -O6 -ffast-math -funroll-loops -fexpensive-optimizations
 DEBUG_CFLAGS=$(BASE_CFLAGS) -g
-LDFLAGS=-lm -ldl
+LDFLAGS=-lm
 SVGALDFLAGS=-lvga
 XLDFLAGS=-L/usr/X11R6/lib -lX11 -lXext -lXxf86dga
 XCFLAGS=-DX11
@@ -94,7 +94,6 @@ build_release:
 		$(BUILD_RELEASE_DIR)/unixded \
 		$(BUILD_RELEASE_DIR)/x11
 	$(MAKE) targets BUILDDIR=$(BUILD_RELEASE_DIR) CFLAGS="$(RELEASE_CFLAGS)"
-	strip $(BUILD_RELEASE_DIR)/bin/*
 
 all: build_debug build_release
 
@@ -164,7 +163,6 @@ SQUAKE_OBJS = \
 	$(BUILDDIR)/squake/r_vars.o \
 	$(BUILDDIR)/squake/screen.o \
 	$(BUILDDIR)/squake/sbar.o \
-	$(BUILDDIR)/squake/security.o \
 	$(BUILDDIR)/squake/sv_main.o \
 	$(BUILDDIR)/squake/sv_phys.o \
 	$(BUILDDIR)/squake/sv_move.o \
@@ -383,9 +381,6 @@ $(BUILDDIR)/squake/screen.o :   $(MOUNT_DIR)/screen.c
 $(BUILDDIR)/squake/sbar.o :     $(MOUNT_DIR)/sbar.c
 	$(DO_CC)
 
-$(BUILDDIR)/squake/security.o : $(MOUNT_DIR)/security.c
-	$(DO_CC)
-
 $(BUILDDIR)/squake/sv_main.o :  $(MOUNT_DIR)/sv_main.c
 	$(DO_CC)
 
@@ -554,7 +549,6 @@ X11_OBJS = \
 	$(BUILDDIR)/x11/r_vars.o \
 	$(BUILDDIR)/x11/screen.o \
 	$(BUILDDIR)/x11/sbar.o \
-	$(BUILDDIR)/x11/security.o \
 	$(BUILDDIR)/x11/sv_main.o \
 	$(BUILDDIR)/x11/sv_phys.o \
 	$(BUILDDIR)/x11/sv_move.o \
@@ -772,9 +766,6 @@ $(BUILDDIR)/x11/screen.o :   $(MOUNT_DIR)/screen.c
 $(BUILDDIR)/x11/sbar.o :     $(MOUNT_DIR)/sbar.c
 	$(DO_X11_CC)
 
-$(BUILDDIR)/x11/security.o : $(MOUNT_DIR)/security.c
-	$(DO_CC)
-
 $(BUILDDIR)/x11/sv_main.o :  $(MOUNT_DIR)/sv_main.c
 	$(DO_X11_CC)
 
@@ -927,7 +918,6 @@ GLQUAKE_OBJS= \
 	$(BUILDDIR)/glquake/pr_exec.o \
 	$(BUILDDIR)/glquake/r_part.o \
 	$(BUILDDIR)/glquake/sbar.o \
-	$(BUILDDIR)/glquake/security.o \
 	$(BUILDDIR)/glquake/sv_main.o \
 	$(BUILDDIR)/glquake/sv_phys.o \
 	$(BUILDDIR)/glquake/sv_move.o \
@@ -1116,9 +1106,6 @@ $(BUILDDIR)/glquake/world.o :        $(MOUNT_DIR)/world.c
 
 $(BUILDDIR)/glquake/cd_linux.o :     $(MOUNT_DIR)/cd_linux.c
 	$(DO_GL_CC)
-
-$(BUILDDIR)/glquake/security.o :     $(MOUNT_DIR)/security.c
-	$(DO_CC)
 
 $(BUILDDIR)/glquake/sys_linux.o :    $(MOUNT_DIR)/sys_linux.c
 	$(DO_GL_CC)

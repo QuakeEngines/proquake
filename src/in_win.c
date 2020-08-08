@@ -549,7 +549,7 @@ qboolean IN_InitDInput (void) {
 	};
 
 	if (!hInstDI) {
-		hInstDI = LoadLibrary("dinput.dll"); // Baker 3.70D3D - Direct3D Quake change?
+		hInstDI = LoadLibrary(TEXT("dinput.dll")); // Baker 3.70D3D - Direct3D Quake change?
 
 		if (hInstDI == NULL) {
 			Con_Printf ("Couldn't load dinput.dll\n");
@@ -615,7 +615,7 @@ void IN_StartupMouse (void) {
 	if ( COM_CheckParm ("-nomouse") )
 		return;
 
-	uiWheelMessage = RegisterWindowMessage ( "MSWHEEL_ROLLMSG" ); // Baker 3.85: Moved to IN_StartupMouse from IN_Init
+	uiWheelMessage = RegisterWindowMessage (TEXT("MSWHEEL_ROLLMSG")); // Baker 3.85: Moved to IN_StartupMouse from IN_Init
 
 	flex_mouseinitialized = true;
 

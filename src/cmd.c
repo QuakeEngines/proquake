@@ -378,7 +378,7 @@ void Cmd_Alias_f (void)
 	int			i, c;
 	char		*s;
 
-	
+
 	switch (Cmd_Argc())
 	{
 	case 1: //list all aliases
@@ -394,16 +394,16 @@ void Cmd_Alias_f (void)
 			if (!strcmp(Cmd_Argv(1), a->name))
 				Con_Printf ("   %s: %s", a->name, a->value);
 		break;
-		
+
 	default: //set alias string
-	
+
 		s = Cmd_Argv(1);
 		if (strlen(s) >= MAX_ALIAS_NAME)
 		{
 			Con_Printf ("Alias name is too long\n");
 			return;
 		}
-	
+
 		// if the alias allready exists, reuse it
 		for (a = cmd_alias ; a ; a=a->next)
 		{
@@ -413,7 +413,7 @@ void Cmd_Alias_f (void)
 				break;
 			}
 		}
-	
+
 		if (!a)
 		{
 			a = Z_Malloc (sizeof(cmdalias_t));
@@ -421,7 +421,7 @@ void Cmd_Alias_f (void)
 			cmd_alias = a;
 		}
 		strcpy (a->name, s);
-	
+
 	// copy the rest of the command line
 		cmd[0] = 0;		// start out with a null string
 		c = Cmd_Argc();
@@ -432,7 +432,7 @@ void Cmd_Alias_f (void)
 				strcat (cmd, " ");
 		}
 		strcat (cmd, "\n");
-	
+
 		a->value = CopyString (cmd);
 		break;
 	}
@@ -1084,6 +1084,7 @@ int Cmd_CheckParm (char *parm)
 Cmd_Init - Baker 3.70 - moved to bottom
 ============
 */
+extern cvar_t host_mapname;
 void Cmd_Init (void)
 {
 //
@@ -1095,6 +1096,7 @@ void Cmd_Init (void)
 	Cmd_AddCommand ("alias",Cmd_Alias_f);
 	Cmd_AddCommand ("cmd", Cmd_ForwardToServer);
 	Cmd_AddCommand ("commandline", Cmd_Cmdline_f);
+	Cvar_RegisterVariable (&host_mapname, NULL);
 	Cmd_AddCommand ("wait", Cmd_Wait_f);
 	Cmd_AddCommand ("cmdlist", Cmd_List_f);	// Baker 3.60 -- 2000-01-09 CmdList command by Maddes
 	Cmd_AddCommand ("matrix", Mat_Init);	// JPG

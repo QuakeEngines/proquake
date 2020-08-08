@@ -110,6 +110,8 @@ void CL_ClearState (void)
 	for (i=0 ; i<MAX_EFRAGS-1 ; i++)
 		cl.free_efrags[i].entnext = &cl.free_efrags[i+1];
 	cl.free_efrags[i].entnext = NULL;
+
+	Cvar_Set ("host_mapname", ""); // notice mapname not valid yet
 }
 
 /*
@@ -150,6 +152,7 @@ void CL_Disconnect (void)
 
 	cls.demoplayback = cls.timedemo = false;
 	cls.signon = 0;
+	Cvar_Set ("host_mapname", ""); // notice mapname not valid yet
 }
 
 void CL_Disconnect_f (void)
@@ -419,7 +422,7 @@ void SetPal (int i)
 	old = i;
 
 	if (i==0)
-		VID_SetPalette (host_basepal);
+		VID_SetPaletteOld (host_basepal);
 	else if (i==1)
 	{
 		for (c=0 ; c<768 ; c+=3)
@@ -428,7 +431,7 @@ void SetPal (int i)
 			pal[c+1] = 255;
 			pal[c+2] = 0;
 		}
-		VID_SetPalette (pal);
+		VID_SetPaletteOld (pal);
 	}
 	else
 	{
@@ -438,7 +441,7 @@ void SetPal (int i)
 			pal[c+1] = 0;
 			pal[c+2] = 255;
 		}
-		VID_SetPalette (pal);
+		VID_SetPaletteOld (pal);
 	}
 #endif
 }

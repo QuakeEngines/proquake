@@ -220,6 +220,9 @@ extern	cvar_t	gl_flashblend;
 extern	cvar_t	gl_nocolors;
 extern	cvar_t	gl_doubleeyes;
 extern	cvar_t	gl_ringalpha;
+extern  cvar_t  r_interpolate_model_animation;
+extern  cvar_t  r_interpolate_model_transform;
+extern  cvar_t  r_interpolate_model_weapon;
 
 extern	int		gl_lightmap_format;
 extern	int		gl_solid_format;
@@ -261,6 +264,7 @@ extern lpMTexFUNC qglMTexCoord2fSGIS;
 extern lpSelTexFUNC qglSelectTextureSGIS;
 
 extern qboolean gl_mtexable;
+extern qboolean using_hwgamma; // Baker hw gamma support
 
 void GL_DisableMultitexture(void);
 void GL_EnableMultitexture(void);

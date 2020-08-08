@@ -861,7 +861,7 @@ void Con_DrawNotify (void)
 		if (team_message)
 		{
 			Draw_String (8, v, "(say team):");
-			x = 7;
+			x = 12; // Baker 3.90: 7 increased to 12 for "say_team"
 		}
 		else
 		{

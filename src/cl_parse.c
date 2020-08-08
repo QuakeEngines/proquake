@@ -67,7 +67,14 @@ char *svc_strings[] =
 	"svc_cutscene"
 };
 
+cvar_t host_mapname = {"host_mapname",""};
+
 //=============================================================================
+
+void R_PreMapLoad (char *mapname) {
+	Cvar_Set ("host_mapname", mapname);
+}
+
 
 /*
 ===============
@@ -203,7 +210,7 @@ CL_ParseServerInfo
 */
 void CL_ParseServerInfo (void)
 {
-	char	*str;
+	char	*str, tempname[MAX_QPATH];
 	int		i;
 	int		nummodels, numsounds;
 	char	model_precache[MAX_MODELS][MAX_QPATH];
@@ -310,6 +317,8 @@ void CL_ParseServerInfo (void)
 	cl_entities[0].model = cl.worldmodel = cl.model_precache[1];
 
 	LOC_LoadLocations();	// JPG - read in the location data for the new map
+	COM_StripExtension (COM_SkipPath(model_precache[1]), tempname);
+	R_PreMapLoad (tempname);
 	
 	R_NewMap ();
 
@@ -822,7 +831,11 @@ char *VersionString (void)
 {
 	static char str[32];
 #ifdef GLQUAKE
+#ifdef D3DQUAKE
+	Q_snprintfz (str, sizeof(str), "direct 3d pro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
+#else
 	Q_snprintfz (str, sizeof(str), "glpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
+#endif
 #else
 	Q_snprintfz (str, sizeof(str), "wqpro %2.2f", PROQUAKE_VERSION /*, build_number()*/ );
 #endif

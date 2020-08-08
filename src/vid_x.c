@@ -602,7 +602,7 @@ void	VID_Init (unsigned char *palette)
 		if (x_visinfo->class == PseudoColor)
 		{
 			x_cmap = XCreateColormap(x_disp, x_win, x_vis, AllocAll);
-			VID_SetPalette(palette);
+			VID_SetPaletteOld(palette);
 			XSetWindowColormap(x_disp, x_win, x_cmap);
 		}
 	}
@@ -671,14 +671,14 @@ void	VID_Init (unsigned char *palette)
 
 }
 
-void VID_ShiftPalette(unsigned char *p)
+void VID_ShiftPaletteOld(unsigned char *p)
 {
-	VID_SetPalette(p);
+	VID_SetPaletteOld(p);
 }
 
 
 
-void VID_SetPalette(unsigned char *palette)
+void VID_SetPaletteOld(unsigned char *palette)
 {
 
 	int i;

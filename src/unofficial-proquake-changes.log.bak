@@ -1,0 +1,505 @@
+Unofficial ProQuake 3.91 - Change Log - Baker   wwww.quakeone.com - December 20, 2007
+------------------------------------------------------------------------------------
+This is an effort to update the ProQuake engine with bug-fixes and some add modern conveniences without altering any of the look or feel of the ProQuake engine.  Conservative improvements like making the brightness controls work in GLPro, fixing major rendering bugs like the historical GLQuake FOV bug, and simple things like command completion are in the scope of this; things like adding 24-bit texture support, new particle effects or unnecessary things (like an MP3 player) are not in the scope of this project.  
+
+This is merely an attempt to improve the best engine for an authentic 1999-style deathmatch experience.  
+
+V3.94 (Beta)
+
+- Removed glquake .ms2 meshing
+- (glsmoothfont)
+- (gamedir switching)
+
+V3.93 (Beta)
+- Direct3D Version returns.  In-game video mode changing is disabled with Direct3D version; must use -width/-height.
+- Optional animation smoothing (interpolation) returns (off by default).  Set r_interpolate_model_animation 1, r_interpolate_model_transform 1, r_interpolate_model_weapon 1.
+
+Note: Direct3D Version is a port of the (sometimes buggy) functionality of Direct3DQuake and is unsupported.
+Known issues: still has international keyboard/keypad issue.
+Todo: Make animation smoothing a menu item.  
+
+V3.92 (Stable?)
+- Video resolution changing in-client is now fully supported. (Disabled if started with -window in command line)
+- Authentic looking in-game brightness hardware brightness adjustment.  (-gamma command line parameter allowed, but disables adjustment in-game)
+- Upped 2 rendering defaults in wqpro so maps with a lot of brush model entities (teleporters, doors, platforms) like the RQuake intro map or the Undergate display correctly.
+- BPP defaults to your desktop bits per pixel setting.  Use -bpp 16 in command line if you prefer that.
+- vid_conwidth and vid_conheight are supported.  If using a large resolution that makes letters too small for your liking like 1280, type vid_conwidth 640 in the console.
+
+Known issues: still need to address international keyboard/keypad issue.  Possibly disable vid_fullscreen 0 if using non desktop bpp.
+
+V3.91 (Beta):
+- Fixed QView/Server browser reporting of IP address with default IP masking on.
+
+V3.90 (Beta):
+
+- Anti-wallhack code added, sv_cullplayers_trace (1=on by default, set to 0 to turn it off).
+- sv_cullplayers_notify 1/0; for testing only.  Prints whether or not a player is visible to server console.
+- Small (say_team) display issue fixed; 3.89 had changed messagemode2 prompt from "(say)" to "(say_team)" for clarity.
+
+V3.89 (Beta):
+
+- Automatically play demos (.dem) by clicking on them (in your Quake folder, in a zip file, on the internet, etc.)
+- Demo rewind/fast forward
+- Todo Fix list:  international keyboard + keypad; finish in-client video mode changing to completion; don't allow FF/rewind during pause.
+
+V3.88 (Beta):
+
+- Fixed AVI capture audio bug
+- Software renderer (wqpro) now supports AVI capture as well
+- Possible fix for an uncommon "mystery characters printing on scoreboard" in deathmatch problem. (Needs verification, since I don't have the problem).
+- Fix for international keyboard issue with keypad.
+
+V3.87 (Beta):
+
+- Added AVI capture capability from JoeQuake Build 1862.
+- Resolved situation where ctrl/alt/shift state was not reset upon switching in and out of client.
+
+V3.86:
+
+- Ability to change video mode in-game in glpro via Video Options. (From FitzQuake/Qrack).  I want to refine the startup more like Qrack does, instead of setting the video state twice like FitzQuake does.
+- Set the console width in realtime with vid_conwidth and vid_conheight.  (From Qrack/FitzQuake).
+- TODO:  Make video mode options unavailable in -window mode or implement full FitzQuake texture manager process so color depth can be changed.
+
+V3.85:
+
+Probably the last of the minor updates ...
+
+- Added a confirmation dialog to "Reset to defaults"
+- Implemented default_fov (idea from FuhQuake) that will intepret a server sending "fov 90" as a request to set your default fov.  Some mods do this and it is real annoying.
+- cl_bindprotect (default value 2).  Added protection against admin-abuse where "unbindall" gets sent to the client.  2 = Client must confirm unbindall keys, 1 = Ignore unbindall keys but print a notification to console, 0 = normal (unbind all your keys).
+- Increased the maximum screenshot count from 100 to 10000.
+- Can bind tilde (~) to a key in the console by typing "tilde" so if you accidentally unbind tilde, it can be rebound.
+
+V3.84:
+
+- Automatic international keyboard mapping can be turned off (strange results on Belgium AZERTY keyboards).  
+  This is now in the Advanced Settings menu and also be changed with in_keymap in the console 0= OFF, 1 = ON (default).
+
+(US users are unaffected by this change, it doesn't matter if it is on or off).
+
+V3.83:
+
+- Added Quake Name Maker (from JoeQuake / Qrack).  Go to Options -> Multiplayer -> Name Maker to create a name.
+- Commandline parameters -nojoy, -nocdaudio, -noipx have become -joy, -cdaudio, -ipx.  These now must be explicitly enabled instead of the reverse (because almost no one uses these).
+- IPLog is enabled by default and always is logged in id1\ folder.  Use -noiplog to disable instead of -iplog to enable.
+- Commandline command instead of cmdline cvar.  Type "commandline" in console to see your startup command line.
+- Boring notes: Commented out numerous unused variables in the GL build engine code.  I'll be removing these entirely eventually, but I've left them commented out for now (not cosmetically pleasing when reading the code, sorry).
+
+V3.82:
+
+- DirectInput can now be turned on/off in the menu.
+- Added a "time" command.  Type in console to display current time.
+- Discovered a fixed 2 minor bugs with wqpro (mouse button issue, default resolution issue).
+
+V3.80
+
+Very recent additions:
+
+- q_version support (from Qrack)
+- server ipmasking (use -noipmask to disable usage)
+- the -nosoundkeys parameter to disable default volumeup/volumedown functionality of -/+ keys
+
+This is a rebuild off the ProQuake 3.50 base incrementally adding features because 3.77 introduced some difficult to identify bugs.
+
+Main features of 3.80
+
+- In-game gamma correction removed because it did not look ProQuake authentic.
+- VSync ON|OFF now works properly
+- Automatic 8 button mouse support
+- Conwidth and conheight parameters work again
+
+Some "extras" features have temporarily been removed to make it easier to generate a Linux version.
+
+These features include the time command, gamedir switching, Direct3D renderer support, maplist and demolist commands.
+
+Additionally, some rarely used "extras" features have been temporarily removed but will return in subsequent version:
+
+interpolation, demo rewinding, demoplay via file association, cl_autodemo, rquake sv_dmflag, server side ip-masking, cl_mute.
+
+All of these features will return in subsequent versions after a Linux and possibly a Mac version are able to be compiled.  Removal of these features increase to the odds of a rock-solid release and decreases potential issues with compiling on non-Windows operating systems.
+
+V3.77
+
+- Animation interpolation added (from GLQuake 113).  Right now it is on by default just for testing purposes.
+- Fixed super-annoying ProQuake "chase_active 1 while demo is playing bug"; the fix is from Qrack (the problem is rather complicated to traceback, thank Rook for writing the fix in Qrack).
+- conwidth/conheight currently doesn't do anything in the commandline in this version and 3.76
+
+V3.76 
+
+- Hunk_print command from FitzQuake
+- Keybindlist (FitzQuake) "bindlist" (pacify the formatting)
+- Condump command (FitzQuake)
+- Lightning gun beam freezes when game is paused. (FitzQuake)
+- Now using FitzQuake-style viewpos.
+- Cvar cvar_reset_all, cvar_reset_one, toggle from FitzQuake
+- LH Aim fix - Provided by LordHavoc
+- "Reset to Defaults" in Options does what is expected; in GLQuake/GLProQuake it doesn't actually reset most things to the real defaults. (from FitzQuake)
+- Playdemo by file association capability (ezQuake)
+- Basic demo playback control keys (PGUP = fast forward toggle, PGDN = rewind).  Plan to adjust this more in the future.
+- "Can't find gfx.wad" can no longer happen.  Implemented ezQuake's "use the exe directory" if the basedir is wrong.
+
+V3.75
+
+- Limited gamma in wqpro to minium of 0.1 to avoid full white screen from ever occurring.
+- Fixed WinQuake chase_active 1 bug.  Apparently id source release didn't mirror the real official WinQuake in that code.  Fix from Enhanced GLQuake.
+- Weapon now is always drawn in wqpro if fov > 90.  r_drawviewmodel 0 is the appropriate way to turn view model rendering off.
+- Default hunk allocation is 32MB.
+- Cmdlist/cvarlist now sorted. (From FitzQuake)
+- Procrastination:  Direct3D version ALT-TAB issue (DDERR_SURFACELOST) can be fixed; it is a little complex so I'll do that sometime in the future.
+- Demo rewind and fast forward (from JoeQuake).
+- PAUSE key now pauses demos.
+- ALT bronzing and CTRL special characters work with international keyboard support; the international keyboard support "broke".
+- Skill level shows on-screen in single player when pressing showscores key (typically TAB).
+
+Todo:
+
+- Implement DarkPlaces-style more precise aim code LordHavoc provided.
+- Fix vsync so it can be turned off and on in-client.
+- Revisit the automatic conwidth/conheight method and improve it (it gets confused sometimes right now).
+- Linux build.
+- Direct3D ALT-TAB issue when full-screen (doesn't affect windowed mode).  Low priority.
+- Better parameter completion.
+- Hardwire -/+ as sound keys instead of the method currently used.
+
+V3.703 
+
+- International keyboard support (from DarkPlaces) and now numeric keypad always types numbers when the console is down (from DarkPlaces).
+
+V3.702
+
+- Added a Direct3D build, so those that can't use glpro.exe have an alternative, so they don't have to use wqpro.exe.  Building the D3D version requires the Direct3D Quake libraries http://dxquake.sourceforge.net/
+
+V3.701
+
+- Changed compiler options to resolve an issue in wqpro370.
+V3.70
+
+- Added full JoeQuake bronzing/coloring supporting via CTRL/ALT.
+- Showspeed command (show_speed 1)
+- Built-in aliases for convenience:  +quickgrenade, +quickrocket, +quickshot, +quickshaft, bestsafe, teamloc
+- Enabled colors 14/15 for client (IHOC style), colors only work online on supporting servers like IHOC, Whitehot, RQuake
+- Removed old maplist/demolist commands and reworked (because it could crash in certain circumstances)
+- Created new maplist/demolist commands based on the JoeQuake dir command.
+- The - and + keys are now volume adjustment keys.  Press - or + to change the volume at any time.
+
+V3.66
+
+- Intelligent resolution setting/detection.  When started with a plain command line (no -width/-height), glpro will search to find a resolution available for your display aspect ratio that will give you the highest FPS and performance, so it will look great on-screen and get a good FPS.
+
+V3.65 
+
+- Made the console width/height logical by default if not specified for nice on-screen appearance (from Qrack) and legible (50% conwidth) @ high resolutions (expanded on the concept).
+- Vid_vsync is always off if your hardware permits; added max framerate to menu.
+
+V3.64
+
+- Enabled binding to the "Windows" keys, the left/right and the context menu one.  But the left/right cannot really be used at this time because it will switch you out of the application.
+
+V3.63
+
+- "-nodemolist" and "-nomaplist" command line options; to postpone working on the best solution to address excessively long filenames or situations with huge numbers of maps/demos.
+
+V3.62
+
+- GL extensions no longer print.
+
+V3.61  
+
+- Bidirectional use of advanced settings menu.
+- Mirroralpha fix in GL is only used when mirroralpha < 1, hopefully this fixes an issue with some video cards that.
+- r_drawviewmodel / gl_ringalpha was adjusted; it was drawing the weapon with r_drawviewmodel 0 + gl_ringalpha 1 when it was not supposed to.
+
+V3.60
+
+Bug Fixes or Really Annoying Things Fixed
+
+- GLQuake high FOV rendering issue in some video cards appears to be fixed; fix from Enhanced GLQuake (but that code was from FitzQuake).
+- Fixed ALT-Tabbing bug for Nvidia/GeForce cards -- so very annoying of a problem -- yeah technically it is Nvidia's driver fault, but that doesn't change the pain. (From JoeQuake).
+- Mirror alpha fix.  For some reason, this seems historically important to me.  Set
+- Using -window with wqpro.exe actually starts wqpro.exe in windowed mode (ranks up there with one of WinQuake's most annoying shortcomings).
+- GL_Loadtexture: GLQuake cache mismatch bug eliminated.  Would generate an engine-stopping message going from maps with different textures, like E4M6 and then DM4.  Thanks to Reckless for provided the code, fix code by LordHavoc.
+- gl_clear 1 doesn't have status bar flicker with the color FitzQuake uses. 
+- Notifications of "Mousewheel is unbound" and such have been removed (except for currently non-supported mouse buttons 5-8, don't feel like implementing an external DLL fix right now).
+- Allow TAB to be pressed during demoplayback to see scoreboard. (Consider expanding a la JoeQuake where any key can be pressed).
+- Adjusted default values of pq_spam_rate and pq_spam_grace pq_tempmute as the defaults be very meddlesome in single player, coop, loc and mod testing.
+- Shadow flicker fix.  It's gone now.  Particularly noticeable at E1M1 "earth" you shoot to open access to Quad. (From Unofficial GLQuake-113)
+- Notification of non-26000 port connect failure so it doesn't take 5 minutes to figure out you are trying to connect to a non-existent port/server combination (Recommends to try port 26000 if the port is not 26000 -- from Rook's QRack).
+- 640 x 480 is now the default full-screen wqpro.exe resolution instead of the tiny 320 x 200 (240?).
+- Turning on "always run" increases cl_upspeed and cl_backspeed as well. The poor unknowing wonder why they don't move as fast -- they don't!
+
+Developer Convenience
+
+- Added viewpos command to tell current location. (This has been SOOO BADLY needed for ages.)
+- FitzQuake's give armor command (ex: give "a" 200), so you can now give yourself only armor in single player.
+- NO.  Reversed for assure dedicated server compatibility --> did not do this --> Max edicts raised from 600 to 2048, allowing ProQuake to play most single player map for lazy players that don't/won't use a real single player engine for that.
+- RocketGuy's sv_dmflag, which allows RQuake to effectively use a DM scoreboard in coop (todo:  add cvars to support/use his other changes like color 14/15 support, sv_tellenabled, "quit!" command [which I don't know what it does], anything else I forgot) and Rook's "the server doesn't crash if it doesn't have the map" fix.
+
+Convenience
+
+- Vanilla cmdlist / cvarlist support from Quakesrc.org tutorial (todo: JoeQuake style command/parameter completion)
+- Maplist/demolist commands.  
+- cl_confirmquit 0 - quit without the prompt.
+- time command - type in console to display current time.
+- full screen windowed mode (from aguirRe's Enhanced GLQuake).
+- Freelook cvar -- this has pretty much evolved to be the standard.
+- Zone default increased to 1024 KB.  Yeah, 512 KB usually suffices, but 5% of the time it doesn't and this is a trivial amount in the modern day.
+- Added cl_mute from Qrack and con_notifylines.  If someone is super annoying, just completely ignore them.  Also helps for turning demos into movies.
+- "-fullwindow" option for GL to do a full-screen windowed mode.  To do:  Make it work in Linux.
+- Made fov, r_drawviewmodel, scr_conspeed, cl_crossx/y, ambient sound, r_waterwarp, etc. save to config.
+- cl_crosshaircentered - actually centers the crosshair.
+- writeconfig command 
+- Reorganized and cleaned up "customize controls".  All the same options are there, it's just much cleaner and the order makes sense.
+- Menu to allow the easy ability to set all of the most important settings via the menu.
+
+New Functionality
+
+- In-game brightness adjustment -- it could use some more work. (From TyrQuake)
+- Bronzing by holding ALT down in console (From JoeQuake).  Largely eliminates the need for a Quake name maker. (Question: Do all saved names get saved properly.)
+- gl_ringalpha, set to less than 1 for weapon transparency - make weapon visible during invisibility (to do: option to draw weapon model in GL), but transparent.
+- Added cl_autodemo from Qrack.
+- FitzQuake style keypad binding support (off by default). (Think about: super extended support like JoeQuake where you can bind Left and Right CTRL/ALT separately).
+- Added JoeQuake adjust volume on the fly suppport [volumeup/volumedown]. (Need to test in wqpro and implement; todo: mute-toggle type of command?).
+- r_truegunangle - optionally render the gun angle "properly" (idea from how DarkPlaces/FitzQuake render weapon).
+
+==============================
+==============================
+To Do List for Future Versions
+==============================
+==============================
+
+1. Video capture
+3. Support Total Conversions
+4. Discreet demos menu under multiplayer??? If so, put the path on the screen dammit!  So newbies know where demos go!
+5. Don't crash server on no map fix.
+6. RocketGuy's RQuake server enhancements not already implemented as options. (Quit!, FRIK_FILE)
+7. Optional Interpolation. (Smooths movement very noticeable in single player).
+8. Add maps path to maplist command?  Add demo path to demolist command?
+9. About my Quake option in discreet menu?
+10. Make winquake and glquake versions save each other's cvars somehow so your config isn't nuked!
+
+12. Clipboard copy
+13. Diagnostics command or setting
+14. Universal config system
+15. Investigate ProQuake's cheat-free code and it's interference with mods.
+16. Some sort of superzoom implementation.
+17. Yugo2Heck's single port option??????  It hasn't been tested but seems to be how other engines do it.
+18. Auto-connect to server from web page.
+19. Deal better with minimizing/maximizing -windowed windows; I can't see seem to unminimze winquake sometimes.
+20. 2 requested features from ORL
+21. Look at FuhQuake's disable syswin keys feature, which makes it so the Windows key won't exit you.
+
+Possibly
+
+1. Optional dead body color fix. 
+2. Extended key bind menu for mods, messagemode2, etc.
+3. Frik_File / EBFS support (Rocketguy says EBFS will break QCCX compatibility:  cannot do EBFS)
+4. PNG screenshots or JPG screenshots or both (it's not hard)
+5. Better command or parameter completion like JoeQuake
+6. Make IPLOG ON|OFF be a preference menu item, not command line option.
+8. Client protection from "unbindallkeys" to protect from abusive admins
+11. Optional server word filter (client word filter?) for admins.
+12. 8 button mouse support and fixing bind button issues with -dinput (requires an extra DLL :(  ).
+13. Support for playing .dz demos
+14. Neil's demos over multiple maps fix?
+15. In-game server browser
+
+Somewhat Unlikely
+
+1. Startup menu to select resolution or in-game video mode changing
+2. Play Demo Via File Association
+3. DarkPlaces type console where console text size can be set independently
+4. Optional sbar alpha support for a DarkPlaces style transparent HUD.
+6. Optional Centerprint logging. (Easy to do, does it fit the feel of ProQuake though?)
+7. Convert demos to .dz format upon completion of recording?
+
+/ End Unofficial Changelog
+
+============================================================================================
+ProQuake change log
+============================================================================================
+
+V3.50
+
+- Fixed cheat-free connection lag
+- added cheatfree status command
+- added "cheat-free" to status message
+- added (cheat-free) to host hame
+- don't send fullpitch messages to qsmack clients
+- allow tell for qsmack clients
+- use current server if rcon_server is not set
+
+V3.40
+
+- Fixed NAT!
+
+V3.30
+
+- iplog supports multiple servers; logs are automatically merged
+- limit of 64 entries with a single IP address
+- fullbright shaft
+- upped Sys_Printf buffer from 1024 to 2048
+- check for !cls.netcon in Con_Printf
+- upped MAX_MODE_LIST from 30 to 64 in GL
+- extended wheel support
+- 4 button mouse support
+- r_polyblend
+- bestweapon
+- can connect to cheat free server without map
+
+V3.20
+
+- Fixed incoming message buffer overflow error
+- added pq_tempmute
+- added pq_cheatfree
+- removed -cheatfree command-line argument
+- added pq_removecr
+- added pq_logbinds
+- added %d
+- recognize ip:port
+- commented out slist if connect fails
+- better connection error messages
+- fixed parsing of pqc_team messages to prevent team scores from dropping to 0 in crmod 6.3
+- use original game directory for file verification
+
+V3.11
+
+- fixed auto ping when there's a gap in client numbers
+- added pq_showedict for Slot Zero
+- early exit from Host_Color_f if colour isn't actually changing
+
+V3.02 = V3.1
+
+- fixed spelling of gl_doubleeys
+- removed gl_eyes BS!!
+- support for qsmack
+- fixed GL memory leak
+- gamma correction!
+- chase_active fix
+- remove '\n' from names
+- fixed "allways"
+- fixed winquake screenshot gamma correction
+
+- fixed "c:\quake\glpro.exe" not found bug
+- fixed "server is full" bug
+- fixed listen server bug
+- fixed autorepeat
+- fixed rcon buffer overflow
+- added rcon_server
+- made auto-ping checking more robust ("unconnected" and '\n' doesn't mess it up)
+
+V3.00
+
+- CSR -ip patch
+- fixed buffer overrun problem for NVidia 5.16 drivers
+- put [] around score in scoreboard
+- added %w (weapons)
+- don't print "I have" if you're dead!
+- don't allow say or say_team immediately after changing name/colour
+- ipmerge (Klas Nyblom)
+- identify <name>
+- fixed win2k compatability
+- added poll counter to test2!
+- added error messages to test, test2
+- rcon!!
+- fixed consecutive demo bug
+- CHEAT FREE!!!
+- changed pq_spam_rate to 1.5
+- "known aliases for <15 chars mas>"
+- added pq_smoothcam for Slot Zero
+
+V2.01
+
+- commented out reverse lookup code
+- server side fullpitch correction
+- net_connecttimeout
+
+V1.05
+
+- added pq_moveup
+- changed default zone size to 512K
+- added menu option for changing _windowed_mouse under X11
+- pq_waterblend, pq_quadblend, pq_ringblend, pq_pentblend, pq_suitblend
+- pq_fullpitch
+- pq_timestamp
+- pq_confilter
+- PGUP, PGDOWN, TAB autorepeat (only in console!!)
+- improved location logic (nearest rectangle)
+- qflood protection
+- fixed command completion (includes aliases)
+- added lg, gl to dm3.loc
+- translation to plain text in dedicated server console
+- ip logging!
+- demo recording!!
+- pq_maxfps
+
+V1.04
+
+- added spam protection
+	- pq_spam_rate
+	- pq_spam_grace
+- added %x (rockets), %c (cells)
+- added pq_haverl, pq_needrl, pq_needrox
+- added %p
+	- pq_quad
+	- pq_pent
+	- pq_ring
+- fixed -ip parameter for sqpro
+
+V1.03
+
+- added say, say_team formatting: %a, %h, %r, %l (with location files)
+	- credit: Ramirez, http://nqctf.gamepoint.net/
+- added pasting to console and messagemode
+	- credit: FricaC, www.quakesource.org
+- fixed stupid bug in call to Con_Debuglog, in Con_Printf (forgot "%s"!!!)
+- removed coop 0 from demos
+
+V1.02
+
+- added pq_drawfps
+- fixed 0 packet size bug
+- added -ip for linux
+
+V1.00
+
+Client:
+
+- precise aim for ProQuake connection
+- ProQuake message on connect
+- ProQuake version
+- Auto-smooth for camera/chasecam/eyecam
+- longer mm1, mm2 messages
+- (say): for messagemode2
+- support for mods in qsocket (EXPLAIN - byte after accept server->client; byte after connect client->server)
+- fixed losing backscroll on print
+- fixed HOME and END in console
+- Added proquake commands to CL_Parse
+- pq_teamscores: teamscores in status bar!!!
+- pq_timer: timer in status bar!!
+- put sound back to DOSquake levels!
+- added ping to scoreboard
+- added ProQuake help page
+- added cl_crossx, cl_crossy for GL
+- queries server for pings if not connected to crmod6.0 server
+- added pq_lag - synthetic lag!
+- recognizes ping +N
+- grab match time from crmod 4.0-5.1
+- added r_waterwarp to GL
+
+Server:
+
+- disabled tell
+- () in mm2 (server side)
+- Allow multiple connects from any IP (server side)
+- precise aim for ProQuake connection
+- added hook for QuakeC to turn off server flag in cvars
+- Added ProQuake console variable (so mods can detect it)
+- can set logfile name; can use %d for multiple logs
+- log file header
+- dprint(proquake client connected) if proquake client detected
+
+
+Other:
+- removed "backup past 0"
+- removed "stuck", "unstuck" messages
+- restored old winquake icon

@@ -174,10 +174,7 @@ void SCR_CenterPrint (char *str)
 void SCR_DrawCenterString (void)
 {
 	char	*start;
-	int		l;
-	int		j;
-	int		x, y;
-	int		remaining;
+	int	l, j, x, y, remaining;
 
 // the finale prints the characters one at a time
 	if (cl.intermission)
@@ -193,8 +190,7 @@ void SCR_DrawCenterString (void)
 	else
 		y = 48;
 
-	do
-	{
+	do {
 	// scan the width of the line
 		for (l=0 ; l<40 ; l++)
 			if (start[l] == '\n' || !start[l])
@@ -243,8 +239,7 @@ CalcFov
 */
 float CalcFov (float fov_x, float width, float height)
 {
-        float   a;
-        float   x;
+	float   a, x;
 
         if (fov_x < 1 || fov_x > 179)
                 Sys_Error ("Bad fov: %f", fov_x);
@@ -268,8 +263,8 @@ Internal use only
 */
 static void SCR_CalcRefdef (void)
 {
-	float		size;
 	int		h;
+	float		size;
 	qboolean		full = false;
 
 
@@ -309,8 +304,10 @@ static void SCR_CalcRefdef (void)
 	if (scr_viewsize.value >= 100.0) {
 		full = true;
 		size = 100.0;
-	} else
+	} else {
 		size = scr_viewsize.value;
+	}
+
 	if (cl.intermission)
 	{
 		full = true;
@@ -342,14 +339,10 @@ static void SCR_CalcRefdef (void)
 	//r_refdef.fov_x = scr_fov.value;
 	//r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
 
-	if ((glwidth/glheight) > 1.34)
-    {
+	if ((glwidth/glheight) > 1.34) {
         r_refdef.fov_y = CalcFov (oldfov, r_refdef.vrect.height * (320.0f / 240.0f), r_refdef.vrect.height);
         r_refdef.fov_x = CalcFov (r_refdef.fov_y, vid.height, r_refdef.vrect.width);
-    }
-
-	else
-	{
+    } else {
 		r_refdef.fov_x = oldfov;
 		r_refdef.fov_y = CalcFov (r_refdef.fov_x, r_refdef.vrect.width, r_refdef.vrect.height);
 	} 
@@ -390,36 +383,64 @@ VID_Conwidth_f -- johnfitz -- called when vid_conwidth changes
 ==================
 */
 extern qpic_t *conback;
+qboolean vid_consize_force =false; // To force a console size, even though glwidth/glheight not updated.  This DOES set the 2d width.
+qboolean vid_consize_ignore_callback = false; // To merely set the cvars, for writing to config.  This does not even set the 2d width.
 void VID_Conheight_f (void)
 {
-	vid.height = CLAMP (200, vid_conheight.value, glheight);
-	//bound(200, (atoi(string)), vid_height.value);
+	float startvalue = vid.height; // Except if it de-syncs
 	
-	Cvar_SetValue("vid_conheight", vid.height);
+	if (vid_consize_ignore_callback) // Set it!  No questions asked.
+		return;
 	
-	conback->height = vid.conheight = vid.height;
-	
-	vid.recalc_refdef = 1;
-}
-
-void VID_Conwidth_f (void)
-{
-	float startwidth = vid.width;
-	vid.width = (vid_conwidth.value > 0) ? (int)vid_conwidth.value : glwidth;
-	vid.width = CLAMP (320, vid.width, glwidth);
-	vid.width &= 0xFFFFFFF8;
-	vid.height = vid.width * glheight / glwidth;
-	vid.height &= 0xFFFFFFF8;
-
-	if (startwidth != vid.width) {
-		Cvar_SetValue("vid_conwidth", vid.width);
-		return; 
+	if (vid_consize_force) {
+		vid.height = vid_conheight.value;
+		return;
 	}
+		
+	vid.height = CLAMP (200, vid_conheight.value, glheight);
 
-	if (vid.height != vid_conheight.value)
+	if (vid.height != startvalue) 
 		Cvar_SetValue("vid_conheight", vid.height);
 
-	// From Qrack as test
+	conback->height = vid.conheight = vid.height;
+	vid.recalc_refdef = 1;
+
+}
+
+extern cvar_t vid_width;
+extern cvar_t vid_height;
+
+void VID_Conwidth_Reset ()
+{
+	//float startwidth = vid_width.value;
+
+	
+	vid.width = vid_width.value;
+	vid.height = vid_height.value;
+	vid.width &= 0xFFFFFFF8;
+	vid.height &= 0xFFFFFFF8;
+
+	// Baker: I think this is idea, but can confuse the user
+	/*	if (vid.width >= 1280) {
+		// Avoid non-microscopic text
+		vid.width = (int)(vid.width / 2);
+		vid.height = (int)(vid.height / 2);
+		vid.width &= 0xFFFFFFF8;
+		vid.height &= 0xFFFFFFF8;
+	} */
+
+	vid_consize_force = true;
+
+	if (vid.height != vid_conheight.value)
+		Cvar_SetValue("vid_conheight", (float)vid.height);
+
+	if (vid.width != vid_conwidth.value) {
+		Cvar_SetValue("vid_conwidth", (float)vid.width);
+	}
+
+	vid_consize_force = false;
+
+	// Baker: the following is a necessary evil ... for now
 	conback->width = vid.conwidth = vid.width;
 	conback->height = vid.conheight = vid.height;
 
@@ -427,17 +448,32 @@ void VID_Conwidth_f (void)
 
 }
 
-void VID_Conwidth_f_Old (void)
+void VID_Conwidth_f (void)
 {
-	float startconwidth = vid.conwidth;
-	vid.conwidth = (vid_conwidth.value > 0) ? (int)vid_conwidth.value : glwidth;
-	vid.conwidth = CLAMP (320, vid.conwidth, glwidth);
-	vid.conwidth &= 0xFFFFFFF8;
-	vid.conheight = vid.conwidth * glheight / glwidth;
-	if (startconwidth != vid.conwidth) {
-		Cvar_SetValue("vid_conwidth", vid.conwidth);
+	float startwidth = vid.width;
+	
+	if (vid_consize_ignore_callback) // Set it!  No questions asked.
+		return;
+
+	if (vid_consize_force) {
+		vid.width = vid_conwidth.value;
+		vid.height = vid_conheight.value;
+		return;
+	}
+
+	vid.width = (vid_conwidth.value > 0) ? (int)vid_conwidth.value : glwidth;
+	vid.width = CLAMP (320, vid.width, glwidth);
+	vid.width &= 0xFFFFFFF8;
+	vid.height = vid.width * glheight / glwidth;
+	vid.height &= 0xFFFFFFF8;
+
+	if (startwidth != vid.width || vid_conwidth.value != vid.width) {
+		Cvar_SetValue("vid_conwidth", vid.width);
 		return; 
 	}
+
+	if (vid.height != vid_conheight.value )
+		Cvar_SetValue("vid_conheight", vid.height);
 
 	// From Qrack as test
 	conback->width = vid.conwidth = vid.width;
@@ -477,9 +513,9 @@ void SCR_Init (void)
 
 	Cvar_RegisterVariable (&pq_drawfps, NULL); // JPG - draw frames per second
 	Cvar_RegisterVariable (&show_speed, NULL); // Baker 3.67
-//
+
 // register our commands
-//
+
 	Cmd_AddCommand ("screenshot",SCR_ScreenShot_f);
 	Cmd_AddCommand ("sizeup",SCR_SizeUp_f);
 	Cmd_AddCommand ("sizedown",SCR_SizeDown_f);
@@ -736,9 +772,7 @@ void SCR_SetUpToDrawConsole (void)
 	}
 
 	if (clearconsole++ < vid.numpages)
-	{
 		Sbar_Changed ();
-	}
 	else if (clearnotify++ < vid.numpages)
 	{
 	}
@@ -894,16 +928,13 @@ qboolean	scr_drawdialog;
 void SCR_DrawNotifyString (void)
 {
 	char	*start;
-	int		l;
-	int		j;
-	int		x, y;
+	int	l, j, x, y;
 
 	start = scr_notifystring;
 
 	y = vid.height*0.35;
 
-	do
-	{
+	do {
 	// scan the width of the line
 		for (l=0 ; l<40 ; l++)
 			if (start[l] == '\n' || !start[l])
@@ -951,8 +982,7 @@ int SCR_ModalMessage (char *text, float timeout) //johnfitz -- timeout
 	time1 = Sys_FloatTime () + timeout; //johnfitz -- timeout
 	time2 = 0.0f; //johnfitz -- timeout
 
-	do
-	{
+	do {
 		key_count = -1;		// wait for a key down and up
 		Sys_SendKeyEvents ();
 		if (timeout) time2 = Sys_FloatTime (); //johnfitz -- zero timeout means wait forever.
@@ -991,7 +1021,7 @@ void SCR_BringDownConsole (void)
 		SCR_UpdateScreen ();
 
 	cl.cshifts[0].percent = 0;		// no area contents palette on next frame
-	VID_SetPalette (host_basepal);
+	VID_SetPaletteOld (host_basepal);
 }
 
 void SCR_TileClear (void)
@@ -1001,20 +1031,14 @@ void SCR_TileClear (void)
 		Draw_TileClear (0, 0, r_refdef.vrect.x, vid.height - sb_lines);
 		// right
 		Draw_TileClear (r_refdef.vrect.x + r_refdef.vrect.width, 0,
-			vid.width - r_refdef.vrect.x + r_refdef.vrect.width,
-			vid.height - sb_lines);
+			vid.width - r_refdef.vrect.x + r_refdef.vrect.width, vid.height - sb_lines);
 	}
 	if (r_refdef.vrect.y > 0) {
 		// top
-		Draw_TileClear (r_refdef.vrect.x, 0,
-			r_refdef.vrect.x + r_refdef.vrect.width,
-			r_refdef.vrect.y);
+		Draw_TileClear (r_refdef.vrect.x, 0, r_refdef.vrect.x + r_refdef.vrect.width, r_refdef.vrect.y);
 		// bottom
-		Draw_TileClear (r_refdef.vrect.x,
-			r_refdef.vrect.y + r_refdef.vrect.height,
-			r_refdef.vrect.width,
-			vid.height - sb_lines -
-			(r_refdef.vrect.height + r_refdef.vrect.y));
+		Draw_TileClear (r_refdef.vrect.x, r_refdef.vrect.y + r_refdef.vrect.height,
+			r_refdef.vrect.width, vid.height - sb_lines - (r_refdef.vrect.height + r_refdef.vrect.y));
 	}
 }
 
@@ -1058,9 +1082,7 @@ void SCR_UpdateScreen (void)
 
 	GL_BeginRendering (&glx, &gly, &glwidth, &glheight);
 
-	//
 	// determine size of refresh window
-	//
 	if (oldfov != scr_fov.value)
 	{
 		oldfov = scr_fov.value;
@@ -1076,18 +1098,22 @@ void SCR_UpdateScreen (void)
 	if (vid.recalc_refdef)
 		SCR_CalcRefdef ();
 
-//
+
 // do 3D refresh drawing, and then update the screen
-//
 	SCR_SetUpToDrawConsole ();
 
 	V_RenderView ();
 
 	GL_Set2D ();
 
-	//
+// added by joe - IMPORTANT: this _must_ be here so that 
+//			     palette flashes take effect in windowed mode too.
+	if (using_hwgamma) // Baker begin hwgamma support
+		R_PolyBlend (); // Baker end hwgamma support
+
+
 	// draw any areas not covered by the refresh
-	//
+
 	SCR_TileClear ();
 
 	if (scr_drawdialog)
@@ -1142,7 +1168,17 @@ void SCR_UpdateScreen (void)
 		Mat_Update ();	// JPG
 	}
 
-	V_UpdatePalette ();
+	// Baker hwgamma support
+#ifndef D3DQUAKE
+	if (using_hwgamma) {
+		R_BrightenScreen ();
+		V_UpdatePaletteNew ();
+	} else 
+#endif
+	{
+		V_UpdatePaletteOld ();	
+	}
+	// Baker end hwgamma support
 
 #ifdef _WIN32
 	Movie_UpdateScreen ();

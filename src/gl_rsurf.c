@@ -194,7 +194,11 @@ store:
 				t >>= 7;
 				if (t > 255)
 					t = 255;
+#ifdef D3DQUAKE
+				dest[3] = 255-t;	
+#else
 				dest[3] = 255-gammatable[t];	// JPG 3.02 - t -> gammatable[t]
+#endif
 				dest += 4;
 			}
 		}
@@ -407,12 +411,20 @@ just do everything as it passes with no need to sort
 */
 void R_DrawSequentialPoly (msurface_t *s)
 {
+// Begin D3DQuake
+int gNoSurfaces=0;
+// End D3DQuake
+
 	glpoly_t	*p;
 	float		*v;
 	int			i;
 	texture_t	*t;
 	vec3_t		nv;
 	glRect_t	*theRect;
+
+// Begin D3DQuake
+	if ( gNoSurfaces ) return;
+// End D3DQuake
 
 	//
 	// normal lightmaped poly

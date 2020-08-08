@@ -29,8 +29,8 @@ ALIAS MODEL DISPLAY LIST GENERATION
 =================================================================
 */
 
-model_t		*aliasmodel;
-aliashdr_t	*paliashdr;
+//model_t		*aliasmodel;
+//aliashdr_t	*paliashdr;
 
 qboolean	used[8192];
 
@@ -276,76 +276,29 @@ void BuildTris (void)
 }
 
 
-/*
-================
-GL_MakeAliasModelDisplayLists
-================
-*/
-void GL_MakeAliasModelDisplayLists (model_t *m, aliashdr_t *hdr)
+void GL_MakeAliasModelDisplayLists (aliashdr_t *paliashdr)
 {
-	int		i, j;
-	int			*cmds;
-	trivertx_t	*verts;
-	char	cache[MAX_QPATH], fullpath[MAX_OSPATH]/*, *c */;
-	FILE	*f;
+   int         i, j;
+   int         *cmds;
+   trivertx_t   *verts;
 
-	aliasmodel = m;
-	paliashdr = hdr;	// (aliashdr_t *)Mod_Extradata (m);
+   BuildTris ();      // trifans or lists
 
-	//
-	// look for a cached version
-	//
-	strcpy (cache, "glquake/");
-	COM_StripExtension (m->name+strlen("progs/"), cache+strlen("glquake/"));
-	strcat (cache, ".ms2");
+   // save the data out
+   paliashdr->poseverts = numorder;
 
-	COM_FOpenFile (cache, &f);	
-	if (f)
-	{
-		fread (&numcommands, 4, 1, f);
-		fread (&numorder, 4, 1, f);
-		fread (&commands, numcommands * sizeof(commands[0]), 1, f);
-		fread (&vertexorder, numorder * sizeof(vertexorder[0]), 1, f);
-		fclose (f);
-	}
-	else
-	{
-		//
-		// build it from scratch
-		//
-		Con_Printf ("meshing %s...\n",m->name);
+   cmds = Hunk_Alloc (numcommands * 4);
+   paliashdr->commands = (byte *)cmds - (byte *)paliashdr;
+   memcpy (cmds, commands, numcommands * 4);
+   verts = Hunk_Alloc (paliashdr->numposes * paliashdr->poseverts * sizeof(trivertx_t));
+   paliashdr->posedata = (byte *)verts - (byte *)paliashdr;
 
-		BuildTris ();		// trifans or lists
-
-		//
-		// save out the cached version
-		//
-		sprintf (fullpath, "%s/%s", com_gamedir, cache);
-		f = fopen (fullpath, "wb");
-		if (f)
-		{
-			fwrite (&numcommands, 4, 1, f);
-			fwrite (&numorder, 4, 1, f);
-			fwrite (&commands, numcommands * sizeof(commands[0]), 1, f);
-			fwrite (&vertexorder, numorder * sizeof(vertexorder[0]), 1, f);
-			fclose (f);
-		}
-	}
-
-
-	// save the data out
-
-	paliashdr->poseverts = numorder;
-
-	cmds = Hunk_Alloc (numcommands * 4);
-	paliashdr->commands = (byte *)cmds - (byte *)paliashdr;
-	memcpy (cmds, commands, numcommands * 4);
-
-	verts = Hunk_Alloc (paliashdr->numposes * paliashdr->poseverts 
-		* sizeof(trivertx_t) );
-	paliashdr->posedata = (byte *)verts - (byte *)paliashdr;
-	for (i=0 ; i<paliashdr->numposes ; i++)
-		for (j=0 ; j<numorder ; j++)
-			*verts++ = poseverts[i][vertexorder[j]];
-}
+   for (i=0 ; i<paliashdr->numposes ; i++)
+   {
+      for (j=0 ; j<numorder ; j++)
+      {
+         *verts++ = poseverts[i][vertexorder[j]];
+      }
+   }
+} 
 

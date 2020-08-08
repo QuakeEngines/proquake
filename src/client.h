@@ -400,7 +400,10 @@ void V_StartPitchDrift (void);
 void V_StopPitchDrift (void);
 
 void V_RenderView (void);
-void V_UpdatePalette (void);
+#if defined(GLQUAKE) && !defined(D3DQUAKE)
+void V_UpdatePaletteNew (void);
+#endif
+void V_UpdatePaletteOld (void);
 void V_Register (void);
 void V_ParseDamage (void);
 void V_SetContentsColor (int contents);

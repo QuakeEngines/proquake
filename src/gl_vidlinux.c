@@ -206,12 +206,12 @@ void InitSig(void)
 	signal(SIGTERM, signal_handler);
 }
 
-void VID_ShiftPalette(unsigned char *p)
+void VID_ShiftPaletteOld(unsigned char *p)
 {
 //	VID_SetPalette(p);
 }
 
-void	VID_SetPalette (unsigned char *palette)
+void	VID_SetPaletteOld (unsigned char *palette)
 {
 	byte	*pal;
 	unsigned r,g,b;
@@ -576,7 +576,7 @@ void VID_Init8bitPalette(void)
 	dlclose(prjobj);
 }
 
-static void Check_Gamma (unsigned char *pal)
+static void Check_GammaOld (unsigned char *pal)
 {
 	float	f, inf;
 	unsigned char	palette[768];
@@ -687,8 +687,8 @@ void VID_Init(unsigned char *palette)
 	sprintf (gldir, "%s/glquake", com_gamedir);
 	Sys_mkdir (gldir);
 
-	Check_Gamma(palette);
-	VID_SetPalette(palette);
+	Check_GammaOld(palette);
+	VID_SetPaletteOld(palette);
 
 	// Check for 3DFX Extensions and initialize them.
 	VID_Init8bitPalette();

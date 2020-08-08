@@ -1153,9 +1153,11 @@ static qsocket_t *_Datagram_CheckNewConnections (void)
 			MSG_WriteString(&net_message, client->netconnection->address);
 		} else { 
 			if (sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3) // Baker 3.60 - engine side IP masking
-			sprintf(address, "%d.%d.%d.xxx", a, b, c); // Baker 3.60 - engine side IP masking
+			sprintf(address, "%d.%d.%d.xxx", a, b, c);
+			MSG_WriteString(&net_message, address);
 		}
 		
+
 		*((int *)net_message.data) = BigLong(NETFLAG_CTL | (net_message.cursize & NETFLAG_LENGTH_MASK));
 		dfunc.Write (acceptsock, net_message.data, net_message.cursize, &clientaddr);
 		SZ_Clear(&net_message);

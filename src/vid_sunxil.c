@@ -213,7 +213,7 @@ void VID_Gamma_f (void)
 			vid_gamma[i] = inf;
 		}
 
-		VID_SetPalette (current_palette);
+		VID_SetPaletteOld (current_palette);
 
 		vid.recalc_refdef = 1;				// force a surface cache flush
 	}
@@ -575,7 +575,7 @@ void	VID_Init (unsigned char *palette)
 	// create and upload the palette
 		if (x_visinfo->class == PseudoColor) {
 			x_cmap = XCreateColormap(x_disp, x_win, x_vis, AllocAll);
-			VID_SetPalette(palette);
+			VID_SetPaletteOld(palette);
 			XSetWindowColormap(x_disp, x_win, x_cmap);
 		}
 
@@ -706,10 +706,10 @@ VID_ResetFramebuffer_MT()
 
 void VID_ShiftPalette(unsigned char *p)
 {
-	VID_SetPalette(p);
+	VID_SetPaletteOld(p);
 }
 
-void VID_SetPalette(unsigned char *palette)
+void VID_SetPaletteOld(unsigned char *palette)
 {
 
 	int i;

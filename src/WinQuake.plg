@@ -6,9 +6,15 @@
 --------------------Configuration: winquake - Win32 GL Release--------------------
 </h3>
 <h3>Command Lines</h3>
-Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP386.tmp" with contents
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3E0C.tmp" with contents
 [
-.\dxsdk\sdk7\lib\dxguid.lib comctl32.lib winmm.lib wsock32.lib opengl32.lib glu32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro390.exe" 
+/nologo /G5 /ML /GX /O2 /I ".\dxsdk\sdk7\include" /D "NDEBUG" /D "GLQUAKE" /D "WIN32" /D "_WINDOWS" /D "NO_ASSEMBLY" /D "NO_MGRAPH" /FR".\release_gl/" /Fp".\release_gl/WinQuake.pch" /YX /Fo".\release_gl/" /Fd".\release_gl/" /FD /c 
+"E:\engine\pq394.2\host_cmd.c"
+]
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3E0C.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3E0D.tmp" with contents
+[
+comctl32.lib opengl32.lib glu32.lib .\dxsdk\sdk7\lib\dxguid.lib winmm.lib wsock32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /profile /machine:I386 /out:"c:\program files\quaket\glpro390.exe" 
 .\release_gl\cd_win.obj
 .\release_gl\chase.obj
 .\release_gl\cl_demo.obj
@@ -73,14 +79,81 @@ Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP386.tmp" with con
 .\release_gl\world.obj
 .\release_gl\zone.obj
 .\release_gl\winquake.res
-.\release_gl\math.obj
-.\release_gl\snd_mixa.obj
-.\release_gl\sys_wina.obj
-.\release_gl\worlda.obj
 ]
-Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP386.tmp"
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3E0D.tmp"
 <h3>Output Window</h3>
+Compiling...
+host_cmd.c
 Linking...
+Creating temporary file "C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3E0F.tmp" with contents
+[
+/nologo /o".\release_gl/WinQuake.bsc" 
+.\release_gl\cd_win.sbr
+.\release_gl\chase.sbr
+.\release_gl\cl_demo.sbr
+.\release_gl\cl_input.sbr
+.\release_gl\cl_main.sbr
+.\release_gl\cl_parse.sbr
+.\release_gl\cl_tent.sbr
+.\release_gl\cmd.sbr
+.\release_gl\common.sbr
+.\release_gl\conproc.sbr
+.\release_gl\console.sbr
+.\release_gl\crc.sbr
+.\release_gl\cvar.sbr
+.\release_gl\gl_draw.sbr
+.\release_gl\gl_mesh.sbr
+.\release_gl\gl_model.sbr
+.\release_gl\gl_refrag.sbr
+.\release_gl\gl_rlight.sbr
+.\release_gl\gl_rmain.sbr
+.\release_gl\gl_rmisc.sbr
+.\release_gl\gl_rsurf.sbr
+.\release_gl\gl_screen.sbr
+.\release_gl\gl_test.sbr
+.\release_gl\gl_vidnt.sbr
+.\release_gl\gl_warp.sbr
+.\release_gl\host.sbr
+.\release_gl\host_cmd.sbr
+.\release_gl\in_win.sbr
+.\release_gl\iplog.sbr
+.\release_gl\keys.sbr
+.\release_gl\location.sbr
+.\release_gl\mathlib.sbr
+.\release_gl\matrix.sbr
+.\release_gl\menu.sbr
+.\release_gl\movie.sbr
+.\release_gl\movie_avi.sbr
+.\release_gl\net_dgrm.sbr
+.\release_gl\net_loop.sbr
+.\release_gl\net_main.sbr
+.\release_gl\net_vcr.sbr
+.\release_gl\net_win.sbr
+.\release_gl\net_wins.sbr
+.\release_gl\net_wipx.sbr
+.\release_gl\pr_cmds.sbr
+.\release_gl\pr_edict.sbr
+.\release_gl\pr_exec.sbr
+.\release_gl\r_part.sbr
+.\release_gl\registry.sbr
+.\release_gl\sbar.sbr
+.\release_gl\security.sbr
+.\release_gl\snd_dma.sbr
+.\release_gl\snd_mem.sbr
+.\release_gl\snd_mix.sbr
+.\release_gl\snd_win.sbr
+.\release_gl\sv_main.sbr
+.\release_gl\sv_move.sbr
+.\release_gl\sv_phys.sbr
+.\release_gl\sv_user.sbr
+.\release_gl\sys_win.sbr
+.\release_gl\view.sbr
+.\release_gl\wad.sbr
+.\release_gl\world.sbr
+.\release_gl\zone.sbr]
+Creating command line "bscmake.exe @C:\DOCUME~1\ADMINI~2\LOCALS~1\Temp\RSP3E0F.tmp"
+Creating browse info file...
+<h3>Output Window</h3>
 
 
 

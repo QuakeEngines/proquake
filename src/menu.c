@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -35,25 +35,25 @@ void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
 enum {
-	m_none, 
-	m_main, 
-	m_singleplayer, 
-	m_load, 
-	m_save, 
-	m_multiplayer, 
-	m_setup, 
-	m_net, 
-	m_options, 
-	m_video, 
-	m_keys, 
-	m_help, 
-	m_quit, 
-	m_serialconfig, 
-	m_modemconfig, 
-	m_lanconfig, 
-	m_gameoptions, 
-	m_search, 
-	m_slist, 
+	m_none,
+	m_main,
+	m_singleplayer,
+	m_load,
+	m_save,
+	m_multiplayer,
+	m_setup,
+	m_net,
+	m_options,
+	m_video,
+	m_keys,
+	m_help,
+	m_quit,
+	m_serialconfig,
+	m_modemconfig,
+	m_lanconfig,
+	m_gameoptions,
+	m_search,
+	m_slist,
 	m_preferences,
 	m_namemaker
 } m_state;
@@ -730,10 +730,10 @@ void M_Menu_Setup_f (void)
 	m_entersound = true;
 
 	Q_strncpyz (setup_hostname, hostname.string, sizeof(setup_hostname));
-	
+
 	if (!(strlen(setup_myname)))
 	Q_strncpyz (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
-	
+
 	setup_top = setup_oldtop = ((int)cl_color.value) >> 4;
 	setup_bottom = setup_oldbottom = ((int)cl_color.value) & 15;
 }
@@ -1247,6 +1247,9 @@ void M_Menu_Options_f (void)
 #endif
 }
 
+#ifdef GLQUAKE
+extern cvar_t v_gamma; // <-- Baker hwgamma support
+#endif
 
 void M_AdjustSliders (int dir)
 {
@@ -1271,12 +1274,30 @@ void M_AdjustSliders (int dir)
 		Cvar_SetValue ("fov", scr_fov.value);
 		break;
 	case 5:	// gamma
-		v_gamma.value -= dir * 0.05;
-		if (v_gamma.value < 0.5)
-			v_gamma.value = 0.5;
-		if (v_gamma.value > 1)
-			v_gamma.value = 1;
-		Cvar_SetValue ("gamma", v_gamma.value);
+		// Baker hwgamma support
+#if defined(GLQUAKE) && !defined(D3DQUAKE)
+		// D3DQUAKE should use hardware gamma
+		// at least for here!
+		if (using_hwgamma) {
+			v_gamma.value -= dir * 0.05;
+			if (v_gamma.value < 0.5)
+				v_gamma.value = 0.5;
+			if (v_gamma.value > 1)
+				v_gamma.value = 1;
+			Cvar_SetValue ("gl_gamma", v_gamma.value);
+		} else {
+			SCR_ModalMessage("Brightness adjustment cannot\nbe done in-game if using the\n-gamma command line parameter.\n\n\nRemove -gamma from your command\nline to use in-game brightness.\n\nPress Y or N to continue.",0.0f);
+		}
+#else
+		vold_gamma.value -= dir * 0.05;
+			if (vold_gamma.value < 0.5)
+				vold_gamma.value = 0.5;
+			if (vold_gamma.value > 1)
+				vold_gamma.value = 1;
+			Cvar_SetValue ("gamma", vold_gamma.value);
+#endif
+
+		// Baker end hwgamma support
 		break;
 	case 6:	// mouse speed
 		sensitivity.value += dir * 1;
@@ -1384,6 +1405,9 @@ void M_DrawCheckbox (int x, int y, int on)
 		M_Print (x, y, "off");
 }
 
+#ifdef GLQUAKE
+extern qboolean video_options_disabled;
+#endif
 void M_Options_Draw (void)
 {
 	float		r;
@@ -1406,7 +1430,15 @@ void M_Options_Draw (void)
 	M_DrawSlider (220, 64, r);
 
 	M_Print (16, 72, "            Brightness");
-	r = (1.0 - v_gamma.value) / 0.5;
+
+	// Baker hwgamma support
+#if defined(GLQUAKE) && !defined(D3DQUAKE)
+	if (using_hwgamma)
+		r = (1.0 - v_gamma.value) / 0.5;
+	else
+#endif
+		r = (1.0 - vold_gamma.value) / 0.5;
+
 	M_DrawSlider (220, 72, r);
 
 	M_Print (16, 80, "           Mouse Speed");
@@ -1439,7 +1471,14 @@ void M_Options_Draw (void)
 	M_DrawCheckbox (220, 128, lookspring.value);
 
 	M_Print (16, 136, "         Video Options");
-	//M_DrawCheckbox (220, 136, lookstrafe.value); // Baker 3.60 - Lookstrafe is now in Preferences
+
+#ifdef GLQUAKE
+	{
+
+		if (video_options_disabled)
+			M_Print (220, 136, "[locked]");
+	}
+#endif
 
 	if (vid_menudrawfn)
 	M_Print (16, 144, "     Advanced Settings");
@@ -1463,6 +1502,8 @@ void M_Options_Draw (void)
 
 void M_Options_Key (int key, int ascii)
 {
+
+
 	switch (key)
 	{
 	case K_ESCAPE:
@@ -1483,12 +1524,22 @@ void M_Options_Key (int key, int ascii)
 		case 2:
 			if (!SCR_ModalMessage("Are you sure you want to reset\nall settings?\n",0.0f))
 					break;
-			
+
 			Cbuf_AddText ("resetall\n"); //johnfitz
 			Cbuf_AddText ("exec default.cfg\n");
 			break;
 		case 13:
-			M_Menu_Video_f ();
+#ifdef GLQUAKE
+			if (video_options_disabled)
+#ifdef D3DQUAKE
+				SCR_ModalMessage("Direct3D version does not support\nin-game video mode changes.  Sorry.\n\nPress Y or N to continue.",0.0f);
+#else
+				SCR_ModalMessage("Video options are disabled when\nusing the -window command\nline parameter.\n\nRemove -window from your command\nline to enable in-game\nresolution changing.\n\nPress Y or N to continue.",0.0f);
+#endif
+			else
+#endif
+				M_Menu_Video_f ();
+
 			break;
 		case 14:
 			M_Menu_Preferences_f ();
@@ -1865,7 +1916,7 @@ void M_Pref_AdjustSliders (int dir)
 			// FULL | LITE | ONLY DAMAGE | ALL OFF
 			if (pq_suitblend.value >= 1)
 				newval = 2;
-			else 
+			else
 				newval = 1;
 
 
@@ -1946,7 +1997,7 @@ void M_Pref_AdjustSliders (int dir)
 		case 14:
 
 #ifdef GLQUAKE
-			
+
 			if (vid_vsync.value)
 				Cvar_Set("vid_vsync", "0");
 			else
@@ -2042,7 +2093,11 @@ void M_Pref_Options_Draw (void)
 	M_Print     (16, i, "     jump is moveup "); M_Print (220, i, pq_moveup.value ? "on" : "off" ); i += 8; 	  // 12
 	M_Print     (16, i, "     ambient sound  "); M_Print (220, i, ambient_level.value ? "on" : "off" ); i += 8; 	  // 13
 #ifdef GLQUAKE
+#ifdef D3DQUAKE
+	M_Print     (16, i, "     vsync          "); M_Print (220, i, "[driver set]" ); i += 8; 	  // 14
+#else
 	M_Print     (16, i, "     vsync          "); M_Print (220, i, vid_vsync.value ? "on" : "off" ); i += 8; 	  // 14
+#endif
 	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, pq_maxfps.value == 72 ? "72 fps" : (pq_maxfps.value == 120 ? "120 fps" : (pq_maxfps.value == 200 ? "200 fps" : (pq_maxfps.value == 250 ? "250 fps" : "custom"))) ); i += 8; 	  // 14
 #else
 	M_Print     (16, i, "     vsync          "); M_Print (220, i, "n/a"); i += 8;	  // 14
@@ -2131,11 +2186,11 @@ void M_Pref_Options_Key (int key, int ascii)
 void M_Menu_Video_f (void)
 {
 #ifdef GLQUAKE
-	(*vid_menucmdfn) (); //johnfitz	
+	(*vid_menucmdfn) (); //johnfitz
 #else
 	key_dest = key_menu;
 	m_state = m_video;
-	m_entersound = true; 
+	m_entersound = true;
 #endif
 }
 
@@ -2226,14 +2281,14 @@ int		m_quit_prevstate;
 qboolean	wasInMenus;
 
 #ifndef	_WIN32
-char *quitMessage [] = 
+char *quitMessage [] =
 {
 /* .........1.........2.... */
   "  Are you gonna quit    ",
   "  this game just like   ",
   "   everything else?     ",
   "                        ",
- 
+
   " Milord, methinks that  ",
   "   thou art a lowly     ",
   " quitter. Is this true? ",
@@ -2248,22 +2303,22 @@ char *quitMessage [] =
   "   for trying to quit!  ",
   "     Press Y to get     ",
   "      smacked out.      ",
- 
+
   " Press Y to quit like a ",
   "   big loser in life.   ",
   "  Press N to stay proud ",
   "    and successful!     ",
- 
+
   "   If you press Y to    ",
   "  quit, I will summon   ",
   "  Satan all over your   ",
   "      hard drive!       ",
- 
+
   "  Um, Asmodeus dislikes ",
   " his children trying to ",
   " quit. Press Y to return",
   "   to your Tinkertoys.  ",
- 
+
   "  If you quit now, I'll ",
   "  throw a blanket-party ",
   "   for you next time!   ",

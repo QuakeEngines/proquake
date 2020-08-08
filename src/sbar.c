@@ -1057,6 +1057,9 @@ void Sbar_DrawFace (void)
 	Sbar_DrawPic (112, 0, sb_faces[f][anim]);
 }
 
+// Begin D3DQuake
+int gNoStatusBar;
+// End D3DQuake
 /*
 ===============
 Sbar_Draw
@@ -1064,6 +1067,9 @@ Sbar_Draw
 */
 void Sbar_Draw (void)
 {
+// Begin D3DQuake
+	if ( gNoStatusBar ) return;
+// End D3DQuake
 	if (scr_con_current == vid.height)
 		return;		// console is full screen
 

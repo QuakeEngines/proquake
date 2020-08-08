@@ -397,11 +397,11 @@ InitSig(void)
 void VID_ShiftPalette(unsigned char *p)
 {
 #ifdef _EXPERIMENTAL_
-	VID_SetPalette(p);
+	VID_SetPaletteOld(p);
 #endif
 }
 
-void	VID_SetPalette (unsigned char *palette)
+void	VID_SetPaletteOld (unsigned char *palette)
 {
 	byte	*pal;
 	unsigned r,g,b;
@@ -585,7 +585,7 @@ void VID_Init8bitPalette(void)
 #endif
 
 // CSR
-static void Check_Gamma (unsigned char *pal)
+static void Check_GammaOld (unsigned char *pal)
 {
 	float   f, inf;
 	unsigned char   palette[768];
@@ -777,8 +777,8 @@ void VID_Init(unsigned char *palette)
 	snprintf(gldir, sizeof(gldir), "%s/OpenGL", com_gamedir);
 	Sys_mkdir (gldir);
 
-        Check_Gamma(palette);
-	VID_SetPalette(palette);
+        Check_GammaOld(palette);
+	VID_SetPaletteOld(palette);
 
 	// Check for 3DFX Extensions and initialize them.
 	VID_Init8bitPalette();

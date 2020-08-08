@@ -216,8 +216,8 @@ void R_Init (void)
 	Cvar_RegisterVariable (&r_aliastransbase, NULL);
 	Cvar_RegisterVariable (&r_aliastransadj, NULL);
 
-	Cvar_SetValue ("r_maxedges", (float)NUMSTACKEDGES);
-	Cvar_SetValue ("r_maxsurfs", (float)NUMSTACKSURFACES);
+	Cvar_SetValue ("r_maxedges", (float)100000); //NUMSTACKEDGES
+	Cvar_SetValue ("r_maxsurfs", (float)100000); //NUMSTACKSURFACES
 
 	view_clipplanes[0].leftedge = true;
 	view_clipplanes[1].rightedge = true;

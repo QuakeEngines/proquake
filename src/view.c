@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -95,12 +95,12 @@ float V_CalcRoll (vec3_t angles, vec3_t velocity)
 	float	sign;
 	float	side;
 	float	value;
-	
+
 	AngleVectors (angles, forward, right, up);
 	side = DotProduct (velocity, right);
 	sign = side < 0 ? -1 : 1;
 	side = fabs(side);
-	
+
 	value = cl_rollangle.value;
 //	if (cl.inwater)
 //		value *= 6;
@@ -109,23 +109,21 @@ float V_CalcRoll (vec3_t angles, vec3_t velocity)
 		side = side * value / cl_rollspeed.value;
 	else
 		side = value;
-	
-	return side*sign;
-	
-}
 
+	return side*sign;
+
+}
 
 /*
 ===============
 V_CalcBob
-
 ===============
 */
 float V_CalcBob (void)
 {
 	float	bob;
 	float	cycle;
-	
+
 	cycle = cl.time - (int)(cl.time/cl_bobcycle.value)*cl_bobcycle.value;
 	cycle /= cl_bobcycle.value;
 	if (cycle < cl_bobup.value)
@@ -144,7 +142,7 @@ float V_CalcBob (void)
 	else if (bob < -7)
 		bob = -7;
 	return bob;
-	
+
 }
 
 
@@ -188,7 +186,7 @@ If the user is adjusting pitch manually, either with lookup/lookdown,
 mlook and mouse, or klook and keyboard, pitch drifting is constantly stopped.
 
 Drifting is enabled when the center view key is hit, mlook is released and
-lookspring is non 0, or when 
+lookspring is non 0, or when
 ===============
 */
 void V_DriftPitch (void)
@@ -209,14 +207,14 @@ void V_DriftPitch (void)
 			cl.driftmove = 0;
 		else
 			cl.driftmove += host_frametime;
-	
+
 		if ( cl.driftmove > v_centermove.value)
 		{
 			V_StartPitchDrift ();
 		}
 		return;
 	}
-	
+
 	delta = cl.idealpitch - cl.viewangles[PITCH];
 
 	if (!delta)
@@ -227,7 +225,7 @@ void V_DriftPitch (void)
 
 	move = host_frametime * cl.pitchvel;
 	cl.pitchvel += host_frametime * v_centerspeed.value;
-	
+
 //Con_Printf ("move: %f (%f)\n", move, host_frametime);
 
 	if (delta > 0)
@@ -255,25 +253,36 @@ void V_DriftPitch (void)
 
 
 /*
-============================================================================== 
- 
-						PALETTE FLASHES 
- 
-============================================================================== 
-*/ 
- 
- 
+==============================================================================
+
+						PALETTE FLASHES
+
+==============================================================================
+*/
+
+
 cshift_t	cshift_empty = { {130,80,50}, 0 };
 cshift_t	cshift_water = { {130,80,50}, 128 };
 cshift_t	cshift_slime = { {0,25,5}, 150 };
 cshift_t	cshift_lava = { {255,80,0}, 150 };
 
-cvar_t		v_gamma = {"gamma", "1", true};
+cvar_t		vold_gamma = {"gamma", "1", true};
+
+// Baker hwgamma support
+#if defined(GLQUAKE) && !defined(D3DQUAKE)
+
+cvar_t		gl_hwblend			= {"gl_hwblend", "1"};
+float		v_blend[4];		// rgba 0.0 - 1.0
+cvar_t		v_gamma				= {"gl_gamma", "0.7", true};
+cvar_t		v_contrast			= {"gl_contrast", "1", true};
+unsigned short	ramps[3][256];
+#endif
+// Baker end hwgamma support
 
 byte		gammatable[256];	// palette is sent through this
 
 #ifdef	GLQUAKE
-byte		ramps[3][256];
+byte		rampsold[3][256];
 float		v_blend[4];		// rgba 0.0 - 1.0
 #endif	// GLQUAKE
 
@@ -287,7 +296,7 @@ void BuildGammaTable (float g)
 			gammatable[i] = i;
 		return;
 	}
-	
+
 	for (i=0 ; i<256 ; i++)
 	{
 		inf = 255 * pow ( (i+0.5)/255.5 , g ) + 0.5;
@@ -304,21 +313,27 @@ void BuildGammaTable (float g)
 V_CheckGamma
 =================
 */
+#ifdef D3DQUAKE
+void d3dSetGammaRamp(const unsigned char* gammaTable);
+#endif
 qboolean V_CheckGamma (void)
 {
 	static float oldgammavalue;
-	
-	if (v_gamma.value == oldgammavalue)
+
+	if (vold_gamma.value == oldgammavalue)
 		return false;
-#ifdef GLQuake
-	oldgammavalue = v_gamma.value;
+#if defined(GLQUAKE) && !defined(D3DQUAKE)
+	oldgammavalue = vold_gamma.value;
 #else
-	oldgammavalue = bound(0.1,v_gamma.value,1); // Baker 3.80x - do not allow white screen in wqpro
+	oldgammavalue = bound(0.1,vold_gamma.value,1); // Baker 3.80x - do not allow white screen in wqpro
 #endif
-	
-	BuildGammaTable (v_gamma.value);
+
+	BuildGammaTable (vold_gamma.value);
 	vid.recalc_refdef = 1;				// force a surface cache flush
 	
+#ifdef D3DQUAKE
+	d3dSetGammaRamp(gammatable);
+#endif
 	return true;
 }
 
@@ -338,7 +353,7 @@ void V_ParseDamage (void)
 	entity_t	*ent;
 	float	side;
 	float	count;
-	
+
 	armor = MSG_ReadByte ();
 	blood = MSG_ReadByte ();
 	for (i=0 ; i<3 ; i++)
@@ -356,7 +371,7 @@ void V_ParseDamage (void)
 	if (cl.cshifts[CSHIFT_DAMAGE].percent > 150)
 		cl.cshifts[CSHIFT_DAMAGE].percent = 150;
 
-	if (armor > blood)		
+	if (armor > blood)
 	{
 		cl.cshifts[CSHIFT_DAMAGE].destcolor[0] = 200;
 		cl.cshifts[CSHIFT_DAMAGE].destcolor[1] = 100;
@@ -379,15 +394,15 @@ void V_ParseDamage (void)
 // calculate view angle kicks
 //
 	ent = &cl_entities[cl.viewentity];
-	
+
 	VectorSubtract (from, ent->origin, from);
 	VectorNormalize (from);
-	
+
 	AngleVectors (ent->angles, forward, right, up);
 
 	side = DotProduct (from, right);
 	v_dmg_roll = count*side*v_kickroll.value;
-	
+
 	side = DotProduct (from, forward);
 	v_dmg_pitch = count*side*v_kickpitch.value;
 
@@ -498,52 +513,185 @@ V_CalcBlend
 =============
 */
 #ifdef	GLQUAKE
+extern		qboolean  using_hwgamma;
 void V_CalcBlend (void)
 {
+	int	j;
 	float	r, g, b, a, a2;
-	int		j;
 
-	r = 0;
-	g = 0;
-	b = 0;
-	a = 0;
+	r = g = b = a = 0;
 
-	for (j=0 ; j<NUM_CSHIFTS ; j++)	
-	{
-		if (!gl_cshiftpercent.value)
-			continue;
+	// Baker hwgamma support
+	if (using_hwgamma) {
 
-		a2 = ((cl.cshifts[j].percent * gl_cshiftpercent.value) / 100.0) / 255.0;
+		if (cls.state != ca_connected)
+		{
+			cl.cshifts[CSHIFT_CONTENTS] = cshift_empty;
+			cl.cshifts[CSHIFT_POWERUP].percent = 0;
+		}
+		else
+		{
+			V_CalcPowerupCshift ();
+		}
 
-//		a2 = cl.cshifts[j].percent/255.0;
-		if (!a2)
-			continue;
-		a = a + a2*(1-a);
-//Con_Printf ("j:%i a:%f\n", j, a);
-		a2 = a2/a;
-		r = r*(1-a2) + cl.cshifts[j].destcolor[0]*a2;
-		g = g*(1-a2) + cl.cshifts[j].destcolor[1]*a2;
-		b = b*(1-a2) + cl.cshifts[j].destcolor[2]*a2;
+		// drop the damage value
+		cl.cshifts[CSHIFT_DAMAGE].percent -= host_frametime * 150;
+		if (cl.cshifts[CSHIFT_DAMAGE].percent <= 0)
+			cl.cshifts[CSHIFT_DAMAGE].percent = 0;
+
+		// drop the bonus value
+		cl.cshifts[CSHIFT_BONUS].percent -= host_frametime * 100;
+		if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
+			cl.cshifts[CSHIFT_BONUS].percent = 0;
+
+
+		for (j=0 ; j<NUM_CSHIFTS ; j++)
+		{
+			if ((!gl_cshiftpercent.value || !gl_polyblend.value) && j != CSHIFT_CONTENTS)
+				continue;
+
+			if (j == CSHIFT_CONTENTS)
+				a2 = cl.cshifts[j].percent / 100.0 / 255.0;
+			else
+			a2 = ((cl.cshifts[j].percent * gl_cshiftpercent.value) / 100.0) / 255.0;
+
+
+			if (!a2)
+				continue;
+			a = a + a2*(1-a);
+			a2 /= a;
+
+			r = r*(1-a2) + cl.cshifts[j].destcolor[0]*a2;
+			g = g*(1-a2) + cl.cshifts[j].destcolor[1]*a2;
+			b = b*(1-a2) + cl.cshifts[j].destcolor[2]*a2;
+		}
+
+		v_blend[0] = r/255.0;
+		v_blend[1] = g/255.0;
+		v_blend[2] = b/255.0;
+		v_blend[3] = bound(0, a, 1);
+	} else {  // Baker end hwgamma support
+		for (j=0 ; j<NUM_CSHIFTS ; j++)	{
+			if (!gl_cshiftpercent.value)
+				continue;
+
+			a2 = ((cl.cshifts[j].percent * gl_cshiftpercent.value) / 100.0) / 255.0;
+
+	//		a2 = cl.cshifts[j].percent/255.0;
+			if (!a2)
+				continue;
+			a = a + a2*(1-a);
+	//Con_Printf ("j:%i a:%f\n", j, a);
+			a2 = a2/a;
+			r = r*(1-a2) + cl.cshifts[j].destcolor[0]*a2;
+			g = g*(1-a2) + cl.cshifts[j].destcolor[1]*a2;
+			b = b*(1-a2) + cl.cshifts[j].destcolor[2]*a2;
+		}
+
+		v_blend[0] = r/255.0;
+		v_blend[1] = g/255.0;
+		v_blend[2] = b/255.0;
+		v_blend[3] = a;
+		if (v_blend[3] > 1)
+			v_blend[3] = 1;
+		if (v_blend[3] < 0)
+			v_blend[3] = 0;
 	}
-
-	v_blend[0] = r/255.0;
-	v_blend[1] = g/255.0;
-	v_blend[2] = b/255.0;
-	v_blend[3] = a;
-	if (v_blend[3] > 1)
-		v_blend[3] = 1;
-	if (v_blend[3] < 0)
-		v_blend[3] = 0;
 }
 #endif
 
+
 /*
 =============
-V_UpdatePalette
+V_UpdatePaletteNew
 =============
 */
 #ifdef	GLQUAKE
-void V_UpdatePalette (void)
+#ifndef D3DQUAKE
+// Baker hw gamma support
+// This v_updatepalette should not get called
+// except if hwgamma is being used
+// classic gamma should use v_updatepaletteold
+void V_UpdatePaletteNew (void)
+{
+	int		i, j, c;
+	qboolean	new;
+	float		a, rgb[3], gamma, contrast;
+	static float	prev_blend[4], old_gamma, old_contrast, old_hwblend;
+	extern float	vid_gamma;
+
+	new = false;
+
+	for (i=0 ; i<4 ; i++)
+	{
+		if (v_blend[i] != prev_blend[i])
+		{
+			new = true;
+			prev_blend[i] = v_blend[i];
+		}
+	}
+
+	gamma = bound(0.3, v_gamma.value, 3);
+
+	if (gamma != old_gamma)
+	{
+		old_gamma = gamma;
+		new = true;
+	}
+
+	contrast = bound(1, v_contrast.value, 3);
+	if (contrast != old_contrast)
+	{
+		old_contrast = contrast;
+		new = true;
+	}
+
+	if (gl_hwblend.value != old_hwblend)
+	{
+		new = true;
+		old_hwblend = gl_hwblend.value;
+	}
+
+	if (!new)
+		return;
+
+	a = v_blend[3];
+
+	if (!vid_hwgamma_enabled || !gl_hwblend.value)
+		a = 0;
+
+	rgb[0] = 255 * v_blend[0] * a;
+	rgb[1] = 255 * v_blend[1] * a;
+	rgb[2] = 255 * v_blend[2] * a;
+
+	a = 1 - a;
+
+	if (vid_gamma != 1.0)
+	{
+		contrast = pow (contrast, vid_gamma);
+		gamma /= vid_gamma;
+	}
+
+	for (i=0 ; i<256 ; i++)
+	{
+		for (j=0 ; j<3 ; j++)
+		{
+			// apply blend and contrast
+			c = (i*a + rgb[j]) * contrast;
+			if (c > 255)
+				c = 255;
+			// apply gamma
+			c = 255 * pow((c + 0.5)/255.5, gamma) + 0.5;
+			c = bound(0, c, 255);
+			ramps[j][i] = c << 8;
+		}
+	}
+
+	VID_SetDeviceGammaRamp ((unsigned short *)ramps);
+}
+#endif
+
+void V_UpdatePaletteOld (void)
 {
 	int		i, j;
 	qboolean	new;
@@ -551,11 +699,14 @@ void V_UpdatePalette (void)
 	byte	pal[768];
 	float	r,g,b,a;
 	int		ir, ig, ib;
+#ifdef D3DQUAKE
+	qboolean force;
+#endif
 
 	V_CalcPowerupCshift ();
-	
+
 	new = false;
-	
+
 	for (i=0 ; i<NUM_CSHIFTS ; i++)
 	{
 		if (cl.cshifts[i].percent != cl.prev_cshifts[i].percent)
@@ -570,7 +721,7 @@ void V_UpdatePalette (void)
 				cl.prev_cshifts[i].destcolor[j] = cl.cshifts[i].destcolor[j];
 			}
 	}
-	
+
 // drop the damage value
 	cl.cshifts[CSHIFT_DAMAGE].percent -= host_frametime*150;
 	if (cl.cshifts[CSHIFT_DAMAGE].percent <= 0)
@@ -581,13 +732,14 @@ void V_UpdatePalette (void)
 	if (cl.cshifts[CSHIFT_BONUS].percent <= 0)
 		cl.cshifts[CSHIFT_BONUS].percent = 0;
 
-	/*
+#ifdef D3DQUAKE
 	force = V_CheckGamma ();
 	if (!new && !force)
 		return;
-		*/
+#else
 	if (!new)
 		return;
+#endif
 
 	V_CalcBlend ();
 
@@ -609,31 +761,31 @@ void V_UpdatePalette (void)
 		if (ib > 255)
 			ib = 255;
 
-		ramps[0][i] = gammatable[ir];
-		ramps[1][i] = gammatable[ig];
-		ramps[2][i] = gammatable[ib];
+		rampsold[0][i] = gammatable[ir];
+		rampsold[1][i] = gammatable[ig];
+		rampsold[2][i] = gammatable[ib];
 	}
 
 	basepal = host_basepal;
 	newpal = pal;
-	
+
 	for (i=0 ; i<256 ; i++)
 	{
 		ir = basepal[0];
 		ig = basepal[1];
 		ib = basepal[2];
 		basepal += 3;
-		
-		newpal[0] = ramps[0][ir];
-		newpal[1] = ramps[1][ig];
-		newpal[2] = ramps[2][ib];
+
+		newpal[0] = rampsold[0][ir];
+		newpal[1] = rampsold[1][ig];
+		newpal[2] = rampsold[2][ib];
 		newpal += 3;
 	}
 
-	VID_ShiftPalette (pal);	
+	VID_ShiftPaletteOld (pal);
 }
 #else	// !GLQUAKE
-void V_UpdatePalette (void)
+void V_UpdatePaletteOld (void)
 {
 	int		i, j;
 	qboolean	new;
@@ -643,9 +795,9 @@ void V_UpdatePalette (void)
 	qboolean force;
 
 	V_CalcPowerupCshift ();
-	
+
 	new = false;
-	
+
 	for (i=0 ; i<NUM_CSHIFTS ; i++)
 	{
 		if (cl.cshifts[i].percent != cl.prev_cshifts[i].percent)
@@ -660,7 +812,7 @@ void V_UpdatePalette (void)
 				cl.prev_cshifts[i].destcolor[j] = cl.cshifts[i].destcolor[j];
 			}
 	}
-	
+
 // drop the damage value
 	cl.cshifts[CSHIFT_DAMAGE].percent -= host_frametime*150;
 	if (cl.cshifts[CSHIFT_DAMAGE].percent <= 0)
@@ -674,45 +826,45 @@ void V_UpdatePalette (void)
 	force = V_CheckGamma ();
 	if (!new && !force)
 		return;
-			
+
 	basepal = host_basepal;
 	newpal = pal;
-	
+
 	for (i=0 ; i<256 ; i++)
 	{
 		r = basepal[0];
 		g = basepal[1];
 		b = basepal[2];
 		basepal += 3;
-	
+
 		if (r_polyblend.value)		// JPG 3.30 - added r_polyblend
 		{
-			for (j=0 ; j<NUM_CSHIFTS ; j++)	
+			for (j=0 ; j<NUM_CSHIFTS ; j++)
 			{
 				r += (cl.cshifts[j].percent*(cl.cshifts[j].destcolor[0]-r))>>8;
 				g += (cl.cshifts[j].percent*(cl.cshifts[j].destcolor[1]-g))>>8;
 				b += (cl.cshifts[j].percent*(cl.cshifts[j].destcolor[2]-b))>>8;
 			}
 		}
-		
+
 		newpal[0] = gammatable[r];
 		newpal[1] = gammatable[g];
 		newpal[2] = gammatable[b];
 		newpal += 3;
 	}
 
-	VID_ShiftPalette (pal);	
+	VID_ShiftPaletteOld (pal);
 }
 #endif	// !GLQUAKE
 
 
-/* 
-============================================================================== 
- 
-						VIEW RENDERING 
- 
-============================================================================== 
-*/ 
+/*
+==============================================================================
+
+						VIEW RENDERING
+
+==============================================================================
+*/
 
 float angledelta (float a)
 {
@@ -728,11 +880,11 @@ CalcGunAngle
 ==================
 */
 void CalcGunAngle (void)
-{	
+{
 	float	yaw, pitch, move;
 	static float oldyaw = 0;
 	static float oldpitch = 0;
-	
+
 	yaw = r_refdef.viewangles[YAW];
 	pitch = -r_refdef.viewangles[PITCH];
 
@@ -757,7 +909,7 @@ void CalcGunAngle (void)
 		if (oldyaw - move > yaw)
 			yaw = oldyaw - move;
 	}
-	
+
 	if (pitch > oldpitch)
 	{
 		if (oldpitch + move < pitch)
@@ -768,7 +920,7 @@ void CalcGunAngle (void)
 		if (oldpitch - move > pitch)
 			pitch = oldpitch - move;
 	}
-	
+
 	oldyaw = yaw;
 	oldpitch = pitch;
 
@@ -788,24 +940,17 @@ V_BoundOffsets
 void V_BoundOffsets (void)
 {
 	entity_t	*ent;
-	
+
 	ent = &cl_entities[cl.viewentity];
 
 // absolutely bound refresh reletive to entity clipping hull
 // so the view can never be inside a solid wall
-
-	if (r_refdef.vieworg[0] < ent->origin[0] - 14)
-		r_refdef.vieworg[0] = ent->origin[0] - 14;
-	else if (r_refdef.vieworg[0] > ent->origin[0] + 14)
-		r_refdef.vieworg[0] = ent->origin[0] + 14;
-	if (r_refdef.vieworg[1] < ent->origin[1] - 14)
-		r_refdef.vieworg[1] = ent->origin[1] - 14;
-	else if (r_refdef.vieworg[1] > ent->origin[1] + 14)
-		r_refdef.vieworg[1] = ent->origin[1] + 14;
-	if (r_refdef.vieworg[2] < ent->origin[2] - 22)
-		r_refdef.vieworg[2] = ent->origin[2] - 22;
-	else if (r_refdef.vieworg[2] > ent->origin[2] + 30)
-		r_refdef.vieworg[2] = ent->origin[2] + 30;
+	r_refdef.vieworg[0] = max(r_refdef.vieworg[0], ent->origin[0] - 14);
+	r_refdef.vieworg[0] = min(r_refdef.vieworg[0], ent->origin[0] + 14);
+	r_refdef.vieworg[1] = max(r_refdef.vieworg[1], ent->origin[1] - 14);
+	r_refdef.vieworg[1] = min(r_refdef.vieworg[1], ent->origin[1] + 14);
+	r_refdef.vieworg[2] = max(r_refdef.vieworg[2], ent->origin[2] - 22);
+	r_refdef.vieworg[2] = min(r_refdef.vieworg[2], ent->origin[2] + 30);
 }
 
 /*
@@ -833,7 +978,7 @@ Roll is induced by movement and damage
 void V_CalcViewRoll (void)
 {
 	float		side;
-		
+
 	side = V_CalcRoll (cl_entities[cl.viewentity].angles, cl.velocity);
 	r_refdef.viewangles[ROLL] += side;
 
@@ -873,7 +1018,7 @@ void V_CalcIntermissionRefdef (void)
 	VectorCopy (ent->angles, r_refdef.viewangles);
 	view->model = NULL;
 
-// allways idle in intermission
+// always idle in intermission
 	old = v_idlescale.value;
 	v_idlescale.value = 1;
 	V_AddIdle ();
@@ -883,7 +1028,6 @@ void V_CalcIntermissionRefdef (void)
 /*
 ==================
 V_CalcRefdef
-
 ==================
 */
 void V_CalcRefdef (void)
@@ -901,7 +1045,7 @@ void V_CalcRefdef (void)
 	ent = &cl_entities[cl.viewentity];
 // view is the weapon model (only visible from inside body)
 	view = &cl.viewent;
-	
+
 
 // transform the view offset by the model's matrix to get the offset from
 // model origin for the view
@@ -910,16 +1054,16 @@ void V_CalcRefdef (void)
 										// the view dir
 	ent->angles[PITCH] = -cl.lerpangles[PITCH];	// the model should face
 										// the view dir
-										
-	
+
+
 	bob = V_CalcBob ();
-	
-// refresh position
+
+	// set up the refresh position
 	VectorCopy (ent->origin, r_refdef.vieworg);
 	r_refdef.vieworg[2] += cl.viewheight + bob;
 
 // never let it sit exactly on a node line, because a water plane can
-// dissapear when viewed with the eye exactly on it.
+	// disappear when viewed with the eye exactly on it.
 // the server protocol only specifies to 1/16 pixel, so add 1/32 in each axis
 	r_refdef.vieworg[0] += 1.0/32;
 	r_refdef.vieworg[1] += 1.0/32;
@@ -941,13 +1085,13 @@ void V_CalcRefdef (void)
 		r_refdef.vieworg[i] += scr_ofsx.value*forward[i]
 			+ scr_ofsy.value*right[i]
 			+ scr_ofsz.value*up[i];
-	
-	
+
+
 	V_BoundOffsets ();
-		
+
 // set up gun position
 	VectorCopy (cl.lerpangles, view->angles); // JPG - viewangles -> lerpangles
-	
+
 	CalcGunAngle ();
 
 	VectorCopy (ent->origin, view->origin);
@@ -989,7 +1133,7 @@ void V_CalcRefdef (void)
 if (cl.onground && ent->origin[2] - oldz > 0)
 {
 	float steptime;
-	
+
 	steptime = cl.time - cl.oldtime;
 	if (steptime < 0)
 //FIXME		I_Error ("steptime < 0");
@@ -1079,9 +1223,19 @@ void V_RenderView (void)
 		Cvar_Set ("scr_ofsz", "0");
 	}
 
+#ifdef GLQUAKE
+	// Baker hwgamma support
+	if (using_hwgamma) {
+		if (cls.state != ca_connected) {
+			V_CalcBlend ();
+			return;
+		}
+	}
+#endif
+
 	if (cl.intermission)
 	{	// intermission / finale rendering
-		V_CalcIntermissionRefdef ();	
+		V_CalcIntermissionRefdef ();
 	}
 	else
 	{
@@ -1093,9 +1247,7 @@ void V_RenderView (void)
 
 	if (lcd_x.value)
 	{
-		//
 		// render two interleaved views
-		//
 		int		i;
 
 		vid.rowbytes <<= 1;
@@ -1144,7 +1296,7 @@ void V_RenderView (void)
 			scr_vrect.y + scr_vrect.height/2 + cl_crossy.value, '+'); */
 	}
 #endif
-		
+
 }
 
 //============================================================================
@@ -1156,12 +1308,20 @@ V_Init
 */
 void V_Init (void)
 {
-	Cmd_AddCommand ("v_cshift", V_cshift_f);	
+	Cmd_AddCommand ("v_cshift", V_cshift_f);
 	Cmd_AddCommand ("bf", V_BonusFlash_f);
 	Cmd_AddCommand ("centerview", V_StartPitchDrift);
 
 	Cvar_RegisterVariable (&lcd_x, NULL);
 	Cvar_RegisterVariable (&lcd_yaw, NULL);
+#if defined(GLQUAKE) && !defined(D3DQUAKE)
+	// Baker hwgamma support
+	Cvar_RegisterVariable (&gl_hwblend, NULL);
+	Cvar_RegisterVariable (&v_gamma, NULL);
+	Cvar_RegisterVariable (&v_contrast, NULL);
+	// Baker end hwgamma support
+#endif
+
 
 	Cvar_RegisterVariable (&v_centermove, NULL);
 	Cvar_RegisterVariable (&v_centerspeed, NULL);
@@ -1191,10 +1351,10 @@ void V_Init (void)
 
 	Cvar_RegisterVariable (&v_kicktime, NULL);
 	Cvar_RegisterVariable (&v_kickroll, NULL);
-	Cvar_RegisterVariable (&v_kickpitch, NULL);	
-	
+	Cvar_RegisterVariable (&v_kickpitch, NULL);
+
 	BuildGammaTable (1.0);	// no gamma yet
-	Cvar_RegisterVariable (&v_gamma, NULL);
+	Cvar_RegisterVariable (&vold_gamma, NULL);
 
 	// JPG 1.05 - colour shifts
 	Cvar_RegisterVariable (&pq_waterblend, NULL);

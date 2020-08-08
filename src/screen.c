@@ -918,7 +918,7 @@ void SCR_BringDownConsole (void)
 		SCR_UpdateScreen ();
 
 	cl.cshifts[0].percent = 0;		// no area contents palette on next frame
-	VID_SetPalette (host_basepal);
+	VID_SetPaletteOld (host_basepal);
 }
 
 void Mat_Update (void);	// JPG
@@ -1073,7 +1073,7 @@ void SCR_UpdateScreen (void)
 		D_UpdateRects (pconupdate);
 	}
 
-	V_UpdatePalette ();
+	V_UpdatePaletteOld ();
 
 //
 // update one of three areas

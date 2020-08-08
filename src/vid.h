@@ -62,10 +62,10 @@ extern void (*vid_menukeyfn)(int key);
 extern void (*vid_menucmdfn)(void); //johnfitz
 #endif
 
-void	VID_SetPalette (unsigned char *palette);
+void	VID_SetPaletteOld (unsigned char *palette);
 // called at startup and after any gamma correction
 
-void	VID_ShiftPalette (unsigned char *palette);
+void	VID_ShiftPaletteOld (unsigned char *palette);
 // called for bonus and pain flashes, and for underwater color changes
 
 void	VID_Init (unsigned char *palette);
@@ -86,3 +86,8 @@ int VID_SetMode (int modenum, unsigned char *palette);
 void VID_HandlePause (qboolean pause);
 // called only on Win32, when pause happens, so the mouse can be released
 
+#if GLQUAKE
+// by joe - gamma stuff
+void VID_SetDeviceGammaRamp (unsigned short *ramps);
+extern	qboolean vid_hwgamma_enabled;
+#endif

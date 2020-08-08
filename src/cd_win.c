@@ -430,7 +430,7 @@ int CDAudio_Init(void)
 	if (!COM_CheckParm("-cdaudio")) // Baker 3.83: Must now explicitly indicate -cdaudio, instead of using -nocdaudio
 		return -1;
 
-	mciOpenParms.lpstrDeviceType = "cdaudio";
+	mciOpenParms.lpstrDeviceType = TEXT("cdaudio");
 	if (dwReturn = mciSendCommand(0, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_SHAREABLE, (DWORD) (LPVOID) &mciOpenParms))
 	{
 		Con_Printf("CDAudio_Init: MCI_OPEN failed (%i)\n", dwReturn);

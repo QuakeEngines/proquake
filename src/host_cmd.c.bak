@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -21,7 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "quakedef.h"
 extern cvar_t	pausable;
 
-cvar_t	cl_confirmquit = {"cl_confirmquit", "1", true}; // Baker 3.60 
+cvar_t	cl_confirmquit = {"cl_confirmquit", "1", true}; // Baker 3.60
 
 // JPG - added these for spam protection
 extern cvar_t	pq_spam_rate;
@@ -30,7 +30,7 @@ extern cvar_t	pq_spam_grace;
 // JPG 3.20 - control muting of players that change colour/name
 extern cvar_t	pq_tempmute;
 
-// JPG - feature request from Slot 
+// JPG - feature request from Slot
 extern cvar_t	pq_showedict;
 
 // JPG 3.20 - optionally remove '\r'
@@ -62,11 +62,298 @@ void Host_Quit_f (void)
 		}
 	}
 	CL_Disconnect ();
-	Host_ShutdownServer(false);		
+	Host_ShutdownServer(false);
 
 	Sys_Quit ();
 }
 
+//==============================================================================
+//johnfitz -- dynamic gamedir stuff
+//==============================================================================
+
+// Declarations shared with common.c:
+typedef struct
+{
+	char    name[MAX_QPATH];
+	int             filepos, filelen;
+} packfile_t;
+
+typedef struct pack_s
+{
+	char    filename[MAX_OSPATH];
+	int             handle;
+	int             numfiles;
+	packfile_t      *files;
+} pack_t;
+
+typedef struct searchpath_s
+{
+	char    filename[MAX_OSPATH];
+	pack_t  *pack;          // only one of filename / pack will be used
+	struct searchpath_s *next;
+} searchpath_t;
+
+extern qboolean com_modified;
+extern searchpath_t *com_searchpaths;
+pack_t *COM_LoadPackFile (char *packfile);
+
+// Kill all the search packs until the game path is found. Kill it, then return
+// the next path to it.
+void KillGameDir(searchpath_t *search)
+{
+	searchpath_t *search_killer;
+	while (search)
+	{
+		if (*search->filename)
+		{
+			com_searchpaths = search->next;
+			Z_Free(search);
+			return; //once you hit the dir, youve already freed the paks
+		}
+		Sys_FileClose (search->pack->handle); //johnfitz
+		search_killer = search->next;
+		Z_Free(search->pack->files);
+		Z_Free(search->pack);
+		Z_Free(search);
+		search = search_killer;
+	}
+}
+
+// Return the number of games in memory
+int NumGames(searchpath_t *search)
+{
+	int found = 0;
+	while (search)
+	{
+		if (*search->filename)
+			found++;
+		search = search->next;
+	}
+	return found;
+}
+
+
+/*
+==================
+Host_Game_f
+==================
+*/
+void Host_Game_f (void)
+{
+	int i;
+	searchpath_t *search = com_searchpaths;
+	pack_t *pak;
+	char   pakfile[MAX_OSPATH]; //FIXME: it's confusing to use this string for two different things
+
+	if (Cmd_Argc() > 1)
+	{
+
+		if (!registered.value) //disable command for shareware quake
+		{
+			Con_Printf("You must have the registered version to use modified games\n");
+			return;
+		}
+
+		if (strstr(Cmd_Argv(1), ".."))
+		{
+			Con_Printf ("Relative pathnames are not allowed.\n");
+			return;
+		}
+
+		strcpy (pakfile, va("%s/%s", host_parms.basedir, Cmd_Argv(1)));
+		if (!stricmp(pakfile, com_gamedir)) //no change
+		{
+			Con_Printf("\"game\" is already \"%s\"\n", COM_SkipPath(com_gamedir));
+			return;
+		}
+
+		pq_cheatfreeEnabled = false; // Baker: 3.94 -- disallow cheat-free if gamedir is switched (revisit this later, is not ideal at all).
+		com_modified = true;
+
+		//Kill the server
+		CL_Disconnect ();
+		Host_ShutdownServer(true);
+
+		//Write config file
+		Host_WriteConfiguration ();
+
+		//Kill the extra game if it is loaded
+		if (NumGames(com_searchpaths) > 1)
+			KillGameDir(com_searchpaths);
+
+		strcpy (com_gamedir, pakfile);
+
+		if (stricmp(Cmd_Argv(1), GAMENAME)) //game is not id1
+		{
+			search = Z_Malloc(sizeof(searchpath_t));
+			strcpy (search->filename, pakfile);
+			search->next = com_searchpaths;
+			com_searchpaths = search;
+
+			//Load the paks if any are found:
+			for (i = 0; ; i++)
+			{
+				sprintf (pakfile, "%s/pak%i.pak", com_gamedir, i);
+				pak = COM_LoadPackFile (pakfile);
+				if (!pak)
+				break;
+				search = Z_Malloc(sizeof(searchpath_t));
+				search->pack = pak;
+				search->next = com_searchpaths;
+				com_searchpaths = search;
+			}
+		}
+
+		//clear out and reload appropriate data
+		Cache_Flush ();
+		/*if (!isDedicated)
+		{
+			W_LoadWadFile ("gfx.wad");  // Baker 3.78 - I'm not so sure about this
+			Draw_Init(); // Baker 3.78 - I'm not so sure about this
+			Draw_ConsoleBackground (vid.height); // Baker 3.78 - I'm not so sure about this
+		}*/
+		//ExtraMaps_NewGame ();
+		//Cbuf_InsertText ("exec quake.rc\n");
+
+		Con_Printf("\"gamedir\" changed to \"%s\"\n", COM_SkipPath(com_gamedir));
+	}
+	else //Diplay the current gamedir
+		Con_Printf("\"gamedir\" is \"%s\"\n", COM_SkipPath(com_gamedir));
+}
+
+//==============================================================================
+//johnfitz -- modlist management
+//==============================================================================
+
+typedef struct mod_s
+{
+	char			name[MAX_OSPATH];
+	struct mod_s	*next;
+} mod_t;
+
+mod_t	*modlist;
+
+void Modlist_Add (char *name)
+{
+	mod_t	*mod,*cursor,*prev;
+
+	//ingore duplicate
+	for (mod = modlist; mod; mod = mod->next)
+		if (!Q_strcmp (name, mod->name))
+			return;
+
+	mod = Z_Malloc(sizeof(mod_t));
+	strcpy (mod->name, name);
+
+	//insert each entry in alphabetical order
+    if (modlist == NULL || _stricmp(mod->name, modlist->name) < 0) //insert at front
+	{
+        mod->next = modlist;
+        modlist = mod;
+    }
+    else //insert later
+	{
+        prev = modlist;
+        cursor = modlist->next;
+        while (cursor && (_stricmp(mod->name, cursor->name) > 0))
+		{
+            prev = cursor;
+            cursor = cursor->next;
+        }
+        mod->next = prev->next;
+        prev->next = mod;
+    }
+}
+
+void Modlist_Init (void) //TODO: move win32 specific stuff to sys_win.c
+{
+#ifdef _WIN32
+	WIN32_FIND_DATA	FindFileData, FindChildData;
+	HANDLE			Find, FindProgs, FindPak;
+	char			filestring[MAX_OSPATH], childstring[MAX_OSPATH];
+	int				count=0, temp;
+
+	sprintf (filestring,"%s/*", host_parms.basedir);
+	Find = FindFirstFile(filestring, &FindFileData);
+	if (Find == INVALID_HANDLE_VALUE)
+	{
+		FindClose (Find);
+		return;
+	}
+
+	do
+	{
+		sprintf (childstring,"%s/%s/progs.dat", host_parms.basedir, FindFileData.cFileName);
+		FindProgs = FindFirstFile(childstring, &FindChildData);
+
+		sprintf (childstring,"%s/%s/*.pak", host_parms.basedir, FindFileData.cFileName);
+		FindPak = FindFirstFile(childstring, &FindChildData);
+
+		if (FindProgs == INVALID_HANDLE_VALUE && FindPak == INVALID_HANDLE_VALUE)
+			continue;
+
+		Modlist_Add (FindFileData.cFileName);
+
+		FindClose (FindProgs);
+		FindClose (FindPak);
+		count++;
+	} while (FindNextFile(Find, &FindFileData));
+	FindClose (Find);
+
+	//make sure these get closed too
+	FindClose (FindProgs);
+	FindClose (FindPak);
+#endif
+}
+
+/*
+==================
+Host_Mods_f -- johnfitz
+
+list all potential mod directories (contain either a pak file or a progs.dat)
+==================
+*/
+void Host_Mods_f (void)
+{
+	int i;
+	mod_t	*mod;
+
+	for (mod = modlist, i=0; mod; mod = mod->next, i++)
+		Con_SafePrintf ("   %s\n", mod->name);
+
+	if (i)
+		Con_SafePrintf ("%i mod(s)\n", i);
+	else
+		Con_SafePrintf ("no mods found\n");
+}
+
+//==============================================================================
+
+/*
+=============
+Host_Mapname_f -- johnfitz
+=============
+*/
+void Host_Mapname_f (void)
+{
+	char name[MAX_QPATH];
+
+	if (sv.active)
+	{
+		COM_StripExtension (sv.worldmodel->name + 5, name);
+		Con_Printf ("\"mapname\" is \"%s\"\n", name);
+		return;
+	}
+
+	if (cls.state == ca_connected)
+	{
+		COM_StripExtension (cl.worldmodel->name + 5, name);
+		Con_Printf ("\"mapname\" is \"%s\"\n", name);
+		return;
+	}
+
+	Con_Printf ("no map loaded\n");
+}
 
 /*
 ==================
@@ -81,7 +368,7 @@ void Host_Status_f (void)
 	int			hours = 0;
 	int			j, a, b, c; // Baker 3.60 - a,b,c added for IP
 	void		(*print) (char *fmt, ...);
-	
+
 	if (cmd_source == src_command)
 	{
 		if (!sv.active)
@@ -119,7 +406,7 @@ void Host_Status_f (void)
 		else
 			hours = 0;
 		print ("#%-2u %-16.16s  %3i  %2i:%02i:%02i\n", j+1, client->name, (int)client->edict->v.frags, hours, minutes, seconds);
-		
+
 		if (cmd_source != src_command && sscanf(client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3 && COM_CheckParm ("-noipmask") == 0 )  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
          print ("   %d.%d.%d.xxx\n", a, b, c);  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
          else  // Baker 3.60 - engine side ip masking from RocketGuy's ProQuake-r
@@ -158,13 +445,40 @@ void Host_God_f (void)
 	if (pr_global_struct->deathmatch && !host_client->privileged)
 		return;
 
+	//johnfitz -- allow user to explicitly set god mode to on or off
+	switch (Cmd_Argc())
+	{
+	case 1:
 	sv_player->v.flags = (int)sv_player->v.flags ^ FL_GODMODE;
 	if (!((int)sv_player->v.flags & FL_GODMODE) )
 		SV_ClientPrintf ("godmode OFF\n");
 	else
 		SV_ClientPrintf ("godmode ON\n");
+		break;
+	case 2:
+		if (Q_atof(Cmd_Argv(1)))
+		{
+			sv_player->v.flags = (int)sv_player->v.flags | FL_GODMODE;
+			SV_ClientPrintf ("godmode ON\n");
+		}
+		else
+		{
+			sv_player->v.flags = (int)sv_player->v.flags & ~FL_GODMODE;
+			SV_ClientPrintf ("godmode OFF\n");
+		}
+		break;
+	default:
+		Con_Printf("god [value] : toggle god mode. values: 0 = off, 1 = on\n");
+		break;
+	}
+	//johnfitz
 }
 
+/*
+==================
+Host_Notarget_f
+==================
+*/
 void Host_Notarget_f (void)
 {
 	if (cmd_source == src_command)
@@ -176,15 +490,42 @@ void Host_Notarget_f (void)
 	if (pr_global_struct->deathmatch && !host_client->privileged)
 		return;
 
+	//johnfitz -- allow user to explicitly set notarget to on or off
+	switch (Cmd_Argc())
+	{
+	case 1:
 	sv_player->v.flags = (int)sv_player->v.flags ^ FL_NOTARGET;
 	if (!((int)sv_player->v.flags & FL_NOTARGET) )
 		SV_ClientPrintf ("notarget OFF\n");
 	else
 		SV_ClientPrintf ("notarget ON\n");
+		break;
+	case 2:
+		if (Q_atof(Cmd_Argv(1)))
+		{
+			sv_player->v.flags = (int)sv_player->v.flags | FL_NOTARGET;
+			SV_ClientPrintf ("notarget ON\n");
+		}
+		else
+		{
+			sv_player->v.flags = (int)sv_player->v.flags & ~FL_NOTARGET;
+			SV_ClientPrintf ("notarget OFF\n");
+		}
+		break;
+	default:
+		Con_Printf("notarget [value] : toggle notarget mode. values: 0 = off, 1 = on\n");
+		break;
+	}
+	//johnfitz
 }
 
 qboolean noclip_anglehack;
 
+/*
+==================
+Host_Noclip_f
+==================
+*/
 void Host_Noclip_f (void)
 {
 	if (cmd_source == src_command)
@@ -196,6 +537,10 @@ void Host_Noclip_f (void)
 	if (pr_global_struct->deathmatch && !host_client->privileged)
 		return;
 
+	//johnfitz -- allow user to explicitly set noclip to on or off
+	switch (Cmd_Argc())
+	{
+	case 1:
 	if (sv_player->v.movetype != MOVETYPE_NOCLIP)
 	{
 		noclip_anglehack = true;
@@ -208,6 +553,26 @@ void Host_Noclip_f (void)
 		sv_player->v.movetype = MOVETYPE_WALK;
 		SV_ClientPrintf ("noclip OFF\n");
 	}
+		break;
+	case 2:
+		if (Q_atof(Cmd_Argv(1)))
+		{
+			noclip_anglehack = true;
+			sv_player->v.movetype = MOVETYPE_NOCLIP;
+			SV_ClientPrintf ("noclip ON\n");
+		}
+		else
+		{
+			noclip_anglehack = false;
+			sv_player->v.movetype = MOVETYPE_WALK;
+			SV_ClientPrintf ("noclip OFF\n");
+		}
+		break;
+	default:
+		Con_Printf("noclip [value] : toggle noclip mode. values: 0 = off, 1 = on\n");
+		break;
+	}
+	//johnfitz
 }
 
 /*
@@ -228,6 +593,10 @@ void Host_Fly_f (void)
 	if (pr_global_struct->deathmatch && !host_client->privileged)
 		return;
 
+	//johnfitz -- allow user to explicitly set noclip to on or off
+	switch (Cmd_Argc())
+	{
+	case 1:
 	if (sv_player->v.movetype != MOVETYPE_FLY)
 	{
 		sv_player->v.movetype = MOVETYPE_FLY;
@@ -238,6 +607,24 @@ void Host_Fly_f (void)
 		sv_player->v.movetype = MOVETYPE_WALK;
 		SV_ClientPrintf ("flymode OFF\n");
 	}
+		break;
+	case 2:
+		if (Q_atof(Cmd_Argv(1)))
+		{
+			sv_player->v.movetype = MOVETYPE_FLY;
+			SV_ClientPrintf ("flymode ON\n");
+		}
+		else
+		{
+			sv_player->v.movetype = MOVETYPE_WALK;
+			SV_ClientPrintf ("flymode OFF\n");
+		}
+		break;
+	default:
+		Con_Printf("fly [value] : toggle fly mode. values: 0 = off, 1 = on\n");
+		break;
+	}
+	//johnfitz
 }
 
 
@@ -301,7 +688,7 @@ SERVER TRANSITIONS
 ======================
 Host_Map_f
 
-handle a 
+handle a
 map <servername>
 command from the console.  Active clients are kicked off.
 ======================
@@ -314,10 +701,19 @@ void Host_Map_f (void)
 	if (cmd_source != src_command)
 		return;
 
+	//johnfitz -- check for client having map before anything else
+	//	sprintf (name, "maps/%s.bsp", Cmd_Argv(1));
+	//	if (COM_OpenFile (name, &i) == -1)
+	//	{
+	//		Con_Printf("Host_Map_f: cannot find map %s\n", name);
+	//		return;
+	//	}
+	//johnfitz
+
 	cls.demonum = -1;		// stop demo loop in case this fails
 
 	CL_Disconnect ();
-	Host_ShutdownServer(false);		
+	Host_ShutdownServer(false);
 
 	key_dest = key_game;			// remove console or menu
 	SCR_BeginLoadingPlaque ();
@@ -332,14 +728,10 @@ void Host_Map_f (void)
 
 	svs.serverflags = 0;			// haven't completed an episode yet
 	strcpy (name, Cmd_Argv(1));
-#ifdef QUAKE2
-	SV_SpawnServer (name, NULL);
-#else
 	SV_SpawnServer (name);
-#endif
 	if (!sv.active)
 		return;
-	
+
 	// JPG 3.20 - cheat free
 	pq_cheatfree = (pq_cvar_cheatfree.value && pq_cheatfreeEnabled);
 	if (pq_cheatfree)
@@ -354,9 +746,9 @@ void Host_Map_f (void)
 			strcat (cls.spawnparms, Cmd_Argv(i));
 			strcat (cls.spawnparms, " ");
 		}
-		
+
 		Cmd_ExecuteString ("connect local", src_command);
-	}	
+	}
 }
 
 /*
@@ -368,34 +760,6 @@ Goes to a new map, taking all clients along
 */
 void Host_Changelevel_f (void)
 {
-#ifdef QUAKE2
-	char	level[MAX_QPATH];
-	char	_startspot[MAX_QPATH];
-	char	*startspot;
-
-	if (Cmd_Argc() < 2)
-	{
-		Con_Printf ("changelevel <levelname> : continue game on a new level\n");
-		return;
-	}
-	if (!sv.active || cls.demoplayback)
-	{
-		Con_Printf ("Only the server may changelevel\n");
-		return;
-	}
-
-	strcpy (level, Cmd_Argv(1));
-	if (Cmd_Argc() == 2)
-		startspot = NULL;
-	else
-	{
-		strcpy (_startspot, Cmd_Argv(2));
-		startspot = _startspot;
-	}
-
-	SV_SaveSpawnparms ();
-	SV_SpawnServer (level, startspot);
-#else
 	char	level[MAX_QPATH];
 
 	if (Cmd_Argc() != 2)
@@ -408,10 +772,20 @@ void Host_Changelevel_f (void)
 		Con_Printf ("Only the server may changelevel\n");
 		return;
 	}
+
+	//johnfitz -- check for client having map before anything else
+	//sprintf (level, "maps/%s.bsp", Cmd_Argv(1));
+	//if (COM_OpenFile (level, &i) == -1)
+	//{
+	//	Con_Printf("Host_Changelevel_f: cannot find map %s\n", level);
+	//	//shut down server, disconnect, etc.
+	//	return;
+	//}
+	//johnfitz
+
 	SV_SaveSpawnparms ();
 	strcpy (level, Cmd_Argv(1));
 	SV_SpawnServer (level);
-#endif
 }
 
 /*
@@ -424,9 +798,6 @@ Restarts the current server for a dead player
 void Host_Restart_f (void)
 {
 	char	mapname[MAX_QPATH];
-#ifdef QUAKE2
-	char	startspot[MAX_QPATH];
-#endif
 
 	if (cls.demoplayback || !sv.active)
 		return;
@@ -435,12 +806,7 @@ void Host_Restart_f (void)
 		return;
 	strcpy (mapname, sv.name);	// must copy out, because it gets cleared
 								// in sv_spawnserver
-#ifdef QUAKE2
-	strcpy(startspot, sv.startspot);
-	SV_SpawnServer (mapname, startspot);
-#else
 	SV_SpawnServer (mapname);
-#endif
 }
 
 /*
@@ -469,7 +835,7 @@ User command to connect to server
 void Host_Connect_f (void)
 {
 	char	name[MAX_QPATH];
-	
+
 	cls.demonum = -1;		// stop demo loop in case this fails
 	if (cls.demoplayback)
 	{
@@ -498,7 +864,7 @@ LOAD / SAVE GAME
 ===============
 Host_SavegameComment
 
-Writes a SAVEGAME_COMMENT_LENGTH character comment describing the current 
+Writes a SAVEGAME_COMMENT_LENGTH character comment describing the current
 ===============
 */
 void Host_SavegameComment (char *text)
@@ -508,7 +874,7 @@ void Host_SavegameComment (char *text)
 
 	for (i=0 ; i<SAVEGAME_COMMENT_LENGTH ; i++)
 		text[i] = ' ';
-	memcpy (text, cl.levelname, strlen(cl.levelname));
+	memcpy (text, cl.levelname, min(strlen(cl.levelname),22)); //johnfitz -- only copy 22 chars.
 	sprintf (kills,"kills:%3i/%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
 	memcpy (text+22, kills, strlen(kills));
 // convert space to _ to make stdio happy
@@ -563,7 +929,7 @@ void Host_Savegame_f (void)
 		Con_Printf ("Relative pathnames are not allowed.\n");
 		return;
 	}
-		
+
 	for (i=0 ; i<svs.maxclients ; i++)
 	{
 		if (svs.clients[i].active && (svs.clients[i].edict->v.health <= 0) )
@@ -575,7 +941,7 @@ void Host_Savegame_f (void)
 
 	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".sav");
-	
+
 	Con_Printf ("Saving game to %s...\n", name);
 	f = fopen (name, "w");
 	if (!f)
@@ -583,7 +949,7 @@ void Host_Savegame_f (void)
 		Con_Printf ("ERROR: couldn't open.\n");
 		return;
 	}
-	
+
 	fprintf (f, "%i\n", SAVEGAME_VERSION);
 	Host_SavegameComment (comment);
 	fprintf (f, "%s\n", comment);
@@ -646,7 +1012,7 @@ void Host_Loadgame_f (void)
 
 	sprintf (name, "%s/%s", com_gamedir, Cmd_Argv(1));
 	COM_DefaultExtension (name, ".sav");
-	
+
 // we can't call SCR_BeginLoadingPlaque, because too much stack space has
 // been used.  The menu calls it before stuffing loadgame command
 //	SCR_BeginLoadingPlaque ();
@@ -674,22 +1040,13 @@ void Host_Loadgame_f (void)
 	current_skill = (int)(tfloat + 0.1);
 	Cvar_SetValue ("skill", (float)current_skill);
 
-#ifdef QUAKE2
-	Cvar_SetValue ("deathmatch", 0);
-	Cvar_SetValue ("coop", 0);
-	Cvar_SetValue ("teamplay", 0);
-#endif
-
 	fscanf (f, "%s\n",mapname);
 	fscanf (f, "%f\n",&time);
 
 	CL_Disconnect_f ();
-	
-#ifdef QUAKE2
-	SV_SpawnServer (mapname, NULL);
-#else
+
 	SV_SpawnServer (mapname);
-#endif
+
 	if (!sv.active)
 	{
 		Con_Printf ("Couldn't load map\n");
@@ -732,7 +1089,7 @@ void Host_Loadgame_f (void)
 			break;		// end of file
 		if (strcmp(com_token,"{"))
 			Sys_Error ("First token isn't a brace");
-			
+
 		if (entnum == -1)
 		{	// parse the global vars
 			ED_ParseGlobals (start);
@@ -744,7 +1101,7 @@ void Host_Loadgame_f (void)
 			memset (&ent->v, 0, progs->entityfields * 4);
 			ent->free = false;
 			ED_ParseEdict (start, ent);
-	
+
 		// link it into the bsp tree
 			if (!ent->free)
 				SV_LinkEdict (ent, false);
@@ -752,7 +1109,7 @@ void Host_Loadgame_f (void)
 
 		entnum++;
 	}
-	
+
 	sv.num_edicts = entnum;
 	sv.time = time;
 
@@ -767,200 +1124,6 @@ void Host_Loadgame_f (void)
 		Host_Reconnect_f ();
 	}
 }
-
-#ifdef QUAKE2
-void SaveGamestate()
-{
-	char	name[256];
-	FILE	*f;
-	int		i;
-	char	comment[SAVEGAME_COMMENT_LENGTH+1];
-	edict_t	*ent;
-
-	sprintf (name, "%s/%s.gip", com_gamedir, sv.name);
-	
-	Con_Printf ("Saving game to %s...\n", name);
-	f = fopen (name, "w");
-	if (!f)
-	{
-		Con_Printf ("ERROR: couldn't open.\n");
-		return;
-	}
-	
-	fprintf (f, "%i\n", SAVEGAME_VERSION);
-	Host_SavegameComment (comment);
-	fprintf (f, "%s\n", comment);
-//	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-//		fprintf (f, "%f\n", svs.clients->spawn_parms[i]);
-	fprintf (f, "%f\n", skill.value);
-	fprintf (f, "%s\n", sv.name);
-	fprintf (f, "%f\n", sv.time);
-
-// write the light styles
-
-	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
-	{
-		if (sv.lightstyles[i])
-			fprintf (f, "%s\n", sv.lightstyles[i]);
-		else
-			fprintf (f,"m\n");
-	}
-
-
-	for (i=svs.maxclients+1 ; i<sv.num_edicts ; i++)
-	{
-		ent = EDICT_NUM(i);
-		if ((int)ent->v.flags & FL_ARCHIVE_OVERRIDE)
-			continue;
-		fprintf (f, "%i\n",i);
-		ED_Write (f, ent);
-		fflush (f);
-	}
-	fclose (f);
-	Con_Printf ("done.\n");
-}
-
-int LoadGamestate(char *level, char *startspot)
-{
-	char	name[MAX_OSPATH];
-	FILE	*f;
-	char	mapname[MAX_QPATH];
-	float	time, sk;
-	char	str[32768], *start;
-	int		i, r;
-	edict_t	*ent;
-	int		entnum;
-	int		version;
-//	float	spawn_parms[NUM_SPAWN_PARMS];
-
-	sprintf (name, "%s/%s.gip", com_gamedir, level);
-	
-	Con_Printf ("Loading game from %s...\n", name);
-	f = fopen (name, "r");
-	if (!f)
-	{
-		Con_Printf ("ERROR: couldn't open.\n");
-		return -1;
-	}
-
-	fscanf (f, "%i\n", &version);
-	if (version != SAVEGAME_VERSION)
-	{
-		fclose (f);
-		Con_Printf ("Savegame is version %i, not %i\n", version, SAVEGAME_VERSION);
-		return -1;
-	}
-	fscanf (f, "%s\n", str);
-//	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-//		fscanf (f, "%f\n", &spawn_parms[i]);
-	fscanf (f, "%f\n", &sk);
-	Cvar_SetValue ("skill", sk);
-
-	fscanf (f, "%s\n",mapname);
-	fscanf (f, "%f\n",&time);
-
-	SV_SpawnServer (mapname, startspot);
-
-	if (!sv.active)
-	{
-		Con_Printf ("Couldn't load map\n");
-		return -1;
-	}
-
-// load the light styles
-	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
-	{
-		fscanf (f, "%s\n", str);
-		sv.lightstyles[i] = Hunk_Alloc (strlen(str)+1);
-		strcpy (sv.lightstyles[i], str);
-	}
-
-// load the edicts out of the savegame file
-	while (!feof(f))
-	{
-		fscanf (f, "%i\n",&entnum);
-		for (i=0 ; i<sizeof(str)-1 ; i++)
-		{
-			r = fgetc (f);
-			if (r == EOF || !r)
-				break;
-			str[i] = r;
-			if (r == '}')
-			{
-				i++;
-				break;
-			}
-		}
-		if (i == sizeof(str)-1)
-			Sys_Error ("Loadgame buffer overflow");
-		str[i] = 0;
-		start = str;
-		start = COM_Parse(str);
-		if (!com_token[0])
-			break;		// end of file
-		if (strcmp(com_token,"{"))
-			Sys_Error ("First token isn't a brace");
-			
-		// parse an edict
-
-		ent = EDICT_NUM(entnum);
-		memset (&ent->v, 0, progs->entityfields * 4);
-		ent->free = false;
-		ED_ParseEdict (start, ent);
-	
-		// link it into the bsp tree
-		if (!ent->free)
-			SV_LinkEdict (ent, false);
-	}
-	
-//	sv.num_edicts = entnum;
-	sv.time = time;
-	fclose (f);
-
-//	for (i=0 ; i<NUM_SPAWN_PARMS ; i++)
-//		svs.clients->spawn_parms[i] = spawn_parms[i];
-
-	return 0;
-}
-
-// changing levels within a unit
-void Host_Changelevel2_f (void)
-{
-	char	level[MAX_QPATH];
-	char	_startspot[MAX_QPATH];
-	char	*startspot;
-
-	if (Cmd_Argc() < 2)
-	{
-		Con_Printf ("changelevel2 <levelname> : continue game on a new level in the unit\n");
-		return;
-	}
-	if (!sv.active || cls.demoplayback)
-	{
-		Con_Printf ("Only the server may changelevel\n");
-		return;
-	}
-
-	strcpy (level, Cmd_Argv(1));
-	if (Cmd_Argc() == 2)
-		startspot = NULL;
-	else
-	{
-		strcpy (_startspot, Cmd_Argv(2));
-		startspot = _startspot;
-	}
-
-	SV_SaveSpawnparms ();
-
-	// save the current level's state
-	SaveGamestate ();
-
-	// try to restore the new level
-	if (LoadGamestate (level, startspot))
-		SV_SpawnServer (level, startspot);
-}
-#endif
-
 
 //============================================================================
 
@@ -980,7 +1143,7 @@ void Host_Name_f (void)
 		return;
 	}
 	if (Cmd_Argc () == 2)
-		newName = Cmd_Argv(1);	
+		newName = Cmd_Argv(1);
 	else
 		newName = Cmd_Args();
 	newName[15] = 0;
@@ -1013,18 +1176,18 @@ void Host_Name_f (void)
 	// JPG 1.05 - log the IP address
 	if (sscanf(host_client->netconnection->address, "%d.%d.%d", &a, &b, &c) == 3)
 		IPLog_Add((a << 16) | (b << 8) | c, newName);
-	
+
 	// JPG 3.00 - prevent messages right after a colour/name change
 	host_client->change_time = sv.time;
 
 // send notification to all clients
-	
+
 	MSG_WriteByte (&sv.reliable_datagram, svc_updatename);
 	MSG_WriteByte (&sv.reliable_datagram, host_client - svs.clients);
 	MSG_WriteString (&sv.reliable_datagram, host_client->name);
 }
 
-	
+
 void Host_Version_f (void)
 {
 	Con_Printf ("ProQuake Version %4.2f\n", PROQUAKE_VERSION); // JPG - added ProQuake
@@ -1036,7 +1199,7 @@ void Host_Please_f (void)
 {
 	client_t *cl;
 	int			j;
-	
+
 	if (cmd_source != src_command)
 		return;
 
@@ -1262,7 +1425,7 @@ void Host_Color_f(void)
 {
 	int		top, bottom;
 	int		playercolor;
-	
+
 	if (Cmd_Argc() == 1)
 	{
 		Con_Printf ("\"color\" is \"%i %i\"\n", ((int)cl_color.value) >> 4, ((int)cl_color.value) & 0x0f);
@@ -1277,14 +1440,14 @@ void Host_Color_f(void)
 		top = atoi(Cmd_Argv(1));
 		bottom = atoi(Cmd_Argv(2));
 	}
-	
+
 	top &= 15;
 	if (top > 13)
 		top = 13;
 	bottom &= 15;
 	if (bottom > 13)
 		bottom = 13;
-	
+
 	playercolor = top*16 + bottom;
 
 	if (cmd_source == src_command)
@@ -1330,7 +1493,7 @@ void Host_Kill_f (void)
 		SV_ClientPrintf ("Can't suicide -- already dead!\n");	// JPG 3.02 allready->already
 		return;
 	}
-	
+
 	pr_global_struct->time = sv.time;
 	pr_global_struct->self = EDICT_TO_PROG(sv_player);
 	PR_ExecuteProgram (pr_global_struct->ClientKill);
@@ -1345,7 +1508,7 @@ Host_Pause_f
 void Host_Pause_f (void)
 {
 	cl.paused ^= 2;		// by joe: to handle demo-pause
-	
+
 	if (cmd_source == src_command)
 	{
 		Cmd_ForwardToServer ();
@@ -1393,7 +1556,7 @@ void Host_PreSpawn_f (void)
 		Con_Printf ("prespawn not valid -- already spawned\n");	// JPG 3.02 allready->already
 		return;
 	}
-	
+
 	SZ_Write (&host_client->message, sv.signon.data, sv.signon.cursize);
 	MSG_WriteByte (&host_client->message, svc_signonnum);
 	MSG_WriteByte (&host_client->message, 2);
@@ -1501,7 +1664,7 @@ void Host_Spawn_f (void)
 		if ((Sys_FloatTime() - host_client->netconnection->connecttime) <= sv.time)
 			Sys_Printf ("%s entered the game\n", host_client->name);
 
-		PR_ExecuteProgram (pr_global_struct->PutClientInServer);	
+		PR_ExecuteProgram (pr_global_struct->PutClientInServer);
 	}
 
 
@@ -1524,7 +1687,7 @@ void Host_Spawn_f (void)
 		MSG_WriteByte (&host_client->message, i);
 		MSG_WriteByte (&host_client->message, client->colors);
 	}
-	
+
 // send all current light styles
 	for (i=0 ; i<MAX_LIGHTSTYLES ; i++)
 	{
@@ -1551,7 +1714,7 @@ void Host_Spawn_f (void)
 	MSG_WriteByte (&host_client->message, svc_updatestat);
 	MSG_WriteByte (&host_client->message, STAT_MONSTERS);
 	MSG_WriteLong (&host_client->message, pr_global_struct->killed_monsters);
-	
+
 //
 // send a fixangle
 // Never send a roll angle, because savegames can catch the server
@@ -1697,7 +1860,7 @@ Host_Give_f
 void Host_Give_f (void)
 {
 	char	*t;
-	int		v /*, w*/;
+	int		v;
 	eval_t	*val;
 
 	if (cmd_source == src_command)
@@ -1711,7 +1874,7 @@ void Host_Give_f (void)
 
 	t = Cmd_Argv(1);
 	v = atoi (Cmd_Argv(2));
-	
+
 	switch (t[0])
 	{
    case '0':
@@ -1747,7 +1910,7 @@ void Host_Give_f (void)
             sv_player->v.items = (int)sv_player->v.items | (IT_SHOTGUN << (t[0] - '2'));
       }
 		break;
-	
+
     case 's':
 		if (rogue)
 		{
@@ -1757,7 +1920,7 @@ void Host_Give_f (void)
 		}
 
         sv_player->v.ammo_shells = v;
-        break;		
+        break;
     case 'n':
 		if (rogue)
 		{
@@ -1773,7 +1936,7 @@ void Host_Give_f (void)
 		{
 			sv_player->v.ammo_nails = v;
 		}
-        break;		
+        break;
     case 'l':
 		if (rogue)
 		{
@@ -1801,7 +1964,7 @@ void Host_Give_f (void)
 		{
 			sv_player->v.ammo_rockets = v;
 		}
-        break;		
+        break;
     case 'm':
 		if (rogue)
 		{
@@ -1813,10 +1976,10 @@ void Host_Give_f (void)
 					sv_player->v.ammo_rockets = v;
 			}
 		}
-        break;		
+        break;
     case 'h':
         sv_player->v.health = v;
-        break;		
+        break;
     case 'c':
 		if (rogue)
 		{
@@ -1832,7 +1995,7 @@ void Host_Give_f (void)
 		{
 			sv_player->v.ammo_cells = v;
 		}
-        break;		
+        break;
     case 'p':
 		if (rogue)
 		{
@@ -1844,7 +2007,7 @@ void Host_Give_f (void)
 					sv_player->v.ammo_cells = v;
 			}
 		}
-        break;		
+        break;
 	// Baker 3.60 - give "a" for armor from FitzQuake
 	//johnfitz -- give armour
     case 'a':
@@ -1875,7 +2038,7 @@ edict_t	*FindViewthing (void)
 {
 	int		i;
 	edict_t	*e;
-	
+
 	for (i=0 ; i<sv.num_edicts ; i++)
 	{
 		e = EDICT_NUM(i);
@@ -1906,7 +2069,7 @@ void Host_Viewmodel_f (void)
 		Con_Printf ("Can't load %s\n", Cmd_Argv(1));
 		return;
 	}
-	
+
 	e->v.frame = 0;
 	cl.model_precache[(int)e->v.modelindex] = m;
 }
@@ -1931,7 +2094,7 @@ void Host_Viewframe_f (void)
 	if (f >= m->numframes)
 		f = m->numframes-1;
 
-	e->v.frame = f;		
+	e->v.frame = f;
 }
 
 
@@ -1944,7 +2107,7 @@ void PrintFrameName (model_t *m, int frame)
 	if (!hdr)
 		return;
 	pframedesc = &hdr->frames[frame];
-	
+
 	Con_Printf ("frame %i: %s\n", frame, pframedesc->name);
 }
 
@@ -1957,7 +2120,7 @@ void Host_Viewnext_f (void)
 {
 	edict_t	*e;
 	model_t	*m;
-	
+
 	e = FindViewthing ();
 	if (!e)
 		return;
@@ -1967,7 +2130,7 @@ void Host_Viewnext_f (void)
 	if (e->v.frame >= m->numframes)
 		e->v.frame = m->numframes - 1;
 
-	PrintFrameName (m, e->v.frame);		
+	PrintFrameName (m, e->v.frame);
 }
 
 /*
@@ -1990,7 +2153,7 @@ void Host_Viewprev_f (void)
 	if (e->v.frame < 0)
 		e->v.frame = 0;
 
-	PrintFrameName (m, e->v.frame);		
+	PrintFrameName (m, e->v.frame);
 }
 
 /*
@@ -2010,6 +2173,14 @@ Host_Startdemos_f
 void Host_Startdemos_f (void)
 {
 	int		i, c;
+
+	if (nostartdemos)
+	{
+		// Baker 3.76
+		// This is hack to prevent demo auto-play from having demos in queue play
+		// after a file associated demo plays
+		return;
+	}
 
 	if (cls.state == ca_dedicated)
 	{
@@ -2082,7 +2253,7 @@ PROQUAKE FUNCTIONS (JPG 1.05)
 */
 
 // used to translate to non-fun characters for identify <name>
-char unfun[129] = 
+char unfun[129] =
 "................[]olzeasbt89...."
 "........[]......olzeasbt89..[.]."
 "aabcdefghijklmnopqrstuvwxyz[.].."
@@ -2199,17 +2370,17 @@ int num_rand[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int next_rand[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 char msg_rand[10][64][64];
 char msg_order[10][64];
-char cmd_rand[10][10] = 
+char cmd_rand[10][10] =
 {
-	"say_rand0", 
-	"say_rand1", 
-	"say_rand2", 
-	"say_rand3", 
-	"say_rand4", 
-	"say_rand5", 
-	"say_rand6", 
-	"say_rand7", 
-	"say_rand8", 
+	"say_rand0",
+	"say_rand1",
+	"say_rand2",
+	"say_rand3",
+	"say_rand4",
+	"say_rand5",
+	"say_rand6",
+	"say_rand7",
+	"say_rand8",
 	"say_rand9"
 };
 
@@ -2272,7 +2443,9 @@ void Host_InitCommands (void)
 		}
 	}
 
+
 	Cmd_AddCommand ("status", Host_Status_f);
+	Cmd_AddCommand ("gamedir", Host_Game_f); //johnfitz
 	Cmd_AddCommand ("cheatfree", Host_Cheatfree_f);	// JPG 3.50 - print cheat-free status
 	Cmd_AddCommand ("quit", Host_Quit_f);
 	Cmd_AddCommand ("god", Host_God_f);

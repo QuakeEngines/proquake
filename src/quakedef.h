@@ -23,7 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define	QUAKE_GAME			// as opposed to utilities
 
-#define PROQUAKE_VERSION	3.90 // JPG - added this
+#define PROQUAKE_VERSION	3.94 // JPG - added this
 #define	VERSION				1.09
 #define	GLQUAKE_VERSION		1.00
 #define	D3DQUAKE_VERSION	0.01
@@ -62,10 +62,14 @@ void	VID_UnlockBuffer (void);
 
 #endif
 
+#ifdef NO_ASSEMBLY
+#define id386 0
+#else
 #if defined __i386__ // && !defined __sun__
 #define id386	1
 #else
 #define id386	0
+#endif
 #endif
 
 #if id386
@@ -353,3 +357,9 @@ extern char dequake[256];	// JPG 1.05 - dedicated console translation
 extern cvar_t pq_dequake;	// JPG 1.05 - dedicated console translation
 
 
+// Baker D3DQuake
+#pragma warning(disable : 4244) /* MIPS conversion to float, possible loss of data */
+#pragma warning(disable : 4305) /* MIPS truncation from const double to float */
+#pragma warning(disable : 4018) /* MIPS signed/unsigned mismatch */
+#pragma warning(disable : 4101) /* MIPS unreferenced local variable */
+// End D3DQuake

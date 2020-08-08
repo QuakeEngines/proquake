@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -88,36 +88,76 @@ int			DIBWidth, DIBHeight;
 RECT		WindowRect;
 DWORD		WindowStyle, ExWindowStyle;
 
-HWND		mainwindow;
-HWND		dibwindow;
+HWND	mainwindow, dibwindow;
 
 int			vid_modenum = NO_MODE;
 int			vid_realmode;
 int			vid_default = MODE_WINDOWED;
+#ifdef D3DQUAKE
+qboolean	video_options_disabled = true; // Baker 3.93: D3D version loses surface with this, investigate later
+#else
+qboolean	video_options_disabled = false;
+#endif
+
+int			desktop_bpp;  // query this @ startup and when entering the video menu
 static int	windowed_default;
 unsigned char	vid_curpal[256*3];
 static qboolean fullsbardraw = false;
 
-static float vid_gamma = 1.0;
+// Baker: begin hwgamma support
+float vid_gamma = 1.0; // Baker: was static
 
-//HGLRC	baseRC;
+unsigned short	*currentgammaramp = NULL;
+static unsigned short systemgammaramp[3][256];
+
+qboolean	vid_gammaworks = false;
+qboolean	vid_hwgamma_enabled = false;
+qboolean	customgamma = false;
+void VID_SetDeviceGammaRamp (unsigned short *ramps);
+void VID_Gamma_Shutdown (void);
+void RestoreHWGamma (void);
+cvar_t		vid_hwgammacontrol		= {"vid_hwgammacontrol", "2"};//R00k changed to 2 to support windowed modes!
+unsigned	d_8to24table2[256];
+byte		vid_gamma_table[256];
+
+#ifdef D3DQUAKE
+	qboolean using_hwgamma=false; // Baker 3.93: for now!
+#else
+	qboolean using_hwgamma=true;
+#endif
+// Baker end hwgamma support
+
 HDC		maindc;
 
 glvert_t glv;
 
+// D3D diff 1 of 14
+#ifdef D3DQUAKE
+cvar_t	gl_ztrick = {"gl_ztrick","0"};
+#else
+// D3D diff 2 of 14
 cvar_t	gl_ztrick = {"gl_ztrick","1"};
+// D3D diff 2 of 14
+#endif
+
+#ifdef D3DQUAKE
+#define WINDOWNAME "D3DQuake"
+#else
+#define WINDOWNAME "GLQuake"
+#endif
+
 
 HWND WINAPI InitializeWindow (HINSTANCE hInstance, int nCmdShow);
 
-modestate_t	modestate = MS_UNINIT;
 viddef_t	vid;				// global video state
 
-//unsigned short	d_8to16table[256];
+//unsigned short	d_8to16table[256]; //johnfitz -- never used
 unsigned	d_8to24table[256];
 unsigned char d_15to8table[65536];
 
 float		gldepthmin, gldepthmax;
 
+modestate_t	modestate = MS_UNINIT;
 
 void VID_Menu_Init (void); //johnfitz
 void VID_Menu_f (void); //johnfitz
@@ -126,8 +166,8 @@ void VID_MenuKey (int key);
 
 LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void AppActivate(BOOL fActive, BOOL minimize);
-void Key_ClearAllStates (void);
 char *VID_GetModeDescription (int mode);
+void Key_ClearAllStates (void);
 void VID_UpdateWindowStatus (void);
 void GL_Init (void);
 
@@ -141,18 +181,23 @@ lp3DFXFUNC glColorTableEXT;
 qboolean is8bit = false;
 qboolean isPermedia = false;
 qboolean gl_mtexable = false;
-int			vid_current_bpp;//R00k
+
 qboolean	vid_locked = false; //johnfitz
+int			vid_current_bpp;//R00k
+
 void GL_SetupState (void); //johnfitz
 
 //====================================
 
 //johnfitz -- new cvars
-//cvar_t		vid_fullscreen = {"vid_fullscreen", "1", true};
+cvar_t		vid_fullscreen = {"vid_fullscreen", "1", true};
 cvar_t		vid_width = {"vid_width", "640", true};
 cvar_t		vid_height = {"vid_height", "480", true};
-//cvar_t		vid_bpp = {"vid_bpp", "16", true};
+
+int			vid_bpp;
 cvar_t		vid_refreshrate = {"vid_refreshrate", "60", true};
+cvar_t		vid_vsync = {"vid_vsync", "1", true};
+static 		qboolean update_vsync = false;
 //johnfitz
 
 
@@ -175,13 +220,77 @@ RECT		window_rect;
 
 typedef BOOL (APIENTRY *SWAPINTERVALFUNCPTR)(int);
 SWAPINTERVALFUNCPTR wglSwapIntervalEXT = NULL;
-//qboolean OnChange_vid_vsync (cvar_t *var, char *string);
-static qboolean update_vsync = false;
-cvar_t		vid_vsync = {"vid_vsync", "1", true, 3};
 
-//static void Check_Gamma (unsigned char *pal);
-//qboolean OnChange_vid_gamma (cvar_t *var, char *string);
-//cvar_t		vid_gamma = {"vid_gamma", "1", true, 4};
+
+void	VID_SetPaletteOld (unsigned char *palette)
+{
+	byte	*pal;
+	unsigned r,g,b;
+	unsigned v;
+	int     r1,g1,b1;
+	int		j,k,l;
+	unsigned short i;
+	unsigned	*table;
+
+//
+// 8 8 8 encoding
+//
+	pal = palette;
+	table = d_8to24table;
+	for (i=0 ; i<256 ; i++)
+	{
+		r = pal[0];
+		g = pal[1];
+		b = pal[2];
+		pal += 3;
+
+//		v = (255<<24) + (r<<16) + (g<<8) + (b<<0);
+//		v = (255<<0) + (r<<8) + (g<<16) + (b<<24);
+		v = (255<<24) + (r<<0) + (g<<8) + (b<<16);
+		*table++ = v;
+	}
+	d_8to24table[255] &= 0xffffff;	// 255 is transparent
+
+	// JACK: 3D distance calcs - k is last closest, l is the distance.
+	// FIXME: Precalculate this and cache to disk.
+	for (i=0; i < (1<<15); i++) {
+		/* Maps
+			000000000000000
+			000000000011111 = Red  = 0x1F
+			000001111100000 = Blue = 0x03E0
+			111110000000000 = Grn  = 0x7C00
+		*/
+		r = ((i & 0x1F) << 3)+4;
+		g = ((i & 0x03E0) >> 2)+4;
+		b = ((i & 0x7C00) >> 7)+4;
+		pal = (unsigned char *)d_8to24table;
+		for (v=0,k=0,l=10000*10000; v<256; v++,pal+=4) {
+			r1 = r-pal[0];
+			g1 = g-pal[1];
+			b1 = b-pal[2];
+			j = (r1*r1)+(g1*g1)+(b1*b1);
+			if (j<l) {
+				k=v;
+				l=j;
+			}
+		}
+		d_15to8table[i]=k;
+	}
+}
+
+BOOL	gammaworks;
+
+void	VID_ShiftPaletteOld (unsigned char *palette)
+{
+	extern	byte rampsold[3][256];
+
+//	VID_SetPaletteOld (palette);
+
+//	gammaworks = SetDeviceGammaRamp (maindc, ramps);
+}
+
+
+
 
 
 
@@ -206,20 +315,26 @@ qboolean CheckExtension (const char *extension) {
 	return false;
 }
 
-void VID_Vsync_f (void) {
-	update_vsync = true;
-	//return false;
-}
 
+void VID_Vsync_f (void);
 void CheckVsyncControlExtensions (void) {
+#if D3DQUAKE
+	// #ifdef D3DQUAKE
+	// Baker: Just assume the capability exists since
+	// we can't do this the same way using D3DQUAKE
+	Cvar_RegisterVariable (&vid_vsync, VID_Vsync_f);
+#else
+
 	if (!COM_CheckParm("-noswapctrl") && CheckExtension("WGL_EXT_swap_control")) {
 		if ((wglSwapIntervalEXT = (void *)wglGetProcAddress("wglSwapIntervalEXT"))) {
 			Con_Printf("Vsync control extensions found\n");
 			Cvar_RegisterVariable (&vid_vsync, VID_Vsync_f);
 		}
 	}
+#endif
 }
 
+//==========================================================================
 
 // direct draw software compatability stuff
 
@@ -251,7 +366,11 @@ void D_EndDirectRect (int x, int y, int width, int height) {
 	// Baker: Leave this comment here
 }
 
-
+/*
+================
+CenterWindow
+================
+*/
 void CenterWindow(HWND hWndCenter, int width, int height, BOOL lefttopjustify) {
     int     CenterX, CenterY;
 
@@ -264,20 +383,11 @@ void CenterWindow(HWND hWndCenter, int width, int height, BOOL lefttopjustify) {
 	SetWindowPos (hWndCenter, NULL, CenterX, CenterY, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW | SWP_DRAWFRAME);
 }
 
-void VID_UpdateWindowStatus (void) {
-
-	window_rect.left = window_x;
-	window_rect.top = window_y;
-	window_rect.right = window_x + window_width;
-	window_rect.bottom = window_y + window_height;
-	window_center_x = (window_rect.left + window_rect.right) / 2;
-	window_center_y = (window_rect.top + window_rect.bottom) / 2;
-
-	IN_UpdateClipCursor ();
-}
-
-/******************************** VID_SETMODE ********************************/
-
+/*
+================
+VID_SetWindowedMode
+================
+*/
 qboolean VID_SetWindowedMode (int modenum) {
 	HDC				hdc;
 	int				lastmodestate, width, height;
@@ -310,7 +420,7 @@ qboolean VID_SetWindowedMode (int modenum) {
 	dibwindow = CreateWindowEx (
 		 ExWindowStyle,
 		 "WinQuake",
-		 "GLQuake",
+		 WINDOWNAME, // D3D diff 3 of 14
 		 WindowStyle,
 		 rect.left, rect.top,
 		 width,
@@ -331,22 +441,20 @@ qboolean VID_SetWindowedMode (int modenum) {
 
 	modestate = MS_WINDOWED;
 
-	// Because we have set the background brush for the window to NULL (to avoid flickering when re-sizing the window on the desktop),
-	// we clear the window to black when created, otherwise it will be  empty while Quake starts up.
+// because we have set the background brush for the window to NULL
+// (to avoid flickering when re-sizing the window on the desktop),
+// we clear the window to black when created, otherwise it will be
+// empty while Quake starts up.
 	hdc = GetDC(dibwindow);
 	PatBlt(hdc,0,0,WindowRect.right,WindowRect.bottom,BLACKNESS);
 	ReleaseDC(dibwindow, hdc);
 
-/*	if (vid.conheight > modelist[modenum].height)
-		vid.conheight = modelist[modenum].height;
-	if (vid.conwidth > modelist[modenum].width)
-		vid.conwidth = modelist[modenum].width; */
-
+	//johnfitz -- stuff
+	vid.width = modelist[modenum].width;
+	vid.height = modelist[modenum].height;
 	vid.conwidth = vid.width & 0xFFFFFFF8;
 	vid.conheight = vid.conwidth * vid.height / vid.width;
-
-//	vid.width = vid.conwidth;
-//  vid.height = vid.conheight;
+	//johnfitz
 
 	vid.numpages = 2;
 
@@ -369,20 +477,25 @@ qboolean VID_SetFullDIBMode (int modenum) {
 	int				width, height;
 	RECT			rect;
 
-	if (!leavecurrentmode) {
-		gdevmode.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+	if (!leavecurrentmode)
+	{
+		gdevmode.dmFields = DM_BITSPERPEL |
+							DM_PELSWIDTH |
+							DM_PELSHEIGHT |
+							DM_DISPLAYFREQUENCY; //johnfitz -- refreshrate
 		gdevmode.dmBitsPerPel = modelist[modenum].bpp;
 		gdevmode.dmPelsWidth = modelist[modenum].width << modelist[modenum].halfscreen;
 		gdevmode.dmPelsHeight = modelist[modenum].height;
+		gdevmode.dmDisplayFrequency = modelist[modenum].refreshrate; //johnfitz -- refreshrate
 		gdevmode.dmSize = sizeof (gdevmode);
 
-		if (vid_refreshrate.value > 59) 
+		if (vid_refreshrate.value > 59)
 		{
 			gdevmode.dmDisplayFrequency = modelist[modenum].refreshrate = vid_refreshrate.value;
-			gdevmode.dmFields |= DM_DISPLAYFREQUENCY;			
+			gdevmode.dmFields |= DM_DISPLAYFREQUENCY;
 		}
 		else
-			gdevmode.dmDisplayFrequency = modelist[modenum].refreshrate; 
+			gdevmode.dmDisplayFrequency = modelist[modenum].refreshrate;
 
 		if (ChangeDisplaySettings (&gdevmode, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
 			Sys_Error ("Couldn't set fullscreen DIB mode");
@@ -412,7 +525,7 @@ qboolean VID_SetFullDIBMode (int modenum) {
 	dibwindow = CreateWindowEx (
 		 ExWindowStyle,
 		 "WinQuake",
-		 "GLQuake",
+		 WINDOWNAME, // D3D diff 4 of 14
 		 WindowStyle,
 		 rect.left, rect.top,
 		 width,
@@ -456,14 +569,18 @@ qboolean VID_SetFullDIBMode (int modenum) {
 	return true;
 }
 
+/*
+================
+VID_SetMode
+================
+*/
 extern void IN_StartupMouse (void);
-
 int VID_SetMode (int modenum, unsigned char *palette) {
 	int				original_mode, temp;
 	qboolean		stat;
     MSG				msg;
 
-	if ((windowed && (modenum != 0)) || (!windowed && (modenum < 1)) || (!windowed && (modenum >= nummodes))) 
+	if ((windowed && (modenum != 0)) || (!windowed && (modenum < 1)) || (!windowed && (modenum >= nummodes)))
 		Sys_Error ("Bad video mode");
 
 // so Con_Printfs don't mess us up by forcing vid and snd updates
@@ -514,7 +631,7 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 	// then grab the foreground again. Who knows if it helps, but it probably doesn't hurt
 
 	SetForegroundWindow (mainwindow);
-	VID_SetPalette (palette);
+	VID_SetPaletteOld (palette);
 	vid_modenum = modenum;
 //	Cvar_SetValue ("vid_mode", (float)vid_modenum);
 
@@ -524,7 +641,6 @@ int VID_SetMode (int modenum, unsigned char *palette) {
       	TranslateMessage (&msg);
       	DispatchMessage (&msg);
 	}
-
 
 	Sleep (100);
 
@@ -538,7 +654,7 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 	if (!msg_suppress_1)
 		Con_SafePrintf ("Video mode %s initialized.\n", VID_GetModeDescription (vid_modenum));
 
-	VID_SetPalette (palette);
+	VID_SetPaletteOld (palette);
 
 	vid.recalc_refdef = 1;
 
@@ -549,11 +665,27 @@ int VID_SetMode (int modenum, unsigned char *palette) {
 }
 
 /*
+===============
+VID_Vsync_f -- johnfitz
+===============
+*/
+void VID_Vsync_f (void) {
+	update_vsync = true;
+	//return false;
+}
+
+/*
 ===================
 VID_Restart -- johnfitz -- change video modes on the fly
 ===================
 */
-
+void VID_SyncCvars (void);
+// D3D diff 10 of 14
+#ifdef D3DQUAKE
+void d3dInitSetForce16BitTextures(int force16bitTextures);
+void d3dSetMode(int fullscreen, int width, int height, int bpp, int zbpp);
+#endif
+//void VID_Conwidth_Reset (void);
 void VID_Restart (void)
 {
 	HDC			hdc;
@@ -561,7 +693,6 @@ void VID_Restart (void)
 	int			i;
 	qboolean	mode_changed = false;
 	vmode_t		oldmode;
-	qboolean	vidfullscreen = true;
 
 	if (vid_locked)
 		return;
@@ -569,12 +700,10 @@ void VID_Restart (void)
 //
 // check cvars against current mode
 //
-	if (vidfullscreen)
+	if (vid_fullscreen.value)
 	{
 		if (modelist[vid_default].type == MS_WINDOWED)
 			mode_changed = true;
-/*		else if (modelist[vid_default].bpp != (int)vid_bpp.value)
-			mode_changed = true; */
 		else if (modelist[vid_default].refreshrate != (int)vid_refreshrate.value)
 			mode_changed = true;
 	}
@@ -593,13 +722,13 @@ void VID_Restart (void)
 //
 		oldmode = modelist[vid_default];
 
-		if (vidfullscreen)
+		if (vid_fullscreen.value)
 		{
 			for (i=1; i<nummodes; i++)
 			{
 				if (modelist[i].width == (int)vid_width.value &&
 					modelist[i].height == (int)vid_height.value &&
-//					modelist[i].bpp == (int)vid_bpp.value &&
+					modelist[i].bpp == (int)vid_bpp &&
 					modelist[i].refreshrate == (int)vid_refreshrate.value)
 				{
 					break;
@@ -611,7 +740,7 @@ void VID_Restart (void)
 				Con_Printf ("%dx%dx%d %dHz is not a valid fullscreen mode\n",
 							(int)vid_width.value,
 							(int)vid_height.value,
-//							(int)vid_bpp.value,
+							(int)vid_bpp,
 							(int)vid_refreshrate.value);
 				return;
 			}
@@ -675,8 +804,22 @@ void VID_Restart (void)
 // set new mode
 //
 		VID_SetMode (vid_default, host_basepal);
+//		maindc = GetDC(mainwindow);
+//		bSetupPixelFormat(maindc);
+
 		maindc = GetDC(mainwindow);
-		bSetupPixelFormat(maindc);
+#ifdef D3DQUAKE
+	{
+		int zbpp = vid_bpp > 16 ? 24 : 16;
+//		if (COM_CheckParm("-zbpp"))
+//		{
+//			zbpp = Q_atoi(com_argv[COM_CheckParm("-zbpp")+1]);
+//		}
+		d3dSetMode(!windowed, modelist[0].width, modelist[0].height, vid_bpp, zbpp);
+	}
+#else
+	bSetupPixelFormat(maindc);
+#endif
 
 		// if bpp changes, recreate render context and reload textures
 		if (modelist[vid_default].bpp != oldmode.bpp)
@@ -706,38 +849,37 @@ void VID_Restart (void)
 		vid_canalttab = true;
 
 		//swapcontrol settings were lost when previous window was destroyed
-		if (vid_vsync.value) {
-			Cvar_Set("vid_vsync", "0");
-			Cvar_Set("vid_vsync", "1");
-		} else {
-			Cvar_Set("vid_vsync", "1");
-			Cvar_Set("vid_vsync", "0");
-		}
+		VID_Vsync_f ();
 
-		//warpimages needs to be recalculated
-		// Bakertest TexMgr_RecalcWarpImageSize ();
 
 		//conwidth and conheight need to be recalculated
-		
+
 		//vid.conwidth = (vid_conwidth.value > 0) ? (int)vid_conwidth.value : vid.width;
 		//vid.conwidth = CLAMP (320, vid.conwidth, vid.width);
 		//vid.conwidth &= 0xFFFFFFF8;
 		//vid.conheight = vid.conwidth * vid.height / vid.width;
-		
-		
+
+
 	}
+
+
+
 //
 // keep cvars in line with actual mode
 //
-	Cvar_Set ("vid_width", va("%i", modelist[vid_default].width));
-	Cvar_Set ("vid_height", va("%i", modelist[vid_default].height));
-//	Cvar_Set ("vid_bpp", va("%i", modelist[vid_default].bpp));
-	Cvar_Set ("vid_refreshrate", va("%i", modelist[vid_default].refreshrate));
+//	Cvar_Set ("vid_width", va("%i", modelist[vid_default].width));
+//	Cvar_Set ("vid_height", va("%i", modelist[vid_default].height));
+//	Cvar_Set ("vid_refreshrate", va("%i", modelist[vid_default].refreshrate));
 //	Cvar_Set ("vid_fullscreen", (windowed) ? "0" : "1");
 
-	VID_Conwidth_f(); // Force recalc
+//	Cvar_Set ("vid_conwidth", "99999");
+	VID_SyncCvars ();
+	VID_Conwidth_Reset ();
+
+//	VID_Conwidth_f(); // Force recalc
 //	Cvar_SetValue("vid_conwidth", vid.width);
 //	Cvar_SetValue("vid_conheight", vid.conheight);
+
 
 }
 
@@ -750,13 +892,13 @@ void VID_Test (void)
 {
 	vmode_t oldmode;
 	qboolean	mode_changed = false;
-	qboolean	vidfullscreen=true;
+
 	if (vid_locked)
 		return;
 //
 // check cvars against current mode
 //
-	if (vidfullscreen)
+	if (vid_fullscreen.value)
 	{
 		if (modelist[vid_default].type == MS_WINDOWED)
 			mode_changed = true;
@@ -788,9 +930,9 @@ void VID_Test (void)
 		//revert cvars and mode
 		Cvar_Set ("vid_width", va("%i", oldmode.width));
 		Cvar_Set ("vid_height", va("%i", oldmode.height));
-//		Cvar_Set ("vid_bpp", va("%i", oldmode.bpp));
+		Cvar_Set ("vid_bpp", va("%i", oldmode.bpp));
 		Cvar_Set ("vid_refreshrate", va("%i", oldmode.refreshrate));
-//		Cvar_Set ("vid_fullscreen", (oldmode.type == MS_WINDOWED) ? "0" : "1");
+		Cvar_Set ("vid_fullscreen", (oldmode.type == MS_WINDOWED) ? "0" : "1");
 		VID_Restart ();
 	}
 }
@@ -807,16 +949,34 @@ void VID_Unlock (void)
 	//sync up cvars in case they were changed during the lock
 	Cvar_Set ("vid_width", va("%i", modelist[vid_default].width));
 	Cvar_Set ("vid_height", va("%i", modelist[vid_default].height));
-//	Cvar_Set ("vid_bpp", va("%i", modelist[vid_default].bpp));
 	Cvar_Set ("vid_refreshrate", va("%i", modelist[vid_default].refreshrate));
-//	Cvar_Set ("vid_fullscreen", (windowed) ? "0" : "1");
+	Cvar_Set ("vid_fullscreen", (windowed) ? "0" : "1");
 }
 
+/*
+================
+VID_UpdateWindowStatus
+================
+*/
+void VID_UpdateWindowStatus (void) {
+
+	window_rect.left = window_x;
+	window_rect.top = window_y;
+	window_rect.right = window_x + window_width;
+	window_rect.bottom = window_y + window_height;
+	window_center_x = (window_rect.left + window_rect.right) / 2;
+	window_center_y = (window_rect.top + window_rect.bottom) / 2;
+
+	IN_UpdateClipCursor ();
+}
+
+//==============================================================================
+//
+//	OPENGL STUFF
+//
+//==============================================================================
 
 
-
-
-//====================================
 
 BINDTEXFUNCPTR bindTexFunc;
 
@@ -842,7 +1002,7 @@ void CheckTextureExtensions (void)
 	if (!texture_ext || COM_CheckParm ("-gl11") )
 	{
 		hInstGL = LoadLibrary("opengl32.dll");
-		
+
 		if (hInstGL == NULL)
 			Sys_Error ("Couldn't load opengl32.dll\n");
 
@@ -862,6 +1022,11 @@ void CheckTextureExtensions (void)
 	}
 }
 
+/*
+===============
+CheckArrayExtensions
+===============
+*/
 void CheckArrayExtensions (void)
 {
 	char		*tmp;
@@ -899,7 +1064,7 @@ int		texture_mode = GL_LINEAR;
 int		texture_extension_number = 1;
 
 #ifdef _WIN32
-void CheckMultiTextureExtensions(void) 
+void CheckMultiTextureExtensions(void)
 {
 	if (strstr(gl_extensions, "GL_SGIS_multitexture ") && !COM_CheckParm("-nomtex")) {
 		Con_Printf("Multitexture extensions found.\n");
@@ -909,7 +1074,7 @@ void CheckMultiTextureExtensions(void)
 	}
 }
 #else
-void CheckMultiTextureExtensions(void) 
+void CheckMultiTextureExtensions(void)
 {
 		gl_mtexable = true;
 }
@@ -927,25 +1092,17 @@ void GL_SetupState (void) {
 	glClearColor (0.15,0.15,0.15,0);  // Baker 3.60 - set to same clear color as FitzQuake for void areas
 	glCullFace(GL_FRONT);
 	glEnable(GL_TEXTURE_2D);
-
 	glEnable(GL_ALPHA_TEST);
 	glAlphaFunc(GL_GREATER, 0.666);
-
 	glPolygonMode (GL_FRONT_AND_BACK, GL_FILL);
 	glShadeModel (GL_FLAT);
-
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
 	glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-//	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
 }
-
 
 /*
 ===============
@@ -964,7 +1121,12 @@ void GL_Init (void)
 	gl_extensions = glGetString (GL_EXTENSIONS);
 //	Con_Printf ("GL_EXTENSIONS: %s\n", gl_extensions); // Baker 3.62 commented out on advice of aguirRe
 
-//	Con_Printf ("%s %s\n", gl_renderer, gl_version);
+//	GetWGLExtensions (); //johnfitz
+//	GL_CheckExtensions (); //johnfitz
+
+//	Cmd_AddCommand ("gl_info", GL_Info_f); //johnfitz
+
+//	Cvar_RegisterVariable (&vid_vsync, VID_Vsync_f); //johnfitz
 
     if (strnicmp(gl_renderer,"PowerVR",7)==0)
          fullsbardraw = true;
@@ -990,23 +1152,58 @@ void GL_Init (void)
 	GL_SetupState (); //johnfitz
 }
 
-
+/*
+=================
+GL_BeginRendering -- sets values of glx, gly, glwidth, glheight
+=================
+*/
 void GL_BeginRendering (int *x, int *y, int *width, int *height) {
 	*x = *y = 0;
 	*width = WindowRect.right - WindowRect.left;
 	*height = WindowRect.bottom - WindowRect.top;
 }
 
+// D3D diff 5 of 14
+#ifdef D3DQUAKE
+// Call our swap buffer instead of the standard one
+void FakeSwapBuffers();
+#endif
 
+/*
+=================
+GL_EndRendering
+=================
+*/
 void GL_EndRendering (void) {
+	// Baker: hw gamma support
+	if (using_hwgamma) {
+		static qboolean	old_hwgamma_enabled;
+
+		vid_hwgamma_enabled = vid_hwgammacontrol.value && vid_gammaworks && ActiveApp && !Minimized;
+		vid_hwgamma_enabled = vid_hwgamma_enabled && (modestate == MS_FULLDIB || vid_hwgammacontrol.value == 2);
+		if (vid_hwgamma_enabled != old_hwgamma_enabled)
+		{
+			old_hwgamma_enabled = vid_hwgamma_enabled;
+			if (vid_hwgamma_enabled && currentgammaramp)
+				VID_SetDeviceGammaRamp (currentgammaramp);
+			else
+				RestoreHWGamma ();
+		}
+	}
+	// Baker end hwgamma support
+
 	if (!scr_skipupdate || block_drawing) {
 
 		if (wglSwapIntervalEXT && update_vsync && vid_vsync.string[0])
 			wglSwapIntervalEXT (vid_vsync.value ? 1 : 0);
 		update_vsync = false;
-
+#ifdef D3DQUAKE
+	FakeSwapBuffers();
+#else
 		SwapBuffers (maindc);
+#endif
 	}
+
 
 // handle the mouse state when windowed if that's changed
 	if (modestate == MS_WINDOWED) {
@@ -1031,80 +1228,11 @@ void GL_EndRendering (void) {
 		Sbar_Changed();
 }
 
-void VID_SetDefaultMode (void) 
+void VID_SetDefaultMode (void)
 {
 	IN_DeactivateMouse ();
 }
 
-void	VID_SetPalette (unsigned char *palette)
-{
-	byte	*pal;
-	unsigned r,g,b;
-	unsigned v;
-	int     r1,g1,b1;
-	int		j,k,l;
-	unsigned short i;
-	unsigned	*table;
-
-//
-// 8 8 8 encoding
-//
-	pal = palette;
-	table = d_8to24table;
-	for (i=0 ; i<256 ; i++)
-	{
-		r = pal[0];
-		g = pal[1];
-		b = pal[2];
-		pal += 3;
-		
-//		v = (255<<24) + (r<<16) + (g<<8) + (b<<0);
-//		v = (255<<0) + (r<<8) + (g<<16) + (b<<24);
-		v = (255<<24) + (r<<0) + (g<<8) + (b<<16);
-		*table++ = v;
-	}
-	d_8to24table[255] &= 0xffffff;	// 255 is transparent
-
-	// JACK: 3D distance calcs - k is last closest, l is the distance.
-	// FIXME: Precalculate this and cache to disk.
-	for (i=0; i < (1<<15); i++) {
-		/* Maps
-			000000000000000
-			000000000011111 = Red  = 0x1F
-			000001111100000 = Blue = 0x03E0
-			111110000000000 = Grn  = 0x7C00
-		*/
-		r = ((i & 0x1F) << 3)+4;
-		g = ((i & 0x03E0) >> 2)+4;
-		b = ((i & 0x7C00) >> 7)+4;
-		pal = (unsigned char *)d_8to24table;
-		for (v=0,k=0,l=10000*10000; v<256; v++,pal+=4) {
-			r1 = r-pal[0];
-			g1 = g-pal[1];
-			b1 = b-pal[2];
-			j = (r1*r1)+(g1*g1)+(b1*b1);
-			if (j<l) {
-				k=v;
-				l=j;
-			}
-		}
-		d_15to8table[i]=k;
-	}
-}
-
-BOOL	gammaworks;
-
-void	VID_ShiftPalette (unsigned char *palette)
-{
-	extern	byte ramps[3][256];
-	
-//	VID_SetPalette (palette);
-
-//	gammaworks = SetDeviceGammaRamp (maindc, ramps);
-}
-
-
-/******************************** VID SHUTDOWN ********************************/
 
 void	VID_Shutdown (void) {
    	HGLRC hRC;
@@ -1120,6 +1248,11 @@ void	VID_Shutdown (void) {
     	if (hRC)
     	    wglDeleteContext(hRC);
 
+		// Baker hwgamma support
+		if (using_hwgamma)
+			VID_Gamma_Shutdown (); //johnfitz
+		// Baker end hwgamma support
+
 		if (hDC && dibwindow)
 			ReleaseDC(dibwindow, hDC);
 
@@ -1133,10 +1266,143 @@ void	VID_Shutdown (void) {
 	}
 }
 
-
 //==========================================================================
 
+// Baker begin hwgamma support
+void VID_ShiftPalette (unsigned char *palette)
+{
+}
 
+/*
+======================
+VID_SetDeviceGammaRamp
+
+Note: ramps must point to a static array
+======================
+*/
+void VID_SetDeviceGammaRamp (unsigned short *ramps)
+{
+	if (vid_gammaworks)
+	{
+		currentgammaramp = ramps;
+		if (vid_hwgamma_enabled)
+		{
+			SetDeviceGammaRamp (maindc, ramps);
+			customgamma = true;
+		}
+	}
+}
+
+void InitHWGamma (void)
+{
+	if (COM_CheckParm("-nohwgamma"))
+		return;
+
+	vid_gammaworks = GetDeviceGammaRamp (maindc, systemgammaramp);
+}
+
+void RestoreHWGamma (void)
+{
+	if (vid_gammaworks && customgamma)
+	{
+		customgamma = false;
+		SetDeviceGammaRamp (maindc, systemgammaramp);
+	}
+}
+
+/*
+================
+VID_Gamma_Restore -- restore system gamma
+================
+*/
+void VID_Gamma_Restore (void)
+{
+	if (maindc)
+	{
+		if (vid_gammaworks)
+			if (SetDeviceGammaRamp(maindc, systemgammaramp) == false)
+				Con_Printf ("VID_Gamma_Restore: failed on SetDeviceGammaRamp\n");
+	}
+}
+
+/*
+================
+VID_Gamma_Shutdown -- called on exit
+================
+*/
+void VID_Gamma_Shutdown (void)
+{
+	VID_Gamma_Restore ();
+}
+
+void Check_Gamma (unsigned char *pal)
+{
+	float		inf;
+	unsigned char	palette[768];
+	int		i;
+
+	if ((i = COM_CheckParm("-gamma")) != 0 && i+1 < com_argc)
+		vid_gamma = bound(0.3, Q_atof(com_argv[i+1]), 1);
+	else
+		vid_gamma = 1;
+
+	Cvar_SetValue ("gl_gamma", vid_gamma);
+
+	if (vid_gamma != 1)
+	{
+		for (i=0 ; i<256 ; i++)
+		{
+			inf = min(255 * pow((i + 0.5) / 255.5, vid_gamma) + 0.5, 255);
+			vid_gamma_table[i] = inf;
+		}
+	}
+	else
+	{
+		for (i=0 ; i<256 ; i++)
+			vid_gamma_table[i] = i;
+	}
+
+	for (i=0 ; i<768 ; i++)
+		palette[i] = vid_gamma_table[pal[i]];
+
+	memcpy (pal, palette, sizeof(palette));
+}
+
+void VID_SetPalette (unsigned char *palette)
+{
+	byte		*pal;
+	int		i;
+	unsigned	r, g, b, *table;
+
+// 8 8 8 encoding
+	pal = palette;
+	table = d_8to24table;
+	for (i=0 ; i<256 ; i++)
+	{
+		r = pal[0];
+		g = pal[1];
+		b = pal[2];
+		pal += 3;
+		*table++ = (255<<24) + (r<<0) + (g<<8) + (b<<16);
+	}
+	d_8to24table[255] = 0;	// 255 is transparent
+
+// Tonik: create a brighter palette for bmodel textures
+	pal = palette;
+	table = d_8to24table2;
+	for (i=0 ; i<256 ; i++)
+	{
+		r = min(pal[0] * (2.0 / 1.5), 255);
+		g = min(pal[1] * (2.0 / 1.5), 255);
+		b = min(pal[2] * (2.0 / 1.5), 255);
+		pal += 3;
+		*table++ = (255<<24) + (r<<0) + (g<<8) + (b<<16);
+	}
+	d_8to24table2[255] = 0;	// 255 is transparent
+}
+// Baker end hwgamma support
+// D3D diff 8 of 14
+#ifndef D3DQUAKE
 BOOL bSetupPixelFormat(HDC hDC)
 {
     static PIXELFORMATDESCRIPTOR pfd = {
@@ -1152,7 +1418,7 @@ BOOL bSetupPixelFormat(HDC hDC)
 	0,				// shift bit ignored
 	0,				// no accumulation buffer
 	0, 0, 0, 0, 			// accum bits ignored
-	32,				// 32-bit z-buffer	
+	32,				// 32-bit z-buffer
 	0,				// no stencil buffer
 	0,				// no auxiliary buffer
 	PFD_MAIN_PLANE,			// main layer
@@ -1175,7 +1441,8 @@ BOOL bSetupPixelFormat(HDC hDC)
 
     return TRUE;
 }
-
+// D3D diff 9 of 14
+#endif
 
 /*
 ===================================================================
@@ -1185,7 +1452,7 @@ MAIN WINDOW
 ===================================================================
 */
 
-/************************ SIGNALS, MESSAGES, INPUT ETC ************************/
+
 
 void AppActivate(BOOL fActive, BOOL minimize) {
 /****************************************************************************
@@ -1198,7 +1465,6 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 *               correctly.
 *
 ****************************************************************************/
-
 	static BOOL	sound_active;
 
 	ActiveApp = fActive;
@@ -1221,7 +1487,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 				vid_wassuspended = false;
 				ChangeDisplaySettings (&gdevmode, CDS_FULLSCREEN);
 				ShowWindow(mainwindow, SW_SHOWNORMAL);
-				
+
 				// Baker 3.80x - Fix for alt-tab bug in NVidia drivers  from JoeQuake
                 MoveWindow (mainwindow, 0, 0, gdevmode.dmPelsWidth, gdevmode.dmPelsHeight, false);
 			}
@@ -1235,7 +1501,7 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 		if (modestate == MS_FULLDIB) {
 			IN_DeactivateMouse ();
 			IN_ShowMouse ();
-			if (vid_canalttab) { 
+			if (vid_canalttab) {
 				ChangeDisplaySettings (NULL, 0);
 				vid_wassuspended = true;
 			}
@@ -1272,7 +1538,7 @@ LONG WINAPI MainWndProc (
     switch (uMsg) {
 		// JACK: This is the mouse wheel with the Intellimouse
 		// Its delta is either positive or neg, and we generate the proper Event.
-		case WM_MOUSEWHEEL: 
+		case WM_MOUSEWHEEL:
 			if ((short) HIWORD(wParam) > 0) {
 				Key_Event(K_MWHEELUP, 0, true);
 				Key_Event(K_MWHEELUP, 0, false);
@@ -1295,11 +1561,10 @@ LONG WINAPI MainWndProc (
 			VID_UpdateWindowStatus ();
 			break;
 
-
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
 			down=true;
-			
+
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
 			// Baker 3.703 - old way
@@ -1314,10 +1579,10 @@ LONG WINAPI MainWndProc (
 				else if( charlength == 2 ) {
 					asciichar[0] = asciichar[1];
 				}
-				
+
 				Key_Event (vkey, asciichar[0], down);
 			break;
-		
+
 		case WM_SYSCHAR:
 		// keep Alt-Space from happening
 			break;
@@ -1344,10 +1609,10 @@ LONG WINAPI MainWndProc (
 
 				if (wParam & MK_XBUTTON1)
 					temp |= 8;
-	
+
 				if (wParam & MK_XBUTTON2)
 					temp |= 16;
-	
+
 			IN_MouseEvent (temp);
 
 			break;
@@ -1412,8 +1677,12 @@ int VID_NumModes (void) {
 	return nummodes;
 }
 
-	
 
+/*
+=================
+VID_GetModePtr
+=================
+*/
 vmode_t *VID_GetModePtr (int modenum) {
 
 	if ((modenum >= 0) && (modenum < nummodes))
@@ -1422,6 +1691,12 @@ vmode_t *VID_GetModePtr (int modenum) {
 		return &badmode;
 }
 
+
+/*
+=================
+VID_GetModeDescription
+=================
+*/
 char *VID_GetModeDescription (int mode) {
 	char		*pinfo;
 	vmode_t		*pv;
@@ -1439,16 +1714,20 @@ char *VID_GetModeDescription (int mode) {
 	{
 		sprintf (temp, "Desktop resolution (%ix%ix%i)", //johnfitz -- added bpp
 				 modelist[MODE_FULLSCREEN_DEFAULT].width,
-				 modelist[MODE_FULLSCREEN_DEFAULT].height);
+				 modelist[MODE_FULLSCREEN_DEFAULT].height,
+				 modelist[MODE_FULLSCREEN_DEFAULT].bpp); //johnfitz -- added bpp
 		pinfo = temp;
 	}
 
 	return pinfo;
 }
 
-
 // KJB: Added this to return the mode driver name in description for console
-
+/*
+=================
+VID_GetExtModeDescription
+=================
+*/
 char *VID_GetExtModeDescription (int mode)
 {
 	static char	pinfo[40];
@@ -1460,7 +1739,7 @@ char *VID_GetExtModeDescription (int mode)
 	pv = VID_GetModePtr (mode);
 	if (modelist[mode].type == MS_FULLDIB)
 	{
-		if (!leavecurrentmode) 
+		if (!leavecurrentmode)
 		{
 			sprintf(pinfo,"%s fullscreen", pv->modedesc);
 		}
@@ -1472,7 +1751,7 @@ char *VID_GetExtModeDescription (int mode)
 					 modelist[MODE_FULLSCREEN_DEFAULT].bpp); //johnfitz -- added bpp
 		}
 	}
-		 else 
+		 else
 	{
 		if (modestate == MS_WINDOWED)
 			sprintf(pinfo, "%s windowed", pv->modedesc);
@@ -1483,7 +1762,6 @@ char *VID_GetExtModeDescription (int mode)
 	return pinfo;
 }
 
-
 /*
 =================
 VID_DescribeCurrentMode_f
@@ -1492,40 +1770,6 @@ VID_DescribeCurrentMode_f
 void VID_DescribeCurrentMode_f (void) {
 	Con_Printf ("%s\n", VID_GetExtModeDescription (vid_modenum));
 }
-
-
-/*
-=================
-VID_NumModes_f
-=================
-*/ /*
-void VID_NumModes_f (void) {
-
-	if (nummodes == 1)
-		Con_Printf ("%d video mode is available\n", nummodes);
-	else
-		Con_Printf ("%d video modes are available\n", nummodes);
-} */
-
-
-/*
-=================
-VID_DescribeMode_f
-=================
-*/ /*
-void VID_DescribeMode_f (void) {
-	int		t, modenum;
-	
-	modenum = Q_atoi (Cmd_Argv(1));
-
-	t = leavecurrentmode;
-	leavecurrentmode = 0;
-
-	Con_Printf ("%s\n", VID_GetExtModeDescription (modenum));
-
-	leavecurrentmode = t;
-} */
-
 
 /*
 =================
@@ -1537,7 +1781,6 @@ void VID_DescribeModes_f (void) {
 	char		*pinfo;
 	vmode_t		*pv;
 	int			lastwidth=0, lastheight=0, lastbpp=0, count=0;
-	
 
 	lnummodes = VID_NumModes ();
 
@@ -1573,7 +1816,11 @@ void VID_DescribeModes_f (void) {
 //
 //==========================================================================
 
-
+/*
+=================
+VID_InitDIB
+=================
+*/
 void VID_InitDIB (HINSTANCE hInstance) {
 	DEVMODE			devmode; //johnfitz
 	WNDCLASS		wc;
@@ -1618,7 +1865,7 @@ void VID_InitDIB (HINSTANCE hInstance) {
 
 	//johnfitz -- get desktop bit depth
 	hdc = GetDC(NULL);
-	modelist[0].bpp = GetDeviceCaps(hdc, BITSPIXEL);
+	modelist[0].bpp = desktop_bpp = GetDeviceCaps(hdc, BITSPIXEL);
 	ReleaseDC(NULL, hdc);
 	//johnfitz
 
@@ -1637,11 +1884,15 @@ void VID_InitDIB (HINSTANCE hInstance) {
 	modelist[0].dib = 1;
 	modelist[0].fullscreen = 0;
 	modelist[0].halfscreen = 0;
-	// modelist[0].bpp = 0;  // Baker: commented out in FitzQuake
 
 	nummodes = 1;
 }
 
+/*
+=================
+VID_InitFullDIB
+=================
+*/
 void VID_InitFullDIB (HINSTANCE hInstance) {
 	DEVMODE	devmode;
 	int		i, modenum, originalnummodes, existingmode, numlowresmodes;
@@ -1793,7 +2044,7 @@ qboolean VID_Is8bit() {
 
 #define GL_SHARED_TEXTURE_PALETTE_EXT 0x81FB
 
-void VID_Init8bitPalette() 
+void VID_Init8bitPalette()
 {
 	// Check for 8bit Extensions and initialize them.
 	int i;
@@ -1820,7 +2071,7 @@ void VID_Init8bitPalette()
 	is8bit = TRUE;
 }
 
-static void Check_Gamma (unsigned char *pal)
+static void Check_GammaOld (unsigned char *pal)
 {
 	float	f, inf;
 	unsigned char	palette[768];
@@ -1850,6 +2101,7 @@ static void Check_Gamma (unsigned char *pal)
 	memcpy (pal, palette, sizeof(palette));
 
 	BuildGammaTable(vid_gamma);
+
 }
 
 /*
@@ -1857,29 +2109,34 @@ static void Check_Gamma (unsigned char *pal)
 VID_Init
 ===================
 */
+
+
 void	VID_Init (unsigned char *palette)
 {
 	int		i, existingmode;
 	int		basenummodes, width, height, bpp, findbpp, done;
-	char	gldir[MAX_OSPATH];
+//	char	gldir[MAX_OSPATH];
 	HGLRC	baseRC; //johnfitz -- moved here from global scope, since it was only used in this
 	HDC		hdc;
 	DEVMODE	devmode;
 
 	memset(&devmode, 0, sizeof(devmode));
 
-//	Cvar_RegisterVariable (&vid_fullscreen, NULL); //johnfitz
+	Cvar_RegisterVariable (&vid_fullscreen, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_width, NULL); //johnfitz
 	Cvar_RegisterVariable (&vid_height, NULL); //johnfitz
-//	Cvar_RegisterVariable (&vid_bpp, NULL); //johnfitz
+
 	Cvar_RegisterVariable (&vid_refreshrate, NULL); //johnfitz
 	Cvar_RegisterVariable (&_windowed_mouse, NULL);
 	Cvar_RegisterVariable (&gl_ztrick, NULL);
 
+	// Baker hwgamma support
+	Cvar_RegisterVariable (&vid_hwgammacontrol, NULL);
+	// Baker end hwgamma support
+
 	Cmd_AddCommand ("vid_unlock", VID_Unlock); //johnfitz
 	Cmd_AddCommand ("vid_restart", VID_Restart); //johnfitz
 	Cmd_AddCommand ("vid_test", VID_Test); //johnfitz
-
 	Cmd_AddCommand ("vid_describecurrentmode", VID_DescribeCurrentMode_f);
 	Cmd_AddCommand ("vid_describemodes", VID_DescribeModes_f);
 
@@ -1892,6 +2149,18 @@ void	VID_Init (unsigned char *palette)
 
 	VID_InitFullDIB (global_hInstance);
 
+	if (COM_CheckParm("-gamma")) // Baker hwgamma support
+		using_hwgamma = false;
+
+// D3D diff 11 of 14
+#ifdef D3DQUAKE
+	bpp = 16;
+	if (COM_CheckParm("-bpp"))
+	{
+		bpp = Q_atoi(com_argv[COM_CheckParm("-bpp")+1]);
+	}
+#endif
+
 	if (COM_CheckParm("-window") || COM_CheckParm("-fullwindow"))
 	{
 		hdc = GetDC (NULL);
@@ -1903,7 +2172,7 @@ void	VID_Init (unsigned char *palette)
 		ReleaseDC (NULL, hdc);
 
 		windowed = true;
-
+		video_options_disabled = true;
 		vid_default = MODE_WINDOWED;
 	} else {
 		if (nummodes == 1)
@@ -1942,8 +2211,9 @@ void	VID_Init (unsigned char *palette)
 				}
 				else
 				{
-					bpp = 15;
+					bpp = desktop_bpp;
 					findbpp = 1;
+
 				}
 
 				if (COM_CheckParm("-height"))
@@ -2044,6 +2314,9 @@ void	VID_Init (unsigned char *palette)
 					}
 				} while (!done);
 
+				vid_bpp = bpp;
+
+
 				if (!vid_default)
 				{
 					Sys_Error ("Specified video mode not available");
@@ -2054,10 +2327,17 @@ void	VID_Init (unsigned char *palette)
 
 	vid_initialized = true;
 
+// D3D diff 12 of 14
+#ifdef D3DQUAKE
+	if ((i = COM_CheckParm("-force16bittextures")) != 0)
+		d3dInitSetForce16BitTextures(1);
+
+#endif
+
 	if ((i = COM_CheckParm("-conwidth")) != 0) {
 		// Conwidth specified, we check conheight too then
 		vid.conwidth = Q_atoi(com_argv[i+1]);
-		
+
 		if ((i = COM_CheckParm("-conheight")) != 0)
 			vid.conheight = Q_atoi(com_argv[i+1]);
 	} else {
@@ -2065,7 +2345,7 @@ void	VID_Init (unsigned char *palette)
 		if (modelist[i].width >= 1024) {
 			vid.conwidth = modelist[vid_default].width / 2;
 			vid.conheight = modelist[vid_default].height / 2;
-		} else { 
+		} else {
 			vid.conwidth = modelist[vid_default].width;
 			vid.conheight = modelist[vid_default].height;
 		}
@@ -2087,13 +2367,35 @@ void	VID_Init (unsigned char *palette)
 
 	DestroyWindow (hwnd_dialog);
 
-	Check_Gamma(palette);
-	VID_SetPalette (palette);
-
+	// Baker begin hwgamma support
+	if (using_hwgamma) {
+		Check_Gamma (palette);
+		VID_SetPalette (palette);
+	} else {
+		Check_GammaOld(palette);
+		VID_SetPaletteOld (palette);
+	}
 	VID_SetMode (vid_default, palette);
 
     maindc = GetDC(mainwindow);
+   // D3D diff 13 of 14
+#ifdef D3DQUAKE
+	{
+		int zbpp = bpp > 16 ? 24 : 16;
+		if (COM_CheckParm("-zbpp"))
+		{
+			zbpp = Q_atoi(com_argv[COM_CheckParm("-zbpp")+1]);
+		}
+		d3dSetMode(!windowed, modelist[0].width, modelist[0].height, bpp, zbpp);
+	}
+#else
 	bSetupPixelFormat(maindc);
+	// D3D diff 14 of 14
+#endif
+
+	if (using_hwgamma)
+		InitHWGamma ();
+	// baker end hwgamma support
 
     baseRC = wglCreateContext( maindc );
 	if (!baseRC)
@@ -2101,12 +2403,15 @@ void	VID_Init (unsigned char *palette)
     if (!wglMakeCurrent( maindc, baseRC ))
 		Sys_Error ("VID_Init: wglMakeCurrent failed");
 
+
 	GL_Init ();
 	CheckVsyncControlExtensions ();
-	
+
+
+
 	// Baker 3.80x - We will want to remove the .ms2 stuff next time
-	sprintf (gldir, "%s/glquake", com_gamedir);
-	Sys_mkdir (gldir);
+//	sprintf (gldir, "%s/glquake", com_gamedir);
+//	Sys_mkdir (gldir);
 
 	vid_realmode = vid_modenum;
 
@@ -2122,7 +2427,7 @@ void	VID_Init (unsigned char *palette)
 
 	if (COM_CheckParm("-fullsbar"))
 		fullsbardraw = true;
-		
+
 	VID_Menu_Init(); //johnfitz
 
 	//johnfitz -- command line vid settings should override config file settings.
@@ -2131,7 +2436,7 @@ void	VID_Init (unsigned char *palette)
 	{
 		vid_locked = true;
 	}
-	//johnfitz		
+	//johnfitz
 }
 
 /*
@@ -2139,18 +2444,20 @@ void	VID_Init (unsigned char *palette)
 VID_SyncCvars -- johnfitz -- set vid cvars to match current video mode
 ================
 */
+extern qboolean vid_consize_ignore_callback;
 void VID_SyncCvars (void)
 {
 	Cvar_Set ("vid_width", va("%i", modelist[vid_default].width));
 	Cvar_Set ("vid_height", va("%i", modelist[vid_default].height));
-//	Cvar_Set ("vid_bpp", va("%i", modelist[vid_default].bpp));
 	Cvar_Set ("vid_refreshrate", va("%i", modelist[vid_default].refreshrate));
-//	Cvar_Set ("vid_fullscreen", (windowed) ? "0" : "1");
+	Cvar_Set ("vid_fullscreen", (windowed) ? "0" : "1");
 }
 
-//========================================================
-// Video menu stuff
-//========================================================
+//==========================================================================
+//
+//  NEW VIDEO MENU -- johnfitz
+//
+//==========================================================================
 
 extern void M_Menu_Options_f (void);
 extern void M_Print (int cx, int cy, char *str);
@@ -2164,31 +2471,30 @@ extern qboolean	m_entersound;
 
 // Baker - mirror of menu
 enum {
-	m_none, 
-	m_main, 
-	m_singleplayer, 
-	m_load, 
-	m_save, 
-	m_multiplayer, 
-	m_setup, 
-	m_net, 
-	m_options, 
-	m_video, 
-	m_keys, 
-	m_help, 
-	m_quit, 
-	m_serialconfig, 
-	m_modemconfig, 
-	m_lanconfig, 
-	m_gameoptions, 
-	m_search, 
-	m_slist, 
+	m_none,
+	m_main,
+	m_singleplayer,
+	m_load,
+	m_save,
+	m_multiplayer,
+	m_setup,
+	m_net,
+	m_options,
+	m_video,
+	m_keys,
+	m_help,
+	m_quit,
+	m_serialconfig,
+	m_modemconfig,
+	m_lanconfig,
+	m_gameoptions,
+	m_search,
+	m_slist,
 	m_preferences
 } m_state;
 
-// video options was 6
-#define VIDEO_OPTIONS_ITEMS 4
-int		video_cursor_table[] = {48, 56, 72, 80}; //{48, 56, 64, 72, 88, 96};
+#define VIDEO_OPTIONS_ITEMS 6
+int		video_cursor_table[] = {48, 56, 64, 72, 88, 96};
 int		video_options_cursor = 0;
 
 typedef struct {int width,height;} vid_menu_mode;
@@ -2234,49 +2540,6 @@ void VID_Menu_Init (void)
 	}
 }
 
-/*
-================
-VID_Menu_RebuildBppList
-
-regenerates bpp list based on current vid_width and vid_height
-================
-*/ /*
-void VID_Menu_RebuildBppList (void)
-{
-	int i,j,b;
-
-	vid_menu_numbpps=0;
-
-	for (i=1;i<nummodes;i++) //start i at mode 1 because 0 is windowed mode
-	{
-		//bpp list is limited to bpps available with current width/height
-		if (modelist[i].width != vid_width.value ||
-			modelist[i].height != vid_height.value)
-			continue;
-
-		b = modelist[i].bpp;
-
-		for (j=0;j<vid_menu_numbpps;j++)
-		{
-			if (vid_menu_bpps[j] == b)
-				break;
-		}
-
-		if (j==vid_menu_numbpps)
-{
-			vid_menu_bpps[j] = b;
-			vid_menu_numbpps++;
-		}
-	}
-
-	//if vid_bpp is not in the new list, change vid_bpp
-	for (i=0;i<vid_menu_numbpps;i++)
-		if (vid_menu_bpps[i] == (int)(vid_bpp.value))
-			break;
-
-	if (i==vid_menu_numbpps)
-		Cvar_Set ("vid_bpp",va("%i",vid_menu_bpps[0]));
-} */
 
 /*
 ================
@@ -2290,13 +2553,13 @@ void VID_Menu_RebuildRateList (void)
 	int i,j,r;
 
 	vid_menu_numrates=0;
-	
+
 	for (i=1;i<nummodes;i++) //start i at mode 1 because 0 is windowed mode
 	{
 		//rate list is limited to rates available with current width/height/bpp
 		if (modelist[i].width != vid_width.value ||
 			modelist[i].height != vid_height.value /*||
-			modelist[i].bpp != vid_bpp.value */)
+			modelist[i].bpp != vid_bpp.value*/)
 			continue;
 
 		r = modelist[i].refreshrate;
@@ -2357,43 +2620,8 @@ void VID_Menu_ChooseNextMode (int dir)
 
 	Cvar_Set ("vid_width",va("%i",vid_menu_modes[i].width));
 	Cvar_Set ("vid_height",va("%i",vid_menu_modes[i].height));
-	//VID_Menu_RebuildBppList ();
 	VID_Menu_RebuildRateList ();
 }
-
-/*
-================
-VID_Menu_ChooseNextBpp
-
-chooses next bpp in order, then updates vid_bpp cvar, then updates refreshrate list
-================
-*/ /*
-void VID_Menu_ChooseNextBpp (int dir)
-{
-	int i;
-
-	for (i=0;i<vid_menu_numbpps;i++)
-	{
-		if (vid_menu_bpps[i] == vid_bpp.value)
-			break;
-	}
-
-	if (i==vid_menu_numbpps) //can't find it in list
-	{
-		i = 0;
-			}
-	else
-	{
-		i+=dir;
-		if (i>=vid_menu_numbpps)
-			i = 0;
-		else if (i<0)
-			i = vid_menu_numbpps-1;
-		}
-
-	Cvar_Set ("vid_bpp",va("%i",vid_menu_bpps[i]));
-	VID_Menu_RebuildRateList ();
-} */
 
 /*
 ================
@@ -2464,17 +2692,15 @@ void VID_MenuKey (int key)
 		case 0:
 			VID_Menu_ChooseNextMode (-1);
 			break;
-/*		case 1:
-			VID_Menu_ChooseNextBpp (-1);
-			break; */
 		case 1:
+			//VID_Menu_ChooseNextBpp (-1);
+			break;
+		case 2:
 			VID_Menu_ChooseNextRate (-1);
 			break;
-/*		case 3:
-			Cbuf_AddText ("toggle vid_fullscreen\n");
-			break; */
-		case 2:
 		case 3:
+			Cbuf_AddText ("toggle vid_fullscreen\n");
+			break;
 		case 4:
 		case 5:
 	default:
@@ -2489,17 +2715,16 @@ void VID_MenuKey (int key)
 		case 0:
 			VID_Menu_ChooseNextMode (1);
 			break;
-/*		case 1:
-			VID_Menu_ChooseNextBpp (1);
-			break; */
 		case 1:
+			//VID_Menu_ChooseNextBpp (1);
+			break;
+		case 2:
 			VID_Menu_ChooseNextRate (1);
 			break;
-/*		case 3:
-			Cbuf_AddText ("toggle vid_fullscreen\n");
-			break; */
-		case 2:
 		case 3:
+			if (vid_bpp == desktop_bpp)
+				Cbuf_AddText ("toggle vid_fullscreen\n");
+			break;
 		case 4:
 		case 5:
 		default:
@@ -2514,19 +2739,21 @@ void VID_MenuKey (int key)
 		case 0:
 			VID_Menu_ChooseNextMode (1);
 			break;
-/*		case 1:
-			VID_Menu_ChooseNextBpp (1);
-			break; */
 		case 1:
+			//VID_Menu_ChooseNextBpp (1);
+			break;
+		case 2:
 			VID_Menu_ChooseNextRate (1);
 			break;
-/*		case 3:
-			Cbuf_AddText ("toggle vid_fullscreen\n");
-			break; */
-		case 2:
+		case 3:
+			if (vid_bpp == desktop_bpp)
+				Cbuf_AddText ("toggle vid_fullscreen\n");
+
+			break;
+		case 4:
 			Cbuf_AddText ("vid_test\n");
 			break;
-		case 3:
+		case 5:
 			Cbuf_AddText ("vid_restart\n");
 			break;
 		default:
@@ -2565,17 +2792,22 @@ void VID_MenuDraw (void)
 	M_Print (216, video_cursor_table[i], va("%ix%i", (int)vid_width.value, (int)vid_height.value));
 	i++;
 
-/*	M_Print (16, video_cursor_table[i], "           Color depth");
-	M_Print (216, video_cursor_table[i], va("%i", (int)vid_bpp.value));
-	i++; */
+	M_Print (16, video_cursor_table[i], "           Color depth");
+	M_Print (216, video_cursor_table[i], va("%i [locked]", (int)vid_bpp));
+	i++;
 
 	M_Print (16, video_cursor_table[i], "          Refresh rate");
 	M_Print (216, video_cursor_table[i], va("%i Hz", (int)vid_refreshrate.value));
 	i++;
 
-/*	M_Print (16, video_cursor_table[i], "            Fullscreen");
-	M_DrawCheckbox (216, video_cursor_table[i], (int)vid_fullscreen.value);
-	i++; */
+	M_Print (16, video_cursor_table[i], "            Fullscreen");
+
+	if (vid_bpp == desktop_bpp)
+		M_DrawCheckbox (216, video_cursor_table[i], (int)vid_fullscreen.value);
+	else
+		M_Print (216, video_cursor_table[i], va("%s [locked]", (int)vid_fullscreen.value ? "on" : "off"));
+
+	i++;
 
 	M_Print (16, video_cursor_table[i], "          Test changes");
 	i++;
@@ -2606,6 +2838,5 @@ void VID_Menu_f (void)
 	VID_SyncCvars ();
 
 	//set up bpp and rate lists based on current cvars
-//	VID_Menu_RebuildBppList ();
 	VID_Menu_RebuildRateList ();
 }

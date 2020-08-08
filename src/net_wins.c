@@ -125,7 +125,7 @@ int WINS_Init (void)
 
 // initialize the Winsock function vectors (we do this instead of statically linking
 // so we can run on Win 3.1, where there isn't necessarily Winsock)
-    hInst = LoadLibrary("wsock32.dll");
+    hInst = LoadLibrary(TEXT("wsock32.dll"));
 	
 	if (hInst == NULL)
 	{

@@ -46,6 +46,7 @@ void COM_InitFilesystem (void);
 #define PAK0_CRC                32981
 
 char	com_token[1024];
+char	com_basedir[MAX_OSPATH];	// c:/quake
 int		com_argc;
 char	**com_argv;
 
@@ -863,8 +864,17 @@ COM_StripExtension
 */
 void COM_StripExtension (char *in, char *out)
 {
-	while (*in && *in != '.')
+	char	*dot;
+
+	if (!(dot = strrchr(in, '.')))
+	{
+		Q_strncpyz (out, in, strlen(in) + 1);
+		return;
+	}
+
+	while (*in && in != dot)
 		*out++ = *in++;
+
 	*out = 0;
 }
 
@@ -1351,6 +1361,8 @@ void COM_WriteFile (char *filename, void *data, int len)
 	int             handle;
 	char    name[MAX_OSPATH];
 	
+	Sys_mkdir (com_gamedir); //johnfitz -- if we've switched to a nonexistant gamedir, create it now so we don't crash
+
 	sprintf (name, "%s/%s", com_gamedir, filename);
 
 	handle = Sys_FileOpenWrite (name);
@@ -1676,7 +1688,7 @@ byte *COM_LoadStackFile (char *path, void *buffer, int bufsize)
 
 /*
 =================
-COM_LoadPackFile
+COM_LoadPackFile -- johnfitz -- modified based on topaz's tutorial
 
 Takes an explicit (not game tree related) path to a pak file.
 
@@ -1696,10 +1708,8 @@ pack_t *COM_LoadPackFile (char *packfile)
 	unsigned short          crc;
 
 	if (Sys_FileOpenRead (packfile, &packhandle) == -1)
-	{
-//              Con_Printf ("Couldn't open %s\n", packfile);
 		return NULL;
-	}
+
 	Sys_FileRead (packhandle, (void *)&header, sizeof(header));
 	if (header.id[0] != 'P' || header.id[1] != 'A' || header.id[2] != 'C' || header.id[3] != 'K')
 		Sys_Error ("%s is not a packfile", packfile);
@@ -1714,7 +1724,10 @@ pack_t *COM_LoadPackFile (char *packfile)
 	if (numpackfiles != PAK0_COUNT)
 		com_modified = true;    // not the original file
 
-	newfiles = Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
+	//johnfitz -- dynamic gamedir loading
+    //Hunk_AllocName (numpackfiles * sizeof(packfile_t), "packfile");
+	newfiles = Z_Malloc(numpackfiles * sizeof(packfile_t));
+	//johnfitz
 
 	Sys_FileSeek (packhandle, header.dirofs);
 	Sys_FileRead (packhandle, (void *)info, header.dirlen);
@@ -1734,7 +1747,11 @@ pack_t *COM_LoadPackFile (char *packfile)
 		newfiles[i].filelen = LittleLong(info[i].filelen);
 	}
 
-	pack = Hunk_Alloc (sizeof (pack_t));
+	//johnfitz -- dynamic gamedir loading
+	//pack = Hunk_Alloc (sizeof (pack_t));
+	pack = Z_Malloc (sizeof (pack_t));
+	//johnfitz
+
 	strcpy (pack->filename, packfile);
 	pack->handle = packhandle;
 	pack->numfiles = numpackfiles;
@@ -1746,12 +1763,9 @@ pack_t *COM_LoadPackFile (char *packfile)
 
 
 /*
-================
-COM_AddGameDirectory
-
-Sets com_gamedir, adds the directory to the head of the path,
-then loads and adds pak1.pak pak2.pak ... 
-================
+=================
+COM_AddGameDirectory -- johnfitz -- modified based on topaz's tutorial
+=================
 */
 void COM_AddGameDirectory (char *dir)
 {
@@ -1762,51 +1776,37 @@ void COM_AddGameDirectory (char *dir)
 
 	strcpy (com_gamedir, dir);
 
-//
 // add the directory to the search path
-//
-	search = Hunk_Alloc (sizeof(searchpath_t));
+	search = Z_Malloc(sizeof(searchpath_t));
 	strcpy (search->filename, dir);
 	search->next = com_searchpaths;
 	com_searchpaths = search;
 
-//
 // add any pak files in the format pak0.pak pak1.pak, ...
-//
 	for (i=0 ; ; i++)
 	{
 		sprintf (pakfile, "%s/pak%i.pak", dir, i);
 		pak = COM_LoadPackFile (pakfile);
 		if (!pak)
 			break;
-		search = Hunk_Alloc (sizeof(searchpath_t));
+		search = Z_Malloc(sizeof(searchpath_t));
 		search->pack = pak;
 		search->next = com_searchpaths;
 		com_searchpaths = search;               
 	}
-
-//
-// add the contents of the parms.txt file to the end of the command line
-//
-
 }
 
 /*
-================
+=================
 COM_InitFilesystem
-================
+=================
 */
-void COM_InitFilesystem (void)
+void COM_InitFilesystem () //johnfitz -- modified based on topaz's tutorial
 {
 	int             i, j;
 	char    basedir[MAX_OSPATH];
 	searchpath_t    *search;
 
-
-//
-// -basedir <path>
-// Overrides the system supplied base directory (under GAMENAME)
-//
 	i = COM_CheckParm ("-basedir");
 	if (i && i < com_argc-1)
 		strcpy (basedir, com_argv[i+1]);
@@ -1821,11 +1821,6 @@ void COM_InitFilesystem (void)
 			basedir[j-1] = 0;
 	}
 
-//
-// -cachedir <path>
-// Overrides the system supplied cache directory (NULL or /qcache)
-// -cachedir - will disable caching.
-//
 	i = COM_CheckParm ("-cachedir");
 	if (i && i < com_argc-1)
 	{
@@ -1839,22 +1834,15 @@ void COM_InitFilesystem (void)
 	else
 		com_cachedir[0] = 0;
 	
-	//
 	// start up with GAMENAME by default (id1)
-	//
 	COM_AddGameDirectory (va("%s/"GAMENAME, basedir) );
+	strcpy (com_gamedir, va("%s/"GAMENAME, basedir));
 
 	if (COM_CheckParm ("-rogue"))
 		COM_AddGameDirectory (va("%s/rogue", basedir) );
 	if (COM_CheckParm ("-hipnotic"))
 		COM_AddGameDirectory (va("%s/hipnotic", basedir) );
 
-	com_verifypaths = com_searchpaths;	// JPG 3.20
-
-//
-// -game <gamedir>
-// Adds basedir/gamedir as an override game
-//
 	i = COM_CheckParm ("-game");
 	if (i && i < com_argc-1)
 	{
@@ -1862,10 +1850,6 @@ void COM_InitFilesystem (void)
 		COM_AddGameDirectory (va("%s/%s", basedir, com_argv[i+1]));
 	}
 
-//
-// -path <dir or packfile> [<dir or packfile>] ...
-// Fully specifies the exact serach path, overriding the generated one
-//
 	i = COM_CheckParm ("-path");
 	if (i)
 	{
@@ -1874,8 +1858,7 @@ void COM_InitFilesystem (void)
 		while (++i < com_argc)
 		{
 			if (!com_argv[i] || com_argv[i][0] == '+' || com_argv[i][0] == '-')
-				break;
-			
+				break;		
 			search = Hunk_Alloc (sizeof(searchpath_t));
 			if ( !strcmp(COM_FileExtension(com_argv[i]), "pak") )
 			{

@@ -617,7 +617,7 @@ void VID_InitMGLDIB (HINSTANCE hInstance)
     wc.hCursor       = LoadCursor (NULL,IDC_ARROW);
 	wc.hbrBackground = NULL;
     wc.lpszMenuName  = 0;
-    wc.lpszClassName = "WinQuake";
+    wc.lpszClassName = TEXT("WinQuake");
 
     if (!RegisterClass (&wc) )
 		Sys_Error ("Couldn't register window class");
@@ -1263,8 +1263,8 @@ qboolean VID_SetWindowedMode (int modenum)
 	{
 		mainwindow = CreateWindowEx (
 			 ExWindowStyle,
-			 "WinQuake",
-			 "WinQuake",
+			 TEXT("WinQuake"),
+			 TEXT("WinQuake"),
 			 WindowStyle,
 			 0, 0,
 			 WindowRect.right - WindowRect.left,
@@ -1654,7 +1654,7 @@ int VID_SetMode (int modenum, unsigned char *palette)
 	else
 		vid_palettized = false;
 
-	VID_SetPalette (palette);
+	VID_SetPaletteOld (palette);
 
 	ReleaseDC(NULL,hdc);
 
@@ -1693,7 +1693,7 @@ int VID_SetMode (int modenum, unsigned char *palette)
 	if (!msg_suppress_1)
 		Con_SafePrintf ("%s\n", VID_GetModeDescription (vid_modenum));
 
-	VID_SetPalette (palette);
+	VID_SetPaletteOld (palette);
 
 	in_mode_set = false;
 	vid.recalc_refdef = 1;
@@ -1799,7 +1799,7 @@ void VID_ForceLockState (int lk)
 }
 
 
-void	VID_SetPalette (unsigned char *palette)
+void	VID_SetPaletteOld (unsigned char *palette)
 {
 	INT			i;
 	palette_t	pal[256];
@@ -1869,9 +1869,9 @@ void	VID_SetPalette (unsigned char *palette)
 }
 
 
-void	VID_ShiftPalette (unsigned char *palette)
+void	VID_ShiftPaletteOld (unsigned char *palette)
 {
-	VID_SetPalette (palette);
+	VID_SetPaletteOld (palette);
 }
 
 
@@ -2156,7 +2156,7 @@ void	VID_Init (unsigned char *palette)
 
 	vid_realmode = vid_modenum;
 
-	VID_SetPalette (palette);
+	VID_SetPaletteOld (palette);
 
 	vid_menudrawfn = VID_MenuDraw;
 	vid_menukeyfn = VID_MenuKey;
@@ -2635,7 +2635,7 @@ void AppActivate(BOOL fActive, BOOL minimize)
 		}
 
 		if (!Minimized)
-			VID_SetPalette (vid_curpal);
+			VID_SetPaletteOld (vid_curpal);
 
 		scr_fullupdate = 0;
 
@@ -2888,7 +2888,7 @@ LONG WINAPI MainWndProc (
 			if (!in_mode_set)
 			{
 				// Baker 3.60 - cl_confirmquit support
-				if (!cl_confirmquit.value || MessageBox(mainwindow, "Are you sure you want to quit?", "Confirm Exit", MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
+				if (!cl_confirmquit.value || MessageBox(mainwindow, TEXT("Are you sure you want to quit?"), TEXT("Confirm Exit"), MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
 					Sys_Quit ();
 			}
 			break;
@@ -2907,7 +2907,7 @@ LONG WINAPI MainWndProc (
 				if (windc)
 					MGL_activatePalette(windc,true);
 
-				VID_SetPalette(vid_curpal);
+				VID_SetPaletteOld(vid_curpal);
 			}
 
 			break;
@@ -3007,7 +3007,7 @@ LONG WINAPI MainWndProc (
 
 			if (vid_initialized && !in_mode_set && windc && MGL_activatePalette(windc,false) && !Minimized)
 			{
-				VID_SetPalette (vid_curpal);
+				VID_SetPaletteOld (vid_curpal);
 				InvalidateRect (mainwindow, NULL, false);
 
 			// specifically required if WM_QUERYNEWPALETTE realizes a new palette
