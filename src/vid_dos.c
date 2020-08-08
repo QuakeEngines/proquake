@@ -79,7 +79,7 @@ unsigned short	d_8to16table[256];	// not used in 8 bpp mode
 unsigned		d_8to24table[256];	// not used in 8 bpp mode
 
 void VID_MenuDraw (void);
-void VID_MenuKey (int key, char ascii);
+void VID_MenuKey (int key, int ascii);
 
 
 /*
@@ -693,7 +693,7 @@ void VID_MenuDraw (void)
 VID_MenuKey
 ================
 */
-void VID_MenuKey (int key, char ascii)
+void VID_MenuKey (int key, int ascii)
 {
 	if (vid_testingmode)
 		return;

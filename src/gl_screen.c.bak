@@ -58,7 +58,7 @@ Con_Printf ();
 net 
 turn off messages option
 
-the refresh is allways rendered, unless the console is full screen
+the refresh is always rendered, unless the console is full screen
 
 
 console is:
@@ -260,7 +260,7 @@ Internal use only
 */
 static void SCR_CalcRefdef (void)
 {
-	vrect_t		vrect;
+//	vrect_t		vrect;
 	float		size;
 	int		h;
 	qboolean		full = false;
@@ -507,7 +507,7 @@ void SCR_DrawSpeed (void)
 	int		x;
 	char buff[10];
 	char *ch;
-	float		speed, vspeed, speedunits;
+	float		speed, vspeed /*, speedunits*/;
 	vec3_t		vel;
 	static	float	maxspeed = 0, display_speed = -1;
 	static	double	lastrealtime = 0;
@@ -922,7 +922,7 @@ needs almost the entire 256k of stack space!
 void SCR_UpdateScreen (void)
 {
 	static float	oldscr_viewsize;
-	vrect_t		vrect;
+//	vrect_t		vrect;
 
 	if (block_drawing)
 		return;

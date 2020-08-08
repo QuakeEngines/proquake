@@ -551,7 +551,7 @@ void V_UpdatePalette (void)
 	byte	pal[768];
 	float	r,g,b,a;
 	int		ir, ig, ib;
-	qboolean force;
+//	qboolean force;
 
 	V_CalcPowerupCshift ();
 	

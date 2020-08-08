@@ -141,6 +141,8 @@ int CL_GetMessage (void)
 {
 	int		r, i;
 	float	f;
+	if (cl.paused & 2)		// by joe: pause during demo
+		return 0;
 	
 	if	(cls.demoplayback)
 	{

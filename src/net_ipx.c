@@ -235,7 +235,7 @@ int IPX_Init(void)
 	struct qsockaddr addr;
 	char *colon;
 
-	if (COM_CheckParm ("-noipx"))
+	if (!COM_CheckParm ("-ipx")) // Baker 3.83: Must now explicitly indicate -ipx, instead of using -noipx
 		return -1;
 
 	// find the IPX far call entry point

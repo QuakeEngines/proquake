@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -39,6 +39,26 @@ cvar_t	m_filter = {"m_filter","0"};
 //Baker 3.60 -- johnfitz -- compatibility with old Quake -- setting to 0 disables KP_* codes
 cvar_t	cl_keypad = {"cl_keypad","0", true};
 
+//Baker 3.85 -- DirectInput ON|OFF cvar!
+cvar_t  m_directinput = {"m_directinput", "0", true, 4};
+
+void IN_StartupMouse (void);
+void IN_DeactivateMouse (void);
+
+qboolean OnChange_m_directinput (cvar_t *var, char *string) {
+	if (host_initialized) {
+		IN_Shutdown ();
+		IN_Init ();
+		Con_Printf("Mouse DirectInput Change\n");
+		// Baker 3.85: This must be based on
+		// whether windowed or not, etc.
+		IN_ActivateMouse ();
+		IN_HideMouse ();
+	}
+	return false;
+}
+
+
 int			mouse_buttons;
 int			mouse_oldbuttonstate;
 POINT		current_pos;
@@ -48,15 +68,29 @@ int		old_mouse_x, old_mouse_y, mx_accum, my_accum;
 static qboolean	restore_spi;
 static int		originalmouseparms[3], newmouseparms[3] = {0, 0, 1};
 
-qboolean		mouseinitialized;
+
 static qboolean	mouseparmsvalid, mouseactivatetoggle;
 static qboolean	mouseshowtoggle = 1;
-static qboolean	dinput_acquired;
+
+// Baker 3.85: Need to restructure so mouse can be restarted
+static qboolean flex_firstinit;
+static qboolean	flex_dinput_acquired;
+qboolean		flex_mouseinitialized;
+qboolean		flex_mouseactive;
+static qboolean	flex_dinput;
+
+qboolean IN_DirectInputON(void) {
+	if (flex_dinput_acquired)
+		return true;
+	else
+		return false;
+}
+
+
 
 static unsigned int		mstate_di;
 unsigned int	uiWheelMessage;
 
-qboolean	mouseactive;
 
 // joystick defines and variables
 // where should defines be moved?
@@ -122,8 +156,6 @@ static JOYINFOEX	ji;
 
 static HINSTANCE hInstDI;
 
-static qboolean	dinput;
-
 typedef struct MYDATA {
 	LONG  lX;                   // X axis goes here
 	LONG  lY;                   // Y axis goes here
@@ -146,9 +178,9 @@ static DIOBJECTDATAFORMAT rgodf[] = {
   { 0,              FIELD_OFFSET(MYDATA, bButtonB), DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,},
   { 0,              FIELD_OFFSET(MYDATA, bButtonC), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,},
   { 0,              FIELD_OFFSET(MYDATA, bButtonD), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,},
-  { 0, 				FIELD_OFFSET(MYDATA, bButtonE), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,}, 
+  { 0, 				FIELD_OFFSET(MYDATA, bButtonE), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,},
   { 0, 				FIELD_OFFSET(MYDATA, bButtonF), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,},
-  { 0, 				FIELD_OFFSET(MYDATA, bButtonG), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,}, 
+  { 0, 				FIELD_OFFSET(MYDATA, bButtonG), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,},
   { 0, 				FIELD_OFFSET(MYDATA, bButtonH), 0x80000000 | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0,},
 };
 
@@ -202,6 +234,8 @@ int	wheel_dn_count = 0;
 			mstate_di &= ~(1 << NUM);	\
 		break;
 
+
+
 #define INPUT_CASE_DINPUT_MOUSE_BUTTONS			\
 		INPUT_CASE_DIMOFS_BUTTON(0);		\
 		INPUT_CASE_DIMOFS_BUTTON(1);		\
@@ -223,7 +257,7 @@ DWORD WINAPI IN_SMouseProc (void *lpParameter) {
 			HRESULT	 		hr;
 			double 			time;
 
-			if (!ActiveApp || Minimized || !mouseactive || !dinput_acquired) {
+			if (!ActiveApp || Minimized || !flex_mouseactive || !flex_dinput_acquired) {
 				Sleep (50);
 				continue;
 			}
@@ -237,7 +271,7 @@ DWORD WINAPI IN_SMouseProc (void *lpParameter) {
 				hr = IDirectInputDevice_GetDeviceData (g_pMouse, sizeof(DIDEVICEOBJECTDATA), &od, &dwElements, 0);
 
 				if ((hr	== DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED)) {
-					dinput_acquired	= false;
+					flex_dinput_acquired	= false;
 					break;
 				}
 
@@ -284,7 +318,7 @@ void IN_SMouseRead (int *mx, int *my) {
 
 	// acquire device
 	IDirectInputDevice_Acquire (g_pMouse);
-	dinput_acquired	= true;
+	flex_dinput_acquired = true;
 
 	// gather data from last read seq to now
 	for ( ; m_history_x_rseq < m_history_x_wseq ; m_history_x_rseq++)
@@ -409,7 +443,6 @@ void IN_SMouseInit (void) {
 
 	Cvar_RegisterVariable (&m_rate);
 	Cvar_RegisterVariable (&m_showrate);
-
 	use_m_smooth = true;
 }
 
@@ -420,9 +453,9 @@ void Force_CenterView_f (void) {
 }
 
 void IN_UpdateClipCursor (void) {
-	if (mouseinitialized && mouseactive && !dinput)
+	if (flex_mouseinitialized && flex_mouseactive && !m_directinput.value) // Baker 3.85
 		ClipCursor (&window_rect);
-	}
+}
 
 void IN_ShowMouse (void) {
 	if (!mouseshowtoggle) {
@@ -441,12 +474,12 @@ void IN_HideMouse (void) {
 void IN_ActivateMouse (void) {
 	mouseactivatetoggle = true;
 
-	if (mouseinitialized) {
-		if (dinput) {
+	if (flex_mouseinitialized) {
+		if (flex_dinput) {
 			if (g_pMouse) {
-				if (!dinput_acquired) {
+				if (!flex_dinput_acquired) {
 					IDirectInputDevice_Acquire(g_pMouse);
-					dinput_acquired = true;
+					flex_dinput_acquired = true;
 				}
 			} else {
 				return;
@@ -460,7 +493,7 @@ void IN_ActivateMouse (void) {
 			ClipCursor (&window_rect);
 		}
 
-		mouseactive = true;
+		flex_mouseactive = true;
 	}
 }
 
@@ -472,12 +505,12 @@ void IN_SetQuakeMouseState (void) {
 void IN_DeactivateMouse (void) {
 	mouseactivatetoggle = false;
 
-	if (mouseinitialized) {
-		if (dinput) {
+	if (flex_mouseinitialized) {
+		if (flex_dinput) {
 			if (g_pMouse) {
-				if (dinput_acquired) {
+				if (flex_dinput_acquired) {
 					IDirectInputDevice_Unacquire(g_pMouse);
-					dinput_acquired = false;
+					flex_dinput_acquired = false;
 				}
 			}
 		} else {
@@ -488,7 +521,7 @@ void IN_DeactivateMouse (void) {
 			ReleaseCapture ();
 		}
 
-		mouseactive = false;
+		flex_mouseactive = false;
 	}
 }
 
@@ -517,7 +550,7 @@ qboolean IN_InitDInput (void) {
 
 	if (!hInstDI) {
 		hInstDI = LoadLibrary("dinput.dll"); // Baker 3.70D3D - Direct3D Quake change?
-		
+
 		if (hInstDI == NULL) {
 			Con_Printf ("Couldn't load dinput.dll\n");
 			return false;
@@ -579,15 +612,17 @@ qboolean IN_InitDInput (void) {
 }
 
 void IN_StartupMouse (void) {
-	if ( COM_CheckParm ("-nomouse") ) 
-		return; 
+	if ( COM_CheckParm ("-nomouse") )
+		return;
 
-	mouseinitialized = true;
+	uiWheelMessage = RegisterWindowMessage ( "MSWHEEL_ROLLMSG" ); // Baker 3.85: Moved to IN_StartupMouse from IN_Init
 
-	if (COM_CheckParm ("-dinput")) {
-		dinput = IN_InitDInput ();
+	flex_mouseinitialized = true;
 
-		if (dinput) {
+	if (m_directinput.value) {
+		flex_dinput = IN_InitDInput ();
+
+		if (flex_dinput) {
 			Con_Printf ("DirectInput initialized\n");
 			if (use_m_smooth)
 				Con_Printf ("Mouse smoothing initialized\n");
@@ -596,11 +631,11 @@ void IN_StartupMouse (void) {
 		}
 	}
 
-	if (!dinput) {
+	if (!flex_dinput) {
 		mouseparmsvalid = SystemParametersInfo (SPI_GETMOUSE, 0, originalmouseparms, 0);
 
 		if (mouseparmsvalid) {
-			if ( COM_CheckParm ("-noforcemspd") ) 
+			if ( COM_CheckParm ("-noforcemspd") )
 				newmouseparms[2] = originalmouseparms[2];
 
 			if (COM_CheckParm ("-noforcemaccel")) {
@@ -617,40 +652,121 @@ void IN_StartupMouse (void) {
 	}
 	mouse_buttons = 8;
 
-	
+
 
 // if a fullscreen video mode was set before the mouse was initialized, set the mouse state appropriately
 	if (mouseactivatetoggle)
 		IN_ActivateMouse ();
-}
 
-
-
-void IN_Init (void) {
-	// mouse variables
-	Cvar_RegisterVariable (&m_filter);
-	Cvar_RegisterVariable (&m_forcewheel);
-	
-	// keyboard variables
-	Cvar_RegisterVariable (&cl_keypad);
-
-	// joystick variables
-	Cvar_RegisterVariable (&in_joystick);
-
-	Cmd_AddCommand ("force_centerview", Force_CenterView_f);
-
-	uiWheelMessage = RegisterWindowMessage ( "MSWHEEL_ROLLMSG" );
-
-	IN_StartupMouse ();
-
+	// Baker 3.85: Moved to here.  It makes more sense
 	//Con_Printf("Dinput is %d and fullwindow is %d = %d -> %d", dinput, modestate, MS_WINDOWED, modestate == MS_WINDOWED);
-	if (dinput && modestate != MS_WINDOWED) {
+	if (flex_dinput && modestate != MS_WINDOWED) {
 		// Baker 3.80x: this is an outstanding issue!
 		//Cvar_SetDefault("m_forcewheel", 1);
 		Cvar_SetValue("m_forcewheel", 1);
+	} else {
+		Cvar_SetValue("m_forcewheel", 0); // Baker 3.85: Added for mouserestart
 	}
 
+}
+
+void IN_SetGlobals(void) {
+
+/*
+    input_initialized = false;
+
+	// reset to default params, like global variables have
+	mouse_buttons = mouse_oldbuttonstate = 0;
+	mx_accum      = my_accum = 0;
+	restore_spi   = false;
+	memset(&current_pos,       0, sizeof(current_pos));
+	memset(originalmouseparms, 0, sizeof(originalmouseparms));
+	memset(newmouseparms,      0, sizeof(newmouseparms));
+
+	mouseparmsvalid  = mouseactivatetoggle = false;
+	dinput_acquired  = false;
+	mstate_di        = 0;
+	uiWheelMessage   = 0;
+
+	mouseactive      = false;
+	mouseinitialized = false;
+
+	// Some drivers send DIMOFS_Z, some send WM_MOUSEWHEEL, and some send both.
+	// To get the mouse wheel to work in any case but avoid duplicate events,
+	// we will only use one event source, wherever we receive the first event.
+	in_mwheeltype = MWHEEL_UNKNOWN;
+
+#if DIRECTINPUT_VERSION	>= 0x0700
+	use_m_smooth  = false;
+	m_event       = NULL;
+	smooth_thread = NULL;
+
+	memset(m_history_x, 0, sizeof(m_history_x));	// history
+	memset(m_history_y, 0, sizeof(m_history_y));
+	m_history_x_wseq =	0;		// write sequence
+	m_history_y_wseq =	0;
+	m_history_x_rseq =	0;		// read	sequence
+	m_history_y_rseq =	0;
+	wheel_up_count	 =  0;
+	wheel_dn_count	 =  0;
+
+	last_wseq_printed=  0;
+
+	dinput = false;
+#endif
+*/
+	
+	// Baker 3.85: Reset everything!
+
+
+	
+	uiWheelMessage   = 0;
+
+	flex_dinput_acquired = false;
+	flex_mouseinitialized = false;
+	flex_mouseactive = false;
+	flex_dinput = false;
+	
+}
+
+extern cvar_t in_keymap;
+void IN_Init (void) {
+	
+
+	// Baker 3.85:  This occurs BEFORE running quake.rc and if manually restarting mouse, such as
+	//              changing m_directinput cvar, which occurs in quake.rc
+	//              So this normally happens twice!
+
+	if (!flex_firstinit) {
+		// Baker 3.85: Very first input initialization
+
+		// mouse variables
+		Cvar_RegisterVariable (&m_filter);
+		Cvar_RegisterVariable (&m_forcewheel);
+		Cvar_RegisterVariable (&m_accel);
+		Cvar_RegisterVariable (&m_directinput);
+		
+		if (COM_CheckParm("-dinput")) {
+			Cvar_SetValue("m_directinput", 1);
+		}
+
+		// keyboard variables
+		Cvar_RegisterVariable (&cl_keypad);
+		Cvar_RegisterVariable (&in_keymap);
+
+		// joystick variables 
+		Cvar_RegisterVariable (&in_joystick); // Baker 3.83: Leaving here ONLY because this saves to config.
+
+
+		Cmd_AddCommand ("force_centerview", Force_CenterView_f);
+	}
+
+	IN_SetGlobals ();
+	IN_StartupMouse ();
 	IN_StartupJoystick ();
+
+
+	flex_firstinit = true;
 }
 
 void IN_Shutdown (void) {
@@ -666,12 +782,14 @@ void IN_Shutdown (void) {
 		IDirectInput_Release(g_pdi);
 		g_pdi = NULL;
 	}
+
+	flex_dinput_acquired = false; // Baker 3.85 -- right?
 }
 
 void IN_MouseEvent (int mstate) {
 	int	i;
 
-	if (mouseactive && !dinput) {
+	if (flex_mouseactive && !flex_dinput) {
 	// perform button actions
 		for (i=0 ; i<mouse_buttons ; i++) {
 			if ((mstate & (1<<i)) && !(mouse_oldbuttonstate & (1<<i)))
@@ -680,7 +798,7 @@ void IN_MouseEvent (int mstate) {
 			if (!(mstate & (1<<i)) && (mouse_oldbuttonstate & (1<<i)))
 				Key_Event (K_MOUSE1 + i, 0, false);
 			}
-			
+
 		mouse_oldbuttonstate = mstate;
 	}
 }
@@ -692,10 +810,10 @@ void IN_MouseMove (usercmd_t *cmd) {
 	DWORD				dwElements;
 	HRESULT				hr;
 
-	if (!mouseactive)
+	if (!flex_mouseactive)
 		return;
 
-	if (dinput) {
+	if (flex_dinput) {
 		mx = my = 0;
 
 
@@ -708,7 +826,7 @@ void IN_MouseMove (usercmd_t *cmd) {
 				hr = IDirectInputDevice_GetDeviceData (g_pMouse, sizeof(DIDEVICEOBJECTDATA), &od, &dwElements, 0);
 
 				if ((hr == DIERR_INPUTLOST) || (hr == DIERR_NOTACQUIRED)) {
-				dinput_acquired = true;
+				flex_dinput_acquired = true;
 				IDirectInputDevice_Acquire(g_pMouse);
 				break;
 			}
@@ -747,7 +865,7 @@ void IN_MouseMove (usercmd_t *cmd) {
 
 					INPUT_CASE_DINPUT_MOUSE_BUTTONS
 
-					
+
 
 				}
 			}
@@ -761,7 +879,7 @@ void IN_MouseMove (usercmd_t *cmd) {
 			if (!(mstate_di & (1<<i)) && (mouse_oldbuttonstate & (1<<i)))
 				Key_Event (K_MOUSE1 + i, 0, false);
 			}
-		
+
 		mouse_oldbuttonstate = mstate_di;
 	} else {
 		GetCursorPos (&current_pos);
@@ -802,11 +920,11 @@ void IN_MouseMove (usercmd_t *cmd) {
 
 	if (mlook_active)  // Baker 3.60 - Freelook cvar support
 		V_StopPitchDrift ();
-		
+
 	if (mlook_active && !(in_strafe.state & 1)) {
-		// Baker 3.60 - Freelook cvar support 
+		// Baker 3.60 - Freelook cvar support
 		cl.viewangles[PITCH] += m_pitch.value * mouse_y;
-		
+
 		// JPG 1.05 - added pq_fullpitch
 		if (pq_fullpitch.value) {
 			if (cl.viewangles[PITCH] > 90)
@@ -840,7 +958,7 @@ void IN_Move (usercmd_t *cmd) {
 }
 
 void IN_Accumulate (void) {
-	if (mouseactive) {
+	if (flex_mouseactive) {
 			GetCursorPos (&current_pos);
 
 			mx_accum += current_pos.x - window_center_x;
@@ -852,7 +970,7 @@ void IN_Accumulate (void) {
 	}
 
 void IN_ClearStates (void) {
-	if (mouseactive)
+	if (flex_mouseactive)
 		mx_accum = my_accum = mouse_oldbuttonstate = 0;
 }
 
@@ -860,35 +978,40 @@ void IN_StartupJoystick (void)  {
 	int		numdevs;
 	JOYCAPS		jc;
 	MMRESULT	mmr;
- 
+
  	// assume no joystick
-	joy_avail = false; 
+	joy_avail = false;
 
 	// abort startup if user requests no joystick
-	if ( COM_CheckParm ("-nojoy") ) 
-		return; 
- 
-	Cvar_RegisterVariable (&joy_name);
-	Cvar_RegisterVariable (&joy_advanced);
-	Cvar_RegisterVariable (&joy_advaxisx);
-	Cvar_RegisterVariable (&joy_advaxisy);
-	Cvar_RegisterVariable (&joy_advaxisz);
-	Cvar_RegisterVariable (&joy_advaxisr);
-	Cvar_RegisterVariable (&joy_advaxisu);
-	Cvar_RegisterVariable (&joy_advaxisv);
-	Cvar_RegisterVariable (&joy_forwardthreshold);
-	Cvar_RegisterVariable (&joy_sidethreshold);
-	Cvar_RegisterVariable (&joy_flythreshold);
-	Cvar_RegisterVariable (&joy_pitchthreshold);
-	Cvar_RegisterVariable (&joy_yawthreshold);
-	Cvar_RegisterVariable (&joy_forwardsensitivity);
-	Cvar_RegisterVariable (&joy_sidesensitivity);
-	Cvar_RegisterVariable (&joy_flysensitivity);
-	Cvar_RegisterVariable (&joy_pitchsensitivity);
-	Cvar_RegisterVariable (&joy_yawsensitivity);
-	Cvar_RegisterVariable (&joy_wwhack1);
-	Cvar_RegisterVariable (&joy_wwhack2);
-	Cmd_AddCommand ("joyadvancedupdate", Joy_AdvancedUpdate_f);
+	if (!COM_CheckParm ("-joy") ) // Baker 3.83: Must explicitly indicate joystick, instead of explicitly not
+		return;
+
+ 	if (!flex_firstinit) {
+		// Baker 3.85: Only do this once!
+
+		Cvar_RegisterVariable (&joy_name);
+		Cvar_RegisterVariable (&joy_advanced);
+		Cvar_RegisterVariable (&joy_advaxisx);
+		Cvar_RegisterVariable (&joy_advaxisy);
+		Cvar_RegisterVariable (&joy_advaxisz);
+		Cvar_RegisterVariable (&joy_advaxisr);
+		Cvar_RegisterVariable (&joy_advaxisu);
+		Cvar_RegisterVariable (&joy_advaxisv);
+		Cvar_RegisterVariable (&joy_forwardthreshold);
+		Cvar_RegisterVariable (&joy_sidethreshold);
+		Cvar_RegisterVariable (&joy_flythreshold);
+		Cvar_RegisterVariable (&joy_pitchthreshold);
+		Cvar_RegisterVariable (&joy_yawthreshold);
+		Cvar_RegisterVariable (&joy_forwardsensitivity);
+		Cvar_RegisterVariable (&joy_sidesensitivity);
+		Cvar_RegisterVariable (&joy_flysensitivity);
+		Cvar_RegisterVariable (&joy_pitchsensitivity);
+		Cvar_RegisterVariable (&joy_yawsensitivity);
+		Cvar_RegisterVariable (&joy_wwhack1);
+		Cvar_RegisterVariable (&joy_wwhack2);
+		Cmd_AddCommand ("joyadvancedupdate", Joy_AdvancedUpdate_f);
+	}
+
 	// verify joystick driver is present
 	if ((numdevs = joyGetNumDevs ()) == 0) {
 		Con_Printf ("\njoystick not found -- driver not present\n\n");
@@ -903,7 +1026,7 @@ void IN_StartupJoystick (void)  {
 
 		if ((mmr = joyGetPosEx (joy_id, &ji)) == JOYERR_NOERROR)
 			break;
-	} 
+	}
 
 	// abort startup if we didn't find a valid joystick
 	if (mmr != JOYERR_NOERROR) {
@@ -929,10 +1052,10 @@ void IN_StartupJoystick (void)  {
 	// mark the joystick as available and advanced initialization not completed
 	// this is needed as cvars are not available during initialization
 
-	joy_avail = true; 
+	joy_avail = true;
 	joy_advancedinit = false;
 
-	Con_Printf ("\njoystick detected\n\n"); 
+	Con_Printf ("\njoystick detected\n\n");
 }
 
 PDWORD RawValuePointer (int axis) {
@@ -1017,7 +1140,7 @@ void IN_Commands (void) {
 
 	if (!joy_avail)
 		return;
-	
+
 	// loop through the joystick buttons
 	// key a joystick event or auxillary event for higher number buttons for each state change
 	buttonstate = ji.dwButtons;
@@ -1099,8 +1222,8 @@ void IN_JoyMove (usercmd_t *cmd) {
 
 	// verify joystick is available and that the user wants to use it
 	if (!joy_avail || !in_joystick.value)
-		return; 
- 
+		return;
+
 	// collect the joystick data, if possible
 	if (IN_ReadJoystick () != true)
 		return;
@@ -1129,7 +1252,7 @@ void IN_JoyMove (usercmd_t *cmd) {
 			}
 		}
 
-		// convert range from -32768..32767 to -1..1 
+		// convert range from -32768..32767 to -1..1
 		fAxisValue /= 32768.0;
 
 		switch (dwAxisMap[i]) {
@@ -1277,8 +1400,8 @@ IN_MapKey -- Baker 3.72 - Attempt to address international keyboard issue
 
 Map from windows to quake keynums
 ===========
-*/ 
-int IN_MapKey (int key, char ascii) {
+*/
+int IN_MapKey (int key, int ascii) {
 	int result;
 	int modified = (key >> 16) & 255;
 	qboolean is_extended = false;
@@ -1290,7 +1413,7 @@ int IN_MapKey (int key, char ascii) {
 		//Con_DPrintf("key 0x%02x (0x%8x, 0x%8x) has no translation\n", modified, key, virtualkey);
 		//Con_DPrintf("key 0x%02x (0x%8x) has no translation\n", modified, key);
 	}
-	
+
 
 	if (key & (1 << 24))
 		is_extended = true;
@@ -1311,8 +1434,8 @@ int IN_MapKey (int key, char ascii) {
 		}
 	} else {
 		// cl_keypad 0, compatibility mode
-			if (cl_keypad.value) 
-				switch (result) 
+			if (cl_keypad.value)
+				switch (result)
 				{
 					case K_ENTER:		return KP_ENTER;
 					case '/':			return KP_SLASH;
@@ -1320,7 +1443,7 @@ int IN_MapKey (int key, char ascii) {
 					default:			return result;
 				}
 			else // cl_keypad 0, compatibility mode
-				switch (result) 
+				switch (result)
 				{
 					case KP_STAR:		return '*';
 					case KP_MINUS:		return '-';

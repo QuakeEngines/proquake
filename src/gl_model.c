@@ -1251,8 +1251,8 @@ Mod_LoadAliasFrame
 */
 void * Mod_LoadAliasFrame (void * pin, maliasframedesc_t *frame)
 {
-	trivertx_t		*pframe, *pinframe;
-	int				i, j;
+	trivertx_t		/* *pframe, */ *pinframe;
+	int				i /*, j*/;
 	daliasframe_t	*pdaliasframe;
 	
 	pdaliasframe = (daliasframe_t *)pin;
@@ -1413,7 +1413,7 @@ void *Mod_LoadAllSkins (int numskins, daliasskintype_t *pskintype)
 	int		i, j, k;
 	char	name[32];
 	int		s;
-	byte	*copy;
+//	byte	*copy;
 	byte	*skin;
 	byte	*texels;
 	daliasskingroup_t		*pinskingroup;
@@ -1492,7 +1492,7 @@ void Mod_LoadAliasModel (model_t *mod, void *buffer)
 	mdl_t				*pinmodel;
 	stvert_t			*pinstverts;
 	dtriangle_t			*pintriangles;
-	int					version, numframes, numskins;
+	int					version, numframes/*, numskins*/;
 	int					size;
 	daliasframetype_t	*pframetype;
 	daliasskintype_t	*pskintype;
@@ -1656,9 +1656,9 @@ void * Mod_LoadSpriteFrame (void * pin, mspriteframe_t **ppframe, int framenum)
 {
 	dspriteframe_t		*pinframe;
 	mspriteframe_t		*pspriteframe;
-	int					i, width, height, size, origin[2];
-	unsigned short		*ppixout;
-	byte				*ppixin;
+	int					/*i,*/ width, height, size, origin[2];
+//	unsigned short		*ppixout;
+//	byte				*ppixin;
 	char				name[64];
 
 	pinframe = (dspriteframe_t *)pin;

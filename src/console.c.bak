@@ -28,6 +28,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <fcntl.h>
 #include "quakedef.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include <time.h> // JPG - needed for console log
 
 int 		con_linewidth;
@@ -74,6 +78,17 @@ int			con_notifylines;		// scan lines to clear for notify lines
 extern void M_Menu_Main_f (void);
 
 char logfilename[128];	// JPG - support for different filenames
+/*
+================
+Con_Quakebar -- johnfitz -- returns a bar of the desired length, but never wider than the console
+
+includes a newline, unless len >= con_linewidth.
+================
+*/
+char *Con_Quakebar (int len)
+{
+	static char bar[42];
+	int i;
 
 	len = min(len, sizeof(bar) - 2);
 	len = min(len, con_linewidth);
@@ -137,6 +152,56 @@ void Con_Clear_f (void)
 	if (con_text)
 		Q_memset (con_text, ' ', CON_TEXTSIZE);
 }
+
+#ifdef _WIN32
+/*
+====================
+Con_Showtime_f // Baker 3.60 - "time" command to display current date and time in console
+
+time
+====================
+*/
+void Con_Showtime_f (void)
+{
+	time_t	ltime;
+	char	str[80], *format;
+	//HANDLE th;
+	//HGLOBAL clipbuffer;
+	//char *buffer;
+
+	format = "%B %m, %Y - %I:%M:%S %p";
+
+	time (&ltime);
+	strftime (str, sizeof(str)-1, format, localtime(&ltime));
+
+	Con_Printf ("%s \n", str);
+
+//#ifdef _WIN32
+//
+//	if (OpenClipboard(NULL))
+//	{
+//		EmptyClipboard();
+//		clipbuffer = GlobalAlloc(GMEM_DDESHARE, sizeof(str)-1);
+//		buffer = (char*)GlobalLock(clipbuffer);
+//		strcpy(buffer, str);
+//		GlobalUnlock(clipbuffer);
+//		SetClipboardData(CF_TEXT,clipbuffer);
+//		CloseClipboard();
+//
+//		/* EmptyClipboard();
+//		SetClipboardData(CF_TEXT, str);
+//		CloseClipboard(); */
+//		Con_Printf ("Time written to clipboard", str);
+//	}
+//	else
+//	{
+//		Con_Printf ("Clipboard access failed", str);
+//	}
+//
+//#endif
+//*/
+}
+#endif
 
 /*
 ================
@@ -395,7 +460,9 @@ void Con_Init (void)
 	Cmd_AddCommand ("messagemode2", Con_MessageMode2_f);
 	Cmd_AddCommand ("clear", Con_Clear_f);
 	Cmd_AddCommand ("condump", Con_Dump_f); //johnfitz
-
+#ifdef _WIN32
+	Cmd_AddCommand ("time", Con_Showtime_f); // Baker 3.60 - "time command
+#endif
 	con_initialized = true;
 	Con_Printf ("Console initialized\n");
 }

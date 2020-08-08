@@ -104,7 +104,7 @@ void *vid_surfcache;
 
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
-void VID_MenuKey (int key, char ascii);
+void VID_MenuKey (int key, int ascii);
 
 typedef unsigned short PIXEL16;
 typedef unsigned long PIXEL24;

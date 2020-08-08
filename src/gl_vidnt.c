@@ -80,7 +80,7 @@ static qboolean	windowed, leavecurrentmode;
 static qboolean vid_canalttab = false;
 static qboolean vid_wassuspended = false;
 static int		windowed_mouse;
-extern qboolean	mouseactive;  // from in_win.c
+extern qboolean	flex_mouseactive;  // from in_win.c
 static HICON	hIcon;
 
 int			DIBWidth, DIBHeight;
@@ -695,10 +695,10 @@ void GL_EndRendering (void) {
 			}
 		} else {
 			windowed_mouse = true;
-			if (key_dest == key_game && !mouseactive && ActiveApp) {
+			if (key_dest == key_game && !flex_mouseactive && ActiveApp) {
 				IN_ActivateMouse ();
 				IN_HideMouse ();
-			} else if (mouseactive && key_dest != key_game) {
+			} else if (flex_mouseactive && key_dest != key_game) {
 				IN_DeactivateMouse ();
 				IN_ShowMouse ();
 			}
@@ -714,13 +714,13 @@ void	VID_SetPalette (unsigned char *palette)
 	unsigned r,g,b;
 	unsigned v;
 	int     r1,g1,b1;
-	int		j,k,l,m;
+	int		j,k,l /*,m*/ ;
 	unsigned short i;
 	unsigned	*table;
-	FILE *f;
-	char s[255];
-	HWND hDlg, hProgress;
-	float gamma;
+//	FILE *f;
+//	char s[255];
+//	HWND hDlg, hProgress;
+//	float gamma;
 
 //
 // 8 8 8 encoding
@@ -879,9 +879,9 @@ void AppActivate(BOOL fActive, BOOL minimize) {
 *
 ****************************************************************************/
 
-	MSG msg;
-    HDC			hdc;
-    int			i, t;
+//	MSG msg;
+//    HDC			hdc;
+//    int			i, t;
 	static BOOL	sound_active;
 
 	ActiveApp = fActive;
@@ -939,7 +939,7 @@ LONG WINAPI MainWndProc (
     LPARAM  lParam)
 {
     LONG    lRet = 1;
-	int		fwKeys, xPos, yPos, fActive, fMinimized, temp;
+	int		/*fwKeys, xPos, yPos,*/ fActive, fMinimized, temp;
 	extern unsigned int uiWheelMessage;
 	char	state[256];
 	char	asciichar[4];
@@ -988,19 +988,19 @@ LONG WINAPI MainWndProc (
 			// Baker 3.703 - old way
 			// Key_Event (IN_MapKey(lParam), false);
 			vkey = IN_MapKey(lParam);
-			GetKeyboardState (state);
-			// alt/ctrl/shift tend to produce funky ToAscii values,
-			// and if it's not a single character we don't know care about it
-			charlength = ToAscii (wParam, lParam >> 16, state, (unsigned short *)asciichar, 0);
-			if (vkey == K_ALT || vkey == K_CTRL || vkey == K_SHIFT || charlength == 0)
-				asciichar[0] = 0;
-			else if( charlength == 2 ) {
-				asciichar[0] = asciichar[1];
-			}
-			
-			Key_Event (vkey, asciichar[0], down);
+				GetKeyboardState (state);
+				// alt/ctrl/shift tend to produce funky ToAscii values,
+				// and if it's not a single character we don't know care about it
+				charlength = ToAscii (wParam, lParam >> 16, state, (unsigned short *)asciichar, 0);
+				if (vkey == K_ALT || vkey == K_CTRL || vkey == K_SHIFT || charlength == 0)
+					asciichar[0] = 0;
+				else if( charlength == 2 ) {
+					asciichar[0] = asciichar[1];
+				}
+				
+				Key_Event (vkey, asciichar[0], down);
 			break;
-
+		
 		case WM_SYSCHAR:
 		// keep Alt-Space from happening
 			break;
@@ -1221,7 +1221,7 @@ void VID_DescribeModes_f (void) {
 }
 
 void VID_InitDIB (HINSTANCE hInstance) {
-	int				i;
+//	int				i;
 	WNDCLASS		wc;
 
 	/* Register the frame class */
@@ -1275,7 +1275,7 @@ void VID_InitDIB (HINSTANCE hInstance) {
 
 void VID_InitFullDIB (HINSTANCE hInstance) {
 	DEVMODE	devmode;
-	int		i, modenum, cmodes, originalnummodes, existingmode, numlowresmodes;
+	int		i, modenum, /*cmodes,*/ originalnummodes, existingmode, numlowresmodes;
 	int		j, bpp, done;
 	BOOL	stat;
 
@@ -1473,7 +1473,7 @@ void	VID_Init (unsigned char *palette)
 {
 	int		i, existingmode;
 	int		basenummodes, width, height, bpp, findbpp, done;
-	byte	*ptmp;
+//	byte	*ptmp;
 	char	gldir[MAX_OSPATH];
 	HDC		hdc;
 	DEVMODE	devmode;
@@ -1772,8 +1772,8 @@ void VID_MenuDraw (void)
 {
 	qpic_t		*p;
 	char		*ptr;
-	int			lnummodes, i, j, k, column, row, dup, dupmode;
-	char		temp[100];
+	int			lnummodes, i, /*j,*/ k, column, row /*, dup*/ /*, dupmode*/;
+//	char		temp[100];
 	vmode_t		*pv;
 
 	p = Draw_CachePic ("gfx/vidmodes.lmp");

@@ -31,7 +31,29 @@ extern cvar_t   _windowed_mouse;    /* CSR */
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
-enum {m_none, m_main, m_singleplayer, m_load, m_save, m_multiplayer, m_setup, m_net, m_options, m_video, m_keys, m_help, m_quit, m_serialconfig, m_modemconfig, m_lanconfig, m_gameoptions, m_search, m_slist, m_preferences} m_state;
+enum {
+	m_none, 
+	m_main, 
+	m_singleplayer, 
+	m_load, 
+	m_save, 
+	m_multiplayer, 
+	m_setup, 
+	m_net, 
+	m_options, 
+	m_video, 
+	m_keys, 
+	m_help, 
+	m_quit, 
+	m_serialconfig, 
+	m_modemconfig, 
+	m_lanconfig, 
+	m_gameoptions, 
+	m_search, 
+	m_slist, 
+	m_preferences,
+	m_namemaker
+} m_state;
 
 void M_Menu_Main_f (void);
 	void M_Menu_SinglePlayer_f (void);
@@ -39,6 +61,7 @@ void M_Menu_Main_f (void);
 		void M_Menu_Save_f (void);
 	void M_Menu_MultiPlayer_f (void);
 		void M_Menu_Setup_f (void);
+void M_Menu_NameMaker_f (void);//JQ1.5dev
 		void M_Menu_Net_f (void);
 	void M_Menu_Options_f (void);
 		void M_Menu_Keys_f (void);
@@ -59,6 +82,7 @@ void M_Main_Draw (void);
 		void M_Save_Draw (void);
 	void M_MultiPlayer_Draw (void);
 		void M_Setup_Draw (void);
+void M_NameMaker_Draw (void);//JQ1.5Dev
 		void M_Net_Draw (void);
 	void M_Options_Draw (void);
 		void M_Keys_Draw (void);
@@ -72,24 +96,25 @@ void M_GameOptions_Draw (void);
 void M_Search_Draw (void);
 void M_ServerList_Draw (void);
 
-void M_Main_Key (int key, char ascii);
-	void M_SinglePlayer_Key (int key, char ascii);
-		void M_Load_Key (int key, char ascii);
-		void M_Save_Key (int key, char ascii);
-	void M_MultiPlayer_Key (int key, char ascii);
-		void M_Setup_Key (int key, char ascii);
-		void M_Net_Key (int key, char ascii);
-	void M_Options_Key (int key, char ascii);
-		void M_Keys_Key (int key, char ascii, qboolean down);
-		void M_Video_Key (int key, char ascii);
-	void M_Help_Key (int key, char ascii);
-	void M_Quit_Key (int key, char ascii);
-void M_SerialConfig_Key (int key, char ascii);
-	void M_ModemConfig_Key (int key, char ascii);
-void M_LanConfig_Key (int key, char ascii);
-void M_GameOptions_Key (int key, char ascii);
-void M_Search_Key (int key, char ascii);
-void M_ServerList_Key (int key, char ascii);
+void M_Main_Key (int key, int ascii);
+	void M_SinglePlayer_Key (int key, int ascii);
+		void M_Load_Key (int key, int ascii);
+		void M_Save_Key (int key, int ascii);
+	void M_MultiPlayer_Key (int key, int ascii);
+		void M_Setup_Key (int key, int ascii);
+		void M_Net_Key (int key, int ascii);
+	void M_Options_Key (int key, int ascii);
+		void M_Keys_Key (int key, int ascii, qboolean down);
+		void M_Video_Key (int key, int ascii);
+	void M_Help_Key (int key, int ascii);
+	void M_Quit_Key (int key, int ascii);
+void M_SerialConfig_Key (int key, int ascii);
+	void M_ModemConfig_Key (int key, int ascii);
+	void M_NameMaker_Key (int key, int ascii);
+void M_LanConfig_Key (int key, int ascii);
+void M_GameOptions_Key (int key, int ascii);
+void M_Search_Key (int key, int ascii);
+void M_ServerList_Key (int key, int ascii);
 
 qboolean	m_entersound;		// play after drawing a frame, so caching
 								// won't disrupt the sound
@@ -310,7 +335,7 @@ void M_Main_Draw (void)
 }
 
 
-void M_Main_Key (int key, char ascii)
+void M_Main_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -393,7 +418,7 @@ void M_SinglePlayer_Draw (void)
 }
 
 
-void M_SinglePlayer_Key (int key, char ascii)
+void M_SinglePlayer_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -533,7 +558,7 @@ void M_Save_Draw (void)
 }
 
 
-void M_Load_Key (int key, char ascii)
+void M_Load_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -575,7 +600,7 @@ void M_Load_Key (int key, char ascii)
 }
 
 
-void M_Save_Key (int key, char ascii)
+void M_Save_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -642,7 +667,7 @@ void M_MultiPlayer_Draw (void)
 }
 
 
-void M_MultiPlayer_Key (int key, char ascii)
+void M_MultiPlayer_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -686,25 +711,25 @@ void M_MultiPlayer_Key (int key, char ascii)
 //=============================================================================
 /* SETUP MENU */
 
-int		setup_cursor = 4;
-int		setup_cursor_table[] = {40, 56, 80, 104, 140};
+int		setup_cursor = 5;
+int	setup_cursor_table[] = {40, 56, 80, 104, 128, 152};
+char	namemaker_name[16]; // Baker 3.83: Name maker
+char	setup_hostname[16], setup_myname[16];
+int	setup_oldtop, setup_oldbottom, setup_top, setup_bottom;
 
-char	setup_hostname[16];
-char	setup_myname[16];
-int		setup_oldtop;
-int		setup_oldbottom;
-int		setup_top;
-int		setup_bottom;
-
-#define	NUM_SETUP_CMDS	5
+#define	NUM_SETUP_CMDS	6
 
 void M_Menu_Setup_f (void)
 {
 	key_dest = key_menu;
 	m_state = m_setup;
 	m_entersound = true;
-	Q_strcpy(setup_myname, cl_name.string);
-	Q_strcpy(setup_hostname, hostname.string);
+
+	Q_strncpyz (setup_hostname, hostname.string, sizeof(setup_hostname));
+	
+	if (!(strlen(setup_myname)))
+	Q_strncpyz (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
+	
 	setup_top = setup_oldtop = ((int)cl_color.value) >> 4;
 	setup_bottom = setup_oldbottom = ((int)cl_color.value) & 15;
 }
@@ -724,19 +749,21 @@ void M_Setup_Draw (void)
 
 	M_Print (64, 56, "Your name");
 	M_DrawTextBox (160, 48, 16, 1);
-	M_Print (168, 56, setup_myname);
+	M_PrintWhite (168, 56, setup_myname); // Baker 3.83: Draw it correctly!
 
-	M_Print (64, 80, "Shirt color");
-	M_Print (64, 104, "Pants color");
+	M_Print (64, 80, "Name Maker");
 
-	M_DrawTextBox (64, 140-8, 14, 1);
-	M_Print (72, 140, "Accept Changes");
+	M_Print (64, 104, "Shirt color");
+	M_Print (64, 128, "Pants color");
 
-	p = Draw_CachePic ("gfx/bigbox.lmp");
-	M_DrawTransPic (160, 64, p);
+	M_DrawTextBox (64, 152-8, 14, 1);
+	M_Print (72, 152, "Accept Changes");
+
+	//p = Draw_CachePic ("gfx/bigbox.lmp");
+	M_DrawTextBox (160, 64, 8, 8);
 	p = Draw_CachePic ("gfx/menuplyr.lmp");
 	M_BuildTranslationTable(setup_top*16, setup_bottom*16);
-	M_DrawTransPicTranslate (172, 72, p);
+	M_DrawTransPicTranslate (176, 76, p);
 
 	M_DrawCharacter (56, setup_cursor_table [setup_cursor], 12+((int)(realtime*4)&1));
 
@@ -748,13 +775,14 @@ void M_Setup_Draw (void)
 }
 
 
-void M_Setup_Key (int key, char ascii)
+void M_Setup_Key (int key, int ascii)
 {
 	int			l;
 
 	switch (key)
 	{
 	case K_ESCAPE:
+		Q_strncpyz (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
 		M_Menu_MultiPlayer_f ();
 		break;
 
@@ -772,13 +800,23 @@ void M_Setup_Key (int key, char ascii)
 			setup_cursor = 0;
 		break;
 
+	case K_HOME:
+		S_LocalSound ("misc/menu1.wav");
+		setup_cursor = 0;
+		break;
+
+	case K_END:
+		S_LocalSound ("misc/menu1.wav");
+		setup_cursor = NUM_SETUP_CMDS - 1;
+		break;
+
 	case K_LEFTARROW:
 		if (setup_cursor < 2)
 			return;
 		S_LocalSound ("misc/menu3.wav");
-		if (setup_cursor == 2)
-			setup_top = setup_top - 1;
 		if (setup_cursor == 3)
+			setup_top = setup_top - 1;
+		if (setup_cursor == 4)
 			setup_bottom = setup_bottom - 1;
 		break;
 	case K_RIGHTARROW:
@@ -786,25 +824,33 @@ void M_Setup_Key (int key, char ascii)
 			return;
 forward:
 		S_LocalSound ("misc/menu3.wav");
-		if (setup_cursor == 2)
-			setup_top = setup_top + 1;
 		if (setup_cursor == 3)
+			setup_top = setup_top + 1;
+		if (setup_cursor == 4)
 			setup_bottom = setup_bottom + 1;
 		break;
 
+	case K_SPACE:
 	case K_ENTER:
 		if (setup_cursor == 0 || setup_cursor == 1)
 			return;
 
-		if (setup_cursor == 2 || setup_cursor == 3)
+		if (setup_cursor == 3 || setup_cursor == 4)
 			goto forward;
 
-		// setup_cursor == 4 (OK)
-		if (Q_strcmp(cl_name.string, setup_myname) != 0)
+		if (setup_cursor == 2)
+		{
+			m_entersound = true;
+			M_Menu_NameMaker_f ();
+			break;
+		}
+
+		// setup_cursor == 5 (OK)
+//		if (Q_strcmp(cl_name.string, setup_myname) != 0)
 			Cbuf_AddText ( va ("name \"%s\"\n", setup_myname) );
-		if (Q_strcmp(hostname.string, setup_hostname) != 0)
+//		if (Q_strcmp(hostname.string, setup_hostname) != 0)
 			Cvar_Set("hostname", setup_hostname);
-		if (setup_top != setup_oldtop || setup_bottom != setup_oldbottom)
+//		if (setup_top != setup_oldtop || setup_bottom != setup_oldbottom)
 			Cbuf_AddText( va ("color %i %i\n", setup_top, setup_bottom) );
 		m_entersound = true;
 		M_Menu_MultiPlayer_f ();
@@ -857,6 +903,136 @@ forward:
 		setup_bottom = 13;
 }
 
+//=============================================================================
+/* NAME MAKER MENU */ //From: JoeQuake 1.5Dev!!
+//=============================================================================
+int	namemaker_cursor_x, namemaker_cursor_y;
+#define	NAMEMAKER_TABLE_SIZE	16
+
+void M_Menu_NameMaker_f (void)
+{
+	key_dest = key_menu;
+	m_state = m_namemaker;
+	m_entersound = true;
+	Q_strncpyz (namemaker_name, setup_myname, sizeof(namemaker_name));
+}
+
+void M_NameMaker_Draw (void)
+{
+	int	x, y;
+
+	M_Print (48, 16, "Your name");
+	M_DrawTextBox (120, 8, 16, 1);
+	M_PrintWhite (128, 16, namemaker_name);
+
+	for (y=0 ; y<NAMEMAKER_TABLE_SIZE ; y++)
+		for (x=0 ; x<NAMEMAKER_TABLE_SIZE ; x++)
+			M_DrawCharacter (32 + (16 * x), 40 + (8 * y), NAMEMAKER_TABLE_SIZE * y + x);
+
+	if (namemaker_cursor_y == NAMEMAKER_TABLE_SIZE)
+		M_DrawCharacter (128, 184, 12 + ((int)(realtime*4)&1));
+	else
+		M_DrawCharacter (24 + 16*namemaker_cursor_x, 40 + 8*namemaker_cursor_y, 12 + ((int)(realtime*4)&1));
+
+	M_DrawTextBox (136, 176, 2, 1);
+	M_Print (144, 184, "OK");
+}
+
+void Key_Extra (int *key);
+void M_NameMaker_Key (int key, int ascii)
+{
+	int	l;
+
+	switch (key)
+	{
+	case K_ESCAPE:
+		M_Menu_Setup_f ();
+		break;
+
+	case K_UPARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y--;
+		if (namemaker_cursor_y < 0)
+			namemaker_cursor_y = NAMEMAKER_TABLE_SIZE;
+		break;
+
+	case K_DOWNARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y++;
+		if (namemaker_cursor_y > NAMEMAKER_TABLE_SIZE)
+			namemaker_cursor_y = 0;
+		break;
+
+	case K_PGUP:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y = 0;
+		break;
+
+	case K_PGDN:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y = NAMEMAKER_TABLE_SIZE;
+		break;
+
+	case K_LEFTARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x--;
+		if (namemaker_cursor_x < 0)
+			namemaker_cursor_x = NAMEMAKER_TABLE_SIZE - 1;
+		break;
+
+	case K_RIGHTARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x++;
+		if (namemaker_cursor_x >= NAMEMAKER_TABLE_SIZE)
+			namemaker_cursor_x = 0;
+		break;
+
+	case K_HOME:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x = 0;
+		break;
+
+	case K_END:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x = NAMEMAKER_TABLE_SIZE - 1;
+		break;
+
+	case K_BACKSPACE:
+		if ((l = strlen(namemaker_name)))
+			namemaker_name[l-1] = 0;
+		break;
+
+	case K_SPACE:
+	case K_ENTER:
+		if (namemaker_cursor_y == NAMEMAKER_TABLE_SIZE)
+		{
+			Q_strncpyz (setup_myname, namemaker_name, sizeof(setup_myname));
+			M_Menu_Setup_f ();
+		}
+		else
+		{
+			l = strlen(namemaker_name);
+			if (l < 15)
+			{
+				namemaker_name[l] = NAMEMAKER_TABLE_SIZE * namemaker_cursor_y + namemaker_cursor_x;
+				namemaker_name[l+1] = 0;
+			}
+		}
+		break;
+
+	default:
+		if (ascii < 32 || ascii > 127)
+			break;
+
+		l = strlen(namemaker_name);
+		if (l < 15)
+		{
+			namemaker_name[l] = ascii;
+			namemaker_name[l+1] = 0;
+		}
+		break;
+	}
+}
 //=============================================================================
 /* NET MENU */
 
@@ -981,7 +1157,7 @@ void M_Net_Draw (void)
 }
 
 
-void M_Net_Key (int key, char ascii)
+void M_Net_Key (int key, int ascii)
 {
 again:
 	switch (key)
@@ -1281,7 +1457,7 @@ void M_Options_Draw (void)
 }
 
 
-void M_Options_Key (int key, char ascii)
+void M_Options_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -1301,6 +1477,9 @@ void M_Options_Key (int key, char ascii)
 			Con_ToggleConsole_f ();
 			break;
 		case 2:
+			if (!SCR_ModalMessage("Are you sure you want to reset\nall settings?\n"))
+					break;
+			
 			Cbuf_AddText ("resetall\n"); //johnfitz
 			Cbuf_AddText ("exec default.cfg\n");
 			break;
@@ -1521,7 +1700,7 @@ void M_Keys_Draw (void)
 }
 
 
-void M_Keys_Key (int key, char ascii, qboolean down)
+void M_Keys_Key (int key, int ascii, qboolean down)
 {
 	char	cmd[80];
 	int		keys[2];
@@ -1588,7 +1767,7 @@ void M_Keys_Key (int key, char ascii, qboolean down)
 
 // Baker 3.60 - Added Advanced Settings Menu
 
-#define	PREFERENCES_ITEMS	17 // Baker 3.60 - New Menu
+#define	PREFERENCES_ITEMS	20 // Baker 3.60 - New Menu
 //#define	PREF_SLIDER_RANGE	10 // Baker 3.60 - Needed for pq_maxfps ???
 
 int		preferences_cursor=2;
@@ -1600,7 +1779,7 @@ void M_Menu_Preferences_f (void)
 	m_entersound = true;
 }
 
-
+//extern cvar_t m_directinput; // Baker 3.85 to support dinput switching
 void M_Pref_AdjustSliders (int dir)
 {
 	int newval;
@@ -1813,15 +1992,26 @@ void M_Pref_AdjustSliders (int dir)
 
 			Cvar_Set("pq_drawfps",pq_drawfps.value ? "0" : "1");
 			break;
+
+		case 18:
+
+			Cvar_Set("m_directinput", m_directinput.value ? "0" : "1");
+			break;
+
+		case 19:
+
+			Cvar_Set("in_keymap", in_keymap.value ? "0" : "1");
+			break;
 	}
 }
 
+qboolean IN_DirectInputON(void);
 
 void M_Pref_Options_Draw (void)
 {
 	int i = 32;
 	char *title;
-	float		r;
+//	float		r;
 	qpic_t	*p;
 
 	M_DrawTransPic (16, 4, Draw_CachePic ("gfx/qplaque.lmp") );
@@ -1855,16 +2045,16 @@ void M_Pref_Options_Draw (void)
 	M_Print     (16, i, "     vsync          "); M_Print (220, i, "n/a"); i += 8;	  // 14
 	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, "n/a"); i += 8;	  // 14
 #endif
-	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" ); 	  // 14
-
-
+	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" );  i += 16;	  // 14
+	M_Print     (16, i, "     directinput mouse "); M_Print (220, i, IN_DirectInputON() ? "on" : "off" ); i += 8;
+	M_Print     (16, i, "     keyboard automap"); M_Print (220, i, Key_InternationalON() ? "on" : "off" );
 
 	M_DrawCharacter (200, 32 + preferences_cursor *8, 12+((int)(realtime*4)&1));
 }
 
 
 
-void M_Pref_Options_Key (int key, char ascii)
+void M_Pref_Options_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -1921,6 +2111,14 @@ void M_Pref_Options_Key (int key, char ascii)
 			preferences_cursor = 10;
 	}
 
+	if (preferences_cursor ==17)
+	{
+		if (key == K_UPARROW)
+			preferences_cursor = 16;
+		else
+			preferences_cursor = 18;
+	}
+
 
 }
 
@@ -1941,7 +2139,7 @@ void M_Video_Draw (void)
 }
 
 
-void M_Video_Key (int key, char ascii)
+void M_Video_Key (int key, int ascii)
 {
 	(*vid_menukeyfn) (key);
 }
@@ -1988,7 +2186,7 @@ void M_Help_Draw (void)
 }
 
 
-void M_Help_Key (int key, char ascii)
+void M_Help_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -2079,7 +2277,7 @@ void M_Menu_Quit_f (void)
 }
 
 
-void M_Quit_Key (int key, char ascii)
+void M_Quit_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -2278,7 +2476,7 @@ void M_SerialConfig_Draw (void)
 }
 
 
-void M_SerialConfig_Key (int key, char ascii)
+void M_SerialConfig_Key (int key, int ascii)
 {
 	int		l;
 
@@ -2504,7 +2702,7 @@ void M_ModemConfig_Draw (void)
 }
 
 
-void M_ModemConfig_Key (int key, char ascii)
+void M_ModemConfig_Key (int key, int ascii)
 {
 	int		l;
 
@@ -2706,7 +2904,7 @@ void M_LanConfig_Draw (void)
 }
 
 
-void M_LanConfig_Key (int key, char ascii)
+void M_LanConfig_Key (int key, int ascii)
 {
 	int		l;
 
@@ -3212,7 +3410,7 @@ void M_NetStart_Change (int dir)
 	}
 }
 
-void M_GameOptions_Key (int key, char ascii)
+void M_GameOptions_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -3329,7 +3527,7 @@ void M_Search_Draw (void)
 }
 
 
-void M_Search_Key (int key, char ascii)
+void M_Search_Key (int key, int ascii)
 {
 }
 
@@ -3392,7 +3590,7 @@ void M_ServerList_Draw (void)
 }
 
 
-void M_ServerList_Key (int key, char ascii)
+void M_ServerList_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -3450,6 +3648,7 @@ void M_Init (void)
 	Cmd_AddCommand ("menu_save", M_Menu_Save_f);
 	Cmd_AddCommand ("menu_multiplayer", M_Menu_MultiPlayer_f);
 	Cmd_AddCommand ("menu_setup", M_Menu_Setup_f);
+	Cmd_AddCommand ("menu_namemaker", M_Menu_NameMaker_f);
 	Cmd_AddCommand ("menu_options", M_Menu_Options_f);
 	Cmd_AddCommand ("menu_keys", M_Menu_Keys_f);
 	Cmd_AddCommand ("menu_preferences", M_Menu_Preferences_f);
@@ -3512,6 +3711,10 @@ void M_Draw (void)
 
 	case m_setup:
 		M_Setup_Draw ();
+		break;
+
+	case m_namemaker:
+		M_NameMaker_Draw ();
 		break;
 
 	case m_net:
@@ -3580,7 +3783,7 @@ void M_Draw (void)
 }
 
 
-void M_Keydown (int key, char ascii, qboolean down)
+void M_Keydown (int key, int ascii, qboolean down)
 {
 	switch (m_state)
 	{
@@ -3609,6 +3812,9 @@ void M_Keydown (int key, char ascii, qboolean down)
 
 	case m_setup:
 		M_Setup_Key (key, ascii);
+		return;
+	case m_namemaker:
+		M_NameMaker_Key (key, ascii);
 		return;
 
 	case m_net:

@@ -733,7 +733,7 @@ CL_ParseProQuakeMessage
 */
 void CL_ParseProQuakeMessage (void)
 {
-	int cmd, i, j;
+	int cmd, i /*, j*/;
 	int team, frags, shirt, ping;
 
 	MSG_ReadByte();

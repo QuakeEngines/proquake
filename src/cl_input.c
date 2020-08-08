@@ -205,7 +205,7 @@ IN_BestWeapon
 */
 void IN_BestWeapon (void)
 {
-	int i, impulse, bit;
+	int i, impulse /*,bit*/;
 
 	for (i = 1 ; i < Cmd_Argc() ; i++)
 	{

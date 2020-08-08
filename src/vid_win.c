@@ -60,14 +60,14 @@ viddef_t	vid;				// global video state
 #define MODE_WINDOWED			0
 #define MODE_SETTABLE_WINDOW	2
 #define NO_MODE					(MODE_WINDOWED - 1)
-#define MODE_FULLSCREEN_DEFAULT	(MODE_WINDOWED + 3)
+#define MODE_FULLSCREEN_DEFAULT	(MODE_WINDOWED + 3)  
 
 // Note that 0 is MODE_WINDOWED
 cvar_t		vid_mode = {"vid_mode","0", false};
 // Note that 0 is MODE_WINDOWED
 cvar_t		_vid_default_mode = {"_vid_default_mode","0", true};
 // Note that 3 is MODE_FULLSCREEN_DEFAULT  Baker 3.80x -- now it is 8
-cvar_t		_vid_default_mode_win = {"_vid_default_mode_win","8", true};
+cvar_t		_vid_default_mode_win = {"_vid_default_mode_win","3", true};  // Baker 3.85: reverted this (from 8) as it inteferes with saving
 cvar_t		vid_wait = {"vid_wait","0"};
 cvar_t		vid_nopageflip = {"vid_nopageflip","0", true};
 cvar_t		_vid_wait_override = {"_vid_wait_override", "0", true};
@@ -2842,6 +2842,16 @@ LONG WINAPI MainWndProc (
 
 				if (wParam & MK_MBUTTON)
 					temp |= 4;
+
+
+				// Baker 3.85: wqpro was missing this causing buttons 5,6,7,8 to not fire
+
+				if (wParam & MK_XBUTTON1)
+					temp |= 8;
+	
+				if (wParam & MK_XBUTTON2)
+					temp |= 16;
+
 
 				IN_MouseEvent (temp);
 			}

@@ -1099,7 +1099,7 @@ void Host_Init (quakeparms_t *parms)
 	host_hunklevel = Hunk_LowMark ();
 
 	host_initialized = true;
-	
+	Con_Printf ("Host Initialized\n");
 	Sys_Printf ("========Quake Initialized=========\n");	
 }
 

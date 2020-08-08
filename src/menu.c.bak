@@ -31,7 +31,29 @@ extern cvar_t   _windowed_mouse;    /* CSR */
 void (*vid_menudrawfn)(void);
 void (*vid_menukeyfn)(int key);
 
-enum {m_none, m_main, m_singleplayer, m_load, m_save, m_multiplayer, m_setup, m_net, m_options, m_video, m_keys, m_help, m_quit, m_serialconfig, m_modemconfig, m_lanconfig, m_gameoptions, m_search, m_slist} m_state;
+enum {
+	m_none, 
+	m_main, 
+	m_singleplayer, 
+	m_load, 
+	m_save, 
+	m_multiplayer, 
+	m_setup, 
+	m_net, 
+	m_options, 
+	m_video, 
+	m_keys, 
+	m_help, 
+	m_quit, 
+	m_serialconfig, 
+	m_modemconfig, 
+	m_lanconfig, 
+	m_gameoptions, 
+	m_search, 
+	m_slist, 
+	m_preferences,
+	m_namemaker
+} m_state;
 
 void M_Menu_Main_f (void);
 	void M_Menu_SinglePlayer_f (void);
@@ -39,9 +61,11 @@ void M_Menu_Main_f (void);
 		void M_Menu_Save_f (void);
 	void M_Menu_MultiPlayer_f (void);
 		void M_Menu_Setup_f (void);
+void M_Menu_NameMaker_f (void);//JQ1.5dev
 		void M_Menu_Net_f (void);
 	void M_Menu_Options_f (void);
 		void M_Menu_Keys_f (void);
+		void M_Menu_Preferences_f (void);
 		void M_Menu_Video_f (void);
 	void M_Menu_Help_f (void);
 	void M_Menu_Quit_f (void);
@@ -58,6 +82,7 @@ void M_Main_Draw (void);
 		void M_Save_Draw (void);
 	void M_MultiPlayer_Draw (void);
 		void M_Setup_Draw (void);
+void M_NameMaker_Draw (void);//JQ1.5Dev
 		void M_Net_Draw (void);
 	void M_Options_Draw (void);
 		void M_Keys_Draw (void);
@@ -71,24 +96,25 @@ void M_GameOptions_Draw (void);
 void M_Search_Draw (void);
 void M_ServerList_Draw (void);
 
-void M_Main_Key (int key);
-	void M_SinglePlayer_Key (int key);
-		void M_Load_Key (int key);
-		void M_Save_Key (int key);
-	void M_MultiPlayer_Key (int key);
-		void M_Setup_Key (int key);
-		void M_Net_Key (int key);
-	void M_Options_Key (int key);
-		void M_Keys_Key (int key);
-		void M_Video_Key (int key);
-	void M_Help_Key (int key);
-	void M_Quit_Key (int key);
-void M_SerialConfig_Key (int key);
-	void M_ModemConfig_Key (int key);
-void M_LanConfig_Key (int key);
-void M_GameOptions_Key (int key);
-void M_Search_Key (int key);
-void M_ServerList_Key (int key);
+void M_Main_Key (int key, int ascii);
+	void M_SinglePlayer_Key (int key, int ascii);
+		void M_Load_Key (int key, int ascii);
+		void M_Save_Key (int key, int ascii);
+	void M_MultiPlayer_Key (int key, int ascii);
+		void M_Setup_Key (int key, int ascii);
+		void M_Net_Key (int key, int ascii);
+	void M_Options_Key (int key, int ascii);
+		void M_Keys_Key (int key, int ascii, qboolean down);
+		void M_Video_Key (int key, int ascii);
+	void M_Help_Key (int key, int ascii);
+	void M_Quit_Key (int key, int ascii);
+void M_SerialConfig_Key (int key, int ascii);
+	void M_ModemConfig_Key (int key, int ascii);
+	void M_NameMaker_Key (int key, int ascii);
+void M_LanConfig_Key (int key, int ascii);
+void M_GameOptions_Key (int key, int ascii);
+void M_Search_Key (int key, int ascii);
+void M_ServerList_Key (int key, int ascii);
 
 qboolean	m_entersound;		// play after drawing a frame, so caching
 								// won't disrupt the sound
@@ -309,7 +335,7 @@ void M_Main_Draw (void)
 }
 
 
-void M_Main_Key (int key)
+void M_Main_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -392,7 +418,7 @@ void M_SinglePlayer_Draw (void)
 }
 
 
-void M_SinglePlayer_Key (int key)
+void M_SinglePlayer_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -532,9 +558,9 @@ void M_Save_Draw (void)
 }
 
 
-void M_Load_Key (int k)
+void M_Load_Key (int key, int ascii)
 {
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_SinglePlayer_f ();
@@ -574,9 +600,9 @@ void M_Load_Key (int k)
 }
 
 
-void M_Save_Key (int k)
+void M_Save_Key (int key, int ascii)
 {
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_SinglePlayer_f ();
@@ -641,7 +667,7 @@ void M_MultiPlayer_Draw (void)
 }
 
 
-void M_MultiPlayer_Key (int key)
+void M_MultiPlayer_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -685,25 +711,25 @@ void M_MultiPlayer_Key (int key)
 //=============================================================================
 /* SETUP MENU */
 
-int		setup_cursor = 4;
-int		setup_cursor_table[] = {40, 56, 80, 104, 140};
+int		setup_cursor = 5;
+int	setup_cursor_table[] = {40, 56, 80, 104, 128, 152};
+char	namemaker_name[16]; // Baker 3.83: Name maker
+char	setup_hostname[16], setup_myname[16];
+int	setup_oldtop, setup_oldbottom, setup_top, setup_bottom;
 
-char	setup_hostname[16];
-char	setup_myname[16];
-int		setup_oldtop;
-int		setup_oldbottom;
-int		setup_top;
-int		setup_bottom;
-
-#define	NUM_SETUP_CMDS	5
+#define	NUM_SETUP_CMDS	6
 
 void M_Menu_Setup_f (void)
 {
 	key_dest = key_menu;
 	m_state = m_setup;
 	m_entersound = true;
-	Q_strcpy(setup_myname, cl_name.string);
-	Q_strcpy(setup_hostname, hostname.string);
+
+	Q_strncpyz (setup_hostname, hostname.string, sizeof(setup_hostname));
+	
+	if (!(strlen(setup_myname)))
+	Q_strncpyz (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
+	
 	setup_top = setup_oldtop = ((int)cl_color.value) >> 4;
 	setup_bottom = setup_oldbottom = ((int)cl_color.value) & 15;
 }
@@ -723,19 +749,21 @@ void M_Setup_Draw (void)
 
 	M_Print (64, 56, "Your name");
 	M_DrawTextBox (160, 48, 16, 1);
-	M_Print (168, 56, setup_myname);
+	M_PrintWhite (168, 56, setup_myname); // Baker 3.83: Draw it correctly!
 
-	M_Print (64, 80, "Shirt color");
-	M_Print (64, 104, "Pants color");
+	M_Print (64, 80, "Name Maker");
 
-	M_DrawTextBox (64, 140-8, 14, 1);
-	M_Print (72, 140, "Accept Changes");
+	M_Print (64, 104, "Shirt color");
+	M_Print (64, 128, "Pants color");
 
-	p = Draw_CachePic ("gfx/bigbox.lmp");
-	M_DrawTransPic (160, 64, p);
+	M_DrawTextBox (64, 152-8, 14, 1);
+	M_Print (72, 152, "Accept Changes");
+
+	//p = Draw_CachePic ("gfx/bigbox.lmp");
+	M_DrawTextBox (160, 64, 8, 8);
 	p = Draw_CachePic ("gfx/menuplyr.lmp");
 	M_BuildTranslationTable(setup_top*16, setup_bottom*16);
-	M_DrawTransPicTranslate (172, 72, p);
+	M_DrawTransPicTranslate (176, 76, p);
 
 	M_DrawCharacter (56, setup_cursor_table [setup_cursor], 12+((int)(realtime*4)&1));
 
@@ -747,13 +775,14 @@ void M_Setup_Draw (void)
 }
 
 
-void M_Setup_Key (int k)
+void M_Setup_Key (int key, int ascii)
 {
 	int			l;
 
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
+		Q_strncpyz (setup_myname, cl_name.string, sizeof(setup_myname));//R00k
 		M_Menu_MultiPlayer_f ();
 		break;
 
@@ -771,13 +800,23 @@ void M_Setup_Key (int k)
 			setup_cursor = 0;
 		break;
 
+	case K_HOME:
+		S_LocalSound ("misc/menu1.wav");
+		setup_cursor = 0;
+		break;
+
+	case K_END:
+		S_LocalSound ("misc/menu1.wav");
+		setup_cursor = NUM_SETUP_CMDS - 1;
+		break;
+
 	case K_LEFTARROW:
 		if (setup_cursor < 2)
 			return;
 		S_LocalSound ("misc/menu3.wav");
-		if (setup_cursor == 2)
-			setup_top = setup_top - 1;
 		if (setup_cursor == 3)
+			setup_top = setup_top - 1;
+		if (setup_cursor == 4)
 			setup_bottom = setup_bottom - 1;
 		break;
 	case K_RIGHTARROW:
@@ -785,25 +824,33 @@ void M_Setup_Key (int k)
 			return;
 forward:
 		S_LocalSound ("misc/menu3.wav");
-		if (setup_cursor == 2)
-			setup_top = setup_top + 1;
 		if (setup_cursor == 3)
+			setup_top = setup_top + 1;
+		if (setup_cursor == 4)
 			setup_bottom = setup_bottom + 1;
 		break;
 
+	case K_SPACE:
 	case K_ENTER:
 		if (setup_cursor == 0 || setup_cursor == 1)
 			return;
 
-		if (setup_cursor == 2 || setup_cursor == 3)
+		if (setup_cursor == 3 || setup_cursor == 4)
 			goto forward;
 
-		// setup_cursor == 4 (OK)
-		if (Q_strcmp(cl_name.string, setup_myname) != 0)
+		if (setup_cursor == 2)
+		{
+			m_entersound = true;
+			M_Menu_NameMaker_f ();
+			break;
+		}
+
+		// setup_cursor == 5 (OK)
+//		if (Q_strcmp(cl_name.string, setup_myname) != 0)
 			Cbuf_AddText ( va ("name \"%s\"\n", setup_myname) );
-		if (Q_strcmp(hostname.string, setup_hostname) != 0)
+//		if (Q_strcmp(hostname.string, setup_hostname) != 0)
 			Cvar_Set("hostname", setup_hostname);
-		if (setup_top != setup_oldtop || setup_bottom != setup_oldbottom)
+//		if (setup_top != setup_oldtop || setup_bottom != setup_oldbottom)
 			Cbuf_AddText( va ("color %i %i\n", setup_top, setup_bottom) );
 		m_entersound = true;
 		M_Menu_MultiPlayer_f ();
@@ -824,7 +871,7 @@ forward:
 		break;
 
 	default:
-		if (k < 32 || k > 127)
+		if (ascii < 32 || ascii > 127)
 			break;
 		if (setup_cursor == 0)
 		{
@@ -832,7 +879,7 @@ forward:
 			if (l < 15)
 			{
 				setup_hostname[l+1] = 0;
-				setup_hostname[l] = k;
+				setup_hostname[l] = ascii;
 			}
 		}
 		if (setup_cursor == 1)
@@ -841,7 +888,7 @@ forward:
 			if (l < 15)
 			{
 				setup_myname[l+1] = 0;
-				setup_myname[l] = k;
+				setup_myname[l] = ascii;
 			}
 		}
 	}
@@ -856,6 +903,136 @@ forward:
 		setup_bottom = 13;
 }
 
+//=============================================================================
+/* NAME MAKER MENU */ //From: JoeQuake 1.5Dev!!
+//=============================================================================
+int	namemaker_cursor_x, namemaker_cursor_y;
+#define	NAMEMAKER_TABLE_SIZE	16
+
+void M_Menu_NameMaker_f (void)
+{
+	key_dest = key_menu;
+	m_state = m_namemaker;
+	m_entersound = true;
+	Q_strncpyz (namemaker_name, setup_myname, sizeof(namemaker_name));
+}
+
+void M_NameMaker_Draw (void)
+{
+	int	x, y;
+
+	M_Print (48, 16, "Your name");
+	M_DrawTextBox (120, 8, 16, 1);
+	M_PrintWhite (128, 16, namemaker_name);
+
+	for (y=0 ; y<NAMEMAKER_TABLE_SIZE ; y++)
+		for (x=0 ; x<NAMEMAKER_TABLE_SIZE ; x++)
+			M_DrawCharacter (32 + (16 * x), 40 + (8 * y), NAMEMAKER_TABLE_SIZE * y + x);
+
+	if (namemaker_cursor_y == NAMEMAKER_TABLE_SIZE)
+		M_DrawCharacter (128, 184, 12 + ((int)(realtime*4)&1));
+	else
+		M_DrawCharacter (24 + 16*namemaker_cursor_x, 40 + 8*namemaker_cursor_y, 12 + ((int)(realtime*4)&1));
+
+	M_DrawTextBox (136, 176, 2, 1);
+	M_Print (144, 184, "OK");
+}
+
+void Key_Extra (int *key);
+void M_NameMaker_Key (int key, int ascii)
+{
+	int	l;
+
+	switch (key)
+	{
+	case K_ESCAPE:
+		M_Menu_Setup_f ();
+		break;
+
+	case K_UPARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y--;
+		if (namemaker_cursor_y < 0)
+			namemaker_cursor_y = NAMEMAKER_TABLE_SIZE;
+		break;
+
+	case K_DOWNARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y++;
+		if (namemaker_cursor_y > NAMEMAKER_TABLE_SIZE)
+			namemaker_cursor_y = 0;
+		break;
+
+	case K_PGUP:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y = 0;
+		break;
+
+	case K_PGDN:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_y = NAMEMAKER_TABLE_SIZE;
+		break;
+
+	case K_LEFTARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x--;
+		if (namemaker_cursor_x < 0)
+			namemaker_cursor_x = NAMEMAKER_TABLE_SIZE - 1;
+		break;
+
+	case K_RIGHTARROW:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x++;
+		if (namemaker_cursor_x >= NAMEMAKER_TABLE_SIZE)
+			namemaker_cursor_x = 0;
+		break;
+
+	case K_HOME:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x = 0;
+		break;
+
+	case K_END:
+		S_LocalSound ("misc/menu1.wav");
+		namemaker_cursor_x = NAMEMAKER_TABLE_SIZE - 1;
+		break;
+
+	case K_BACKSPACE:
+		if ((l = strlen(namemaker_name)))
+			namemaker_name[l-1] = 0;
+		break;
+
+	case K_SPACE:
+	case K_ENTER:
+		if (namemaker_cursor_y == NAMEMAKER_TABLE_SIZE)
+		{
+			Q_strncpyz (setup_myname, namemaker_name, sizeof(setup_myname));
+			M_Menu_Setup_f ();
+		}
+		else
+		{
+			l = strlen(namemaker_name);
+			if (l < 15)
+			{
+				namemaker_name[l] = NAMEMAKER_TABLE_SIZE * namemaker_cursor_y + namemaker_cursor_x;
+				namemaker_name[l+1] = 0;
+			}
+		}
+		break;
+
+	default:
+		if (ascii < 32 || ascii > 127)
+			break;
+
+		l = strlen(namemaker_name);
+		if (l < 15)
+		{
+			namemaker_name[l] = ascii;
+			namemaker_name[l+1] = 0;
+		}
+		break;
+	}
+}
 //=============================================================================
 /* NET MENU */
 
@@ -897,7 +1074,7 @@ void M_Menu_Net_f (void)
 	if (m_net_cursor >= m_net_items)
 		m_net_cursor = 0;
 	m_net_cursor--;
-	M_Net_Key (K_DOWNARROW);
+	M_Net_Key (K_DOWNARROW,0);
 }
 
 
@@ -980,10 +1157,10 @@ void M_Net_Draw (void)
 }
 
 
-void M_Net_Key (int k)
+void M_Net_Key (int key, int ascii)
 {
 again:
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_MultiPlayer_f ();
@@ -1043,9 +1220,9 @@ again:
 
 // JPG 1.05 - changed from #ifdef _WIND32 by CSR
 #if defined(_WIN32) || defined(X11) || defined(_BSD)  /* CSR */
-#define	OPTIONS_ITEMS	14
+#define	OPTIONS_ITEMS	16 // Baker 3.60 - New Menu
 #else
-#define	OPTIONS_ITEMS	13
+#define	OPTIONS_ITEMS	15 // Baker 3.60 - New Menu
 #endif
 
 #define	SLIDER_RANGE	10
@@ -1059,7 +1236,7 @@ void M_Menu_Options_f (void)
 	m_entersound = true;
 
 #ifdef _WIN32
-	if ((options_cursor == 13) && (modestate != MS_WINDOWED))
+	if ((options_cursor == 15) && (modestate != MS_WINDOWED)) // Baker 3.60 - New menu items
 	{
 		options_cursor = 0;
 	}
@@ -1081,7 +1258,15 @@ void M_AdjustSliders (int dir)
 			scr_viewsize.value = 120;
 		Cvar_SetValue ("viewsize", scr_viewsize.value);
 		break;
-	case 4:	// gamma
+	case 4:	// Baker 3.60 --- fov size
+		scr_fov.value += dir * 1;
+		if (scr_fov.value < 90)
+			scr_fov.value = 90;
+		if (scr_fov.value > 110) // Baker 3.60 -- Will increase range after ProQuake FOV bug is fixed
+			scr_fov.value = 110;  // Baker 3.60 -- Will increase range after ProQuake FOV bug is fixed
+		Cvar_SetValue ("fov", scr_fov.value);
+		break;
+	case 5:	// gamma
 		v_gamma.value -= dir * 0.05;
 		if (v_gamma.value < 0.5)
 			v_gamma.value = 0.5;
@@ -1089,15 +1274,15 @@ void M_AdjustSliders (int dir)
 			v_gamma.value = 1;
 		Cvar_SetValue ("gamma", v_gamma.value);
 		break;
-	case 5:	// mouse speed
-		sensitivity.value += dir * 0.5;
+	case 6:	// mouse speed
+		sensitivity.value += dir * 1;
 		if (sensitivity.value < 1)
 			sensitivity.value = 1;
-		if (sensitivity.value > 11)
-			sensitivity.value = 11;
+		if (sensitivity.value > 21)
+			sensitivity.value = 21; // Baker 3.60 increased top range to 21 from 11
 		Cvar_SetValue ("sensitivity", sensitivity.value);
 		break;
-	case 6:	// music volume
+	case 7:	// music volume
 #ifdef _WIN32
 		bgmvolume.value += dir * 1.0;
 #else
@@ -1109,7 +1294,7 @@ void M_AdjustSliders (int dir)
 			bgmvolume.value = 1;
 		Cvar_SetValue ("bgmvolume", bgmvolume.value);
 		break;
-	case 7:	// sfx volume
+	case 8:	// sfx volume
 		volume.value += dir * 0.1;
 		if (volume.value < 0)
 			volume.value = 0;
@@ -1118,34 +1303,47 @@ void M_AdjustSliders (int dir)
 		Cvar_SetValue ("volume", volume.value);
 		break;
 
-	case 8:	// allways run
-		if (cl_forwardspeed.value > 200)
-		{
+	case 9:	// always run
+		if (cl_upspeed.value > 200) {
+			// Maxxed to OFF
 			Cvar_SetValue ("cl_forwardspeed", 200);
 			Cvar_SetValue ("cl_backspeed", 200);
-		}
-		else
-		{
-			Cvar_SetValue ("cl_forwardspeed", 400);
-			Cvar_SetValue ("cl_backspeed", 400);
+			Cvar_SetValue ("cl_sidespeed", 350);    // Baker 3.60 - added 350 is the default
+			Cvar_SetValue ("cl_upspeed", 200);	// Baker 3.60 - added 350 is the default
+		} else if (cl_forwardspeed.value > 200) {
+			// Classic to Maxxed
+			Cvar_SetValue ("cl_forwardspeed", 999); // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_backspeed", 999);    // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_sidespeed", 999);    // Baker 3.60 - added
+			Cvar_SetValue ("cl_upspeed", 999);		// Baker 3.60 - added
+		} else {
+			// OFF to Classic
+			Cvar_SetValue ("cl_forwardspeed", 400); // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_backspeed", 400);    // Baker 3.60 - previously 400
+			Cvar_SetValue ("cl_sidespeed", 350);    // Baker 3.60 - added
+			Cvar_SetValue ("cl_upspeed", 200);		// Baker 3.60 - added
 		}
 		break;
 
-	case 9:	// invert mouse
+	case 10:	// freelook
+		Cvar_SetValue ("freelook", !freelook.value);
+		break;
+
+	case 11:	// invert mouse
 		Cvar_SetValue ("m_pitch", -m_pitch.value);
 		break;
 
-	case 10:	// lookspring
+	case 12:	// lookspring
 		Cvar_SetValue ("lookspring", !lookspring.value);
 		break;
 
-	case 11:	// lookstrafe
+	/* case 13:	// lookstrafe
 		Cvar_SetValue ("lookstrafe", !lookstrafe.value);
-		break;
+		break; // Baker 3.60 - Moved to preferences menu */
 
 // JPG 1.05 - changed from #ifdef _WIND32 by CSR
 #if defined(_WIN32) || defined(X11) || defined(_BSD)  /* CSR */
-	case 13:	// _windowed_mouse
+	case 15:	// _windowed_mouse
 		Cvar_SetValue ("_windowed_mouse", !_windowed_mouse.value);
 		break;
 #endif
@@ -1199,36 +1397,48 @@ void M_Options_Draw (void)
 	r = (scr_viewsize.value - 30) / (120 - 30);
 	M_DrawSlider (220, 56, r);
 
-	M_Print (16, 64, "            Brightness");
-	r = (1.0 - v_gamma.value) / 0.5;
+	M_Print (16, 64, "         Field of view");
+	r = (scr_fov.value - 90) / (110 - 90);
 	M_DrawSlider (220, 64, r);
 
-	M_Print (16, 72, "           Mouse Speed");
-	r = (sensitivity.value - 1)/10;
+	M_Print (16, 72, "            Brightness");
+	r = (1.0 - v_gamma.value) / 0.5;
 	M_DrawSlider (220, 72, r);
 
-	M_Print (16, 80, "       CD Music Volume");
-	r = bgmvolume.value;
+	M_Print (16, 80, "           Mouse Speed");
+	r = (sensitivity.value - 1)/20;
 	M_DrawSlider (220, 80, r);
 
-	M_Print (16, 88, "          Sound Volume");
-	r = volume.value;
+	M_Print (16, 88, "       CD Music Volume");
+	r = bgmvolume.value;
 	M_DrawSlider (220, 88, r);
 
-	M_Print (16, 96,  "            Always Run");
-	M_DrawCheckbox (220, 96, cl_forwardspeed.value > 200);
+	M_Print (16, 96, "          Sound Volume");
+	r = volume.value;
+	M_DrawSlider (220, 96, r);
 
-	M_Print (16, 104, "          Invert Mouse");
-	M_DrawCheckbox (220, 104, m_pitch.value < 0);
+	M_Print (16, 104,  "            Always Run");
+	//M_DrawCheckbox (220, 104, cl_forwardspeed.value > 200);
+	M_Print (220, 104, cl_upspeed.value > 200 ? "maximum" : cl_forwardspeed.value > 200 ? "on" : "off");
 
-	M_Print (16, 112, "            Lookspring");
-	M_DrawCheckbox (220, 112, lookspring.value);
 
-	M_Print (16, 120, "            Lookstrafe");
-	M_DrawCheckbox (220, 120, lookstrafe.value);
+
+	// Baker 3.60 - the "freelook" standard variable in Quake2, Quake3, etc.
+	M_Print (16, 112, "            Mouse Look");
+	M_DrawCheckbox (220, 112, freelook.value);
+	// End
+
+	M_Print (16, 120, "          Invert Mouse");
+	M_DrawCheckbox (220, 120, m_pitch.value < 0);
+
+	M_Print (16, 128, "            Lookspring");
+	M_DrawCheckbox (220, 128, lookspring.value);
+
+	M_Print (16, 136, "         Video Options");
+	//M_DrawCheckbox (220, 136, lookstrafe.value); // Baker 3.60 - Lookstrafe is now in Preferences
 
 	if (vid_menudrawfn)
-		M_Print (16, 128, "         Video Options");
+	M_Print (16, 144, "     Advanced Settings");
 
 #ifdef _WIN32
 	if (modestate == MS_WINDOWED)
@@ -1237,8 +1447,8 @@ void M_Options_Draw (void)
 #if defined(_WIN32) || defined(X11) || defined(_BSD)	/* JPG 1.05 by CSR */
 
 	{
-		M_Print (16, 136, "             Use Mouse");
-		M_DrawCheckbox (220, 136, _windowed_mouse.value);
+		M_Print (16, 152, "             Use Mouse");
+		M_DrawCheckbox (220, 152, _windowed_mouse.value);
 	}
 #endif
 
@@ -1247,9 +1457,9 @@ void M_Options_Draw (void)
 }
 
 
-void M_Options_Key (int k)
+void M_Options_Key (int key, int ascii)
 {
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_Main_f ();
@@ -1267,10 +1477,14 @@ void M_Options_Key (int k)
 			Con_ToggleConsole_f ();
 			break;
 		case 2:
+			Cbuf_AddText ("resetall\n"); //johnfitz
 			Cbuf_AddText ("exec default.cfg\n");
 			break;
-		case 12:
+		case 13:
 			M_Menu_Video_f ();
+			break;
+		case 14:
+			M_Menu_Preferences_f ();
 			break;
 		default:
 			M_AdjustSliders (1);
@@ -1301,16 +1515,16 @@ void M_Options_Key (int k)
 		break;
 	}
 
-	if (options_cursor == 12 && vid_menudrawfn == NULL)
+	if (options_cursor == 14 && vid_menudrawfn == NULL)
 	{
-		if (k == K_UPARROW)
-			options_cursor = 11;
+		if (key == K_UPARROW)
+			options_cursor = 13;
 		else
 
 	// JPG 1.05 - patch by CSR
 #if defined(X11) || defined(_BSD)	/* CSR - for _windowed_mouse */
-		if (k == K_DOWNARROW)		/* CSR */
-			options_cursor = 13;	/* CSR */
+		if (key == K_DOWNARROW)		/* CSR */
+			options_cursor = 15;	/* CSR */
 		else						/* CSR */
 #endif								/* CSR */
 
@@ -1318,10 +1532,10 @@ void M_Options_Key (int k)
 	}
 
 #ifdef _WIN32
-	if ((options_cursor == 13) && (modestate != MS_WINDOWED))
+	if ((options_cursor == 15) && (modestate != MS_WINDOWED))
 	{
-		if (k == K_UPARROW)
-			options_cursor = 12;
+		if (key == K_UPARROW)
+			options_cursor = 14;
 		else
 			options_cursor = 0;
 	}
@@ -1331,7 +1545,28 @@ void M_Options_Key (int k)
 //=============================================================================
 /* KEYS MENU */
 
-char *bindnames[][2] =
+char *bindnames[][2] = // Baker 3.60 - more sensible customize controls, same options just organized better
+{
+{"+attack", 		"attack"},
+{"+jump", 			"jump"},
+{"+forward", 		"move forward"},
+{"+back", 			"move back"},
+{"+moveleft", 		"move left"},
+{"+moveright", 		"move right"},
+{"+moveup", 		"swim up"},
+{"+movedown", 		"swim down"},
+{"impulse 10", 		"change weapon"},
+{"+speed", 			"run"},
+{"+left", 			"turn left"},
+{"+right", 			"turn right"},
+{"+lookup", 		"look up"},
+{"+lookdown", 		"look down"},
+{"+mlook", 			"mouse look"},
+{"+klook", 			"keyboard look"},
+{"+strafe",			"sidestep"},
+{"centerview",		"center view"}
+};
+/* Baker 3.60 -- Old menu
 {
 {"+attack", 		"attack"},
 {"impulse 10", 		"change weapon"},
@@ -1351,7 +1586,7 @@ char *bindnames[][2] =
 {"+klook", 			"keyboard look"},
 {"+moveup",			"swim up"},
 {"+movedown",		"swim down"}
-};
+}; */
 
 #define	NUMCOMMANDS	(sizeof(bindnames)/sizeof(bindnames[0]))
 
@@ -1462,7 +1697,7 @@ void M_Keys_Draw (void)
 }
 
 
-void M_Keys_Key (int k)
+void M_Keys_Key (int key, int ascii, qboolean down)
 {
 	char	cmd[80];
 	int		keys[2];
@@ -1470,13 +1705,15 @@ void M_Keys_Key (int k)
 	if (bind_grab)
 	{	// defining a key
 		S_LocalSound ("misc/menu1.wav");
-		if (k == K_ESCAPE)
+		if (key == K_ESCAPE)
 		{
 			bind_grab = false;
 		}
-		else if (k != '`')
+		else if (ascii != '`')
 		{
-			sprintf (cmd, "bind \"%s\" \"%s\"\n", Key_KeynumToString (k), bindnames[keys_cursor][0]);
+			//Con_Printf("Trying to bind %d",key);
+			//Con_Printf("name is  %s",Key_KeynumToString (key));
+			sprintf (cmd, "bind \"%s\" \"%s\"\n", Key_KeynumToString (key), bindnames[keys_cursor][0]);
 			Cbuf_InsertText (cmd);
 		}
 
@@ -1484,7 +1721,7 @@ void M_Keys_Key (int k)
 		return;
 	}
 
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_Options_f ();
@@ -1523,6 +1760,361 @@ void M_Keys_Key (int k)
 }
 
 //=============================================================================
+/* ADVANCED SETTINGS MENU */
+
+// Baker 3.60 - Added Advanced Settings Menu
+
+#define	PREFERENCES_ITEMS	19 // Baker 3.60 - New Menu
+//#define	PREF_SLIDER_RANGE	10 // Baker 3.60 - Needed for pq_maxfps ???
+
+int		preferences_cursor=2;
+
+void M_Menu_Preferences_f (void)
+{
+	key_dest = key_menu;
+	m_state = m_preferences;  // Baker 3.60 - we are in the preferences menu
+	m_entersound = true;
+}
+
+//extern cvar_t m_directinput; // Baker 3.85 to support dinput switching
+void M_Pref_AdjustSliders (int dir)
+{
+	int newval;
+
+	S_LocalSound ("misc/menu3.wav");
+
+	// Baker 3.61 - Made menu bi-directional
+	switch (preferences_cursor)
+	{
+		case 2:	// crosshair  off | on | centered
+
+			if (!crosshair.value)
+				newval = (dir<0) ? 3 : 2;
+			else if (!cl_crosshaircentered.value)
+				newval = (dir<0) ? 1 : 3;
+			else
+				newval = (dir<0) ? 2 : 1;
+
+			switch (newval)
+			{
+				case 1:
+					Cvar_Set("crosshair", "0");
+					Cvar_Set("cl_crosshaircentered", "0");
+					break;
+
+				case 2:
+					Cvar_Set("crosshair", "1");
+					Cvar_Set("cl_crosshaircentered", "0");
+					break;
+
+				case 3:
+					Cvar_Set("crosshair", "1");
+					Cvar_Set("cl_crosshaircentered", "1");
+					break;
+			}
+
+			break;
+
+		case 3:	// draw weapon  on | off | always
+
+#ifdef GLQUAKE
+			if (!r_drawviewmodel.value)
+				newval = (dir<0) ? 1 : 3;
+			else if (gl_ringalpha.value < 1)
+				newval = (dir<0) ? 2 : 1;
+			else
+				newval = (dir<0) ? 3 : 2;
+
+			switch (newval)
+			{
+				case 1:
+					Cvar_Set("gl_ringalpha", "1");
+					Cvar_Set("r_drawviewmodel", "1");
+					break;
+
+				case 2:
+					Cvar_Set("gl_ringalpha", "1");
+					Cvar_Set("r_drawviewmodel", "0");
+					break;
+
+				case 3:
+					Cvar_Set("r_drawviewmodel", "1");
+					Cvar_Set("gl_ringalpha", "0.4");
+					break;
+			}
+#else
+			Cvar_Set("r_drawviewmodel",r_drawviewmodel.value ? "0" : "1");
+#endif
+
+			break;
+
+		case 4:
+
+			Cvar_Set("r_truegunangle",r_truegunangle.value ? "0" : "1");
+			break;
+
+		case 5:
+
+			// FULL | LITE | ONLY DAMAGE | ALL OFF
+			if (pq_suitblend.value >= 1)
+				newval = 2;
+			else 
+				newval = 1;
+
+
+			switch (newval)
+			{
+				case 1:
+					// Must be off, set to Quakedefaults
+					Cvar_Set("r_waterwarp","1");
+					Cvar_Set("pq_ringblend","1");
+					Cvar_Set("pq_quadblend","1");
+					Cvar_Set("pq_pentblend","1");
+					Cvar_Set("pq_suitblend","1");
+					Cvar_Set("pq_waterblend","1");
+					break;
+
+				case 2:
+					// FULL to LITE
+					Cvar_Set("r_waterwarp","0");
+					Cvar_Set("pq_ringblend","0");
+					Cvar_Set("pq_quadblend","0.3");
+					Cvar_Set("pq_pentblend","0.3");
+					Cvar_Set("pq_suitblend","0.3");
+					Cvar_Set("pq_waterblend","0.3");
+					break;
+			}
+
+			break;
+
+		case 6:
+
+			if (!cl_rollangle.value)  // Using most obscure value to avoid confusing someone who sets some of this
+			{
+				// Ok, we will assume it's all off so we turn everything on
+				Cvar_Set("v_kickpitch","0.6");
+				Cvar_Set("v_kickroll","0.6");
+				Cvar_Set("v_kicktime","0.5");
+				Cvar_Set("cl_bob","0.02");
+				Cvar_Set("cl_bobcycle","0.6");
+				Cvar_Set("cl_bobup", "0.5");
+				Cvar_Set("cl_rollangle","2");
+			}
+			else
+			{
+				Cvar_Set("v_kickpitch","0");
+				Cvar_Set("v_kickroll","0");
+				Cvar_Set("v_kicktime","0");
+				Cvar_Set("cl_bob","0");
+				Cvar_Set("cl_bobcycle","0");
+				Cvar_Set("cl_bobup", "0");
+				Cvar_Set("cl_rollangle","0");
+			}
+
+			break;
+
+
+		case 10:
+
+			Cvar_Set("cl_keypad",cl_keypad.value ? "0" : "1");
+			break;
+
+
+		case 11:
+
+			Cvar_Set("scr_conspeed", (scr_conspeed.value >= 5000) ? "300" : "9999");
+			break;
+
+
+		case 12:
+
+			Cvar_Set("pq_moveup",pq_moveup.value ? "0" : "1");
+			break;
+
+		case 13:
+
+			Cvar_Set("ambient_level", ambient_level.value ? "0" : "0.3");
+			break;
+
+		case 14:
+
+#ifdef GLQUAKE
+			
+			if (vid_vsync.value)
+				Cvar_Set("vid_vsync", "0");
+			else
+				Cvar_Set("vid_vsync", "1");
+
+#endif
+			break;
+
+		case 15:
+
+#ifdef GLQUAKE
+			// 72 ON | 120 OFF | 200 OFF | 250 OFF
+			if (pq_maxfps.value <= 72)
+				newval = (dir<0) ? 4 : 2;
+			else if (pq_maxfps.value <= 120)
+				newval = (dir<0) ? 1 : 3;
+			else if (pq_maxfps.value <= 200)
+				newval = (dir<0) ? 2 : 4;
+			else
+				newval = (dir<0) ? 3 : 1;
+
+			switch (newval)
+			{
+				case 1:
+					Cvar_Set("pq_maxfps", "72");
+					break;
+
+				case 2:
+					Cvar_Set("pq_maxfps", "120");
+					break;
+
+				case 3:
+					Cvar_Set("pq_maxfps", "200");
+					break;
+
+				case 4:
+					Cvar_Set("pq_maxfps", "250");
+					break;
+			}
+
+
+#endif
+			break;
+
+
+		case 16:
+
+			Cvar_Set("pq_drawfps",pq_drawfps.value ? "0" : "1");
+			break;
+
+		case 18:
+
+			Cvar_Set("m_directinput", m_directinput.value ? "0" : "1");
+			break;
+	}
+}
+
+qboolean IN_DirectInputON(void);
+
+void M_Pref_Options_Draw (void)
+{
+	int i = 32;
+	char *title;
+//	float		r;
+	qpic_t	*p;
+
+	M_DrawTransPic (16, 4, Draw_CachePic ("gfx/qplaque.lmp") );
+	p = Draw_CachePic ("gfx/p_option.lmp");
+	M_DrawPic ( (320-p->width)/2, 4, p);
+
+
+	title = "view setup"; M_PrintWhite ((320-8*strlen(title))/2, i, title); 	i += 8;								  // 0
+	i += 8;
+	M_Print     (16, i, "     crosshair      "); M_Print (220, i, crosshair.value ? (cl_crosshaircentered.value ? "centered" : "on" ) : "off"); i += 8; 	  // 2
+#ifdef GLQUAKE
+	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? (gl_ringalpha.value < 1 ? "always" : "on" ) : "off"); i += 8;     // 3
+#else
+	M_Print     (16, i, "     draw weapon    "); M_Print (220, i, r_drawviewmodel.value ? "on" : "off"); i += 8; //3
+#endif
+
+	M_Print     (16, i, "     weapon style   "); M_Print (220, i, r_truegunangle.value ? "darkplaces" : "classic" ); i += 8; 	  // 4
+	M_Print     (16, i, "     view blends    "); M_Print (220, i, pq_suitblend.value >=1 ? "classic" : "deathmatch"); i += 8; 	  // 5
+	M_Print     (16, i, "     disable bobbing"); M_Print (220, i, cl_rollangle.value ?  "off" : "on" ); i += 8; 	  // 6
+	i += 8;																									  // 7
+	title = "interface"; M_PrintWhite ((320-8*strlen(title))/2, i, title);  i += 8;							  // 8
+	i += 8;																									  // 9
+	M_Print     (16, i, "     keypad binding "); M_Print (220, i, cl_keypad.value ? "on" : "off"); i += 8; 	  // 10
+	M_Print     (16, i, "     fast console   "); M_Print (220, i, scr_conspeed.value >= 5000 ? "on" : "off" ); i += 8; 	  // 11
+	M_Print     (16, i, "     jump is moveup "); M_Print (220, i, pq_moveup.value ? "on" : "off" ); i += 8; 	  // 12
+	M_Print     (16, i, "     ambient sound  "); M_Print (220, i, ambient_level.value ? "on" : "off" ); i += 8; 	  // 13
+#ifdef GLQUAKE
+	M_Print     (16, i, "     vsync          "); M_Print (220, i, vid_vsync.value ? "on" : "off" ); i += 8; 	  // 14
+	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, pq_maxfps.value == 72 ? "72 fps" : (pq_maxfps.value == 120 ? "120 fps" : (pq_maxfps.value == 200 ? "200 fps" : (pq_maxfps.value == 250 ? "250 fps" : "custom"))) ); i += 8; 	  // 14
+#else
+	M_Print     (16, i, "     vsync          "); M_Print (220, i, "n/a"); i += 8;	  // 14
+	M_Print     (16, i, "     max frames/sec "); M_Print (220, i, "n/a"); i += 8;	  // 14
+#endif
+	M_Print     (16, i, "     show framerate "); M_Print (220, i, pq_drawfps.value ? "on" : "off" );  i += 16;	  // 14
+	M_Print     (16, i, "     directinput mouse "); M_Print (220, i, IN_DirectInputON() ? "on" : "off" ); i += 16;
+	M_Print     (16, i, "     international kybd"); M_Print (220, i, Key_InternationalON() ? "on" : "off" );
+
+	M_DrawCharacter (200, 32 + preferences_cursor *8, 12+((int)(realtime*4)&1));
+}
+
+
+
+void M_Pref_Options_Key (int key, int ascii)
+{
+	switch (key)
+	{
+	case K_ESCAPE:
+		M_Menu_Options_f ();
+		break;
+
+	case K_ENTER:
+		m_entersound = true;
+		switch (preferences_cursor)
+		{
+		default:
+			M_Pref_AdjustSliders (1);
+			break;
+		}
+		return;
+
+	case K_UPARROW:
+		S_LocalSound ("misc/menu1.wav");
+		preferences_cursor--;
+		if (preferences_cursor < 0)
+			preferences_cursor = PREFERENCES_ITEMS-1;
+		break;
+
+	case K_DOWNARROW:
+		S_LocalSound ("misc/menu1.wav");
+		preferences_cursor++;
+		if (preferences_cursor >= PREFERENCES_ITEMS)
+			preferences_cursor = 0;
+		break;
+
+	case K_LEFTARROW:
+		M_Pref_AdjustSliders (-1);
+		break;
+
+	case K_RIGHTARROW:
+		M_Pref_AdjustSliders (1);
+		break;
+	}
+
+	if (preferences_cursor < 2) // the gray zone part 1!
+	{
+		if (key == K_UPARROW)
+			preferences_cursor = PREFERENCES_ITEMS-1;
+		else
+			preferences_cursor = 2;
+	}
+
+	if (preferences_cursor >= 7 && preferences_cursor <= 9)
+	{
+		if (key == K_UPARROW)
+			preferences_cursor = 6;
+		else
+			preferences_cursor = 10;
+	}
+
+	if (preferences_cursor ==17)
+	{
+		if (key == K_UPARROW)
+			preferences_cursor = 16;
+		else
+			preferences_cursor = 18;
+	}
+
+
+}
+
+//=============================================================================
 /* VIDEO MENU */
 
 void M_Menu_Video_f (void)
@@ -1539,7 +2131,7 @@ void M_Video_Draw (void)
 }
 
 
-void M_Video_Key (int key)
+void M_Video_Key (int key, int ascii)
 {
 	(*vid_menukeyfn) (key);
 }
@@ -1571,10 +2163,13 @@ void M_Help_Draw (void)
 	{
 		M_DrawTextBox (16, 16, 34, 16);
 		M_PrintWhite(32, 48,  va("     ProQuake version %4.2f        ", PROQUAKE_VERSION));
-		M_Print		(32, 72,  "   Programmed by J.P. Grossman    ");
-		M_PrintWhite(36, 80,  "                jpg@ai.mit.edu    ");
-		M_Print		(28, 96,  " http://planetquake.com/proquake  ");
-		M_Print     (32, 128, "<-- Previous            Next -->");
+		M_Print		(32, 72,  "   Unofficial Version By Baker");
+		M_PrintWhite(32, 80,  "       http://www.quakeone.com");
+
+		M_Print		(32, 96,  "   Programmed by J.P. Grossman    ");
+		M_PrintWhite(36, 112,  "                jpg@ai.mit.edu    ");
+		M_Print		(28, 120,  " http://planetquake.com/proquake  ");
+		M_Print     (32, 136, "<-- Previous            Next -->");
 
 		f = (int)(host_time * 8)%6;
 		M_DrawTransPic (48, 40 ,Draw_CachePic( va("gfx/menudot%i.lmp", f+1 ) ) );
@@ -1583,7 +2178,7 @@ void M_Help_Draw (void)
 }
 
 
-void M_Help_Key (int key)
+void M_Help_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -1674,7 +2269,7 @@ void M_Menu_Quit_f (void)
 }
 
 
-void M_Quit_Key (int key)
+void M_Quit_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -1873,7 +2468,7 @@ void M_SerialConfig_Draw (void)
 }
 
 
-void M_SerialConfig_Key (int key)
+void M_SerialConfig_Key (int key, int ascii)
 {
 	int		l;
 
@@ -2011,7 +2606,7 @@ forward:
 		break;
 
 	default:
-		if (key < 32 || key > 127)
+		if (ascii < 32 || key > ascii)
 			break;
 		if (serialConfig_cursor == 4)
 		{
@@ -2099,7 +2694,7 @@ void M_ModemConfig_Draw (void)
 }
 
 
-void M_ModemConfig_Key (int key)
+void M_ModemConfig_Key (int key, int ascii)
 {
 	int		l;
 
@@ -2174,7 +2769,7 @@ void M_ModemConfig_Key (int key)
 		break;
 
 	default:
-		if (key < 32 || key > 127)
+		if (ascii < 32 || ascii > 127)
 			break;
 
 		if (modemConfig_cursor == 1)
@@ -2301,7 +2896,7 @@ void M_LanConfig_Draw (void)
 }
 
 
-void M_LanConfig_Key (int key)
+void M_LanConfig_Key (int key, int ascii)
 {
 	int		l;
 
@@ -2371,7 +2966,7 @@ void M_LanConfig_Key (int key)
 		break;
 
 	default:
-		if (key < 32 || key > 127)
+		if (ascii < 32 || ascii > 127)
 			break;
 
 		if (lanConfig_cursor == 2)
@@ -2384,7 +2979,7 @@ void M_LanConfig_Key (int key)
 			}
 		}
 
-		if (key < '0' || key > '9')
+		if (ascii < '0' || ascii > '9')
 			break;
 		if (lanConfig_cursor == 0)
 		{
@@ -2807,7 +3402,7 @@ void M_NetStart_Change (int dir)
 	}
 }
 
-void M_GameOptions_Key (int key)
+void M_GameOptions_Key (int key, int ascii)
 {
 	switch (key)
 	{
@@ -2924,7 +3519,7 @@ void M_Search_Draw (void)
 }
 
 
-void M_Search_Key (int key)
+void M_Search_Key (int key, int ascii)
 {
 }
 
@@ -2987,9 +3582,9 @@ void M_ServerList_Draw (void)
 }
 
 
-void M_ServerList_Key (int k)
+void M_ServerList_Key (int key, int ascii)
 {
-	switch (k)
+	switch (key)
 	{
 	case K_ESCAPE:
 		M_Menu_LanConfig_f ();
@@ -3045,8 +3640,10 @@ void M_Init (void)
 	Cmd_AddCommand ("menu_save", M_Menu_Save_f);
 	Cmd_AddCommand ("menu_multiplayer", M_Menu_MultiPlayer_f);
 	Cmd_AddCommand ("menu_setup", M_Menu_Setup_f);
+	Cmd_AddCommand ("menu_namemaker", M_Menu_NameMaker_f);
 	Cmd_AddCommand ("menu_options", M_Menu_Options_f);
 	Cmd_AddCommand ("menu_keys", M_Menu_Keys_f);
+	Cmd_AddCommand ("menu_preferences", M_Menu_Preferences_f);
 	Cmd_AddCommand ("menu_video", M_Menu_Video_f);
 	Cmd_AddCommand ("help", M_Menu_Help_f);
 	Cmd_AddCommand ("menu_quit", M_Menu_Quit_f);
@@ -3108,6 +3705,10 @@ void M_Draw (void)
 		M_Setup_Draw ();
 		break;
 
+	case m_namemaker:
+		M_NameMaker_Draw ();
+		break;
+
 	case m_net:
 		M_Net_Draw ();
 		break;
@@ -3155,6 +3756,11 @@ void M_Draw (void)
 	case m_slist:
 		M_ServerList_Draw ();
 		break;
+
+	case m_preferences:
+		M_Pref_Options_Draw ();
+		break;
+
 	}
 
 	if (m_entersound)
@@ -3169,7 +3775,7 @@ void M_Draw (void)
 }
 
 
-void M_Keydown (int key)
+void M_Keydown (int key, int ascii, qboolean down)
 {
 	switch (m_state)
 	{
@@ -3177,76 +3783,84 @@ void M_Keydown (int key)
 		return;
 
 	case m_main:
-		M_Main_Key (key);
+		M_Main_Key (key, ascii);
 		return;
 
 	case m_singleplayer:
-		M_SinglePlayer_Key (key);
+		M_SinglePlayer_Key (key, ascii);
 		return;
 
 	case m_load:
-		M_Load_Key (key);
+		M_Load_Key (key, ascii);
 		return;
 
 	case m_save:
-		M_Save_Key (key);
+		M_Save_Key (key, ascii);
 		return;
 
 	case m_multiplayer:
-		M_MultiPlayer_Key (key);
+		M_MultiPlayer_Key (key, ascii);
 		return;
 
 	case m_setup:
-		M_Setup_Key (key);
+		M_Setup_Key (key, ascii);
+		return;
+	case m_namemaker:
+		M_NameMaker_Key (key, ascii);
 		return;
 
 	case m_net:
-		M_Net_Key (key);
+		M_Net_Key (key, ascii);
 		return;
 
 	case m_options:
-		M_Options_Key (key);
+		M_Options_Key (key, ascii);
 		return;
 
 	case m_keys:
-		M_Keys_Key (key);
+		M_Keys_Key (key, ascii, down);
 		return;
 
 	case m_video:
-		M_Video_Key (key);
+		M_Video_Key (key, ascii);
 		return;
 
 	case m_help:
-		M_Help_Key (key);
+		M_Help_Key (key, ascii);
 		return;
 
 	case m_quit:
-		M_Quit_Key (key);
+		M_Quit_Key (key, ascii);
 		return;
 
 	case m_serialconfig:
-		M_SerialConfig_Key (key);
+		M_SerialConfig_Key (key, ascii);
 		return;
 
 	case m_modemconfig:
-		M_ModemConfig_Key (key);
+		M_ModemConfig_Key (key, ascii);
 		return;
 
 	case m_lanconfig:
-		M_LanConfig_Key (key);
+		M_LanConfig_Key (key, ascii);
 		return;
 
 	case m_gameoptions:
-		M_GameOptions_Key (key);
+		M_GameOptions_Key (key, ascii);
 		return;
 
 	case m_search:
-		M_Search_Key (key);
+		M_Search_Key (key, ascii);
 		break;
 
 	case m_slist:
-		M_ServerList_Key (key);
+		M_ServerList_Key (key, ascii);
 		return;
+
+	case m_preferences:
+		M_Pref_Options_Key (key, ascii);
+		return;
+
 	}
 }
 

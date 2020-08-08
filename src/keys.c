@@ -55,6 +55,36 @@ int		keyshift[256];		// key to map to if shift held down in console
 int		key_repeats[256];	// if > 1, it is autorepeating
 qboolean	keydown[256];
 
+
+static qboolean key_international = true;
+
+cvar_t	    cl_bindprotect = {"cl_bindprotect","2", true};
+cvar_t		in_keymap = {"in_keymap", "1", true, 5};
+
+void Key_ClearAllStates (void);
+qboolean OnChange_in_keymap (cvar_t *var, char *string) {
+
+	Key_ClearAllStates();
+
+	if (in_keymap.value) {
+		key_international = true;
+		Con_Printf("International Keyboard is ON\n");
+	} else {
+		key_international = false;
+		Con_Printf("International Keyboard is OFF\n");
+	}
+		
+	return false;
+}
+
+qboolean Key_InternationalON(void) {
+	if (key_international)
+		return true;
+	else
+		return false;
+}
+
+
 typedef struct
 {
 	char	*name;
@@ -228,7 +258,7 @@ keyname_t keynames[] =
 Interactive line editing and console scrollback
 ====================
 */
-void Key_Console (int key, char ascii)
+void Key_Console (int key, int ascii)
 {
 	char	*cmd;
 	qboolean     passed=false;
@@ -509,7 +539,7 @@ void Key_Console (int key, char ascii)
 char chat_buffer[MAX_CHAT_SIZE];
 qboolean team_message = false;
 
-void Key_Message (int key, char ascii)
+void Key_Message (int key, int ascii)
 {
 	static int chat_bufferlen = 0;
 	// JPG - modified FrikaC's code for pasting from clipboard
@@ -697,9 +727,26 @@ void Key_Unbind_f (void)
 	Key_SetBinding (b, "");
 }
 
+
+extern  keydest_t		key_dest;
 void Key_Unbindall_f (void)
 {
 	int		i;
+	
+	if (cls.state == ca_connected && (cl_bindprotect.value!=0) && (key_dest!=key_menu)) {
+
+		if (cl_bindprotect.value==2) {
+			// Prompt
+			if (!SCR_ModalMessage("Unbindall keys entered, allow? y/n\n"))
+				return;
+		} else {
+			// Deny And Notify
+			Con_Printf("unbindall keys command entered and denied by cl_bindprotect.\n");
+			return;
+		}
+	}
+			
+	
 	
 	for (i=0 ; i<256 ; i++)
 		if (keybindings[i])
@@ -889,6 +936,8 @@ void Key_Init (void)
 //
 // register our functions
 //
+	Cvar_RegisterVariable(&cl_bindprotect);
+	
 	Cmd_AddCommand ("bindlist",Key_Bindlist_f); //johnfitz
 	Cmd_AddCommand ("bind",Key_Bind_f);
 	Cmd_AddCommand ("unbind",Key_Unbind_f);
@@ -906,11 +955,21 @@ Should NOT be called during an interrupt!
 ===================
 */
 extern qboolean	cl_inconsole; // Baker 3.76 - from Qrack
-void Key_Event (int key, char ascii, qboolean down)
+void Key_Event (int key, int ascii, qboolean down)
 {
 	char	*kb;
 	char	cmd[1024];
+	int	flex_ascii;
 
+	if (!key_international) {
+		flex_ascii = (key & 255);
+		if (flex_ascii > 127)
+			flex_ascii = 0;
+		//Con_Printf("Default keyboard translation k %d a %d k_shift %d \n", key, flex_ascii, K_SHIFT);
+	} else {
+		flex_ascii = ascii;
+	}
+	
 	keydown[key] = down;
 
 	if (!down)
@@ -966,10 +1025,10 @@ void Key_Event (int key, char ascii, qboolean down)
 		switch (key_dest)
 		{
 		case key_message:
-			Key_Message (key, ascii);
+			Key_Message (key, flex_ascii);
 			break;
 		case key_menu:
-			M_Keydown (key, ascii, down);
+			M_Keydown (key, flex_ascii, down);
 			break;
 		case key_game:
 		case key_console:
@@ -1047,20 +1106,31 @@ void Key_Event (int key, char ascii, qboolean down)
 	if (shift_down)
 	{
 		key = keyshift[key];
+
+		if (!key_international) {
+			flex_ascii = (key & 255);
+			if (flex_ascii > 127)
+				flex_ascii = 0;
+			//Con_Printf("Default keyboard translation k %d a %d k_shift %d \n", key, flex_ascii, K_SHIFT);
+		} else {
+			flex_ascii = ascii;
+		}
 	}
+
+
 
 	switch (key_dest)
 	{
 	case key_message:
-		Key_Message (key, ascii);
+		Key_Message (key, flex_ascii);
 		break;
 	case key_menu:
-		M_Keydown (key, ascii, down);
+		M_Keydown (key, flex_ascii, down);
 		break;
 
 	case key_game:
 	case key_console:
-		Key_Console (key, ascii);
+		Key_Console (key, flex_ascii);
 		break;
 	default:
 		Sys_Error ("Bad key_dest");
@@ -1074,7 +1144,7 @@ Key_ClearAllStates - Baker 3.71 - this should be here
 */
 void Key_ClearAllStates (void)
 {
-	int		i;
+//	int		i;
 
 // send an up event for each key, to make sure the server clears them all
 	/*for (i=0 ; i<256 ; i++)
@@ -1101,4 +1171,5 @@ void Key_ClearStates (void)
 		key_repeats[i] = 0;
 	}
 }
+
 

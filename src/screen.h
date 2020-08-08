@@ -51,6 +51,8 @@ extern	cvar_t		pq_drawfps;
 extern	cvar_t		show_speed; 
 extern	cvar_t		pq_maxfps; 
 extern	cvar_t		vid_vsync; 
+extern  cvar_t      m_directinput;
+extern  cvar_t      in_keymap;
 extern	cvar_t		crosshair;
 extern	cvar_t		cl_crosshaircentered;
 extern	cvar_t		scr_conspeed;

@@ -27,7 +27,7 @@ static char     *largv[MAX_NUM_ARGVS + NUM_SAFE_ARGVS + 1];
 static char     *argvdummy = " ";
 
 static char     *safeargvs[NUM_SAFE_ARGVS] =
-	{"-stdvid", "-nolan", "-nosound", "-nocdaudio", "-nojoy", "-nomouse", "-dibonly"};
+	{"-stdvid", "-nolan", "-nosound", "-cdaudio", "-joy", "-nomouse", "-dibonly"};
 
 cvar_t  registered = {"registered","0"};
 cvar_t  cmdline = {"cmdline","0", false, true};
@@ -1106,7 +1106,8 @@ void COM_CheckRegistered (void)
 		if (pop[i] != (unsigned short)BigShort (check[i]))
 			Sys_Error ("Corrupted data file.");
 	
-	Cvar_Set ("cmdline", com_cmdline);
+//	Cvar_Set ("cmdline", com_cmdline);
+	cmdline.string = com_cmdline;
 	Cvar_Set ("registered", "1");
 	static_registered = 1;
 	Con_Printf ("Playing registered version.\n");
@@ -1216,7 +1217,7 @@ void COM_Init (char *basedir)
 	}
 
 	Cvar_RegisterVariable (&registered);
-	Cvar_RegisterVariable (&cmdline);
+//	Cvar_RegisterVariable (&cmdline);
 	Cmd_AddCommand ("path", COM_Path_f);
 
 	COM_InitFilesystem ();

@@ -349,6 +349,12 @@ Cvar_Set
 ============
 */
 extern qboolean OnChange_vid_vsync (cvar_t *var, char *string);
+extern qboolean OnChange_m_directinput (cvar_t *var, char *string);
+extern qboolean OnChange_scr_fov (cvar_t *var, char *string);
+extern float OnChange_validate_default_fov (char *string);
+extern	cvar_t	m_directinput;
+extern  cvar_t  in_keymap;
+extern  cvar_t  default_fov;
 
 void Cvar_Set (char *var_name, char *value)
 {
@@ -392,6 +398,25 @@ void Cvar_Set (char *var_name, char *value)
 		OnChange_vid_vsync(&vid_vsync, var->string);
 #endif
 
+	// Baker 3.85x DirectInput change support
+	if ((var->server == 4) && changed)
+		OnChange_m_directinput(&m_directinput, var->string);
+
+	// Baker 3.85x International keyboard support ON|OFF capability
+	if ((var->server == 5) && changed)
+		OnChange_in_keymap(&m_directinput, var->string);
+
+	// Baker 3.85x Default FOV (Checking FOV)
+	if ((var->server == 6) && changed)
+		OnChange_scr_fov(&scr_fov, var->string);
+
+	// Baker 3.85x Default FOV (Checking Default FOV)
+	if (var->server == 7) {
+		float newfov = OnChange_validate_default_fov(var->string);
+		if (newfov == 0) {
+			Cvar_Set("default_fov", "90");
+		}
+	} 
 
 	// JPG 3.00 - rcon (64 doesn't mean anything special, but we need some extra space because NET_MAXMESSAGE == RCON_BUFF_SIZE)
 	if (rcon_active && (rcon_message.cursize < rcon_message.maxsize - strlen(var->name) - strlen(var->string) - 64))

@@ -32,7 +32,7 @@ void IPLog_Init (void)
 
 	// Allocate space for the IP logs
 	iplog_size = 0;
-	p = COM_CheckParm ("-iplog");
+	p = (!COM_CheckParm ("-noiplog"));
 	if (!p)
 		return;
 	if (p < com_argc - 1)
@@ -47,7 +47,8 @@ void IPLog_Init (void)
 
 	// Attempt to load log data from iplog.dat
 	Sys_GetLock();
-	f = fopen(va("%s/iplog.dat",com_gamedir), "r");
+	f = fopen(va("%s/%s/iplog.dat", host_parms.basedir, GAMENAME), "r"); // Baker 3.83 ... todo: double check that -basedir operates as expected
+	
 	if (f)
 	{
 		while(fread(&temp, 20, 1, f))
@@ -69,7 +70,7 @@ void IPLog_Import (void)
 
 	if (!iplog_size)
 	{
-		Con_Printf("IP logging not available\nUse -iplog command line option\n");
+		Con_Printf("IP logging not available\nRemove -noiplog command line option\n"); // Baker 3.83: Now -iplog is the default
 		return;
 	}
 
@@ -107,7 +108,7 @@ void IPLog_WriteLog (void)
 	Sys_GetLock();
 
 	// first merge
-	f = fopen(va("%s/iplog.dat",com_gamedir), "r");
+	f = fopen(va("%s/%s/iplog.dat", host_parms.basedir, GAMENAME), "r"); // Baker 3.83 ... todo: double check that -basedir operates as expected
 	if (f)
 	{
 		while(fread(&temp, 20, 1, f))
@@ -116,7 +117,7 @@ void IPLog_WriteLog (void)
 	}
 
 	// then write
-	f = fopen(va("%s/iplog.dat",com_gamedir), "w");
+	f = fopen(va("%s/%s/iplog.dat", host_parms.basedir, GAMENAME), "w"); // Baker 3.83 ... todo: double check that -basedir operates as expected
 	if (f)
 	{
 		if (iplog_full)
@@ -308,11 +309,11 @@ void IPLog_Dump (void)
 
 	if (!iplog_size)
 	{
-		Con_Printf("IP logging not available\nUse -iplog command line option\n");
+		Con_Printf("IP logging not available\nRemove -noiplog command line option\n"); // Baker 3.83: Now -iplog is the default
 		return;
 	}
 
-	f = fopen(va("%s/iplog.txt",com_gamedir), "w");
+	f = fopen(va("%s/%s/iplog.txt", host_parms.basedir, GAMENAME), "w"); // Baker 3.83 ... todo: double check that -basedir operates as expected
 	if (!f)
 	{
 		Con_Printf ("Couldn't write iplog.txt.\n");

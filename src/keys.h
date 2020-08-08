@@ -162,7 +162,7 @@ extern	int		key_repeats[256];
 extern	int		key_count;			// incremented every key event
 extern	int		key_lastpress;
 
-void Key_Event (int key, char ascii, qboolean down);
+void Key_Event (int key, int ascii, qboolean down);
 void Key_Init (void);
 void Key_WriteBindings (FILE *f);
 void Key_SetBinding (int keynum, char *binding);

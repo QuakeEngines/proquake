@@ -50,7 +50,7 @@ int WIPX_Init (void)
 	int		r;
 	WORD	wVersionRequested; 
 
-	if (COM_CheckParm ("-noipx"))
+	if (!COM_CheckParm ("-ipx")) // Baker 3.83: Must now explicitly indicate -ipx, instead of using -noipx
 		return -1;
 
 // make sure LoadLibrary has happened successfully
@@ -352,7 +352,7 @@ int WIPX_GetSocketAddr (int handle, struct qsockaddr *addr)
 {
 	int socket = ipxsocket[handle];
 	int addrlen = sizeof(struct qsockaddr);
-	unsigned int a;
+//	unsigned int a;
 
 	Q_memset(addr, 0, sizeof(struct qsockaddr));
 	if(pgetsockname(socket, (struct sockaddr *)addr, &addrlen) != 0)

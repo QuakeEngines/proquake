@@ -1,8 +1,39 @@
-Unofficial ProQuake 3.70 - Change Log - Baker   wwww.quakeone.com - June 9, 2007
---------------------------------------------------------------------------------
+Unofficial ProQuake 3.85 - Change Log - Baker   wwww.quakeone.com - December 7, 2007
+------------------------------------------------------------------------------------
 This is an effort to update the ProQuake engine with bug-fixes and some add modern conveniences without altering any of the look or feel of the ProQuake engine.  Conservative improvements like making the brightness controls work in GLPro, fixing major rendering bugs like the historical GLQuake FOV bug, and simple things like command completion are in the scope of this; things like adding 24-bit texture support, new particle effects or unnecessary things (like an MP3 player) are not in the scope of this project.  
 
 This is merely an attempt to improve the best engine for an authentic 1999-style deathmatch experience.  
+
+V3.85:
+
+Probably the last of the minor updates ...
+
+- Added a confirmation dialog to "Reset to defaults"
+- Implemented default_fov (idea from FuhQuake) that will intepret a server sending "fov 90" as a request to set your default fov.  Some mods do this and it is real annoying.
+- cl_bindprotect (default value 2).  Added protection against admin-abuse where "unbindall" gets sent to the client.  2 = Client must confirm unbindall keys, 1 = Ignore unbindall keys but print a notification to console, 0 = normal (unbind all your keys).
+- Increased the maximum screenshot count from 100 to 10000.
+- Can bind tilde (~) to a key in the console by typing "tilde" so if you accidentally unbind tilde, it can be rebound.
+
+V3.84:
+
+- Automatic international keyboard mapping can be turned off (strange results on Belgium AZERTY keyboards).  
+  This is now in the Advanced Settings menu and also be changed with in_keymap in the console 0= OFF, 1 = ON (default).
+
+(US users are unaffected by this change, it doesn't matter if it is on or off).
+
+V3.83:
+
+- Added Quake Name Maker (from JoeQuake / Qrack).  Go to Options -> Multiplayer -> Name Maker to create a name.
+- Commandline parameters -nojoy, -nocdaudio, -noipx have become -joy, -cdaudio, -ipx.  These now must be explicitly enabled instead of the reverse (because almost no one uses these).
+- IPLog is enabled by default and always is logged in id1\ folder.  Use -noiplog to disable instead of -iplog to enable.
+- Commandline command instead of cmdline cvar.  Type "commandline" in console to see your startup command line.
+- Boring notes: Commented out numerous unused variables in the GL build engine code.  I'll be removing these entirely eventually, but I've left them commented out for now (not cosmetically pleasing when reading the code, sorry).
+
+V3.82:
+
+- DirectInput can now be turned on/off in the menu.
+- Added a "time" command.  Type in console to display current time.
+- Discovered a fixed 2 minor bugs with wqpro (mouse button issue, default resolution issue).
 
 V3.80
 

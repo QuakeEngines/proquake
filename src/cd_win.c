@@ -245,7 +245,7 @@ static void CD_f (void)
 	char	*command;
 	int		ret;
 	int		n;
-	int		startAddress;
+//	int		startAddress;
 
 	if (Cmd_Argc() < 2)
 		return;
@@ -428,7 +428,7 @@ int CDAudio_Init(void)
 	if (cls.state == ca_dedicated)
 		return -1;
 
-	if (COM_CheckParm("-nocdaudio"))
+	if (!COM_CheckParm("-cdaudio")) // Baker 3.83: Must now explicitly indicate -cdaudio, instead of using -nocdaudio
 		return -1;
 
 	mciOpenParms.lpstrDeviceType = "cdaudio";

@@ -524,7 +524,7 @@ void Sbar_SoloScoreboard (void)
 		}
 	}
 
-	Draw_String (vid.width - (16 + strlen(str) * 8), 8, str);
+	Draw_String (vid.width - (24 + strlen(str) * 8), 8 + (pq_drawfps.value ? 8:0) + (show_speed.value ? 8:0), str);
 
 
 	sprintf (str,"Monsters:%3i /%3i", cl.stats[STAT_MONSTERS], cl.stats[STAT_TOTALMONSTERS]);
@@ -1339,7 +1339,7 @@ Sbar_DeathmatchOverlay
 */
 void Sbar_MiniDeathmatchOverlay (void)
 {
-	qpic_t			*pic;
+//	qpic_t			*pic;
 	int				i, k, l;
 	int				top, bottom;
 	int				x, y, f;

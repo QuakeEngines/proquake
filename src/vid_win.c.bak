@@ -60,14 +60,14 @@ viddef_t	vid;				// global video state
 #define MODE_WINDOWED			0
 #define MODE_SETTABLE_WINDOW	2
 #define NO_MODE					(MODE_WINDOWED - 1)
-#define MODE_FULLSCREEN_DEFAULT	(MODE_WINDOWED + 3)
+#define MODE_FULLSCREEN_DEFAULT	(MODE_WINDOWED + 8)  // Baker: Was +3, now +8 (larger default screensize)
 
 // Note that 0 is MODE_WINDOWED
 cvar_t		vid_mode = {"vid_mode","0", false};
 // Note that 0 is MODE_WINDOWED
 cvar_t		_vid_default_mode = {"_vid_default_mode","0", true};
 // Note that 3 is MODE_FULLSCREEN_DEFAULT  Baker 3.80x -- now it is 8
-cvar_t		_vid_default_mode_win = {"_vid_default_mode_win","8", true};
+cvar_t		_vid_default_mode_win = {"_vid_default_mode_win","3", true};
 cvar_t		vid_wait = {"vid_wait","0"};
 cvar_t		vid_nopageflip = {"vid_nopageflip","0", true};
 cvar_t		_vid_wait_override = {"_vid_wait_override", "0", true};
@@ -80,6 +80,8 @@ cvar_t		vid_windowed_mode = {"vid_windowed_mode","0", true};
 cvar_t		block_switch = {"block_switch","0", true};
 cvar_t		vid_window_x = {"vid_window_x", "0", true};
 cvar_t		vid_window_y = {"vid_window_y", "0", true};
+
+
 
 typedef struct {
 	int		width;
@@ -146,6 +148,7 @@ void VID_MenuKey (int key);
 LONG WINAPI MainWndProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void AppActivate(BOOL fActive, BOOL minimize);
 
+
 /*
 ================
 VID_RememberWindowPos
@@ -204,26 +207,6 @@ void VID_UpdateWindowStatus (void)
 	window_center_y = (window_rect.top + window_rect.bottom) / 2;
 
 	IN_UpdateClipCursor ();
-}
-
-
-/*
-================
-ClearAllStates
-================
-*/
-void ClearAllStates (void)
-{
-	int		i;
-	
-// send an up event for each key, to make sure the server clears them all
-	for (i=0 ; i<256 ; i++)
-	{
-		Key_Event (i, false);
-	}
-
-	Key_ClearStates ();
-	IN_ClearStates ();
 }
 
 
@@ -332,7 +315,7 @@ int VID_Suspend (MGLDC *dc,m_int flags)
 	{
 		IN_SetQuakeMouseState ();
 	// fix the leftover Alt from any Alt-Tab or the like that switched us away
-		ClearAllStates ();
+		Key_ClearAllStates ();
 		CDAudio_Resume ();
 		S_UnblockSound ();
 
@@ -345,6 +328,7 @@ int VID_Suspend (MGLDC *dc,m_int flags)
 		return MGL_NO_SUSPEND_APP;
 	}
 
+	return 0;	// Baker 3.60 - avoid compiler warning
 }
 
 
@@ -1263,7 +1247,10 @@ qboolean VID_SetWindowedMode (int modenum)
 		DIBWidth >>= 1;
 		DIBHeight >>= 1;
 	}
-
+	// Baker 3.60: fullscreen windowed mode - from aguirRe's engine
+	if (DIBWidth == GetSystemMetrics(SM_CXSCREEN) && DIBHeight == GetSystemMetrics(SM_CYSCREEN))
+		WindowStyle = WS_POPUP; // Window covers entire screen; no caption, borders etc
+	else
 	WindowStyle = WS_OVERLAPPED | WS_BORDER | WS_CAPTION | WS_SYSMENU |
 				  WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPSIBLINGS |
 				  WS_CLIPCHILDREN;
@@ -1609,7 +1596,7 @@ int VID_SetMode (int modenum, unsigned char *palette)
 	// Set either the fullscreen or windowed mode
 	if (modelist[modenum].type == MS_WINDOWED)
 	{
-		if (_windowed_mouse.value)
+		if (_windowed_mouse.value  && key_dest == key_game) // Baker 3.60 - hope this fixes cursor
 		{
 			stat = VID_SetWindowedMode(modenum);
 			IN_ActivateMouse ();
@@ -1701,7 +1688,7 @@ int VID_SetMode (int modenum, unsigned char *palette)
 	}
 
 // fix the leftover Alt from any Alt-Tab or the like that switched us away
-	ClearAllStates ();
+	Key_ClearAllStates ();
 
 	if (!msg_suppress_1)
 		Con_SafePrintf ("%s\n", VID_GetModeDescription (vid_modenum));
@@ -2586,47 +2573,6 @@ void D_EndDirectRect (int x, int y, int width, int height)
 	}
 }
 
-
-//==========================================================================
-
-byte        scantokey[128] = 
-					{ 
-//  0           1       2       3       4       5       6       7 
-//  8           9       A       B       C       D       E       F 
-	0  ,    27,     '1',    '2',    '3',    '4',    '5',    '6', 
-	'7',    '8',    '9',    '0',    '-',    '=',    K_BACKSPACE, 9, // 0 
-	'q',    'w',    'e',    'r',    't',    'y',    'u',    'i', 
-	'o',    'p',    '[',    ']',    13 ,    K_CTRL,'a',  's',      // 1 
-	'd',    'f',    'g',    'h',    'j',    'k',    'l',    ';', 
-	'\'' ,    '`',    K_SHIFT,'\\',  'z',    'x',    'c',    'v',      // 2 
-	'b',    'n',    'm',    ',',    '.',    '/',    K_SHIFT,'*', 
-	K_ALT,' ',   0  ,    K_F1, K_F2, K_F3, K_F4, K_F5,   // 3 
-	K_F6, K_F7, K_F8, K_F9, K_F10,  K_PAUSE,    0  , K_HOME, 
-	K_UPARROW,K_PGUP,'-',K_LEFTARROW,'5',K_RIGHTARROW,'+',K_END, //4 
-	K_DOWNARROW,K_PGDN,K_INS,K_DEL,0,0,             0,              K_F11, 
-	K_F12,0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0,        // 5
-	0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0, 
-	0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0,        // 6 
-	0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0, 
-	0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0  ,    0         // 7 
-}; 
-
-/*
-=======
-MapKey
-
-Map from windows to quake keynums
-=======
-*/
-int MapKey (int key)
-{
-	key = (key>>16)&255;
-	if (key > 127)
-		return 0;
-
-	return scantokey[key];
-}
-
 void AppActivate(BOOL fActive, BOOL minimize)
 /****************************************************************************
 *
@@ -2805,6 +2751,7 @@ MAIN WINDOW
 */
 
 LONG CDAudio_MessageHandler(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+int IN_MapKey (int key);
 
 /* main window procedure */
 LONG WINAPI MainWndProc (
@@ -2818,12 +2765,166 @@ LONG WINAPI MainWndProc (
 	HDC				hdc;
 	PAINTSTRUCT		ps;
 	static int		recursiveflag;
+	extern unsigned int uiWheelMessage;
+	char	state[256];
+	char	asciichar[4];
+	int		vkey;
+	int		charlength;
+	qboolean down = false;
+
+	if ( uMsg == uiWheelMessage ) // Baker 3.71 - Added to Win Version, GL version has this
+		uMsg = WM_MOUSEWHEEL;
 
 	switch (uMsg)
 	{
+		case WM_KILLFOCUS: // Baker 3.703 -- Added to Win Version; GL has
+			if (modestate == MS_FULLDIB)
+				ShowWindow(mainwindow, SW_SHOWMINNOACTIVE);
+			break;
+
 		case WM_CREATE:
 			break;
 
+		case WM_MOVE:
+			window_x = (int) LOWORD(lParam);
+			window_y = (int) HIWORD(lParam);
+			VID_UpdateWindowStatus ();
+
+			if ((modestate == MS_WINDOWED) && !in_mode_set && !Minimized) // Baker 3.71 - GL does not have
+				VID_RememberWindowPos ();                                 // Baker 3.71 - GL does not have
+
+			break;
+
+		case WM_KEYDOWN:
+		case WM_SYSKEYDOWN:
+			down=true;
+
+		case WM_KEYUP:
+		case WM_SYSKEYUP:
+			// Baker 3.703 - old way
+			// Key_Event (IN_MapKey(lParam), false);
+			vkey = IN_MapKey(lParam);
+			GetKeyboardState (state);
+			// alt/ctrl/shift tend to produce funky ToAscii values,
+			// and if it's not a single character we don't know care about it
+			charlength = ToAscii (wParam, lParam >> 16, state, (unsigned short *)asciichar, 0);
+			if (vkey == K_ALT || vkey == K_CTRL || vkey == K_SHIFT || charlength == 0)
+				asciichar[0] = 0;
+			else if( charlength == 2 ) {
+				asciichar[0] = asciichar[1];
+			}
+			
+			Key_Event (vkey, asciichar[0], down);
+			break; 
+
+		case WM_SYSCHAR:
+		// keep Alt-Space from happening
+			break;
+
+	// this is complicated because Win32 seems to pack multiple mouse events into
+	// one update sometimes, so we always check all states and look for events
+		case WM_LBUTTONDOWN:
+		case WM_LBUTTONUP:
+		case WM_RBUTTONDOWN:
+		case WM_RBUTTONUP:
+		case WM_MBUTTONDOWN:
+		case WM_MBUTTONUP:
+		case WM_MOUSEMOVE:
+			if (!in_mode_set)
+			{
+				temp = 0;
+
+				if (wParam & MK_LBUTTON)
+					temp |= 1;
+
+				if (wParam & MK_RBUTTON)
+					temp |= 2;
+
+				if (wParam & MK_MBUTTON)
+					temp |= 4;
+
+
+				// Baker 3.85: wqpro was missing this causing buttons 5,6,7,8 to not fire
+
+				if (wParam & MK_XBUTTON1)
+					temp |= 8;
+	
+				if (wParam & MK_XBUTTON2)
+					temp |= 16;
+
+
+				IN_MouseEvent (temp);
+			}
+			break;
+
+
+		// JACK: This is the mouse wheel with the Intellimouse
+		// Its delta is either positive or neg, and we generate the proper
+		// Event.
+		case WM_MOUSEWHEEL:
+			if ((short) HIWORD(wParam) > 0) {
+				Key_Event(K_MWHEELUP, 0, true);
+				Key_Event(K_MWHEELUP, 0, false);
+			} else {
+				Key_Event(K_MWHEELDOWN, 0, true);
+				Key_Event(K_MWHEELDOWN, 0, false);
+			}
+			break;
+
+		case WM_SIZE:
+			Minimized = false; // Baker 3.71 - Difference from GL
+
+			if (!(wParam & SIZE_RESTORED))
+			{
+				if (wParam & SIZE_MINIMIZED)
+					Minimized = true;
+			}
+			break;
+
+   	    case WM_CLOSE:
+		// this causes Close in the right-click task bar menu not to work, but right
+		// now bad things happen if Close is handled in that case (garbage and a
+		// crash on Win95)
+			if (!in_mode_set)
+			{
+				// Baker 3.60 - cl_confirmquit support
+				if (!cl_confirmquit.value || MessageBox(mainwindow, "Are you sure you want to quit?", "Confirm Exit", MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
+					Sys_Quit ();
+			}
+			break;
+
+
+		case WM_ACTIVATE:
+			fActive = LOWORD(wParam);
+			fMinimized = (BOOL) HIWORD(wParam);
+			AppActivate(!(fActive == WA_INACTIVE), fMinimized);
+
+		// fix the leftover Alt from any Alt-Tab or the like that switched us away
+			Key_ClearAllStates ();
+
+			if (!in_mode_set)
+			{
+				if (windc)
+					MGL_activatePalette(windc,true);
+
+				VID_SetPalette(vid_curpal);
+			}
+
+			break;
+
+		// Case WM_DESTROY // Baker 3.71 - WQPRO does not have?
+
+
+
+
+
+
+
+
+
+		case MM_MCINOTIFY:
+            lRet = CDAudio_MessageHandler (hWnd, uMsg, wParam, lParam);
+			break;
 		case WM_SYSCOMMAND:
 
 		// Check for maximize being hit
@@ -2869,47 +2970,11 @@ LONG WINAPI MainWndProc (
 			}
 			break;
 
-		case WM_MOVE:
-			window_x = (int) LOWORD(lParam);
-			window_y = (int) HIWORD(lParam);
-			VID_UpdateWindowStatus ();
 
-			if ((modestate == MS_WINDOWED) && !in_mode_set && !Minimized)
-				VID_RememberWindowPos ();
 
-			break;
 
-		case WM_SIZE:
-			Minimized = false;
-			
-			if (!(wParam & SIZE_RESTORED))
-			{
-				if (wParam & SIZE_MINIMIZED)
-					Minimized = true;
-			}
-			break;
 
-		case WM_SYSCHAR:
-		// keep Alt-Space from happening
-			break;
 
-		case WM_ACTIVATE:
-			fActive = LOWORD(wParam);
-			fMinimized = (BOOL) HIWORD(wParam);
-			AppActivate(!(fActive == WA_INACTIVE), fMinimized);
-
-		// fix the leftover Alt from any Alt-Tab or the like that switched us away
-			ClearAllStates ();
-
-			if (!in_mode_set)
-			{
-				if (windc)
-					MGL_activatePalette(windc,true);
-
-				VID_SetPalette(vid_curpal);
-			}
-
-			break;
 
 		case WM_PAINT:
 			hdc = BeginPaint(hWnd, &ps);
@@ -2920,56 +2985,9 @@ LONG WINAPI MainWndProc (
 			EndPaint(hWnd, &ps);
 			break;
 
-		case WM_KEYDOWN:
-		case WM_SYSKEYDOWN:
-			if (!in_mode_set)
-				Key_Event (MapKey(lParam), true);
-			break;
 
-		case WM_KEYUP:
-		case WM_SYSKEYUP:
-			if (!in_mode_set)
-				Key_Event (MapKey(lParam), false);
-			break;
 
-	// this is complicated because Win32 seems to pack multiple mouse events into
-	// one update sometimes, so we always check all states and look for events
-		case WM_LBUTTONDOWN:
-		case WM_LBUTTONUP:
-		case WM_RBUTTONDOWN:
-		case WM_RBUTTONUP:
-		case WM_MBUTTONDOWN:
-		case WM_MBUTTONUP:
-		case WM_MOUSEMOVE:
-			if (!in_mode_set)
-			{
-				temp = 0;
 
-				if (wParam & MK_LBUTTON)
-					temp |= 1;
-
-				if (wParam & MK_RBUTTON)
-					temp |= 2;
-
-				if (wParam & MK_MBUTTON)
-					temp |= 4;
-
-				IN_MouseEvent (temp);
-			}
-			break;
-
-		// JACK: This is the mouse wheel with the Intellimouse
-		// Its delta is either positive or neg, and we generate the proper
-		// Event.
-		case WM_MOUSEWHEEL: 
-			if ((short) HIWORD(wParam) > 0) {
-				Key_Event(K_MWHEELUP, true);
-				Key_Event(K_MWHEELUP, false);
-			} else {
-				Key_Event(K_MWHEELDOWN, true);
-				Key_Event(K_MWHEELDOWN, false);
-			}
-			break;
 		// KJB: Added these new palette functions
 		case WM_PALETTECHANGED:
 			if ((HWND)wParam == hWnd)
@@ -3006,23 +3024,7 @@ LONG WINAPI MainWndProc (
 			}
 			break;
 
-   	    case WM_CLOSE:
-		// this causes Close in the right-click task bar menu not to work, but right
-		// now bad things happen if Close is handled in that case (garbage and a
-		// crash on Win95)
-			if (!in_mode_set)
-			{
-				if (MessageBox (mainwindow, "Are you sure you want to quit?", "Confirm Exit",
-							MB_YESNO | MB_SETFOREGROUND | MB_ICONQUESTION) == IDYES)
-				{
-					Sys_Quit ();
-				}
-			}
-			break;
 
-		case MM_MCINOTIFY:
-            lRet = CDAudio_MessageHandler (hWnd, uMsg, wParam, lParam);
-			break;
 
 		default:
             /* pass all unhandled messages to DefWindowProc */

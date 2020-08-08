@@ -526,7 +526,7 @@ int WINS_GetSocketAddr (int socket, struct qsockaddr *addr)
 
 int WINS_GetNameFromAddr (struct qsockaddr *addr, char *name)
 {
-	struct hostent *hostentry;
+//	struct hostent *hostentry;
 
 	/* JPG 2.01 - commented this out because it's slow and completely useless
 	hostentry = pgethostbyaddr ((char *)&((struct sockaddr_in *)addr)->sin_addr, sizeof(struct in_addr), AF_INET);

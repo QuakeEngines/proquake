@@ -1697,7 +1697,7 @@ Host_Give_f
 void Host_Give_f (void)
 {
 	char	*t;
-	int		v, w;
+	int		v /*, w*/;
 	eval_t	*val;
 
 	if (cmd_source == src_command)
@@ -2120,7 +2120,7 @@ void Host_Identify_f (void)
 
 	if (!iplog_size)
 	{
-		Con_Printf("IP logging not available\nUse -iplog command line option\n");
+		Con_Printf("IP logging not available\nRemove -noiplog command line option\n"); // Baker 3.83: Now -iplog is the default
 		return;
 	}
 
